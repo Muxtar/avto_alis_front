@@ -131,7 +131,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </button>
           )}
           {listing.images.length > 0 ? (
-            <img src={`${UPLOADS}/${listing.images[0]}`} alt={listing.title} loading="lazy"
+            <img src={listing.images[0].startsWith('http') ? listing.images[0] : `${UPLOADS}/${listing.images[0]}`} alt={listing.title} loading="lazy"
               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">

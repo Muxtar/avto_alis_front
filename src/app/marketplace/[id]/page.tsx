@@ -128,7 +128,7 @@ export default function ListingDetailPage() {
             <div className="aspect-video bg-input-bg flex items-center justify-center">
               {listing.images?.length > 0 ? (
                 <img
-                  src={`${UPLOADS}/${listing.images[0]}`} loading="lazy"
+                  src={listing.images[0].startsWith('http') ? listing.images[0] : `${UPLOADS}/${listing.images[0]}`} loading="lazy"
                   alt={listing.title}
                   className="w-full h-full object-cover"
                 />

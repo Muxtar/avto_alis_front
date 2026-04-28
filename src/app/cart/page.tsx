@@ -186,7 +186,7 @@ export default function CartPage() {
               <div key={item.id} className="bg-card border border-card-border rounded-xl p-3 sm:p-4 flex gap-3 sm:gap-4">
                 <Link href={`/marketplace/${item.listing.id}`} className="w-16 h-16 sm:w-20 sm:h-20 bg-input-bg rounded-xl shrink-0 flex items-center justify-center overflow-hidden">
                   {item.listing.images?.[0] ? (
-                    <img src={`${UPLOADS}/${item.listing.images[0]}`} alt={item.listing.title} loading="lazy" className="w-full h-full object-cover" />
+                    <img src={item.listing.images[0].startsWith('http') ? item.listing.images[0] : `${UPLOADS}/${item.listing.images[0]}`} alt={item.listing.title} loading="lazy" className="w-full h-full object-cover" />
                   ) : null}
                 </Link>
                 <div className="flex-1 min-w-0">

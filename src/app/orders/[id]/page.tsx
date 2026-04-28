@@ -179,7 +179,7 @@ export default function OrderDetailPage() {
           {order.items?.map((item: any) => (
             <div key={item.id} className="flex items-center gap-3 p-2 border border-card-border/50 rounded-lg">
               {item.listing?.images?.[0] && (
-                <img src={`${UPLOADS}/${item.listing.images[0]}`} alt="" className="w-12 h-12 object-cover rounded" />
+                <img src={item.listing.images[0].startsWith('http') ? item.listing.images[0] : `${UPLOADS}/${item.listing.images[0]}`} alt="" className="w-12 h-12 object-cover rounded" />
               )}
               <div className="flex-1">
                 <p className="text-sm font-medium">{item.title}</p>
