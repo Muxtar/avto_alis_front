@@ -16,7 +16,15 @@ export default function ProfilePage() {
   const [listings, setListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState({ name: "", phone: "" });
+  const [editData, setEditData] = useState({ name: "" });
+
+  // Vehicles state
+  const [vehicleForm, setVehicleForm] = useState<{ id: number | null; brand: string; model: string; year: string; passportImage: File | null }>({ id: null, brand: "", model: "", year: "", passportImage: null });
+  const [showVehicleForm, setShowVehicleForm] = useState(false);
+
+  // Workplaces state
+  const [workplaceForm, setWorkplaceForm] = useState<{ id: number | null; name: string; address: string }>({ id: null, name: "", address: "" });
+  const [showWorkplaceForm, setShowWorkplaceForm] = useState(false);
   const [saved, setSaved] = useState(false);
   const [emailInput, setEmailInput] = useState("");
   const [emailCode, setEmailCode] = useState("");
@@ -36,13 +44,13 @@ export default function ProfilePage() {
       fetch(`${API}/me/listings`, { headers }).then((r) => r.json()),
     ]).then(([p, l]) => {
       setProfile(p.user);
-      setEditData({ name: p.user.name, phone: p.user.phone });
+      setEditData({ name: p.user.name });
       setListings(l.listings || []);
     }).catch(() => { toast(t('error'), 'error'); }).finally(() => setLoading(false));
   }, [isLoggedIn, authLoading]);
 
   const handleSave = async () => {
-    const res = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify(editData) });
+    const res = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify({ name: editData.name }) });
     const data = await res.json();
     if (data.success) {
       setProfile(data.user);
@@ -51,6 +59,77 @@ export default function ProfilePage() {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     }
+  };
+
+  const refreshProfile = async () => {
+    const res = await fetch(`${API}/me`, { headers }).then((r) => r.json());
+    if (res.user) setProfile(res.user);
+  };
+
+  // ====== VEHICLES ======
+  const startAddVehicle = () => {
+    setVehicleForm({ id: null, brand: "", model: "", year: "", passportImage: null });
+    setShowVehicleForm(true);
+  };
+  const startEditVehicle = (v: any) => {
+    setVehicleForm({ id: v.id, brand: v.brand, model: v.model, year: String(v.year), passportImage: null });
+    setShowVehicleForm(true);
+  };
+  const cancelVehicleForm = () => { setShowVehicleForm(false); setVehicleForm({ id: null, brand: "", model: "", year: "", passportImage: null }); };
+  const submitVehicle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!vehicleForm.brand || !vehicleForm.model || !vehicleForm.year) { toast(t('error'), 'error'); return; }
+    if (!vehicleForm.id && !vehicleForm.passportImage) { toast('Texniki pasport şəkli tələb olunur', 'error'); return; }
+    const fd = new FormData();
+    fd.append('brand', vehicleForm.brand);
+    fd.append('model', vehicleForm.model);
+    fd.append('year', vehicleForm.year);
+    if (vehicleForm.passportImage) fd.append('passportImage', vehicleForm.passportImage);
+    const url = vehicleForm.id ? `${API}/me/vehicles/${vehicleForm.id}` : `${API}/me/vehicles`;
+    const method = vehicleForm.id ? 'PUT' : 'POST';
+    const res = await fetch(url, { method, headers: { Authorization: `Bearer ${token}` }, body: fd });
+    const data = await res.json();
+    if (data.success) {
+      toast(vehicleForm.id ? t('profileUpdated') : t('addedToCart'), 'success');
+      cancelVehicleForm();
+      refreshProfile();
+    } else {
+      toast(data.message || t('error'), 'error');
+    }
+  };
+  const deleteVehicle = async (id: number) => {
+    if (!confirm('Avtomobili silmək istəyirsiniz?')) return;
+    const res = await fetch(`${API}/me/vehicles/${id}`, { method: 'DELETE', headers });
+    const data = await res.json();
+    if (data.success) { toast(t('profileUpdated'), 'success'); refreshProfile(); }
+    else toast(data.message || t('error'), 'error');
+  };
+
+  // ====== WORKPLACES ======
+  const startAddWorkplace = () => { setWorkplaceForm({ id: null, name: "", address: "" }); setShowWorkplaceForm(true); };
+  const startEditWorkplace = (w: any) => { setWorkplaceForm({ id: w.id, name: w.name, address: w.address }); setShowWorkplaceForm(true); };
+  const cancelWorkplaceForm = () => { setShowWorkplaceForm(false); setWorkplaceForm({ id: null, name: "", address: "" }); };
+  const submitWorkplace = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!workplaceForm.name || !workplaceForm.address) { toast(t('error'), 'error'); return; }
+    const url = workplaceForm.id ? `${API}/me/workplaces/${workplaceForm.id}` : `${API}/me/workplaces`;
+    const method = workplaceForm.id ? 'PUT' : 'POST';
+    const res = await fetch(url, { method, headers, body: JSON.stringify({ name: workplaceForm.name, address: workplaceForm.address }) });
+    const data = await res.json();
+    if (data.success) {
+      toast(t('profileUpdated'), 'success');
+      cancelWorkplaceForm();
+      refreshProfile();
+    } else {
+      toast(data.message || t('error'), 'error');
+    }
+  };
+  const deleteWorkplace = async (id: number) => {
+    if (!confirm('İş yerini silmək istəyirsiniz?')) return;
+    const res = await fetch(`${API}/me/workplaces/${id}`, { method: 'DELETE', headers });
+    const data = await res.json();
+    if (data.success) { toast(t('profileUpdated'), 'success'); refreshProfile(); }
+    else toast(data.message || t('error'), 'error');
   };
 
   const handleSendEmailCode = async () => {
@@ -130,7 +209,8 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">{t("phone")}</label>
-                  <input value={editData.phone} onChange={(e) => setEditData({ ...editData, phone: e.target.value })} className={inputCls} />
+                  <input value={profile.phone} disabled className={inputCls + " opacity-60 cursor-not-allowed"} />
+                  <p className="text-[11px] text-muted mt-1">Telefon nömrəsi dəyişdirilə bilməz</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={handleSave} className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">{t("adminSave")}</button>
@@ -183,20 +263,130 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Workplaces */}
-        {profile.workplaces?.length > 0 && (
-          <div className="mt-5 pt-5 border-t border-card-border">
-            <div className="flex flex-wrap gap-2">
-              {profile.workplaces.map((w: any) => (
-                <div key={w.id} className="flex items-center gap-1.5 px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs">
-                  <svg className="w-3.5 h-3.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-                  <span className="font-medium">{w.name}</span> - {w.address}
+      </div>
+
+      {/* Vehicles section - only for CAR_OWNER */}
+      {profile.type === "CAR_OWNER" && (
+        <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-8 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold flex items-center gap-2">
+              <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25" /></svg>
+              Avtomobillərim ({profile.vehicles?.length || 0})
+            </h2>
+            {!showVehicleForm && (
+              <button onClick={startAddVehicle} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-medium hover:bg-orange-500/20 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                Avtomobil əlavə et
+              </button>
+            )}
+          </div>
+
+          {showVehicleForm && (
+            <form onSubmit={submitVehicle} className="bg-input-bg/50 border border-input-border rounded-xl p-4 mb-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <input value={vehicleForm.brand} onChange={(e) => setVehicleForm({ ...vehicleForm, brand: e.target.value })} placeholder="Marka (BMW, Mercedes...)" className={inputCls} required />
+                <input value={vehicleForm.model} onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })} placeholder="Model (E60, W211...)" className={inputCls} required />
+                <input type="number" min="1900" max={new Date().getFullYear() + 1} value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} placeholder="İl" className={inputCls} required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Texniki pasport şəkli {vehicleForm.id ? "(dəyişmək üçün yenisini seç)" : ""}</label>
+                <input type="file" accept="image/*" onChange={(e) => setVehicleForm({ ...vehicleForm, passportImage: e.target.files?.[0] || null })} className="text-sm text-foreground" />
+              </div>
+              <div className="flex gap-2">
+                <button type="submit" className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">{vehicleForm.id ? t("adminSave") : "Əlavə et"}</button>
+                <button type="button" onClick={cancelVehicleForm} className="px-5 py-2 bg-input-bg border border-input-border rounded-xl text-sm">{t("adminCancel")}</button>
+              </div>
+            </form>
+          )}
+
+          {!profile.vehicles?.length && !showVehicleForm ? (
+            <p className="text-muted text-sm text-center py-4">Hələ avtomobil əlavə etməmisiniz.</p>
+          ) : (
+            <div className="space-y-2">
+              {profile.vehicles?.map((v: any) => (
+                <div key={v.id} className="flex items-center justify-between gap-3 p-3 bg-input-bg/40 border border-input-border/60 rounded-xl">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0">
+                      <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25" /></svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{v.brand} {v.model}</p>
+                      <p className="text-muted text-xs">📅 {v.year}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={() => startEditVehicle(v)} className="p-2 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-colors" title={t("adminEdit")}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    </button>
+                    <button onClick={() => deleteVehicle(v.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors" title={t("adminDelete")}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Workplaces section - for MECHANIC and PARTS_SELLER */}
+      {(profile.type === "MECHANIC" || profile.type === "PARTS_SELLER") && (
+        <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-8 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="font-semibold flex items-center gap-2">
+              <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+              {t("workplaces")} ({profile.workplaces?.length || 0})
+            </h2>
+            {!showWorkplaceForm && (
+              <button onClick={startAddWorkplace} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-medium hover:bg-orange-500/20 transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+                {t("addWorkplace")}
+              </button>
+            )}
           </div>
-        )}
-      </div>
+
+          {showWorkplaceForm && (
+            <form onSubmit={submitWorkplace} className="bg-input-bg/50 border border-input-border rounded-xl p-4 mb-4 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input value={workplaceForm.name} onChange={(e) => setWorkplaceForm({ ...workplaceForm, name: e.target.value })} placeholder="İş yerinin adı" className={inputCls} required />
+                <input value={workplaceForm.address} onChange={(e) => setWorkplaceForm({ ...workplaceForm, address: e.target.value })} placeholder="Ünvan" className={inputCls} required />
+              </div>
+              <div className="flex gap-2">
+                <button type="submit" className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">{workplaceForm.id ? t("adminSave") : "Əlavə et"}</button>
+                <button type="button" onClick={cancelWorkplaceForm} className="px-5 py-2 bg-input-bg border border-input-border rounded-xl text-sm">{t("adminCancel")}</button>
+              </div>
+            </form>
+          )}
+
+          {!profile.workplaces?.length && !showWorkplaceForm ? (
+            <p className="text-muted text-sm text-center py-4">Hələ iş yeri əlavə etməmisiniz.</p>
+          ) : (
+            <div className="space-y-2">
+              {profile.workplaces?.map((w: any) => (
+                <div key={w.id} className="flex items-center justify-between gap-3 p-3 bg-input-bg/40 border border-input-border/60 rounded-xl">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center shrink-0">
+                      <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate">{w.name}</p>
+                      <p className="text-muted text-xs truncate">{w.address}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button onClick={() => startEditWorkplace(w)} className="p-2 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-colors" title={t("adminEdit")}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    </button>
+                    <button onClick={() => deleteWorkplace(w.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors" title={t("adminDelete")}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Email Verification */}
       <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-8 mb-6">
