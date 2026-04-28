@@ -177,6 +177,30 @@ export default function ListingDetailPage() {
                     <p className="font-medium">📅 {listing.year}</p>
                   </div>
                 )}
+                {listing.model && (
+                  <div>
+                    <p className="text-muted text-xs mb-1">{t("vehicleModel")}</p>
+                    <p className="font-medium">{listing.model}</p>
+                  </div>
+                )}
+                {listing.city && (
+                  <div>
+                    <p className="text-muted text-xs mb-1">{t("city")}</p>
+                    <p className="font-medium">📍 {listing.city}</p>
+                  </div>
+                )}
+                {listing.fuelType && (
+                  <div>
+                    <p className="text-muted text-xs mb-1">{t("fuelType")}</p>
+                    <p className="font-medium">⛽ {t(`fuel${listing.fuelType.charAt(0) + listing.fuelType.slice(1).toLowerCase()}` as any)}</p>
+                  </div>
+                )}
+                {listing.paymentType && (
+                  <div>
+                    <p className="text-muted text-xs mb-1">{t("paymentType")}</p>
+                    <p className="font-medium">💳 {t(`payment${listing.paymentType.charAt(0) + listing.paymentType.slice(1).toLowerCase()}` as any)}</p>
+                  </div>
+                )}
                 {listing.forVehicle && (
                   <div className="col-span-2 sm:col-span-3">
                     <p className="text-muted text-xs mb-1">{t("forVehicle")}</p>

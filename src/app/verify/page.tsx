@@ -84,13 +84,16 @@ function VerifyContent() {
           </div>
 
           <h1 className="text-2xl font-bold text-center mb-2">{t("verifyTitle")}</h1>
-          <p className="text-muted text-center text-sm mb-6">{t("verifySubtitle")}</p>
+          <p className="text-muted text-center text-sm mb-4">{t("verifySubtitle")}</p>
 
-          {/* Test Mode Banner - only in development */}
-          {process.env.NODE_ENV === 'development' && testCode && (
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 mb-6 text-center">
-              <span className="text-amber-500 text-xs font-medium">{t("testModeLabel")}</span>
-              <span className="text-amber-400 text-lg font-mono font-bold ml-2 tracking-widest">{testCode}</span>
+          {/* TEST MODE Banner - SMS provider qosulana kimi gosterilir */}
+          {testCode && (
+            <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl p-4 mb-6 text-center">
+              <p className="text-amber-500 text-[11px] font-bold uppercase tracking-wider mb-1">⚠️ Test rejimi · Kod sizə SMS ilə getmir</p>
+              <p className="text-amber-300 text-xs mb-2">Aşağıdakı kodu kopyalayın və test üçün daxil edin:</p>
+              <div className="bg-black/30 rounded-lg py-3 px-4 border border-amber-500/30">
+                <span className="text-amber-400 text-3xl font-mono font-bold tracking-[0.5em] select-all">{testCode}</span>
+              </div>
             </div>
           )}
 

@@ -24,6 +24,10 @@ interface Listing {
   unit?: string;
   unitValue?: number;
   year?: number;
+  model?: string;
+  city?: string;
+  fuelType?: "GASOLINE" | "DIESEL" | "HYBRID" | "ELECTRIC" | "GAS" | "OTHER";
+  paymentType?: "CASH" | "CREDIT" | "BOTH";
   user: { id?: number; name: string; avgRating?: number | null; ratingCount?: number };
   _count?: { comments: number; favorites?: number };
 }
@@ -180,14 +184,20 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
         {/* Content */}
         <div className="p-3 sm:p-4 flex-1 flex flex-col">
-          {/* Brand + Country + Year */}
-          {(listing.brand || listing.country || listing.year) && (
-            <div className="flex items-center gap-1.5 mb-1 text-[10px] text-muted-foreground">
+          {/* Brand + Model + Year */}
+          {(listing.brand || listing.model || listing.year) && (
+            <div className="flex items-center gap-1.5 mb-1 text-[10px] text-muted-foreground flex-wrap">
               {listing.brand && <span className="font-medium">{listing.brand}</span>}
-              {listing.brand && (listing.country || listing.year) && <span>·</span>}
-              {listing.country && <span>🌍 {listing.country}</span>}
-              {listing.country && listing.year && <span>·</span>}
-              {listing.year && <span>📅 {listing.year}</span>}
+              {listing.model && <span>{listing.model}</span>}
+              {listing.year && <span>· 📅 {listing.year}</span>}
+            </div>
+          )}
+          {/* City + Fuel + Payment */}
+          {(listing.city || listing.fuelType || listing.paymentType) && (
+            <div className="flex items-center gap-1.5 mb-1 text-[10px] text-muted-foreground flex-wrap">
+              {listing.city && <span>📍 {listing.city}</span>}
+              {listing.fuelType && <span>⛽ {t(`fuel${listing.fuelType.charAt(0) + listing.fuelType.slice(1).toLowerCase()}` as any)}</span>}
+              {listing.paymentType && <span>💳 {t(`payment${listing.paymentType.charAt(0) + listing.paymentType.slice(1).toLowerCase()}` as any)}</span>}
             </div>
           )}
 
