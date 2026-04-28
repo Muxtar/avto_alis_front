@@ -1,0 +1,395 @@
+"use client";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useLanguage } from "@/lib/LanguageContext";
+import { useAuth } from "@/lib/AuthContext";
+import { useToast } from "@/components/Toast";
+import { API } from "@/lib/api";
+import Link from "next/link";
+
+export default function OrdersPage() {
+  const { t } = useLanguage();
+  const { toast } = useToast();
+  const { token, isLoggedIn, authLoading } = useAuth();
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<"buying" | "selling">("buying");
+  const [buyingOrders, setBuyingOrders] = useState<any[]>([]);
+  const [sellingOrders, setSellingOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Return form state
+  const [returnModal, setReturnModal] = useState<number | null>(null); // orderId
+  const [returnItemId, setReturnItemId] = useState<string>("");
+  const [returnReason, setReturnReason] = useState("DEFECTIVE");
+  const [returnReasonText, setReturnReasonText] = useState("");
+  const [returnQuantity, setReturnQuantity] = useState("1");
+  const [returnLoading, setReturnLoading] = useState(false);
+
+  // Seller refund amount
+  const [refundInput, setRefundInput] = useState<{ [key: number]: string }>({});
+  const [sellerNoteInput, setSellerNoteInput] = useState<{ [key: number]: string }>({});
+
+  const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isLoggedIn) { router.push("/"); return; }
+    fetchOrders();
+  }, [isLoggedIn, authLoading]);
+
+  const fetchOrders = () => {
+    setLoading(true);
+    Promise.all([
+      fetch(`${API}/orders/buying`, { headers }).then((r) => r.json()),
+      fetch(`${API}/orders/selling`, { headers }).then((r) => r.json()),
+    ]).then(([b, s]) => {
+      setBuyingOrders(b.orders || []);
+      setSellingOrders(s.orders || []);
+    }).catch(() => { toast(t('error'), 'error'); }).finally(() => setLoading(false));
+  };
+
+  const updateStatus = async (orderId: number, status: string) => {
+    await fetch(`${API}/orders/${orderId}/status`, { method: "PUT", headers, body: JSON.stringify({ status }) });
+    fetchOrders();
+  };
+
+  // Return actions
+  const submitReturn = async (orderId: number) => {
+    setReturnLoading(true);
+    try {
+      const body: any = { orderId, reason: returnReason, reasonText: returnReasonText, quantity: returnQuantity };
+      if (returnItemId) body.orderItemId = returnItemId;
+      await fetch(`${API}/returns`, { method: "POST", headers, body: JSON.stringify(body) });
+      setReturnModal(null);
+      setReturnItemId(""); setReturnReason("DEFECTIVE"); setReturnReasonText(""); setReturnQuantity("1");
+      fetchOrders();
+    } catch { toast(t('error'), 'error'); } finally { setReturnLoading(false); }
+  };
+
+  const returnAction = async (returnId: number, action: string, body?: any) => {
+    await fetch(`${API}/returns/${returnId}/${action}`, { method: "PUT", headers, body: body ? JSON.stringify(body) : undefined });
+    fetchOrders();
+  };
+
+  const statusColor = (status: string) => {
+    switch (status) {
+      case "PENDING": return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+      case "CONFIRMED": return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+      case "SHIPPED": return "bg-purple-500/10 text-purple-500 border-purple-500/20";
+      case "DELIVERED": return "bg-green-500/10 text-green-500 border-green-500/20";
+      case "CANCELLED": return "bg-red-500/10 text-red-500 border-red-500/20";
+      default: return "bg-gray-500/10 text-gray-500";
+    }
+  };
+
+  const returnStatusColor = (status: string) => {
+    switch (status) {
+      case "REQUESTED": return "bg-amber-500/10 text-amber-500 border-amber-500/20";
+      case "APPROVED": return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+      case "REJECTED": return "bg-red-500/10 text-red-500 border-red-500/20";
+      case "RETURN_SHIPPED": return "bg-purple-500/10 text-purple-500 border-purple-500/20";
+      case "RETURN_RECEIVED": return "bg-teal-500/10 text-teal-500 border-teal-500/20";
+      case "REFUNDED": return "bg-green-500/10 text-green-500 border-green-500/20";
+      case "CANCELLED": return "bg-gray-500/10 text-gray-500 border-gray-500/20";
+      default: return "bg-gray-500/10 text-gray-500";
+    }
+  };
+
+  const statusLabel = (status: string) => {
+    switch (status) {
+      case "PENDING": return t("orderPending");
+      case "CONFIRMED": return t("orderConfirmed");
+      case "SHIPPED": return t("orderShipped");
+      case "DELIVERED": return t("orderDelivered");
+      case "CANCELLED": return t("orderCancelled");
+      default: return status;
+    }
+  };
+
+  const returnStatusLabel = (status: string) => {
+    switch (status) {
+      case "REQUESTED": return t("returnRequested");
+      case "APPROVED": return t("returnApproved");
+      case "REJECTED": return t("returnRejected");
+      case "RETURN_SHIPPED": return t("returnShipped");
+      case "RETURN_RECEIVED": return t("returnReceived");
+      case "REFUNDED": return t("returnRefunded");
+      case "CANCELLED": return t("returnCancelled");
+      default: return status;
+    }
+  };
+
+  const returnReasonLabel = (reason: string) => {
+    switch (reason) {
+      case "DEFECTIVE": return t("returnReasonDefective");
+      case "WRONG_ITEM": return t("returnReasonWrongItem");
+      case "NOT_AS_DESCRIBED": return t("returnReasonNotAsDescribed");
+      case "CHANGED_MIND": return t("returnReasonChangedMind");
+      case "OTHER": return t("returnReasonOther");
+      default: return reason;
+    }
+  };
+
+  const inputCls = "w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-sm";
+
+  if (authLoading || loading) {
+    return <div className="min-h-[calc(100vh-64px)] flex items-center justify-center"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;
+  }
+
+  const orders = activeTab === "buying" ? buyingOrders : sellingOrders;
+
+  return (
+    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
+      <h1 className="text-xl sm:text-2xl font-bold mb-6">{t("orders")}</h1>
+
+      {/* Tabs */}
+      <div className="flex gap-1.5 bg-input-bg border border-input-border rounded-xl p-1 mb-6 w-full sm:w-fit">
+        <button onClick={() => setActiveTab("buying")}
+          className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${activeTab === "buying" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>
+          {t("buyingOrders")} ({buyingOrders.length})
+        </button>
+        <button onClick={() => setActiveTab("selling")}
+          className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${activeTab === "selling" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>
+          {t("sellingOrders")} ({sellingOrders.length})
+        </button>
+      </div>
+
+      {orders.length === 0 ? (
+        <div className="text-center py-16 bg-card border border-card-border rounded-2xl text-muted">
+          <svg className="w-16 h-16 text-muted-foreground/20 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+          <p>{t("adminNoData")}</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {orders.map((order) => {
+            const counterparty = activeTab === "buying" ? order.seller : order.buyer;
+            const hasActiveReturn = order.returnRequests?.some((r: any) => !['CANCELLED', 'REJECTED', 'REFUNDED'].includes(r.status));
+            return (
+              <div key={order.id} className="bg-card border border-card-border rounded-2xl overflow-hidden">
+                {/* Header */}
+                <div className="p-4 border-b border-card-border flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <Link href={`/orders/${order.id}`} className="font-semibold text-sm hover:text-orange-500">
+                      {t("orderNumber")} {order.id}
+                    </Link>
+                    <p className="text-muted text-xs">{new Date(order.createdAt).toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${statusColor(order.status)}`}>
+                      {statusLabel(order.status)}
+                    </span>
+                    <span className="text-orange-500 font-bold text-sm">{order.total.toFixed(2)} AZN</span>
+                    {(order.status === 'SHIPPED' || order.status === 'CONFIRMED') && (
+                      <Link href={`/orders/${order.id}`} className="text-xs text-orange-500 hover:text-orange-400 flex items-center gap-1">
+                        📍 {t("liveTracking")}
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                {/* Items */}
+                <div className="p-4 space-y-2">
+                  {order.items.map((item: any) => (
+                    <div key={item.id} className="flex items-center justify-between text-sm">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.title}</p>
+                        <p className="text-muted text-xs">x{item.quantity}</p>
+                      </div>
+                      <span className="text-muted">{(item.price * item.quantity).toFixed(2)} AZN</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Counterparty info */}
+                <div className="p-4 border-t border-card-border bg-input-bg/30 text-sm">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <p className="text-muted text-xs">{activeTab === "buying" ? t("sellerInfo") : t("courierBuyer")}</p>
+                      <p className="font-medium">{counterparty.name} · {counterparty.phone}</p>
+                    </div>
+                    {order.address && (
+                      <div className="text-right">
+                        <p className="text-muted text-xs">{t("deliveryAddress")}</p>
+                        <p className="font-medium text-xs">{order.address}</p>
+                      </div>
+                    )}
+                  </div>
+                  {order.note && <p className="text-muted text-xs mt-2">{order.note}</p>}
+                </div>
+
+                {/* Return Requests Display */}
+                {order.returnRequests?.length > 0 && (
+                  <div className="p-4 border-t border-card-border space-y-3">
+                    <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider">{t("returnRequest")}</p>
+                    {order.returnRequests.map((ret: any) => (
+                      <div key={ret.id} className="bg-input-bg/50 rounded-xl p-3 space-y-2">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-0.5 rounded-lg text-xs font-medium border ${returnStatusColor(ret.status)}`}>
+                              {returnStatusLabel(ret.status)}
+                            </span>
+                            <span className="text-xs text-muted">{returnReasonLabel(ret.reason)}</span>
+                          </div>
+                          {ret.refundAmount && (
+                            <span className="text-sm font-bold text-orange-500">{ret.refundAmount.toFixed(2)} AZN</span>
+                          )}
+                        </div>
+                        {ret.reasonText && <p className="text-xs text-muted">{ret.reasonText}</p>}
+                        {ret.orderItem && <p className="text-xs text-muted">{ret.orderItem.title} x{ret.quantity}</p>}
+                        {ret.sellerNote && <p className="text-xs text-red-400">{t("sellerNote")}: {ret.sellerNote}</p>}
+
+                        {/* BUYER actions */}
+                        {activeTab === "buying" && (
+                          <div className="flex gap-2 flex-wrap pt-1">
+                            {ret.status === "REQUESTED" && (
+                              <button onClick={() => returnAction(ret.id, "cancel")}
+                                className="px-3 py-1.5 bg-gray-500/10 text-gray-500 rounded-lg text-xs font-medium hover:bg-gray-500/20">
+                                {t("cancelReturn")}
+                              </button>
+                            )}
+                            {ret.status === "APPROVED" && (
+                              <button onClick={() => returnAction(ret.id, "ship")}
+                                className="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-medium hover:bg-purple-500/20">
+                                {t("markReturnShipped")}
+                              </button>
+                            )}
+                            {ret.status === "RETURN_SHIPPED" && (
+                              <p className="text-xs text-muted italic">{t("waitingSellerConfirm")}</p>
+                            )}
+                            {ret.status === "REFUNDED" && (
+                              <p className="text-xs text-green-500 font-medium">{ret.refundAmount?.toFixed(2)} AZN {t("returnRefunded")}</p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* SELLER actions */}
+                        {activeTab === "selling" && (
+                          <div className="flex gap-2 flex-wrap pt-1 items-end">
+                            {ret.status === "REQUESTED" && (
+                              <>
+                                <div className="flex-1 min-w-[120px]">
+                                  <label className="text-[10px] text-muted">{t("refundAmount")}</label>
+                                  <input type="number" step="0.01" value={refundInput[ret.id] ?? ret.refundAmount?.toFixed(2) ?? ""}
+                                    onChange={(e) => setRefundInput({ ...refundInput, [ret.id]: e.target.value })}
+                                    className={inputCls + " !py-1.5"} />
+                                </div>
+                                <button onClick={() => returnAction(ret.id, "approve", { refundAmount: refundInput[ret.id] || ret.refundAmount })}
+                                  className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">
+                                  {t("approveReturn")}
+                                </button>
+                                <div className="flex items-end gap-1">
+                                  <div className="min-w-[100px]">
+                                    <label className="text-[10px] text-muted">{t("sellerNote")}</label>
+                                    <input value={sellerNoteInput[ret.id] ?? ""}
+                                      onChange={(e) => setSellerNoteInput({ ...sellerNoteInput, [ret.id]: e.target.value })}
+                                      className={inputCls + " !py-1.5"} placeholder="..." />
+                                  </div>
+                                  <button onClick={() => returnAction(ret.id, "reject", { sellerNote: sellerNoteInput[ret.id] || "" })}
+                                    className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">
+                                    {t("rejectReturn")}
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                            {ret.status === "APPROVED" && (
+                              <p className="text-xs text-muted italic">{t("waitingBuyerShip")}</p>
+                            )}
+                            {ret.status === "RETURN_SHIPPED" && (
+                              <button onClick={() => returnAction(ret.id, "receive")}
+                                className="px-3 py-1.5 bg-teal-500/10 text-teal-500 rounded-lg text-xs font-medium hover:bg-teal-500/20">
+                                {t("confirmReturnReceipt")}
+                              </button>
+                            )}
+                            {ret.status === "RETURN_RECEIVED" && (
+                              <button onClick={() => returnAction(ret.id, "refund")}
+                                className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">
+                                {t("issueRefund")} ({ret.refundAmount?.toFixed(2)} AZN)
+                              </button>
+                            )}
+                            {ret.status === "REFUNDED" && (
+                              <p className="text-xs text-green-500 font-medium">{ret.refundAmount?.toFixed(2)} AZN {t("returnRefunded")}</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Buyer: Request Return button for DELIVERED orders */}
+                {activeTab === "buying" && order.status === "DELIVERED" && !hasActiveReturn && (
+                  <div className="p-3 border-t border-card-border">
+                    {returnModal === order.id ? (
+                      <div className="space-y-3">
+                        <p className="text-sm font-semibold">{t("requestReturn")}</p>
+                        <div>
+                          <label className="text-xs text-muted">{t("returnReasonText")}</label>
+                          <select value={returnItemId} onChange={(e) => setReturnItemId(e.target.value)} className={inputCls}>
+                            <option value="">{t("fullRefund")}</option>
+                            {order.items.map((item: any) => (
+                              <option key={item.id} value={item.id}>{item.title} (x{item.quantity})</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-xs text-muted">{t("returnReason")}</label>
+                            <select value={returnReason} onChange={(e) => setReturnReason(e.target.value)} className={inputCls}>
+                              <option value="DEFECTIVE">{t("returnReasonDefective")}</option>
+                              <option value="WRONG_ITEM">{t("returnReasonWrongItem")}</option>
+                              <option value="NOT_AS_DESCRIBED">{t("returnReasonNotAsDescribed")}</option>
+                              <option value="CHANGED_MIND">{t("returnReasonChangedMind")}</option>
+                              <option value="OTHER">{t("returnReasonOther")}</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-xs text-muted">{t("returnQuantity")}</label>
+                            <input type="number" min="1" value={returnQuantity} onChange={(e) => setReturnQuantity(e.target.value)} className={inputCls} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted">{t("returnReasonText")}</label>
+                          <input value={returnReasonText} onChange={(e) => setReturnReasonText(e.target.value)} className={inputCls} placeholder="..." />
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => submitReturn(order.id)} disabled={returnLoading}
+                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-xs font-medium disabled:opacity-50">
+                            {returnLoading ? "..." : t("submitReturn")}
+                          </button>
+                          <button onClick={() => setReturnModal(null)}
+                            className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-xs">{t("adminCancel")}</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <button onClick={() => setReturnModal(order.id)}
+                        className="px-4 py-2 bg-amber-500/10 text-amber-500 rounded-lg text-xs font-medium hover:bg-amber-500/20 flex items-center gap-1.5">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
+                        {t("requestReturn")}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Seller actions */}
+                {activeTab === "selling" && order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
+                  <div className="p-3 border-t border-card-border flex gap-2 flex-wrap">
+                    {order.status === "PENDING" && (
+                      <button onClick={() => updateStatus(order.id, "CONFIRMED")} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-500/20">{t("orderConfirmed")}</button>
+                    )}
+                    {order.status === "CONFIRMED" && (
+                      <button onClick={() => updateStatus(order.id, "SHIPPED")} className="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-medium hover:bg-purple-500/20">{t("orderShipped")}</button>
+                    )}
+                    {order.status === "SHIPPED" && (
+                      <button onClick={() => updateStatus(order.id, "DELIVERED")} className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">{t("orderDelivered")}</button>
+                    )}
+                    <button onClick={() => updateStatus(order.id, "CANCELLED")} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">{t("orderCancelled")}</button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,60 @@
+export const vehicleBrands: Record<string, string[]> = {
+  "Acura": ["ILX", "MDX", "NSX", "RDX", "TLX", "TSX"],
+  "Alfa Romeo": ["Giulia", "Stelvio", "4C", "Giulietta", "MiTo"],
+  "Audi": ["A1", "A3", "A4", "A5", "A6", "A7", "A8", "Q2", "Q3", "Q5", "Q7", "Q8", "TT", "R8", "e-tron", "RS3", "RS5", "RS6", "RS7"],
+  "BMW": ["1 Series", "2 Series", "3 Series", "4 Series", "5 Series", "6 Series", "7 Series", "8 Series", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "Z4", "M3", "M4", "M5", "iX", "i4"],
+  "BYD": ["Han", "Tang", "Song", "Qin", "Dolphin", "Seal", "Atto 3"],
+  "Cadillac": ["CT4", "CT5", "Escalade", "XT4", "XT5", "XT6"],
+  "Changan": ["CS35", "CS55", "CS75", "CS85", "CS95", "UNI-K", "UNI-T"],
+  "Chery": ["Tiggo 2", "Tiggo 4", "Tiggo 7", "Tiggo 8", "Arrizo 5", "Arrizo 6", "Arrizo 8"],
+  "Chevrolet": ["Aveo", "Captiva", "Cobalt", "Cruze", "Equinox", "Malibu", "Spark", "Tahoe", "Tracker", "Trailblazer", "Traverse"],
+  "Chrysler": ["300", "Pacifica"],
+  "Citroen": ["C3", "C4", "C5", "Berlingo", "C-Elysee"],
+  "Daewoo": ["Gentra", "Matiz", "Nexia", "Lacetti"],
+  "Dodge": ["Challenger", "Charger", "Durango", "Ram"],
+  "Fiat": ["500", "Doblo", "Linea", "Panda", "Tipo", "Egea"],
+  "Ford": ["EcoSport", "Edge", "Escape", "Explorer", "F-150", "Fiesta", "Focus", "Fusion", "Kuga", "Mondeo", "Mustang", "Ranger", "Transit"],
+  "Geely": ["Atlas", "Coolray", "Emgrand", "Monjaro", "Tugella"],
+  "Genesis": ["G70", "G80", "G90", "GV70", "GV80"],
+  "GMC": ["Acadia", "Sierra", "Terrain", "Yukon"],
+  "Great Wall": ["Haval H6", "Haval H9", "Haval Jolion", "Haval F7", "Poer"],
+  "Honda": ["Accord", "Civic", "CR-V", "Fit", "HR-V", "Jazz", "Pilot", "City"],
+  "Hyundai": ["Accent", "Creta", "Elantra", "i10", "i20", "i30", "Ioniq", "Kona", "Palisade", "Santa Fe", "Sonata", "Staria", "Tucson", "Venue"],
+  "Infiniti": ["Q50", "Q60", "QX50", "QX55", "QX60", "QX80"],
+  "Jaguar": ["E-Pace", "F-Pace", "F-Type", "XE", "XF", "XJ"],
+  "Jeep": ["Cherokee", "Compass", "Grand Cherokee", "Renegade", "Wrangler"],
+  "Kia": ["Carnival", "Ceed", "Cerato", "EV6", "K5", "Picanto", "Rio", "Seltos", "Sorento", "Soul", "Sportage", "Stinger", "Stonic"],
+  "Lada": ["Granta", "Niva", "Vesta", "XRAY", "Largus", "2107", "2110", "2114", "Priora"],
+  "Land Rover": ["Defender", "Discovery", "Discovery Sport", "Range Rover", "Range Rover Evoque", "Range Rover Sport", "Range Rover Velar"],
+  "Lexus": ["ES", "GS", "GX", "IS", "LC", "LS", "LX", "NX", "RX", "UX"],
+  "Lincoln": ["Aviator", "Corsair", "Navigator"],
+  "Maserati": ["Ghibli", "Grecale", "Levante", "MC20", "Quattroporte"],
+  "Mazda": ["2", "3", "6", "CX-3", "CX-30", "CX-5", "CX-9", "MX-5"],
+  "Mercedes-Benz": ["A-Class", "B-Class", "C-Class", "CLA", "CLS", "E-Class", "EQC", "G-Class", "GLA", "GLB", "GLC", "GLE", "GLS", "S-Class", "SL", "AMG GT", "Vito", "Sprinter"],
+  "MG": ["3", "5", "HS", "ZS", "MG4"],
+  "Mini": ["Cooper", "Countryman", "Clubman"],
+  "Mitsubishi": ["ASX", "Eclipse Cross", "L200", "Lancer", "Outlander", "Pajero", "Pajero Sport"],
+  "Nissan": ["Altima", "Juke", "Kicks", "Leaf", "Maxima", "Murano", "Navara", "Note", "Pathfinder", "Patrol", "Qashqai", "Sentra", "Terrano", "X-Trail"],
+  "Opel": ["Astra", "Corsa", "Crossland", "Grandland", "Insignia", "Mokka"],
+  "Peugeot": ["2008", "208", "3008", "301", "308", "408", "5008", "508"],
+  "Porsche": ["911", "Boxster", "Cayenne", "Cayman", "Macan", "Panamera", "Taycan"],
+  "Renault": ["Arkana", "Captur", "Clio", "Duster", "Kadjar", "Koleos", "Logan", "Megane", "Sandero", "Scenic", "Symbol"],
+  "Seat": ["Arona", "Ateca", "Ibiza", "Leon", "Tarraco"],
+  "Skoda": ["Fabia", "Kamiq", "Karoq", "Kodiaq", "Octavia", "Rapid", "Scala", "Superb"],
+  "SsangYong": ["Actyon", "Korando", "Musso", "Rexton", "Tivoli"],
+  "Subaru": ["BRZ", "Crosstrek", "Forester", "Impreza", "Legacy", "Outback", "WRX"],
+  "Suzuki": ["Baleno", "Grand Vitara", "Ignis", "Jimny", "S-Cross", "Swift", "Vitara"],
+  "Tesla": ["Model 3", "Model S", "Model X", "Model Y", "Cybertruck"],
+  "Toyota": ["4Runner", "Avalon", "C-HR", "Camry", "Corolla", "Fortuner", "Highlander", "Hilux", "Land Cruiser", "Prado", "Prius", "RAV4", "Supra", "Tacoma", "Yaris"],
+  "Volkswagen": ["Amarok", "Arteon", "Atlas", "Caddy", "Golf", "ID.4", "Jetta", "Passat", "Polo", "T-Cross", "T-Roc", "Tiguan", "Touareg", "Transporter"],
+  "Volvo": ["S60", "S90", "V60", "V90", "XC40", "XC60", "XC90"],
+};
+
+export const brandNames = Object.keys(vehicleBrands).sort();
+
+export function getModels(brand: string): string[] {
+  return vehicleBrands[brand] || [];
+}
+
+// Il araligi
+export const years = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
