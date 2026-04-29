@@ -43,22 +43,31 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)] flex items-start justify-center py-4 sm:py-8 px-3 sm:px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-5 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">{t("registerTitle")}</h1>
+    <div className="min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)] flex items-center justify-center py-6 sm:py-12 px-3 sm:px-4 relative">
+      {/* Subtle decorative gradient blobs */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-24 -left-24 w-72 h-72 rounded-full bg-orange-500/10 blur-3xl" />
+        <div className="absolute -bottom-32 -right-24 w-80 h-80 rounded-full bg-rose-500/10 blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-md animate-fade-in">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="inline-flex w-14 h-14 sm:w-16 sm:h-16 brand-gradient rounded-2xl items-center justify-center font-bold text-white text-lg sm:text-xl shadow-xl shadow-orange-500/25 mb-4">
+            AB
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1.5">{t("registerTitle")}</h1>
           <p className="text-muted text-sm sm:text-base">{t("loginWithPhoneSubtitle")}</p>
         </div>
 
         {/* Mode switch */}
-        <div className="grid grid-cols-2 gap-2 mb-5 sm:mb-6">
+        <div className="grid grid-cols-2 gap-2 mb-5 sm:mb-6 p-1 bg-input-bg border border-input-border rounded-2xl">
           <button
             type="button"
             onClick={() => setMode("phone")}
-            className={`p-3 rounded-xl border text-sm font-medium transition-all ${
+            className={`py-2.5 rounded-xl text-sm font-semibold transition-all ${
               mode === "phone"
-                ? "bg-gradient-to-r from-orange-500 to-red-600 border-transparent text-white shadow"
-                : "bg-card border-card-border text-foreground hover:border-orange-500/30"
+                ? "brand-gradient text-white shadow-md shadow-orange-500/25"
+                : "text-muted hover:text-foreground"
             }`}
           >
             {t("userLoginTab")}
@@ -66,19 +75,19 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setMode("courier")}
-            className={`p-3 rounded-xl border text-sm font-medium transition-all ${
+            className={`py-2.5 rounded-xl text-sm font-semibold transition-all ${
               mode === "courier"
-                ? "bg-gradient-to-r from-orange-500 to-red-600 border-transparent text-white shadow"
-                : "bg-card border-card-border text-foreground hover:border-orange-500/30"
+                ? "brand-gradient text-white shadow-md shadow-orange-500/25"
+                : "text-muted hover:text-foreground"
             }`}
           >
             {t("courierTab")}
           </button>
         </div>
 
-        <div className="bg-card border border-card-border rounded-xl sm:rounded-2xl p-4 sm:p-8 transition-colors duration-300">
+        <div className="surface p-5 sm:p-8 transition-colors duration-300">
           {mode === "phone" ? (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium mb-2">{t("phone")}</label>
                 <input
@@ -86,7 +95,7 @@ export default function Home() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder={t("phonePlaceholder")}
-                  className="w-full px-4 py-3 bg-input-bg border border-input-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground transition-all"
+                  className="w-full px-4 py-3 input-base placeholder-muted-foreground"
                   autoFocus
                   required
                 />
@@ -96,14 +105,14 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={loading || !phone.trim()}
-                className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50"
+                className="w-full py-3.5 btn-primary text-base"
               >
                 {loading ? t("submitting") : t("sendCodeButton")}
               </button>
 
-              <p className="text-center text-xs text-muted pt-2">
+              <p className="text-center text-xs text-muted pt-1">
                 {t("browseWithoutLogin")}{" "}
-                <Link href="/marketplace" className="text-orange-500 hover:text-orange-400">
+                <Link href="/marketplace" className="text-orange-500 hover:text-orange-400 font-semibold">
                   {t("marketplace")}
                 </Link>
               </p>

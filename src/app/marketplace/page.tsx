@@ -104,14 +104,18 @@ export default function MarketplacePage() {
   return (
     <div className="min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)]">
       {/* Hero / Search Section */}
-      <div className="bg-card/50 border-b border-card-border">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-          <h1 className="text-xl sm:text-2xl font-bold mb-4">{t("marketplace")}</h1>
+      <div className="relative overflow-hidden border-b border-card-border">
+        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-orange-500/[0.06] via-transparent to-rose-500/[0.05]" />
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
+          <div className="mb-4 sm:mb-6">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t("marketplace")}</h1>
+            <p className="text-muted text-xs sm:text-sm mt-1">{t("footerDesc")}</p>
+          </div>
 
           {/* Search + Sort */}
-          <div className="flex flex-col sm:flex-row flex-wrap gap-3">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3">
             <div className="relative flex-1 min-w-0">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
               <input
@@ -119,17 +123,17 @@ export default function MarketplacePage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={t("searchPlaceholder")}
-                className="w-full pl-10 pr-4 py-3 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground transition-all text-foreground text-sm"
+                className="w-full pl-11 pr-4 py-3 input-base placeholder-muted-foreground text-sm shadow-sm"
               />
             </div>
-            <div className="flex gap-1.5 bg-input-bg border border-input-border rounded-xl p-1">
+            <div className="flex gap-1 bg-input-bg border border-input-border rounded-xl p-1 shadow-sm">
               {typeButtons.map((btn) => (
                 <button
                   key={btn.id}
                   onClick={() => setActiveType(btn.id)}
-                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
                     activeType === btn.id
-                      ? "bg-orange-500 text-white shadow-sm"
+                      ? "brand-gradient text-white shadow-md shadow-orange-500/25"
                       : "text-muted hover:text-foreground"
                   }`}
                 >
@@ -138,7 +142,7 @@ export default function MarketplacePage() {
               ))}
             </div>
             <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none cursor-pointer">
+              className="px-3 py-3 input-base text-sm cursor-pointer shadow-sm">
               <option value="newest">{t("sortNewest")}</option>
               <option value="priceAsc">{t("sortPriceAsc")}</option>
               <option value="priceDesc">{t("sortPriceDesc")}</option>
@@ -149,17 +153,17 @@ export default function MarketplacePage() {
           </div>
 
           {/* Advanced filters toggle row */}
-          <div className="flex items-center justify-between mt-4 gap-2">
+          <div className="flex items-center justify-between mt-3 sm:mt-4 gap-2">
             <button
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-2 px-3 py-2 bg-input-bg border border-input-border rounded-xl text-xs sm:text-sm text-foreground hover:border-orange-500/50 transition-colors"
+              className="flex items-center gap-2 px-3 py-2 bg-input-bg border border-input-border rounded-xl text-xs sm:text-sm text-foreground hover:border-orange-500/50 hover:text-orange-500 transition-all shadow-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4.5h18M6 12h12M10.5 19.5h3" />
               </svg>
               {t("advancedFilters")}
               {activeFilterCount > 0 && (
-                <span className="w-5 h-5 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span className="min-w-[20px] h-5 px-1 brand-gradient text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm">
                   {activeFilterCount}
                 </span>
               )}
@@ -168,7 +172,7 @@ export default function MarketplacePage() {
             {activeFilterCount > 0 && (
               <button
                 onClick={resetFilters}
-                className="px-3 py-2 text-xs sm:text-sm text-orange-500 hover:text-orange-400 transition-colors whitespace-nowrap"
+                className="px-3 py-2 text-xs sm:text-sm text-orange-500 hover:text-orange-400 transition-colors whitespace-nowrap font-medium"
               >
                 {t("resetFilters")}
               </button>
@@ -177,7 +181,7 @@ export default function MarketplacePage() {
 
           {/* Advanced Filter Panel */}
           {showAdvanced && (
-            <div className="mt-3 p-3 sm:p-4 bg-card border border-card-border rounded-2xl">
+            <div className="mt-3 p-3 sm:p-4 surface animate-fade-in">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
                 {/* Brand */}
                 <div>
@@ -267,15 +271,15 @@ export default function MarketplacePage() {
 
       {/* Categories */}
       {categories.length > 0 && (
-        <div className="border-b border-card-border bg-card/30">
+        <div className="border-b border-card-border bg-card/40 backdrop-blur-sm sticky top-14 sm:top-16 z-30">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
             <div className="flex gap-2 py-3 overflow-x-auto no-scrollbar">
               <button
                 onClick={() => setSelectedCategory(null)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
+                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
                   !selectedCategory
-                    ? "bg-orange-500 text-white"
-                    : "bg-input-bg border border-input-border text-muted hover:text-foreground"
+                    ? "brand-gradient text-white shadow-md shadow-orange-500/25"
+                    : "bg-input-bg border border-input-border text-muted hover:text-foreground hover:border-orange-500/40"
                 }`}
               >
                 {t("allCategories")}
@@ -284,10 +288,10 @@ export default function MarketplacePage() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
                     selectedCategory === cat
-                      ? "bg-orange-500 text-white"
-                      : "bg-input-bg border border-input-border text-muted hover:text-foreground"
+                      ? "brand-gradient text-white shadow-md shadow-orange-500/25"
+                      : "bg-input-bg border border-input-border text-muted hover:text-foreground hover:border-orange-500/40"
                   }`}
                 >
                   {cat}
@@ -299,20 +303,37 @@ export default function MarketplacePage() {
       )}
 
       {/* Listings Grid */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="surface overflow-hidden">
+                <div className="aspect-[4/3] skeleton" />
+                <div className="p-3 sm:p-4 space-y-2">
+                  <div className="skeleton h-3 w-1/3" />
+                  <div className="skeleton h-4 w-3/4" />
+                  <div className="skeleton h-3 w-full" />
+                  <div className="skeleton h-3 w-2/3" />
+                  <div className="flex justify-between items-center pt-1">
+                    <div className="skeleton h-5 w-16" />
+                    <div className="skeleton h-7 w-7 rounded-lg" />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         ) : listings.length === 0 ? (
-          <div className="text-center py-20">
-            <svg className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-            </svg>
-            <p className="text-muted">{t("noResults")}</p>
+          <div className="text-center py-20 animate-fade-in">
+            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-orange-500/10 flex items-center justify-center">
+              <svg className="w-10 h-10 text-orange-500/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              </svg>
+            </div>
+            <p className="text-foreground font-medium text-base mb-1">{t("noResults")}</p>
+            <p className="text-muted text-sm">{t("searchPlaceholder")}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 animate-fade-in">
             {listings.map((listing) => (
               <ListingCard key={listing.id} listing={listing} />
             ))}

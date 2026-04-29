@@ -55,20 +55,20 @@ export default function Navbar() {
   const current = languages.find((l) => l.code === locale)!;
 
   return (
-    <nav className="border-b border-card-border bg-card/80 backdrop-blur-md sticky top-0 z-50 transition-colors duration-300">
+    <nav className="border-b border-card-border bg-card/70 backdrop-blur-xl sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16">
-          <a href={isLoggedIn ? "/marketplace" : "/"} className="flex items-center gap-2 sm:gap-3 shrink-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg sm:rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm text-white shadow-lg shadow-orange-500/20">
+          <a href={isLoggedIn ? "/marketplace" : "/"} className="flex items-center gap-2 sm:gap-3 shrink-0 group">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 brand-gradient rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm text-white shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-transform">
               AB
             </div>
-            <span className="text-lg sm:text-xl font-bold bg-gradient-to-r from-orange-400 to-red-500 bg-clip-text text-transparent">
+            <span className="text-lg sm:text-xl font-bold brand-text tracking-tight">
               AvtoBazar
             </span>
           </a>
 
-          <div className="hidden sm:flex items-center gap-1.5 sm:gap-3 px-2 sm:px-4">
-            <Link href="/marketplace" className="text-xs sm:text-sm font-medium text-muted hover:text-foreground transition-colors whitespace-nowrap">
+          <div className="hidden sm:flex items-center gap-1 px-2 sm:px-4">
+            <Link href="/marketplace" className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-muted hover:text-foreground hover:bg-input-bg transition-all whitespace-nowrap">
               {t("marketplace")}
             </Link>
           </div>
@@ -124,7 +124,7 @@ export default function Navbar() {
             {isLoggedIn ? (
               <div ref={userRef} className="relative">
                 <button onClick={() => setUserOpen(!userOpen)}
-                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg sm:rounded-xl text-white text-xs sm:text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all shadow-sm">
+                  className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 brand-gradient rounded-lg sm:rounded-xl text-white text-xs sm:text-sm font-medium hover:brightness-110 transition-all shadow-md shadow-orange-500/20">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                   <span className="hidden sm:inline max-w-[80px] truncate">{user?.name}</span>
                 </button>
@@ -198,7 +198,7 @@ export default function Navbar() {
                 )}
               </div>
             ) : (
-              <Link href="/" className="px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-lg sm:rounded-xl text-white text-xs sm:text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all shadow-sm whitespace-nowrap">
+              <Link href="/" className="px-3 sm:px-4 py-1.5 sm:py-2 brand-gradient rounded-lg sm:rounded-xl text-white text-xs sm:text-sm font-medium hover:brightness-110 transition-all shadow-md shadow-orange-500/20 whitespace-nowrap">
                 {t("loginRequired")}
               </Link>
             )}

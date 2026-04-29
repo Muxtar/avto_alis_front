@@ -113,7 +113,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
   return (
     <Link href={`/marketplace/${listing.id}`} className="block group">
-      <div className="bg-card border border-card-border rounded-xl overflow-hidden hover:border-orange-500/30 hover:shadow-lg hover:shadow-orange-500/5 transition-all duration-300 h-full flex flex-col">
+      <div className="surface card-hover overflow-hidden h-full flex flex-col">
         {/* Image */}
         <div className="aspect-[4/3] bg-input-bg overflow-hidden relative">
           {/* Favori butonu */}
@@ -132,7 +132,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           )}
           {listing.images.length > 0 ? (
             <img src={listing.images[0].startsWith('http') ? listing.images[0] : `${UPLOADS}/${listing.images[0]}`} alt={listing.title} loading="lazy"
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">
               <svg className="w-12 h-12 text-muted-foreground/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,18 +148,18 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           {/* Top Badges */}
           <div className="absolute top-2 left-2 flex flex-col gap-1.5">
             <div className="flex gap-1.5">
-              <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium ${isService ? "bg-green-500/90 text-white" : "bg-orange-500/90 text-white"}`}>
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm ${isService ? "bg-emerald-500/95 text-white" : "bg-orange-500/95 text-white"}`}>
                 {isService ? t("service") : t("product")}
               </span>
               {listing.createdAt && isNew(listing.createdAt) && (
-                <span className="px-2 py-0.5 bg-blue-500/90 text-white rounded-md text-[10px] font-medium">{t("newBadge")}</span>
+                <span className="px-2 py-0.5 bg-sky-500/95 text-white rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm">{t("newBadge")}</span>
               )}
             </div>
             {listing.condition && !isService && (
-              <span className={`px-2 py-0.5 rounded-md text-[10px] font-medium w-fit ${
-                listing.condition === 'NEW' ? 'bg-green-600/90 text-white' :
-                listing.condition === 'USED' ? 'bg-orange-600/90 text-white' :
-                'bg-blue-600/90 text-white'
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold w-fit backdrop-blur-md shadow-sm ${
+                listing.condition === 'NEW' ? 'bg-emerald-600/95 text-white' :
+                listing.condition === 'USED' ? 'bg-amber-600/95 text-white' :
+                'bg-sky-600/95 text-white'
               }`}>
                 {listing.condition === 'NEW' ? t("conditionNew") : listing.condition === 'USED' ? t("conditionUsed") : t("conditionRefurbished")}
               </span>
@@ -201,7 +201,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </div>
           )}
 
-          <h3 className="font-semibold text-sm mb-1 line-clamp-1 group-hover:text-orange-500 transition-colors">{listing.title}</h3>
+          <h3 className="font-semibold text-sm sm:text-[15px] mb-1 line-clamp-1 group-hover:text-orange-500 transition-colors">{listing.title}</h3>
 
           {/* Vehicle + Unit info */}
           {(listing.forVehicle || (listing.unit && listing.unitValue)) && (
@@ -223,9 +223,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
           {/* Price + Meta */}
           <div className="flex items-center justify-between mb-2">
-            <div>
-              <span className="text-orange-500 font-bold text-base">{listing.price}</span>
-              <span className="text-muted-foreground text-xs ml-0.5">{t("azn")}</span>
+            <div className="flex items-baseline gap-0.5">
+              <span className="brand-text font-bold text-lg leading-none">{listing.price}</span>
+              <span className="text-muted-foreground text-[11px] font-medium ml-0.5">{t("azn")}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground text-[10px]">
               {listing._count && listing._count.comments > 0 && (
@@ -258,8 +258,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
                 onClick={handleAddToCart}
                 disabled={adding}
                 title={t("addToCart")}
-                className={`shrink-0 p-2 rounded-lg transition-all ${
-                  added ? 'bg-green-500 text-white' : 'bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white'
+                className={`shrink-0 p-2 rounded-lg transition-all active:scale-95 ${
+                  added ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25' : 'bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white hover:shadow-md hover:shadow-orange-500/25'
                 } disabled:opacity-50`}
               >
                 {added ? (
