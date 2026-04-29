@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
@@ -46,6 +45,8 @@ export default function AccountPage() {
     setEditingId(null);
     setShowForm(false);
   };
+
+  const canAddListing = !!user; // any logged-in user can post
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,27 +107,14 @@ export default function AccountPage() {
           <h1 className="text-xl sm:text-2xl font-bold">{t("myListings")}</h1>
           <p className="text-muted text-sm">{user?.name} - {user?.phone}</p>
         </div>
-        {!showForm && (user?.type === "MECHANIC" || user?.type === "PARTS_SELLER") && (
-          user?.sellerVerified ? (
-            <button onClick={() => { resetForm(); setShowForm(true); }}
-              className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-              {t("addListing")}
-            </button>
-          ) : (
-            <Link href="/seller/apply" className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-500 to-orange-600 rounded-xl text-white text-sm font-medium hover:opacity-90 transition-all shadow">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
-              {t("becomeSeller")}
-            </Link>
-          )
+        {!showForm && canAddListing && (
+          <button onClick={() => { resetForm(); setShowForm(true); }}
+            className="flex items-center gap-2 px-4 py-2.5 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            {t("addListing")}
+          </button>
         )}
       </div>
-
-      {user?.type === "CAR_OWNER" && !showForm && (
-        <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6 text-sm text-blue-500">
-          Siz avtomobil sahibi kimi qeydiyyatdan keçmisiniz. Elan vermək üçün usta və ya hissə satıcısı hesabı lazımdır.
-        </div>
-      )}
 
       {/* Add/Edit Form */}
       {showForm && (
@@ -201,9 +189,9 @@ export default function AccountPage() {
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("listingType")}</label>
                 <select
-                  value={user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT"}
-                  disabled
-                  className={inputCls + " opacity-70 cursor-not-allowed"}
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
+                  className={inputCls}
                 >
                   <option value="PRODUCT">{t("product")}</option>
                   <option value="SERVICE">{t("service")}</option>
