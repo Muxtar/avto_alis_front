@@ -165,12 +165,6 @@ export default function ListingDetailPage() {
                     <p className="font-medium">{listing.brand}</p>
                   </div>
                 )}
-                {listing.country && (
-                  <div>
-                    <p className="text-muted text-xs mb-1">{t("country")}</p>
-                    <p className="font-medium">🌍 {listing.country}</p>
-                  </div>
-                )}
                 {listing.year && (
                   <div>
                     <p className="text-muted text-xs mb-1">{t("manufacturingYear")}</p>

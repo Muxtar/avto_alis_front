@@ -22,7 +22,7 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", country: "", brand: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
+  const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
 
   useEffect(() => {
     if (authLoading) return;
@@ -41,7 +41,7 @@ export default function AccountPage() {
 
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
-    setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: "", phone: user?.phone || "", condition: "NEW", country: "", brand: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
+    setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: "", phone: user?.phone || "", condition: "NEW", brand: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
     setEditingId(null);
     setShowForm(false);
   };
@@ -72,7 +72,7 @@ export default function AccountPage() {
       title: listing.title, description: listing.description,
       price: String(listing.price), category: listing.category,
       type: listing.type, location: listing.location || "", phone: listing.phone || "",
-      condition: listing.condition || "NEW", country: listing.country || "", brand: listing.brand || "", stock: String(listing.stock || 1),
+      condition: listing.condition || "NEW", brand: listing.brand || "", stock: String(listing.stock || 1),
       forVehicle: listing.forVehicle || "", unit: listing.unit || "", unitValue: listing.unitValue ? String(listing.unitValue) : "",
       year: listing.year ? String(listing.year) : "",
       model: listing.model || "",
@@ -226,18 +226,12 @@ export default function AccountPage() {
                 <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t("vehicleModelPlaceholder")} className={inputCls} />
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1.5">{t("country")}</label>
-                <input value={form.country} onChange={(e) => setForm({ ...form, country: e.target.value })} placeholder="Almaniya, Türkiyə..." className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5">{t("city")}</label>
-                <select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={inputCls}>
-                  <option value="">—</option>
-                  {AZ_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">{t("city")}</label>
+              <select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={inputCls} required>
+                <option value="">—</option>
+                {AZ_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>

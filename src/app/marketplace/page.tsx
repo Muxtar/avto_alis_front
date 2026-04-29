@@ -18,7 +18,6 @@ export default function MarketplacePage() {
   const [activeType, setActiveType] = useState<TypeFilter>("all");
   // Filterler
   const [conditionFilter, setConditionFilter] = useState<string>("");
-  const [countryFilter, setCountryFilter] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>("");
   const [modelFilter, setModelFilter] = useState<string>("");
   const [cityFilter, setCityFilter] = useState<string>("");
@@ -34,10 +33,10 @@ export default function MarketplacePage() {
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Aktiv filter sayini hesabla (badge ucun)
-  const activeFilterCount = [conditionFilter, countryFilter, brandFilter, modelFilter, cityFilter, fuelFilter, paymentFilter, minYear, maxYear, minPrice, maxPrice].filter(Boolean).length;
+  const activeFilterCount = [conditionFilter, brandFilter, modelFilter, cityFilter, fuelFilter, paymentFilter, minYear, maxYear, minPrice, maxPrice].filter(Boolean).length;
 
   const resetFilters = () => {
-    setConditionFilter(""); setCountryFilter(""); setBrandFilter(""); setModelFilter("");
+    setConditionFilter(""); setBrandFilter(""); setModelFilter("");
     setCityFilter(""); setFuelFilter(""); setPaymentFilter("");
     setMinYear(""); setMaxYear(""); setMinPrice(""); setMaxPrice("");
   };
@@ -60,7 +59,6 @@ export default function MarketplacePage() {
       if (selectedCategory) params.set("category", selectedCategory);
       if (activeType !== "all") params.set("type", activeType);
       if (conditionFilter) params.set("condition", conditionFilter);
-      if (countryFilter) params.set("country", countryFilter);
       if (brandFilter) params.set("brand", brandFilter);
       if (modelFilter) params.set("model", modelFilter);
       if (cityFilter) params.set("city", cityFilter);
@@ -91,7 +89,7 @@ export default function MarketplacePage() {
     }, 300);
 
     return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
-  }, [searchQuery, selectedCategory, activeType, sortBy, conditionFilter, countryFilter, brandFilter, modelFilter, cityFilter, fuelFilter, paymentFilter, minYear, maxYear, minPrice, maxPrice]);
+  }, [searchQuery, selectedCategory, activeType, sortBy, conditionFilter, brandFilter, modelFilter, cityFilter, fuelFilter, paymentFilter, minYear, maxYear, minPrice, maxPrice]);
 
   const typeButtons: { id: TypeFilter; label: string }[] = [
     { id: "all", label: t("all") },
@@ -202,12 +200,6 @@ export default function MarketplacePage() {
                     <option value="">{t("allCities")}</option>
                     {AZ_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
                   </select>
-                </div>
-                {/* Country */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("country")}</label>
-                  <input value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)}
-                    placeholder={t("country")} className={compactInput} />
                 </div>
                 {/* Fuel */}
                 <div>
