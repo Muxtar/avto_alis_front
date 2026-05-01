@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
@@ -21,6 +21,8 @@ export default function AccountPage() {
   const { toast } = useToast();
   const { user, token, isLoggedIn, authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editIdParam = searchParams.get("edit");
   const [listings, setListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -46,6 +48,17 @@ export default function AccountPage() {
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoading(false));
   };
+
+  useEffect(() => {
+    if (!editIdParam || listings.length === 0) return;
+    const target = listings.find((l) => String(l.id) === editIdParam);
+    if (target && editingId !== target.id) {
+      handleEdit(target);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("edit");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [editIdParam, listings]);
 
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
