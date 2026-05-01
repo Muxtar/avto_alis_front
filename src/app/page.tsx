@@ -1,8 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
+import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import CourierLoginForm from "@/components/CourierLoginForm";
 import { API } from "@/lib/api";
@@ -13,9 +14,24 @@ export default function Home() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const router = useRouter();
+  const { isLoggedIn, authLoading } = useAuth();
   const [mode, setMode] = useState<Mode>("phone");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!authLoading && isLoggedIn) {
+      router.replace("/marketplace");
+    }
+  }, [authLoading, isLoggedIn, router]);
+
+  if (authLoading || isLoggedIn) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
