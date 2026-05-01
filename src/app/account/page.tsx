@@ -113,32 +113,33 @@ function AccountPageInner() {
     setImagePreviews((prev) => prev.filter((_, i) => i !== idx));
   };
 
+  const removeExistingImage = (idx: number) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
   const canAddListing = !!user; // any logged-in user can post
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const fd = new FormData();
+      Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+      images.forEach((file) => fd.append("images", file));
       if (editingId) {
-        await fetch(`${API}/me/listings/${editingId}`, {
-          method: "PUT",
-          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-          body: JSON.stringify(form),
-        });
-      } else {
-        const fd = new FormData();
-        Object.entries(form).forEach(([k, v]) => fd.append(k, v));
-        images.forEach((file) => fd.append("images", file));
-        const res = await fetch(`${API}/me/listings`, {
-          method: "POST",
-          headers: { Authorization: `Bearer ${token}` },
-          body: fd,
-        });
-        if (!res.ok) {
-          const err = await res.json().catch(() => ({}));
-          toast(err.message || t('error'), 'error');
-          return;
-        }
+        fd.append("existingImages", JSON.stringify(existingImages));
+      }
+      const url = editingId ? `${API}/me/listings/${editingId}` : `${API}/me/listings`;
+      const method = editingId ? "PUT" : "POST";
+      const res = await fetch(url, {
+        method,
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast(err.message || t('error'), 'error');
+        return;
       }
       resetForm();
       fetchListings();
@@ -376,72 +377,79 @@ function AccountPageInner() {
             </div>
 
             {/* Şəkillər */}
-            {!editingId && (
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  Şəkillər <span className="text-muted text-xs">({images.length}/{MAX_IMAGES} — maksimum 5 MB hər biri)</span>
-                </label>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {imagePreviews.map((url, idx) => (
-                    <div key={idx} className="relative aspect-square bg-input-bg border border-input-border rounded-xl overflow-hidden group">
-                      <img src={url} alt={`preview ${idx + 1}`} className="w-full h-full object-cover" />
+            {(() => {
+              const totalCount = existingImages.length + images.length;
+              return (
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">
+                    Şəkillər <span className="text-muted text-xs">({totalCount}/{MAX_IMAGES} — maksimum 5 MB hər biri)</span>
+                  </label>
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                    {existingImages.map((img, idx) => (
+                      <div key={`exist-${idx}`} className="relative aspect-square bg-input-bg border border-input-border rounded-xl overflow-hidden group">
+                        <img
+                          src={img.startsWith('http') ? img : `${UPLOADS}/${img}`}
+                          alt={`existing ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeExistingImage(idx)}
+                          className="absolute top-1 right-1 w-6 h-6 bg-black/70 backdrop-blur-sm rounded-full text-white text-xs hover:bg-red-500 transition-colors flex items-center justify-center"
+                          aria-label="Sil"
+                        >
+                          ✕
+                        </button>
+                        {idx === 0 && (
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-orange-500/90 text-white text-[10px] font-semibold rounded">
+                            Əsas
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    {imagePreviews.map((url, idx) => (
+                      <div key={`new-${idx}`} className="relative aspect-square bg-input-bg border border-input-border rounded-xl overflow-hidden group">
+                        <img src={url} alt={`preview ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeNewImage(idx)}
+                          className="absolute top-1 right-1 w-6 h-6 bg-black/70 backdrop-blur-sm rounded-full text-white text-xs hover:bg-red-500 transition-colors flex items-center justify-center"
+                          aria-label="Sil"
+                        >
+                          ✕
+                        </button>
+                        {existingImages.length === 0 && idx === 0 && (
+                          <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-orange-500/90 text-white text-[10px] font-semibold rounded">
+                            Əsas
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    {totalCount < MAX_IMAGES && (
                       <button
                         type="button"
-                        onClick={() => removeNewImage(idx)}
-                        className="absolute top-1 right-1 w-6 h-6 bg-black/70 backdrop-blur-sm rounded-full text-white text-xs hover:bg-red-500 transition-colors flex items-center justify-center"
-                        aria-label="Sil"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="aspect-square border-2 border-dashed border-input-border rounded-xl flex flex-col items-center justify-center gap-1 text-muted hover:border-orange-500/60 hover:text-orange-500 hover:bg-orange-500/5 transition-all"
                       >
-                        ✕
+                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span className="text-[11px] font-medium">Şəkil əlavə et</span>
                       </button>
-                      {idx === 0 && (
-                        <span className="absolute bottom-1 left-1 px-1.5 py-0.5 bg-orange-500/90 text-white text-[10px] font-semibold rounded">
-                          Əsas
-                        </span>
-                      )}
-                    </div>
-                  ))}
-                  {images.length < MAX_IMAGES && (
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      className="aspect-square border-2 border-dashed border-input-border rounded-xl flex flex-col items-center justify-center gap-1 text-muted hover:border-orange-500/60 hover:text-orange-500 hover:bg-orange-500/5 transition-all"
-                    >
-                      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                      </svg>
-                      <span className="text-[11px] font-medium">Şəkil əlavə et</span>
-                    </button>
-                  )}
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    multiple
+                    onChange={handleImagePick}
+                    className="hidden"
+                  />
+                  <p className="text-xs text-muted mt-1.5">jpg, png, webp formatlarında, hər biri ən çox 5 MB</p>
                 </div>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/jpeg,image/jpg,image/png,image/webp"
-                  multiple
-                  onChange={handleImagePick}
-                  className="hidden"
-                />
-                <p className="text-xs text-muted mt-1.5">jpg, png, webp formatlarında, hər biri ən çox 5 MB</p>
-              </div>
-            )}
-
-            {editingId && existingImages.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium mb-1.5">Mövcud şəkillər</label>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                  {existingImages.map((img, idx) => (
-                    <div key={idx} className="relative aspect-square bg-input-bg border border-input-border rounded-xl overflow-hidden">
-                      <img
-                        src={img.startsWith('http') ? img : `${UPLOADS}/${img}`}
-                        alt={`existing ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted mt-1.5">Mövcud şəkilləri dəyişmək üçün elanı silib yenidən yaradın.</p>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="flex gap-2">
               <button type="submit" disabled={submitting} className="px-6 py-2.5 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
