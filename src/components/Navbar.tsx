@@ -60,7 +60,7 @@ export default function Navbar() {
     <nav className="border-b border-card-border bg-card/70 backdrop-blur-xl sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16">
-          <a href={isLoggedIn ? "/marketplace" : "/"} className="flex items-center gap-2 sm:gap-3 shrink-0 group">
+          <a href="/marketplace" className="flex items-center gap-2 sm:gap-3 shrink-0 group">
             <div className="w-9 h-9 sm:w-10 sm:h-10 brand-gradient rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm text-white shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-transform">
               AB
             </div>
