@@ -472,15 +472,34 @@ function AccountPageInner() {
         <div className="space-y-3">
           {listings.map((listing) => (
             <div key={listing.id} className="bg-card border border-card-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+              {/* Image */}
+              <div className="w-full sm:w-24 h-32 sm:h-24 shrink-0 bg-input-bg border border-input-border rounded-lg overflow-hidden flex items-center justify-center">
+                {listing.images && listing.images.length > 0 ? (
+                  <img
+                    src={listing.images[0].startsWith('http') ? listing.images[0] : `${UPLOADS}/${listing.images[0]}`}
+                    alt={listing.title}
+                    loading="lazy"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <svg className="w-8 h-8 text-muted-foreground/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                  </svg>
+                )}
+              </div>
+
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
                   <span className={`px-2 py-0.5 rounded text-xs font-medium ${listing.type === 'SERVICE' ? 'bg-green-500/10 text-green-500' : 'bg-orange-500/10 text-orange-500'}`}>
                     {listing.type === 'SERVICE' ? t("service") : t("product")}
                   </span>
                   <span className="px-2 py-0.5 bg-input-bg border border-input-border rounded text-xs">{listing.category}</span>
                   {listing.year && (
                     <span className="px-2 py-0.5 bg-blue-500/10 text-blue-500 rounded text-xs">📅 {listing.year}</span>
+                  )}
+                  {listing.expiresAt && new Date(listing.expiresAt) <= new Date() && (
+                    <span className="px-2 py-0.5 bg-red-500/10 text-red-500 rounded text-xs">{t("expiredBadge")}</span>
                   )}
                 </div>
                 <h3 className="font-medium truncate">{listing.title}</h3>
