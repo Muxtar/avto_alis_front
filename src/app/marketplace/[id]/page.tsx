@@ -337,6 +337,19 @@ export default function ListingDetailPage() {
               {listing.category}
             </div>
 
+            {/* Owner actions */}
+            {isLoggedIn && user?.id === listing.user.id && (
+              <Link
+                href={`/account?edit=${listing.id}`}
+                className="w-full flex items-center justify-center gap-2 py-3 mb-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                {t("editListing")}
+              </Link>
+            )}
+
             {/* Stock Status & Add to Cart */}
             {!isService && (
               <>
