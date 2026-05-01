@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -17,6 +17,14 @@ const DEFAULT_LEAF = TAXONOMY[0].subs[0].parts[0];
 const DEFAULT_CATEGORY = buildCategoryPath(DEFAULT_MAIN, DEFAULT_SUB, DEFAULT_LEAF);
 
 export default function AccountPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-64px)] flex items-center justify-center"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
+      <AccountPageInner />
+    </Suspense>
+  );
+}
+
+function AccountPageInner() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const { user, token, isLoggedIn, authLoading } = useAuth();
