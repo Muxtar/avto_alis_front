@@ -26,6 +26,7 @@ export default function ListingDetailPage() {
   const [cartAdding, setCartAdding] = useState(false);
   const [cartAdded, setCartAdded] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
 
   const maskPhone = (phone: string | undefined | null) => {
     if (!phone) return "";
@@ -122,13 +123,17 @@ export default function ListingDetailPage() {
       </Link>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
-        {/* Left - Image */}
+        {/* Left - Image gallery */}
         <div className="lg:col-span-3">
           <div className="bg-card border border-card-border rounded-2xl overflow-hidden">
             <div className="aspect-video bg-input-bg flex items-center justify-center">
               {listing.images?.length > 0 ? (
                 <img
-                  src={listing.images[0].startsWith('http') ? listing.images[0] : `${UPLOADS}/${listing.images[0]}`} loading="lazy"
+                  src={(() => {
+                    const img = listing.images[Math.min(activeImageIdx, listing.images.length - 1)];
+                    return img.startsWith('http') ? img : `${UPLOADS}/${img}`;
+                  })()}
+                  loading="lazy"
                   alt={listing.title}
                   className="w-full h-full object-cover"
                 />
@@ -144,6 +149,27 @@ export default function ListingDetailPage() {
                 </div>
               )}
             </div>
+            {listing.images?.length > 1 && (
+              <div className="flex gap-2 p-3 overflow-x-auto">
+                {listing.images.map((img: string, idx: number) => {
+                  const src = img.startsWith('http') ? img : `${UPLOADS}/${img}`;
+                  const isActive = idx === Math.min(activeImageIdx, listing.images.length - 1);
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setActiveImageIdx(idx)}
+                      className={`relative shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border-2 transition-all ${
+                        isActive ? "border-orange-500 shadow-md shadow-orange-500/25" : "border-transparent opacity-70 hover:opacity-100"
+                      }`}
+                      aria-label={`Şəkil ${idx + 1}`}
+                    >
+                      <img src={src} alt={`${listing.title} ${idx + 1}`} loading="lazy" className="w-full h-full object-cover" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Specifications */}

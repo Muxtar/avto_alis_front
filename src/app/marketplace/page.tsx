@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
+import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import { API } from "@/lib/api";
@@ -10,6 +12,7 @@ type TypeFilter = "all" | "PRODUCT" | "SERVICE";
 
 export default function MarketplacePage() {
   const { t } = useLanguage();
+  const { isLoggedIn } = useAuth();
   const { toast } = useToast();
   const [listings, setListings] = useState<any[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -105,9 +108,21 @@ export default function MarketplacePage() {
       <div className="relative overflow-hidden border-b border-card-border">
         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-orange-500/[0.06] via-transparent to-rose-500/[0.05]" />
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
-          <div className="mb-4 sm:mb-6">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t("marketplace")}</h1>
-            <p className="text-muted text-xs sm:text-sm mt-1">{t("footerDesc")}</p>
+          <div className="mb-4 sm:mb-6 flex items-start justify-between gap-3">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t("marketplace")}</h1>
+              <p className="text-muted text-xs sm:text-sm mt-1">{t("footerDesc")}</p>
+            </div>
+            <Link
+              href={isLoggedIn ? "/account" : "/"}
+              className="shrink-0 inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 brand-gradient rounded-xl text-white text-xs sm:text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25 whitespace-nowrap"
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">{t("postNewListing")}</span>
+              <span className="sm:hidden">{t("addListing")}</span>
+            </Link>
           </div>
 
           {/* Search + Sort */}
