@@ -30,6 +30,46 @@ export default function MessagesPage() {
     fetchConversations();
   }, [isLoggedIn, authLoading]);
 
+  // Conversation listəsini hər 8 saniyədə bir yenilə (yeni söhbət üçün)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const interval = setInterval(() => {
+      fetch(`${API}/messages/conversations`, { headers })
+        .then((r) => r.json())
+        .then((d) => setConversations(d.conversations || []))
+        .catch(() => {});
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn, token]);
+
+  // Aktiv söhbətdəki mesajları hər 3 saniyədə bir yenilə (real-time hissi)
+  useEffect(() => {
+    if (!activePartner || !isLoggedIn) return;
+    const interval = setInterval(() => {
+      fetch(`${API}/messages/${activePartner.id}?limit=50`, { headers })
+        .then((r) => r.json())
+        .then((d) => {
+          const incoming = d.messages || [];
+          setMessages((prev) => {
+            // Yalnız yeni mesaj varsa state-i yenilə (re-render minimum)
+            if (prev.length !== incoming.length) {
+              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+              return incoming;
+            }
+            const lastNew = incoming[incoming.length - 1];
+            const lastPrev = prev[prev.length - 1];
+            if (lastNew?.id !== lastPrev?.id) {
+              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+              return incoming;
+            }
+            return prev;
+          });
+        })
+        .catch(() => {});
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [activePartner, isLoggedIn, token]);
+
   const fetchConversations = () => {
     setLoading(true);
     fetch(`${API}/messages/conversations`, { headers })
