@@ -15,6 +15,9 @@ export default function MarketplacePage() {
   const { isLoggedIn } = useAuth();
   const { toast } = useToast();
   const [listings, setListings] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,47 +55,89 @@ export default function MarketplacePage() {
       .catch(() => { toast(t('error'), 'error'); });
   }, []);
 
-  // Fetch listings with debounce
+  const buildParams = (pageNum: number) => {
+    const params = new URLSearchParams();
+    if (searchQuery) params.set("search", searchQuery);
+    if (selectedCategory) params.set("category", selectedCategory);
+    if (activeType !== "all") params.set("type", activeType);
+    if (conditionFilter) params.set("condition", conditionFilter);
+    if (brandFilter) params.set("brand", brandFilter);
+    if (modelFilter) params.set("model", modelFilter);
+    if (cityFilter) params.set("city", cityFilter);
+    if (fuelFilter) params.set("fuelType", fuelFilter);
+    if (paymentFilter) params.set("paymentType", paymentFilter);
+    if (minYear) params.set("min_year", minYear);
+    if (maxYear) params.set("max_year", maxYear);
+    if (minPrice) params.set("min_price", minPrice);
+    if (maxPrice) params.set("max_price", maxPrice);
+    const sortMap: Record<string, string> = {
+      newest: "date_desc",
+      priceAsc: "price_asc",
+      priceDesc: "price_desc",
+      popular: "popular",
+      yearAsc: "year_asc",
+      yearDesc: "year_desc",
+    };
+    params.set("sort", sortMap[sortBy] || "date_desc");
+    params.set("limit", "20");
+    params.set("page", String(pageNum));
+    return params;
+  };
+
+  // Fetch first page on filter change (debounced). Resets pagination.
   useEffect(() => {
     if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (page !== 1) setPage(1);
     searchTimeout.current = setTimeout(() => {
       setLoading(true);
-      const params = new URLSearchParams();
-      if (searchQuery) params.set("search", searchQuery);
-      if (selectedCategory) params.set("category", selectedCategory);
-      if (activeType !== "all") params.set("type", activeType);
-      if (conditionFilter) params.set("condition", conditionFilter);
-      if (brandFilter) params.set("brand", brandFilter);
-      if (modelFilter) params.set("model", modelFilter);
-      if (cityFilter) params.set("city", cityFilter);
-      if (fuelFilter) params.set("fuelType", fuelFilter);
-      if (paymentFilter) params.set("paymentType", paymentFilter);
-      if (minYear) params.set("min_year", minYear);
-      if (maxYear) params.set("max_year", maxYear);
-      if (minPrice) params.set("min_price", minPrice);
-      if (maxPrice) params.set("max_price", maxPrice);
-      const sortMap: Record<string, string> = {
-        newest: "date_desc",
-        priceAsc: "price_asc",
-        priceDesc: "price_desc",
-        popular: "popular",
-        yearAsc: "year_asc",
-        yearDesc: "year_desc",
-      };
-      params.set("sort", sortMap[sortBy] || "date_desc");
-      params.set("limit", "50");
-
-      fetch(`${API}/listings?${params}`)
+      fetch(`${API}/listings?${buildParams(1)}`)
         .then((r) => r.json())
         .then((data) => {
           setListings(data.listings || []);
+          setTotalPages(data.totalPages || 0);
         })
         .catch(() => { toast(t('error'), 'error'); })
         .finally(() => setLoading(false));
     }, 300);
 
     return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, selectedCategory, activeType, sortBy, conditionFilter, brandFilter, modelFilter, cityFilter, fuelFilter, paymentFilter, minYear, maxYear, minPrice, maxPrice]);
+
+  // Fetch additional pages when `page` increments past 1.
+  useEffect(() => {
+    if (page === 1) return;
+    setLoadingMore(true);
+    fetch(`${API}/listings?${buildParams(page)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        const next = data.listings || [];
+        setListings((prev) => [...prev, ...next]);
+        setTotalPages(data.totalPages || 0);
+      })
+      .catch(() => { toast(t('error'), 'error'); })
+      .finally(() => setLoadingMore(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  const hasMore = page < totalPages;
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Infinite scroll: increment page when sentinel scrolls into view.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          setPage((p) => p + 1);
+        }
+      },
+      { rootMargin: "300px" }
+    );
+    obs.observe(sentinel);
+    return () => obs.disconnect();
+  }, [hasMore, loadingMore, loading]);
 
   const typeButtons: { id: TypeFilter; label: string }[] = [
     { id: "all", label: t("all") },
@@ -309,43 +354,86 @@ export default function MarketplacePage() {
         </div>
       )}
 
-      {/* Listings Grid */}
+      {/* Listings Grid with side ads */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
-        {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="surface overflow-hidden">
-                <div className="aspect-[4/3] skeleton" />
-                <div className="p-3 sm:p-4 space-y-2">
-                  <div className="skeleton h-3 w-1/3" />
-                  <div className="skeleton h-4 w-3/4" />
-                  <div className="skeleton h-3 w-full" />
-                  <div className="skeleton h-3 w-2/3" />
-                  <div className="flex justify-between items-center pt-1">
-                    <div className="skeleton h-5 w-16" />
-                    <div className="skeleton h-7 w-7 rounded-lg" />
-                  </div>
-                </div>
+        <div className="lg:grid lg:grid-cols-[160px_1fr_160px] lg:gap-6">
+          {/* Left ad column */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-20 space-y-4">
+              <div className="w-[160px] h-[600px] bg-card border border-card-border rounded-xl overflow-hidden flex flex-col items-center justify-center text-muted text-xs">
+                <svg className="w-8 h-8 mb-2 text-muted-foreground/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                </svg>
+                <span>Reklam</span>
               </div>
-            ))}
-          </div>
-        ) : listings.length === 0 ? (
-          <div className="text-center py-20 animate-fade-in">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-orange-500/10 flex items-center justify-center">
-              <svg className="w-10 h-10 text-orange-500/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-              </svg>
             </div>
-            <p className="text-foreground font-medium text-base mb-1">{t("noResults")}</p>
-            <p className="text-muted text-sm">{t("searchPlaceholder")}</p>
+          </aside>
+
+          {/* Center column - listings */}
+          <div className="min-w-0">
+            {loading ? (
+              <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="surface overflow-hidden">
+                    <div className="aspect-[4/3] skeleton" />
+                    <div className="p-3 sm:p-4 space-y-2">
+                      <div className="skeleton h-3 w-1/3" />
+                      <div className="skeleton h-4 w-3/4" />
+                      <div className="skeleton h-3 w-full" />
+                      <div className="skeleton h-3 w-2/3" />
+                      <div className="flex justify-between items-center pt-1">
+                        <div className="skeleton h-5 w-16" />
+                        <div className="skeleton h-7 w-7 rounded-lg" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : listings.length === 0 ? (
+              <div className="text-center py-20 animate-fade-in">
+                <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-orange-500/10 flex items-center justify-center">
+                  <svg className="w-10 h-10 text-orange-500/70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                </div>
+                <p className="text-foreground font-medium text-base mb-1">{t("noResults")}</p>
+                <p className="text-muted text-sm">{t("searchPlaceholder")}</p>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4 animate-fade-in">
+                  {listings.map((listing) => (
+                    <ListingCard key={listing.id} listing={listing} />
+                  ))}
+                </div>
+
+                {/* Pagination sentinel + spinner */}
+                {hasMore && (
+                  <div ref={sentinelRef} className="flex justify-center py-8">
+                    {loadingMore && (
+                      <div className="w-7 h-7 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    )}
+                  </div>
+                )}
+                {!hasMore && listings.length > 0 && (
+                  <p className="text-center text-muted text-xs py-8">— {t("noMoreListings")} —</p>
+                )}
+              </>
+            )}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 animate-fade-in">
-            {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} />
-            ))}
-          </div>
-        )}
+
+          {/* Right ad column */}
+          <aside className="hidden lg:block">
+            <div className="sticky top-20 space-y-4">
+              <div className="w-[160px] h-[600px] bg-card border border-card-border rounded-xl overflow-hidden flex flex-col items-center justify-center text-muted text-xs">
+                <svg className="w-8 h-8 mb-2 text-muted-foreground/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                </svg>
+                <span>Reklam</span>
+              </div>
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   );
