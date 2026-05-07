@@ -57,14 +57,14 @@ export default function Navbar() {
   const current = languages.find((l) => l.code === locale)!;
 
   return (
-    <nav className="border-b border-card-border bg-card/70 backdrop-blur-xl sticky top-0 z-50 transition-colors duration-300">
+    <nav className="border-b border-card-border glass sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14 sm:h-16">
-          <a href="/marketplace" className="flex items-center gap-2 sm:gap-3 shrink-0 group">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 brand-gradient rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm text-white shadow-lg shadow-orange-500/25 group-hover:scale-105 transition-transform">
+        <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
+          <a href="/marketplace" className="flex items-center gap-2 shrink-0 group">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 brand-gradient rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm text-white shadow-md shadow-orange-500/30 group-hover:scale-105 transition-transform">
               AB
             </div>
-            <span className="text-lg sm:text-xl font-bold brand-text tracking-tight">
+            <span className="text-lg sm:text-xl font-bold brand-text tracking-tight hidden xs:inline">
               AvtoBazar
             </span>
           </a>
@@ -73,9 +73,20 @@ export default function Navbar() {
             <Link href="/marketplace" className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-muted hover:text-foreground hover:bg-input-bg transition-all whitespace-nowrap">
               {t("marketplace")}
             </Link>
+            <a
+              href="/downloads/kassa-sql-setup.zip"
+              download
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-orange-500 hover:bg-orange-500/10 transition-all whitespace-nowrap"
+              title={t("downloadKassaTitle")}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              {t("downloadKassa")}
+            </a>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1 sm:gap-1.5">
             {/* Theme */}
             <button onClick={toggleTheme} suppressHydrationWarning className="p-2 sm:p-2.5 bg-input-bg border border-input-border rounded-lg sm:rounded-xl hover:opacity-80 transition-all" title={mounted ? (theme === "dark" ? "Light" : "Dark") : ""}>
               {!mounted ? (

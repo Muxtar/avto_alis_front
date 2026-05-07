@@ -98,7 +98,7 @@ export default function AddressesPage() {
       </div>
 
       {showForm && (
-        <form onSubmit={submit} className="bg-card border border-card-border rounded-2xl p-4 mb-6 space-y-3">
+        <form onSubmit={submit} className="surface p-4 mb-6 space-y-3">
           <input value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder={t('addressLabel')} className={inputCls} required />
           <input value={form.address} onChange={e => setForm({ ...form, address: e.target.value })} placeholder={t('address')} className={inputCls} required />
           <input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} placeholder={t('phone')} className={inputCls} />
@@ -121,7 +121,7 @@ export default function AddressesPage() {
       ) : (
         <div className="space-y-3">
           {addresses.map(a => (
-            <div key={a.id} className="bg-card border border-card-border rounded-2xl p-4 flex items-start justify-between">
+            <div key={a.id} className="surface p-4 flex items-start justify-between">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-medium">{a.label}</span>

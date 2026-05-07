@@ -26,6 +26,16 @@ interface Inquiry {
   buyer?: { id: number; name: string; phone: string; type: string };
   myOffer?: any;
   targetSellers?: any[];
+  cities?: string[];
+}
+
+interface CompetitorStats {
+  totalOffers: number;
+  min: number | null;
+  max: number | null;
+  avg: number | null;
+  median: number | null;
+  prices: { price: number; status: string; ageHours: number }[];
 }
 
 export default function InquiriesPage() {
@@ -38,6 +48,7 @@ export default function InquiriesPage() {
   const [sellerInquiries, setSellerInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [offerForms, setOfferForms] = useState<Record<number, { price: string; message: string }>>({});
+  const [competitorStats, setCompetitorStats] = useState<Record<number, CompetitorStats | null>>({});
 
   useEffect(() => {
     if (!token) { router.push('/'); return; }
@@ -98,6 +109,26 @@ export default function InquiriesPage() {
     } catch { toast(t('error'), 'error'); }
   };
 
+  const loadCompetitorStats = async (inquiryId: number) => {
+    if (competitorStats[inquiryId] !== undefined) return; // already loaded or loading
+    setCompetitorStats((p) => ({ ...p, [inquiryId]: null }));
+    try {
+      const res = await fetch(`${API}/inquiries/${inquiryId}/competitor-prices`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCompetitorStats((p) => ({ ...p, [inquiryId]: data }));
+      }
+    } catch { /* ignore */ }
+  };
+
+  // Auto-load competitor stats for seller-side inquiries
+  useEffect(() => {
+    if (tab !== 'selling' || sellerInquiries.length === 0) return;
+    sellerInquiries.forEach((i) => loadCompetitorStats(i.id));
+  }, [tab, sellerInquiries.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const withdrawOffer = async (offerId: number) => {
     try {
       const res = await fetch(`${API}/inquiries/offers/${offerId}/withdraw`, {
@@ -128,13 +159,11 @@ export default function InquiriesPage() {
     <div className="max-w-4xl mx-auto p-4 sm:p-6">
       <h1 className="text-2xl font-bold mb-6">{t('inquiries')}</h1>
 
-      <div className="flex gap-2 mb-6">
-        <button onClick={() => setTab('buying')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === 'buying' ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white' : 'bg-card border border-card-border text-muted hover:text-foreground'}`}>
+      <div className="segmented mb-6">
+        <button onClick={() => setTab('buying')} className={tab === 'buying' ? 'active' : ''}>
           {t('myInquiries')}
         </button>
-        <button onClick={() => setTab('selling')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === 'selling' ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white' : 'bg-card border border-card-border text-muted hover:text-foreground'}`}>
+        <button onClick={() => setTab('selling')} className={tab === 'selling' ? 'active' : ''}>
           {t('receivedInquiries')}
         </button>
       </div>
@@ -152,7 +181,7 @@ export default function InquiriesPage() {
         ) : (
           <div className="space-y-4">
             {buyerInquiries.map(inq => (
-              <div key={inq.id} className="bg-card border border-card-border rounded-2xl p-4">
+              <div key={inq.id} className="surface p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <p className="font-medium text-foreground">{inq.rawText}</p>
@@ -211,7 +240,7 @@ export default function InquiriesPage() {
         ) : (
           <div className="space-y-4">
             {sellerInquiries.map(inq => (
-              <div key={inq.id} className="bg-card border border-card-border rounded-2xl p-4">
+              <div key={inq.id} className="surface p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <p className="text-xs text-muted">{t('buyer')}: {inq.buyer?.name}</p>
@@ -227,6 +256,46 @@ export default function InquiriesPage() {
                   </div>
                   {statusBadge(inq.status)}
                 </div>
+
+                {/* Competitor pricing panel — anonymized stats from other sellers */}
+                {(() => {
+                  const stats = competitorStats[inq.id];
+                  if (!stats || stats.totalOffers === 0) return null;
+                  const myPrice = inq.myOffer?.price ?? null;
+                  return (
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3 mt-2">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-semibold text-blue-400">📊 {t('competitorPanel')}</span>
+                        <span className="text-[10px] text-muted">{t('competitorAnonymous')}</span>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2 mb-2">
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted uppercase">{t('competitorCount')}</p>
+                          <p className="text-sm font-bold">{stats.totalOffers}</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted uppercase">{t('competitorMin')}</p>
+                          <p className="text-sm font-bold text-emerald-400">{stats.min} AZN</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted uppercase">{t('competitorAvg')}</p>
+                          <p className="text-sm font-bold text-blue-400">{stats.avg} AZN</p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-[10px] text-muted uppercase">{t('competitorMax')}</p>
+                          <p className="text-sm font-bold text-red-400">{stats.max} AZN</p>
+                        </div>
+                      </div>
+                      {myPrice !== null && stats.min !== null && stats.max !== null && (
+                        <p className="text-[11px] text-muted">
+                          {myPrice <= stats.min ? `🏆 ${t('competitorYouLowest')}` :
+                           myPrice >= stats.max ? `⚠️ ${t('competitorYouHighest')}` :
+                           `${t('competitorYouMid')}`}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {inq.myOffer ? (
                   <div className="bg-input-bg border border-input-border rounded-xl p-3 mt-2">

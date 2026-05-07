@@ -225,7 +225,7 @@ export default function ProfilePage() {
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
       {/* Profile Card */}
-      <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-8 mb-6">
+      <div className="surface p-5 sm:p-7 mb-5">
         {saved && (
           <div className="mb-4 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl text-green-500 text-sm text-center">
             {t("profileUpdated")}
@@ -305,7 +305,7 @@ export default function ProfilePage() {
 
       {/* Vehicles section - only for CAR_OWNER */}
       {profile.type === "CAR_OWNER" && (
-        <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-8 mb-6">
+        <div className="surface p-5 sm:p-7 mb-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold flex items-center gap-2">
               <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25" /></svg>
@@ -369,7 +369,7 @@ export default function ProfilePage() {
 
       {/* Workplaces section - for MECHANIC and PARTS_SELLER */}
       {(profile.type === "MECHANIC" || profile.type === "PARTS_SELLER") && (
-        <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-8 mb-6">
+        <div className="surface p-5 sm:p-7 mb-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-semibold flex items-center gap-2">
               <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
@@ -427,7 +427,7 @@ export default function ProfilePage() {
       )}
 
       {/* Email Verification */}
-      <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-8 mb-6">
+      <div className="surface p-5 sm:p-7 mb-5">
         <h2 className="font-semibold mb-4 flex items-center gap-2">
           <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
           {t("emailSection")}
@@ -518,7 +518,7 @@ export default function ProfilePage() {
       </div>
 
       {visibleListings.length === 0 ? (
-        <div className="text-center py-12 bg-card border border-card-border rounded-2xl text-muted">
+        <div className="text-center py-12 surface text-muted">
           {listingTab === "active" ? (
             <>
               <p>{t("noListingsYet")}</p>

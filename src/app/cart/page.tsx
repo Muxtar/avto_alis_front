@@ -174,7 +174,7 @@ export default function CartPage() {
       )}
 
       {items.length === 0 ? (
-        <div className="text-center py-20 bg-card border border-card-border rounded-2xl">
+        <div className="text-center py-20 surface">
           <svg className="w-16 h-16 text-muted-foreground/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272" /></svg>
           <p className="text-muted mb-4">{t("cartEmpty")}</p>
           <Link href="/marketplace" className="inline-block px-6 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">{t("marketplace")}</Link>
@@ -183,7 +183,7 @@ export default function CartPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
           <div className="lg:col-span-2 space-y-3">
             {items.map((item) => (
-              <div key={item.id} className="bg-card border border-card-border rounded-xl p-3 sm:p-4 flex gap-3 sm:gap-4">
+              <div key={item.id} className="surface p-3 sm:p-4 flex gap-3 sm:gap-4">
                 <Link href={`/marketplace/${item.listing.id}`} className="w-16 h-16 sm:w-20 sm:h-20 bg-input-bg rounded-xl shrink-0 flex items-center justify-center overflow-hidden">
                   {item.listing.images?.[0] ? (
                     <img src={item.listing.images[0].startsWith('http') ? item.listing.images[0] : `${UPLOADS}/${item.listing.images[0]}`} alt={item.listing.title} loading="lazy" className="w-full h-full object-cover" />
@@ -207,7 +207,7 @@ export default function CartPage() {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="bg-card border border-card-border rounded-2xl p-5 sticky top-20 space-y-3">
+            <div className="surface p-5 sticky top-20 space-y-3">
               <h3 className="font-semibold">{t("cartTotal")}</h3>
 
               <div className="flex justify-between text-sm">

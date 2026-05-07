@@ -205,7 +205,7 @@ function AccountPageInner() {
 
       {/* Add/Edit Form */}
       {showForm && (
-        <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-6 mb-6">
+        <div className="surface p-5 sm:p-6 mb-6">
           <h2 className="font-semibold mb-4">{editingId ? t("editListing") : t("addListing")}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -467,7 +467,7 @@ function AccountPageInner() {
       {loading ? (
         <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : listings.length === 0 ? (
-        <div className="text-center py-16 bg-card border border-card-border rounded-2xl">
+        <div className="text-center py-16 surface">
           <svg className="w-16 h-16 text-muted-foreground/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
           </svg>
@@ -479,7 +479,7 @@ function AccountPageInner() {
       ) : (
         <div className="space-y-3">
           {listings.map((listing) => (
-            <div key={listing.id} className="bg-card border border-card-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div key={listing.id} className="surface p-4 flex flex-col sm:flex-row sm:items-center gap-3">
               {/* Image */}
               <div className="w-full sm:w-24 h-32 sm:h-24 shrink-0 bg-input-bg border border-input-border rounded-lg overflow-hidden flex items-center justify-center">
                 {listing.images && listing.images.length > 0 ? (

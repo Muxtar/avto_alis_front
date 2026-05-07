@@ -115,7 +115,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
     <Link href={`/marketplace/${listing.id}`} className="block group">
       <div className="surface card-hover overflow-hidden h-full flex flex-col">
         {/* Image */}
-        <div className="aspect-[4/3] bg-input-bg overflow-hidden relative">
+        <div className="aspect-square sm:aspect-[4/3] bg-input-bg overflow-hidden relative">
           {/* Favori butonu */}
           {!isOwner && (
             <button

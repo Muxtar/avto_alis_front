@@ -141,7 +141,7 @@ export default function MessagesPage() {
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
       <h1 className="text-xl sm:text-2xl font-bold mb-4">{t("messages")}</h1>
 
-      <div className="bg-card border border-card-border rounded-2xl overflow-hidden flex" style={{ height: "calc(100vh - 180px)", minHeight: 400 }}>
+      <div className="surface overflow-hidden flex" style={{ height: "calc(100vh - 180px)", minHeight: 400 }}>
         {/* Conversations List */}
         <div className={`${activePartner ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-80 border-r border-card-border shrink-0`}>
           <div className="p-3 border-b border-card-border">

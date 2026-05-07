@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
@@ -12,8 +13,49 @@ type TypeFilter = "all" | "PRODUCT" | "SERVICE";
 
 export default function MarketplacePage() {
   const { t } = useLanguage();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, token } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
+  // Cheap-search inquiry modal
+  const [cheapModalOpen, setCheapModalOpen] = useState(false);
+  const [cheapInquiryText, setCheapInquiryText] = useState("");
+  const [cheapInquiryCities, setCheapInquiryCities] = useState<string[]>([]);
+  const [cheapInquirySending, setCheapInquirySending] = useState(false);
+
+  const openCheapModal = () => {
+    if (!isLoggedIn) { router.push("/"); return; }
+    setCheapInquiryText(searchQuery || "");
+    setCheapInquiryCities(cityFilter ? [cityFilter] : []);
+    setCheapModalOpen(true);
+  };
+
+  const submitCheapInquiry = async () => {
+    if (!cheapInquiryText.trim()) return;
+    setCheapInquirySending(true);
+    try {
+      const res = await fetch(`${API}/inquiries`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ text: cheapInquiryText.trim(), cities: cheapInquiryCities }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast(data.message || t("error"), "error");
+        return;
+      }
+      toast(`${data.matchedSellers || 0} ${t("sellersMatched")}`, "success");
+      setCheapModalOpen(false);
+      router.push("/inquiries");
+    } catch {
+      toast(t("error"), "error");
+    } finally {
+      setCheapInquirySending(false);
+    }
+  };
+
+  const toggleCheapCity = (city: string) => {
+    setCheapInquiryCities((prev) => prev.includes(city) ? prev.filter((c) => c !== city) : [...prev, city]);
+  };
   const [listings, setListings] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -53,6 +95,22 @@ export default function MarketplacePage() {
       .then((r) => r.json())
       .then(setCategories)
       .catch(() => { toast(t('error'), 'error'); });
+  }, []);
+
+  // Read URL params on mount (used by GlobalSearchBar redirects).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("search")) setSearchQuery(p.get("search") || "");
+    if (p.get("brand")) setBrandFilter(p.get("brand") || "");
+    if (p.get("model")) setModelFilter(p.get("model") || "");
+    if (p.get("city")) setCityFilter(p.get("city") || "");
+    if (p.get("year")) {
+      setMinYear(p.get("year") || "");
+      setMaxYear(p.get("year") || "");
+    }
+    if (p.get("category")) setSelectedCategory(p.get("category"));
+    if (p.get("type")) setActiveType((p.get("type") || "all") as TypeFilter);
   }, []);
 
   const buildParams = (pageNum: number) => {
@@ -150,23 +208,21 @@ export default function MarketplacePage() {
   return (
     <div className="min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)]">
       {/* Hero / Search Section */}
-      <div className="relative overflow-hidden border-b border-card-border">
-        <div className="absolute inset-0 -z-10 bg-gradient-to-br from-orange-500/[0.06] via-transparent to-rose-500/[0.05]" />
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
-          <div className="mb-4 sm:mb-6 flex items-start justify-between gap-3">
+      <div className="hero-bg border-b border-card-border">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-7">
+          <div className="mb-3 sm:mb-5 flex items-start justify-between gap-3">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{t("marketplace")}</h1>
-              <p className="text-muted text-xs sm:text-sm mt-1">{t("footerDesc")}</p>
+              <h1 className="section-title">{t("marketplace")}</h1>
+              <p className="text-muted text-xs sm:text-sm mt-0.5">{t("footerDesc")}</p>
             </div>
             <Link
               href={isLoggedIn ? "/account" : "/"}
-              className="shrink-0 inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 brand-gradient rounded-xl text-white text-xs sm:text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25 whitespace-nowrap"
+              className="hidden sm:inline-flex shrink-0 items-center gap-2 px-4 py-2.5 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25 whitespace-nowrap"
             >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
               </svg>
-              <span className="hidden sm:inline">{t("postNewListing")}</span>
-              <span className="sm:hidden">{t("addListing")}</span>
+              {t("postNewListing")}
             </Link>
           </div>
 
@@ -184,16 +240,23 @@ export default function MarketplacePage() {
                 className="w-full pl-11 pr-4 py-3 input-base placeholder-muted-foreground text-sm shadow-sm"
               />
             </div>
-            <div className="flex gap-1 bg-input-bg border border-input-border rounded-xl p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={openCheapModal}
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-3 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 rounded-xl text-xs sm:text-sm font-semibold hover:bg-emerald-500/20 transition-all whitespace-nowrap"
+              title={t("cheaperSearchTitle")}
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              {t("cheaperSearch")}
+            </button>
+            <div className="segmented shrink-0">
               {typeButtons.map((btn) => (
                 <button
                   key={btn.id}
                   onClick={() => setActiveType(btn.id)}
-                  className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all whitespace-nowrap ${
-                    activeType === btn.id
-                      ? "brand-gradient text-white shadow-md shadow-orange-500/25"
-                      : "text-muted hover:text-foreground"
-                  }`}
+                  className={activeType === btn.id ? "active" : ""}
                 >
                   {btn.label}
                 </button>
@@ -360,7 +423,7 @@ export default function MarketplacePage() {
           {/* Left ad column */}
           <aside className="hidden lg:block">
             <div className="sticky top-20 space-y-4">
-              <div className="w-[160px] h-[600px] bg-card border border-card-border rounded-xl overflow-hidden flex flex-col items-center justify-center text-muted text-xs">
+              <div className="w-[160px] h-[600px] surface overflow-hidden flex flex-col items-center justify-center text-muted text-xs">
                 <svg className="w-8 h-8 mb-2 text-muted-foreground/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
                 </svg>
@@ -425,7 +488,7 @@ export default function MarketplacePage() {
           {/* Right ad column */}
           <aside className="hidden lg:block">
             <div className="sticky top-20 space-y-4">
-              <div className="w-[160px] h-[600px] bg-card border border-card-border rounded-xl overflow-hidden flex flex-col items-center justify-center text-muted text-xs">
+              <div className="w-[160px] h-[600px] surface overflow-hidden flex flex-col items-center justify-center text-muted text-xs">
                 <svg className="w-8 h-8 mb-2 text-muted-foreground/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
                 </svg>
@@ -435,6 +498,70 @@ export default function MarketplacePage() {
           </aside>
         </div>
       </div>
+
+      {/* Cheap-search inquiry modal */}
+      {cheapModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setCheapModalOpen(false)}>
+          <div className="bg-card border border-card-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-4 border-b border-card-border flex items-center justify-between">
+              <div>
+                <h3 className="font-bold text-lg">🔻 {t("cheaperSearch")}</h3>
+                <p className="text-muted text-xs">{t("cheaperSearchDesc")}</p>
+              </div>
+              <button onClick={() => setCheapModalOpen(false)} className="text-muted hover:text-foreground">✕</button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1.5">{t("searchPlaceholder")}</label>
+                <textarea
+                  value={cheapInquiryText}
+                  onChange={(e) => setCheapInquiryText(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm focus:outline-none focus:border-orange-500"
+                  placeholder={t("cheaperSearchTextPlaceholder")}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1.5">
+                  📍 {t("cheaperSearchCities")} {cheapInquiryCities.length > 0 && `(${cheapInquiryCities.length})`}
+                </label>
+                <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-2 bg-input-bg/50 border border-input-border rounded-xl">
+                  {AZ_CITIES.map((c) => {
+                    const active = cheapInquiryCities.includes(c);
+                    return (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => toggleCheapCity(c)}
+                        className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
+                          active
+                            ? "bg-orange-500 text-white border-orange-500"
+                            : "bg-card border-input-border text-muted hover:text-foreground"
+                        }`}
+                      >
+                        {c}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[11px] text-muted mt-1.5">{t("cheaperSearchCitiesHint")}</p>
+              </div>
+            </div>
+            <div className="px-5 py-4 border-t border-card-border flex gap-2 justify-end">
+              <button onClick={() => setCheapModalOpen(false)} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm">
+                {t("adminCancel")}
+              </button>
+              <button
+                onClick={submitCheapInquiry}
+                disabled={cheapInquirySending || !cheapInquiryText.trim()}
+                className="px-5 py-2 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 disabled:opacity-50"
+              >
+                {cheapInquirySending ? "..." : t("cheaperSearchSubmit")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

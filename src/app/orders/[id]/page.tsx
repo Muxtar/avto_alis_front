@@ -11,7 +11,7 @@ import OrderMap from '@/components/OrderMapWrapper';
 export default function OrderDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { token, isLoggedIn, authLoading } = useAuth();
+  const { user, token, isLoggedIn, authLoading } = useAuth();
   const { t } = useLanguage();
   const { toast } = useToast();
   const [order, setOrder] = useState<any>(null);
@@ -213,8 +213,8 @@ export default function OrderDetailPage() {
         </div>
       </div>
 
-      {/* Rating (only for DELIVERED orders, only buyer) */}
-      {order.status === 'DELIVERED' && order.buyerId === order.buyer?.id && !hasRated && (
+      {/* Rating (only for DELIVERED orders, only the buyer can rate) */}
+      {order.status === 'DELIVERED' && user?.id === order.buyerId && !hasRated && (
         <div className="bg-card border border-card-border rounded-2xl p-4">
           <h2 className="font-semibold text-sm mb-3">⭐ {t('rateSeller')}</h2>
           <div className="flex gap-1 mb-3">

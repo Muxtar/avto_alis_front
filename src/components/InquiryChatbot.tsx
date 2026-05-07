@@ -2,6 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useLanguage } from '@/lib/LanguageContext';
+import { AZ_CITIES } from '@/lib/cities';
 import { API } from '@/lib/api';
 
 interface Message {
@@ -17,7 +18,13 @@ export default function InquiryChatbot() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [selectedCities, setSelectedCities] = useState<string[]>([]);
+  const [showCityFilter, setShowCityFilter] = useState(false);
   const messagesEnd = useRef<HTMLDivElement>(null);
+
+  const toggleCity = (city: string) => {
+    setSelectedCities((prev) => prev.includes(city) ? prev.filter((c) => c !== city) : [...prev, city]);
+  };
 
   useEffect(() => {
     if (open && !initialized) {
@@ -49,7 +56,7 @@ export default function InquiryChatbot() {
       const res = await fetch(`${API}/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ text: userMsg }),
+        body: JSON.stringify({ text: userMsg, cities: selectedCities }),
       });
       const data = await res.json();
 
@@ -132,6 +139,37 @@ export default function InquiryChatbot() {
               </div>
             )}
             <div ref={messagesEnd} />
+          </div>
+
+          {/* City filter */}
+          <div className="border-t border-card-border">
+            <button
+              onClick={() => setShowCityFilter((s) => !s)}
+              className="w-full px-3 py-2 text-xs text-muted hover:text-foreground flex items-center justify-between"
+            >
+              <span>📍 {t('chatbotCityFilter')} {selectedCities.length > 0 && `(${selectedCities.length})`}</span>
+              <span>{showCityFilter ? '▲' : '▼'}</span>
+            </button>
+            {showCityFilter && (
+              <div className="px-3 pb-2 max-h-32 overflow-y-auto flex flex-wrap gap-1">
+                {AZ_CITIES.map((city) => {
+                  const active = selectedCities.includes(city);
+                  return (
+                    <button
+                      key={city}
+                      onClick={() => toggleCity(city)}
+                      className={`text-[11px] px-2 py-1 rounded-full border transition-all ${
+                        active
+                          ? 'bg-orange-500 text-white border-orange-500'
+                          : 'bg-input-bg border-input-border text-muted hover:text-foreground'
+                      }`}
+                    >
+                      {city}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Input */}

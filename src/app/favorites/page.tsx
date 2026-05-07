@@ -59,7 +59,7 @@ export default function FavoritesPage() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {favorites.map(fav => (
-            <div key={fav.id} className="bg-card border border-card-border rounded-2xl overflow-hidden group relative">
+            <div key={fav.id} className="surface overflow-hidden group relative">
               <Link href={`/marketplace/${fav.listingId}`}>
                 <div className="aspect-[4/3] bg-input-bg overflow-hidden">
                   {fav.listing.images?.[0] ? (

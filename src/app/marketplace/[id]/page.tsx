@@ -55,18 +55,21 @@ export default function ListingDetailPage() {
   };
 
   const handleAddComment = async () => {
-    if (!commentText.trim() || !user) return;
+    if (!commentText.trim() || !user || !token) return;
     setCommentSending(true);
     try {
       const res = await fetch(`${API}/listings/${params.id}/comments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, content: commentText }),
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: commentText }),
       });
       if (res.ok) {
         const data = await res.json();
         setListing({ ...listing, comments: [data.comment, ...(listing.comments || [])] });
         setCommentText("");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast(err.message || t('error'), 'error');
       }
     } catch { toast(t('error'), 'error'); } finally { setCommentSending(false); }
   };

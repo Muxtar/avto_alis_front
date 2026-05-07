@@ -3,6 +3,8 @@ import { Geist } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
 import Navbar from "@/components/Navbar";
+import GlobalSearchBar from "@/components/GlobalSearchBar";
+import MobileBottomNav from "@/components/MobileBottomNav";
 import InquiryChatbot from "@/components/InquiryChatbot";
 import Footer from "@/components/Footer";
 
@@ -33,9 +35,11 @@ export default function RootLayout({
       <body className="min-h-screen bg-background text-foreground transition-colors duration-300 flex flex-col">
         <Providers>
           <Navbar />
-          <main className="flex-1">{children}</main>
+          <GlobalSearchBar />
+          <main className="flex-1 pb-safe-nav md:pb-0">{children}</main>
           <Footer />
           <InquiryChatbot />
+          <MobileBottomNav />
         </Providers>
       </body>
     </html>
