@@ -7,10 +7,11 @@ import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
+import { countryLabel } from "@/lib/countries";
 
 
 export default function ListingDetailPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { toast } = useToast();
   const { user, token, isLoggedIn } = useAuth();
   const { addToCart } = useCart();
@@ -190,8 +191,14 @@ export default function ListingDetailPage() {
                 )}
                 {listing.brand && (
                   <div>
-                    <p className="text-muted text-xs mb-1">{t("brand")}</p>
-                    <p className="font-medium">{listing.brand}</p>
+                    <p className="text-muted text-xs mb-1">{t("partBrand") || t("brand")}</p>
+                    <p className="font-medium">🏷️ {listing.brand}</p>
+                  </div>
+                )}
+                {listing.country && (
+                  <div>
+                    <p className="text-muted text-xs mb-1">{t("countryOfOrigin")}</p>
+                    <p className="font-medium">{countryLabel(listing.country, locale)}</p>
                   </div>
                 )}
                 {listing.year && (

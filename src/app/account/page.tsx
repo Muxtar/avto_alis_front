@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
 import { TAXONOMY, buildCategoryPath, parseCategoryPath, getSubsFor, getPartsFor } from "@/lib/taxonomy";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
+import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -25,7 +26,7 @@ export default function AccountPage() {
 }
 
 function AccountPageInner() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { toast } = useToast();
   const { user, token, isLoggedIn, authLoading } = useAuth();
   const router = useRouter();
@@ -35,7 +36,7 @@ function AccountPageInner() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
+  const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -70,7 +71,7 @@ function AccountPageInner() {
 
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
-    setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: "", phone: user?.phone || "", condition: "NEW", brand: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
+    setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: "", phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
     setImages([]);
     setImagePreviews([]);
@@ -155,7 +156,9 @@ function AccountPageInner() {
       title: listing.title, description: listing.description,
       price: String(listing.price), category: listing.category,
       type: listing.type, location: listing.location || "", phone: listing.phone || "",
-      condition: listing.condition || "NEW", brand: listing.brand || "", stock: String(listing.stock || 1),
+      condition: listing.condition || "NEW", brand: listing.brand || "",
+      country: listing.country || "",
+      stock: String(listing.stock || 1),
       forVehicle: listing.forVehicle || "", unit: listing.unit || "", unitValue: listing.unitValue ? String(listing.unitValue) : "",
       year: listing.year ? String(listing.year) : "",
       model: listing.model || "",
@@ -305,13 +308,43 @@ function AccountPageInner() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-1.5">{t("brand")}</label>
-                <input value={form.brand} onChange={(e) => setForm({ ...form, brand: e.target.value })} placeholder="BMW, Mercedes..." className={inputCls} />
+                <label className="block text-sm font-medium mb-1.5">
+                  {t("partBrand") || t("brand")}
+                  {form.type === "PRODUCT" && <span className="text-orange-500 ml-1">*</span>}
+                </label>
+                <input
+                  value={form.brand}
+                  onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                  placeholder={t("partBrandPlaceholder") || "Bosch, Mahle, Brembo..."}
+                  className={inputCls}
+                  required={form.type === "PRODUCT"}
+                />
+                <p className="text-[11px] text-muted mt-1">{t("partBrandHint")}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1.5">{t("vehicleModel")}</label>
-                <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t("vehicleModelPlaceholder")} className={inputCls} />
+                <label className="block text-sm font-medium mb-1.5">
+                  {t("countryOfOrigin")}
+                  {form.type === "PRODUCT" && <span className="text-orange-500 ml-1">*</span>}
+                </label>
+                <select
+                  value={form.country}
+                  onChange={(e) => setForm({ ...form, country: e.target.value })}
+                  className={inputCls}
+                  required={form.type === "PRODUCT"}
+                >
+                  <option value="">—</option>
+                  {MANUFACTURING_COUNTRIES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.flag} {locale === "ru" ? c.ru : locale === "en" ? c.en : c.az}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted mt-1">{t("countryOfOriginHint")}</p>
               </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">{t("vehicleModel")}</label>
+              <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t("vehicleModelPlaceholder")} className={inputCls} />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">{t("city")}</label>

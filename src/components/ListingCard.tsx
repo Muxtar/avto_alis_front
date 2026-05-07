@@ -5,6 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { API, UPLOADS } from "@/lib/api";
+import { COUNTRY_BY_CODE } from "@/lib/countries";
 
 interface Listing {
   id: number;
@@ -184,11 +185,17 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
         {/* Content */}
         <div className="p-3 sm:p-4 flex-1 flex flex-col">
-          {/* Brand + Model + Year */}
-          {(listing.brand || listing.model || listing.year) && (
+          {/* Brand + Country + Model + Year */}
+          {(listing.brand || listing.country || listing.model || listing.year) && (
             <div className="flex items-center gap-1.5 mb-1 text-[10px] text-muted-foreground flex-wrap">
-              {listing.brand && <span className="font-medium">{listing.brand}</span>}
-              {listing.model && <span>{listing.model}</span>}
+              {listing.brand && <span className="font-medium">🏷️ {listing.brand}</span>}
+              {listing.country && (
+                <span title={listing.country}>
+                  {COUNTRY_BY_CODE[listing.country]?.flag || "🌍"}{" "}
+                  {COUNTRY_BY_CODE[listing.country]?.az || listing.country}
+                </span>
+              )}
+              {listing.model && <span>· {listing.model}</span>}
               {listing.year && <span>· 📅 {listing.year}</span>}
             </div>
           )}
