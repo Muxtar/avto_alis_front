@@ -216,36 +216,54 @@ export default function ProfilePage() {
         return;
       }
       const f = data.fields || {};
-      setVehicleForm((prev) => ({
-        ...prev,
-        passportImageFront: data.passportImageFront || prev.passportImageFront,
-        passportImageBack: data.passportImageBack || prev.passportImageBack,
-        // AI dəyərləri varsa, formdakı boş sahələri doldur (kullanıcının
-        // əllə dəyişdiyi dolğun sahələri silmə).
-        brand: prev.brand || f.brand || "",
-        model: prev.model || f.model || "",
-        year: prev.year || (f.year ? String(f.year) : ""),
-        registrationNumber: f.registrationNumber || "",
-        registrationDate: f.registrationDate || "",
-        ownerName: f.ownerName || "",
-        ownerAddress: f.ownerAddress || "",
-        ownershipType: f.ownershipType || "",
-        validUntil: f.validUntil || "",
-        cardSerial: f.cardSerial || "",
-        vehicleType: f.vehicleType || "",
-        engineNumber: f.engineNumber || "",
-        bodyNumber: f.bodyNumber || "",
-        chassisNumber: f.chassisNumber || "",
-        color: f.color || "",
-        maxMass: f.maxMass || "",
-        unloadedMass: f.unloadedMass || "",
-        seatCount: f.seatCount ? String(f.seatCount) : "",
-        engineCapacity: f.engineCapacity || "",
-        issuedBy: f.issuedBy || "",
-        specialMarks: f.specialMarks || "",
-        aiRaw: data.aiRaw,
-        aiVerified: !!data.ok,
-      }));
+      // Texniki pasport rəsmi sənəddir — onun məzmunu kullanıcının manual
+      // yazdığından üstündür. Pasportdan oxunan hər sahə formada üzərinə
+      // yazılır; kullanıcı istəsə sonra redaktə edə bilər. Pasportda boş
+      // qalan (AI null qaytaran) sahələrdə kullanıcının yazdığı saxlanılır.
+      const overridden: string[] = [];
+      const overrideStr = (key: string, fromAI: string | null | undefined, prev: string): string => {
+        const v = (fromAI ?? "").toString().trim();
+        if (v && v !== prev) overridden.push(key);
+        return v || prev;
+      };
+      setVehicleForm((prev) => {
+        const newBrand = overrideStr("Marka", f.brand, prev.brand);
+        const newModel = overrideStr("Model", f.model, prev.model);
+        const newYear = overrideStr("İl", f.year ? String(f.year) : null, prev.year);
+        return {
+          ...prev,
+          passportImageFront: data.passportImageFront || prev.passportImageFront,
+          passportImageBack: data.passportImageBack || prev.passportImageBack,
+          brand: newBrand,
+          model: newModel,
+          year: newYear,
+          registrationNumber: f.registrationNumber || prev.registrationNumber || "",
+          registrationDate: f.registrationDate || prev.registrationDate || "",
+          ownerName: f.ownerName || prev.ownerName || "",
+          ownerAddress: f.ownerAddress || prev.ownerAddress || "",
+          ownershipType: f.ownershipType || prev.ownershipType || "",
+          validUntil: f.validUntil || prev.validUntil || "",
+          cardSerial: f.cardSerial || prev.cardSerial || "",
+          vehicleType: f.vehicleType || prev.vehicleType || "",
+          engineNumber: f.engineNumber || prev.engineNumber || "",
+          bodyNumber: f.bodyNumber || prev.bodyNumber || "",
+          chassisNumber: f.chassisNumber || prev.chassisNumber || "",
+          color: f.color || prev.color || "",
+          maxMass: f.maxMass || prev.maxMass || "",
+          unloadedMass: f.unloadedMass || prev.unloadedMass || "",
+          seatCount: f.seatCount ? String(f.seatCount) : prev.seatCount || "",
+          engineCapacity: f.engineCapacity || prev.engineCapacity || "",
+          issuedBy: f.issuedBy || prev.issuedBy || "",
+          specialMarks: f.specialMarks || prev.specialMarks || "",
+          aiRaw: data.aiRaw,
+          aiVerified: !!data.ok,
+        };
+      });
+      // Marka/model/il dəyişikliyi varsa kullanıcıya bildiriş ver — bu sahələr
+      // dropdown/select kimi başqa axında doldurulduğundan, dəyişiklik vacibdir.
+      if (overridden.length > 0) {
+        toast(`Pasportdakı dəyərə uyğunlaşdırıldı: ${overridden.join(", ")}`, "success");
+      }
       if (!data.ok && data.error) {
         setExtractError(`AI xəbərdarlığı: ${data.error}. Sahələri əllə yoxlayın və düzəldin.`);
       }

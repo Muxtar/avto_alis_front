@@ -116,6 +116,14 @@ export default function CompleteProfilePage() {
         return;
       }
       const f = data.fields || {};
+      // Pasport sənəddir — onun məzmunu kullanıcının yazdığından üstündür.
+      // Pasportdan oxunan hər sahə formada üzərinə yazılır.
+      const overridden: string[] = [];
+      const ovr = (key: string, fromAI: string | null | undefined, prev: string): string => {
+        const v = (fromAI ?? "").toString().trim();
+        if (v && v !== prev) overridden.push(key);
+        return v || prev;
+      };
       setVehicles((prev) => {
         const copy = [...prev];
         const cur = copy[i];
@@ -123,27 +131,27 @@ export default function CompleteProfilePage() {
           ...cur,
           passportImageFront: data.passportImageFront || cur.passportImageFront,
           passportImageBack: data.passportImageBack || cur.passportImageBack,
-          brand: cur.brand || f.brand || "",
-          model: cur.model || f.model || "",
-          year: cur.year || (f.year ? String(f.year) : ""),
-          registrationNumber: f.registrationNumber || "",
-          registrationDate: f.registrationDate || "",
-          ownerName: f.ownerName || "",
-          ownerAddress: f.ownerAddress || "",
-          ownershipType: f.ownershipType || "",
-          validUntil: f.validUntil || "",
-          cardSerial: f.cardSerial || "",
-          vehicleType: f.vehicleType || "",
-          engineNumber: f.engineNumber || "",
-          bodyNumber: f.bodyNumber || "",
-          chassisNumber: f.chassisNumber || "",
-          color: f.color || "",
-          maxMass: f.maxMass || "",
-          unloadedMass: f.unloadedMass || "",
-          seatCount: f.seatCount ? String(f.seatCount) : "",
-          engineCapacity: f.engineCapacity || "",
-          issuedBy: f.issuedBy || "",
-          specialMarks: f.specialMarks || "",
+          brand: ovr("Marka", f.brand, cur.brand),
+          model: ovr("Model", f.model, cur.model),
+          year: ovr("İl", f.year ? String(f.year) : null, cur.year),
+          registrationNumber: f.registrationNumber || cur.registrationNumber || "",
+          registrationDate: f.registrationDate || cur.registrationDate || "",
+          ownerName: f.ownerName || cur.ownerName || "",
+          ownerAddress: f.ownerAddress || cur.ownerAddress || "",
+          ownershipType: f.ownershipType || cur.ownershipType || "",
+          validUntil: f.validUntil || cur.validUntil || "",
+          cardSerial: f.cardSerial || cur.cardSerial || "",
+          vehicleType: f.vehicleType || cur.vehicleType || "",
+          engineNumber: f.engineNumber || cur.engineNumber || "",
+          bodyNumber: f.bodyNumber || cur.bodyNumber || "",
+          chassisNumber: f.chassisNumber || cur.chassisNumber || "",
+          color: f.color || cur.color || "",
+          maxMass: f.maxMass || cur.maxMass || "",
+          unloadedMass: f.unloadedMass || cur.unloadedMass || "",
+          seatCount: f.seatCount ? String(f.seatCount) : cur.seatCount || "",
+          engineCapacity: f.engineCapacity || cur.engineCapacity || "",
+          issuedBy: f.issuedBy || cur.issuedBy || "",
+          specialMarks: f.specialMarks || cur.specialMarks || "",
           aiRaw: data.aiRaw,
           aiVerified: !!data.ok,
           extractLoading: false,
@@ -151,6 +159,9 @@ export default function CompleteProfilePage() {
         };
         return copy;
       });
+      if (overridden.length > 0) {
+        toast(`Avtomobil #${i + 1}: pasportdakı dəyərə uyğunlaşdırıldı — ${overridden.join(", ")}`, "success");
+      }
     } catch (err: any) {
       updateVehicleField(i, { extractLoading: false, extractError: err?.message || "Şəkil yüklənmədi" });
     }

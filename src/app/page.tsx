@@ -5,17 +5,13 @@ import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
-import CourierLoginForm from "@/components/CourierLoginForm";
 import { API } from "@/lib/api";
-
-type Mode = "phone" | "courier";
 
 export default function Home() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const router = useRouter();
   const { isLoggedIn, authLoading } = useAuth();
-  const [mode, setMode] = useState<Mode>("phone");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -75,67 +71,37 @@ export default function Home() {
           <p className="text-muted text-sm sm:text-base">{t("loginWithPhoneSubtitle")}</p>
         </div>
 
-        {/* Mode switch */}
-        <div className="grid grid-cols-2 gap-2 mb-5 sm:mb-6 p-1 bg-input-bg border border-input-border rounded-2xl">
-          <button
-            type="button"
-            onClick={() => setMode("phone")}
-            className={`py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              mode === "phone"
-                ? "brand-gradient text-white shadow-md shadow-orange-500/25"
-                : "text-muted hover:text-foreground"
-            }`}
-          >
-            {t("userLoginTab")}
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode("courier")}
-            className={`py-2.5 rounded-xl text-sm font-semibold transition-all ${
-              mode === "courier"
-                ? "brand-gradient text-white shadow-md shadow-orange-500/25"
-                : "text-muted hover:text-foreground"
-            }`}
-          >
-            {t("courierTab")}
-          </button>
-        </div>
-
         <div className="surface p-5 sm:p-8 transition-colors duration-300">
-          {mode === "phone" ? (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div>
-                <label className="block text-sm font-medium mb-2">{t("phone")}</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder={t("phonePlaceholder")}
-                  className="w-full px-4 py-3 input-base placeholder-muted-foreground"
-                  autoFocus
-                  required
-                />
-                <p className="text-xs text-muted mt-2">{t("loginWithPhoneHint")}</p>
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium mb-2">{t("phone")}</label>
+              <input
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder={t("phonePlaceholder")}
+                className="w-full px-4 py-3 input-base placeholder-muted-foreground"
+                autoFocus
+                required
+              />
+              <p className="text-xs text-muted mt-2">{t("loginWithPhoneHint")}</p>
+            </div>
 
-              <button
-                type="submit"
-                disabled={loading || !phone.trim()}
-                className="w-full py-3.5 btn-primary text-base"
-              >
-                {loading ? t("submitting") : t("sendCodeButton")}
-              </button>
+            <button
+              type="submit"
+              disabled={loading || !phone.trim()}
+              className="w-full py-3.5 btn-primary text-base"
+            >
+              {loading ? t("submitting") : t("sendCodeButton")}
+            </button>
 
-              <p className="text-center text-xs text-muted pt-1">
-                {t("browseWithoutLogin")}{" "}
-                <Link href="/marketplace" className="text-orange-500 hover:text-orange-400 font-semibold">
-                  {t("marketplace")}
-                </Link>
-              </p>
-            </form>
-          ) : (
-            <CourierLoginForm />
-          )}
+            <p className="text-center text-xs text-muted pt-1">
+              {t("browseWithoutLogin")}{" "}
+              <Link href="/marketplace" className="text-orange-500 hover:text-orange-400 font-semibold">
+                {t("marketplace")}
+              </Link>
+            </p>
+          </form>
         </div>
       </div>
     </div>
