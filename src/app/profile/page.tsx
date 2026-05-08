@@ -19,9 +19,55 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({ name: "" });
 
-  // Vehicles state
-  const [vehicleForm, setVehicleForm] = useState<{ id: number | null; brand: string; model: string; year: string; passportImage: File | null }>({ id: null, brand: "", model: "", year: "", passportImage: null });
+  // Vehicles state — iki-addımlı flow:
+  //   1) extract: kullanıcı şəkilləri yükləyir, AI sahələri qaytarır
+  //   2) save:    kullanıcı sahələri redaktə edir, "Yadda saxla"-ya basır
+  type VehicleFormState = {
+    id: number | null;
+    brand: string;
+    model: string;
+    year: string;
+    // Backend-ə artıq yüklənmiş fayl adları (extract-dən gəlir).
+    passportImageFront: string | null;
+    passportImageBack: string | null;
+    // AI çıxarışı + redaktə edilmiş sahələr.
+    registrationNumber: string;
+    registrationDate: string;
+    ownerName: string;
+    ownerAddress: string;
+    ownershipType: string;
+    validUntil: string;
+    cardSerial: string;
+    vehicleType: string;
+    engineNumber: string;
+    bodyNumber: string;
+    chassisNumber: string;
+    color: string;
+    maxMass: string;
+    unloadedMass: string;
+    seatCount: string;
+    engineCapacity: string;
+    issuedBy: string;
+    specialMarks: string;
+    aiRaw: any;
+    aiVerified: boolean;
+  };
+  const emptyVehicleState: VehicleFormState = {
+    id: null, brand: "", model: "", year: "",
+    passportImageFront: null, passportImageBack: null,
+    registrationNumber: "", registrationDate: "", ownerName: "", ownerAddress: "",
+    ownershipType: "", validUntil: "", cardSerial: "", vehicleType: "",
+    engineNumber: "", bodyNumber: "", chassisNumber: "", color: "",
+    maxMass: "", unloadedMass: "", seatCount: "", engineCapacity: "",
+    issuedBy: "", specialMarks: "", aiRaw: null, aiVerified: false,
+  };
+  const [vehicleForm, setVehicleForm] = useState<VehicleFormState>(emptyVehicleState);
   const [showVehicleForm, setShowVehicleForm] = useState(false);
+  const [extractLoading, setExtractLoading] = useState<"front" | "back" | "both" | null>(null);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  // Lokal preview URL-ləri (kullanıcı upload-dan əvvəl seçdikdə brauzerdə göstərmək üçün)
+  const [pendingFront, setPendingFront] = useState<{ file: File; preview: string } | null>(null);
+  const [pendingBack, setPendingBack] = useState<{ file: File; preview: string } | null>(null);
 
   // Workplaces state
   const [workplaceForm, setWorkplaceForm] = useState<{ id: number | null; name: string; address: string }>({ id: null, name: "", address: "" });
@@ -106,29 +152,166 @@ export default function ProfilePage() {
 
   // ====== VEHICLES ======
   const startAddVehicle = () => {
-    setVehicleForm({ id: null, brand: "", model: "", year: "", passportImage: null });
+    setVehicleForm({ ...emptyVehicleState });
+    setPendingFront(null); setPendingBack(null); setExtractError(null);
     setShowVehicleForm(true);
   };
   const startEditVehicle = (v: any) => {
-    setVehicleForm({ id: v.id, brand: v.brand, model: v.model, year: String(v.year), passportImage: null });
+    setVehicleForm({
+      id: v.id,
+      brand: v.brand || "",
+      model: v.model || "",
+      year: v.year ? String(v.year) : "",
+      passportImageFront: v.passportImageFront || null,
+      passportImageBack: v.passportImageBack || null,
+      registrationNumber: v.registrationNumber || "",
+      registrationDate: v.registrationDate || "",
+      ownerName: v.ownerName || "",
+      ownerAddress: v.ownerAddress || "",
+      ownershipType: v.ownershipType || "",
+      validUntil: v.validUntil || "",
+      cardSerial: v.cardSerial || "",
+      vehicleType: v.vehicleType || "",
+      engineNumber: v.engineNumber || "",
+      bodyNumber: v.bodyNumber || "",
+      chassisNumber: v.chassisNumber || "",
+      color: v.color || "",
+      maxMass: v.maxMass || "",
+      unloadedMass: v.unloadedMass || "",
+      seatCount: v.seatCount ? String(v.seatCount) : "",
+      engineCapacity: v.engineCapacity || "",
+      issuedBy: v.issuedBy || "",
+      specialMarks: v.specialMarks || "",
+      aiRaw: null,
+      aiVerified: false,
+    });
+    setPendingFront(null); setPendingBack(null); setExtractError(null);
     setShowVehicleForm(true);
   };
-  const cancelVehicleForm = () => { setShowVehicleForm(false); setVehicleForm({ id: null, brand: "", model: "", year: "", passportImage: null }); };
+  const cancelVehicleForm = () => {
+    setShowVehicleForm(false);
+    setVehicleForm({ ...emptyVehicleState });
+    setPendingFront(null); setPendingBack(null); setExtractError(null);
+  };
+
+  // Hər iki şəkil seçildikdə avtomatik AI çağırışı.
+  // Tək şəkil dəyişərkən sadəcə preview göstər, kullanıcı ikincisini də
+  // seçəndə AI işə düşür.
+  const tryRunExtract = async (frontFile: File | null, backFile: File | null) => {
+    if (!frontFile || !backFile) return;
+    setExtractLoading("both"); setExtractError(null);
+    const fd = new FormData();
+    fd.append("passportImageFront", frontFile);
+    fd.append("passportImageBack", backFile);
+    try {
+      const res = await fetch(`${API}/me/vehicles/extract`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!data.success) {
+        setExtractError(data.message || "Şəkillər oxunmadı");
+        return;
+      }
+      const f = data.fields || {};
+      setVehicleForm((prev) => ({
+        ...prev,
+        passportImageFront: data.passportImageFront || prev.passportImageFront,
+        passportImageBack: data.passportImageBack || prev.passportImageBack,
+        // AI dəyərləri varsa, formdakı boş sahələri doldur (kullanıcının
+        // əllə dəyişdiyi dolğun sahələri silmə).
+        brand: prev.brand || f.brand || "",
+        model: prev.model || f.model || "",
+        year: prev.year || (f.year ? String(f.year) : ""),
+        registrationNumber: f.registrationNumber || "",
+        registrationDate: f.registrationDate || "",
+        ownerName: f.ownerName || "",
+        ownerAddress: f.ownerAddress || "",
+        ownershipType: f.ownershipType || "",
+        validUntil: f.validUntil || "",
+        cardSerial: f.cardSerial || "",
+        vehicleType: f.vehicleType || "",
+        engineNumber: f.engineNumber || "",
+        bodyNumber: f.bodyNumber || "",
+        chassisNumber: f.chassisNumber || "",
+        color: f.color || "",
+        maxMass: f.maxMass || "",
+        unloadedMass: f.unloadedMass || "",
+        seatCount: f.seatCount ? String(f.seatCount) : "",
+        engineCapacity: f.engineCapacity || "",
+        issuedBy: f.issuedBy || "",
+        specialMarks: f.specialMarks || "",
+        aiRaw: data.aiRaw,
+        aiVerified: !!data.ok,
+      }));
+      if (!data.ok && data.error) {
+        setExtractError(`AI xəbərdarlığı: ${data.error}. Sahələri əllə yoxlayın və düzəldin.`);
+      }
+    } catch (err: any) {
+      setExtractError(err?.message || "Şəkil yüklənmədi");
+    } finally {
+      setExtractLoading(null);
+    }
+  };
+
+  const onPickPassportFile = (side: "front" | "back", file: File | null) => {
+    if (!file) {
+      if (side === "front") setPendingFront(null);
+      else setPendingBack(null);
+      return;
+    }
+    const preview = URL.createObjectURL(file);
+    if (side === "front") {
+      setPendingFront({ file, preview });
+      tryRunExtract(file, pendingBack?.file || null);
+    } else {
+      setPendingBack({ file, preview });
+      tryRunExtract(pendingFront?.file || null, file);
+    }
+  };
+
   const submitVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!vehicleForm.brand || !vehicleForm.model || !vehicleForm.year) { toast(t('error'), 'error'); return; }
-    if (!vehicleForm.id && !vehicleForm.passportImage) { toast('Texniki pasport şəkli tələb olunur', 'error'); return; }
-    const fd = new FormData();
-    fd.append('brand', vehicleForm.brand);
-    fd.append('model', vehicleForm.model);
-    fd.append('year', vehicleForm.year);
-    if (vehicleForm.passportImage) fd.append('passportImage', vehicleForm.passportImage);
+    if (!vehicleForm.brand || !vehicleForm.model || !vehicleForm.year) {
+      toast('Marka, model və il tələb olunur', 'error'); return;
+    }
+    if (!vehicleForm.passportImageFront || !vehicleForm.passportImageBack) {
+      toast('Əvvəlcə pasportun ön və arxa şəkillərini yükləyin', 'error'); return;
+    }
     const url = vehicleForm.id ? `${API}/me/vehicles/${vehicleForm.id}` : `${API}/me/vehicles`;
     const method = vehicleForm.id ? 'PUT' : 'POST';
-    const res = await fetch(url, { method, headers: { Authorization: `Bearer ${token}` }, body: fd });
+    const body = {
+      brand: vehicleForm.brand,
+      model: vehicleForm.model,
+      year: vehicleForm.year,
+      passportImageFront: vehicleForm.passportImageFront,
+      passportImageBack: vehicleForm.passportImageBack,
+      registrationNumber: vehicleForm.registrationNumber,
+      registrationDate: vehicleForm.registrationDate,
+      ownerName: vehicleForm.ownerName,
+      ownerAddress: vehicleForm.ownerAddress,
+      ownershipType: vehicleForm.ownershipType,
+      validUntil: vehicleForm.validUntil,
+      cardSerial: vehicleForm.cardSerial,
+      vehicleType: vehicleForm.vehicleType,
+      engineNumber: vehicleForm.engineNumber,
+      bodyNumber: vehicleForm.bodyNumber,
+      chassisNumber: vehicleForm.chassisNumber,
+      color: vehicleForm.color,
+      maxMass: vehicleForm.maxMass,
+      unloadedMass: vehicleForm.unloadedMass,
+      seatCount: vehicleForm.seatCount,
+      engineCapacity: vehicleForm.engineCapacity,
+      issuedBy: vehicleForm.issuedBy,
+      specialMarks: vehicleForm.specialMarks,
+      aiRaw: vehicleForm.aiRaw,
+      aiVerified: vehicleForm.aiVerified,
+    };
+    const res = await fetch(url, { method, headers, body: JSON.stringify(body) });
     const data = await res.json();
     if (data.success) {
-      toast(vehicleForm.id ? t('profileUpdated') : t('addedToCart'), 'success');
+      toast(vehicleForm.id ? t('profileUpdated') : 'Avtomobil əlavə edildi', 'success');
       cancelVehicleForm();
       refreshProfile();
     } else {
@@ -320,18 +503,103 @@ export default function ProfilePage() {
           </div>
 
           {showVehicleForm && (
-            <form onSubmit={submitVehicle} className="bg-input-bg/50 border border-input-border rounded-xl p-4 mb-4 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <input value={vehicleForm.brand} onChange={(e) => setVehicleForm({ ...vehicleForm, brand: e.target.value })} placeholder="Marka (BMW, Mercedes...)" className={inputCls} required />
-                <input value={vehicleForm.model} onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })} placeholder="Model (E60, W211...)" className={inputCls} required />
-                <input type="number" min="1900" max={new Date().getFullYear() + 1} value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} placeholder="İl" className={inputCls} required />
-              </div>
+            <form onSubmit={submitVehicle} className="bg-input-bg/50 border border-input-border rounded-xl p-4 mb-4 space-y-4">
+              {/* STEP 1 — şəkillər */}
               <div>
-                <label className="block text-xs font-medium text-muted mb-1">Texniki pasport şəkli {vehicleForm.id ? "(dəyişmək üçün yenisini seç)" : ""}</label>
-                <input type="file" accept="image/*" onChange={(e) => setVehicleForm({ ...vehicleForm, passportImage: e.target.files?.[0] || null })} className="text-sm text-foreground" />
+                <p className="text-xs font-medium text-muted mb-2">
+                  1. Texniki pasportun şəkillərini yükləyin — AI hər sahəni avtomatik oxuyacaq
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  {(["front", "back"] as const).map((side) => {
+                    const pending = side === "front" ? pendingFront : pendingBack;
+                    const uploadedFilename = side === "front" ? vehicleForm.passportImageFront : vehicleForm.passportImageBack;
+                    const previewSrc = pending?.preview
+                      || (uploadedFilename ? `${UPLOADS}/${uploadedFilename}` : null);
+                    const sideLabel = side === "front" ? "Ön hissə" : "Arxa hissə";
+                    return (
+                      <div key={side}>
+                        <p className="text-[11px] text-muted-foreground mb-1">{sideLabel}</p>
+                        {previewSrc ? (
+                          <div className="relative group">
+                            <img src={previewSrc} alt={sideLabel} className="w-full h-32 object-cover rounded-xl border border-input-border" />
+                            <button
+                              type="button"
+                              onClick={() => onPickPassportFile(side, null)}
+                              className="absolute top-1.5 right-1.5 p-1 bg-red-500/80 rounded-lg text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                            >×</button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-input-border rounded-xl cursor-pointer hover:border-orange-500/30 text-xs text-muted bg-input-bg/30">
+                            <span>{sideLabel} şəkli</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => onPickPassportFile(side, e.target.files?.[0] || null)}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {extractLoading === "both" && (
+                  <p className="text-[11px] text-orange-500 mt-2 flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+                      <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" />
+                    </svg>
+                    AI şəkilləri oxuyur, gözləyin...
+                  </p>
+                )}
+                {extractError && (
+                  <p className="text-[11px] text-red-500 mt-2">{extractError}</p>
+                )}
+                {vehicleForm.aiVerified && !extractLoading && !extractError && (
+                  <p className="text-[11px] text-green-500 mt-2">✓ AI sahələri oxudu — aşağıda yoxlayıb düzəldə bilərsiniz</p>
+                )}
               </div>
-              <div className="flex gap-2">
-                <button type="submit" className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">{vehicleForm.id ? t("adminSave") : "Əlavə et"}</button>
+
+              {/* STEP 2 — redaktə edilə bilən sahələr */}
+              <div>
+                <p className="text-xs font-medium text-muted mb-2">
+                  2. Sahələri yoxlayın və lazım olarsa düzəldin, sonra yadda saxlayın
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <input value={vehicleForm.brand} onChange={(e) => setVehicleForm({ ...vehicleForm, brand: e.target.value })} placeholder="Marka (D)" className={inputCls} required />
+                  <input value={vehicleForm.model} onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })} placeholder="Model (D.2)" className={inputCls} required />
+                  <input type="number" min="1900" max={new Date().getFullYear() + 1} value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} placeholder="İl (B.2)" className={inputCls} required />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                  <input value={vehicleForm.registrationNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, registrationNumber: e.target.value })} placeholder="A — Qeydiyyat nişanı (77NP518)" className={inputCls} />
+                  <input value={vehicleForm.registrationDate} onChange={(e) => setVehicleForm({ ...vehicleForm, registrationDate: e.target.value })} placeholder="B.1 — Qeydiyyat tarixi" className={inputCls} />
+                  <input value={vehicleForm.ownerName} onChange={(e) => setVehicleForm({ ...vehicleForm, ownerName: e.target.value })} placeholder="C.1 — Mülkiyyətçi" className={inputCls} />
+                  <input value={vehicleForm.ownerAddress} onChange={(e) => setVehicleForm({ ...vehicleForm, ownerAddress: e.target.value })} placeholder="C.2 — Ünvan" className={inputCls} />
+                  <input value={vehicleForm.ownershipType} onChange={(e) => setVehicleForm({ ...vehicleForm, ownershipType: e.target.value })} placeholder="C.3 — Mülkiyyət növü" className={inputCls} />
+                  <input value={vehicleForm.vehicleType} onChange={(e) => setVehicleForm({ ...vehicleForm, vehicleType: e.target.value })} placeholder="D.3 — Tip (MİNİK)" className={inputCls} />
+                  <input value={vehicleForm.engineNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, engineNumber: e.target.value })} placeholder="E.1 — Mühərrik nömrəsi" className={inputCls} />
+                  <input value={vehicleForm.bodyNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, bodyNumber: e.target.value })} placeholder="E.2 — Ban / VIN" className={inputCls} />
+                  <input value={vehicleForm.chassisNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, chassisNumber: e.target.value })} placeholder="E.3 — Şassi nömrəsi" className={inputCls} />
+                  <input value={vehicleForm.color} onChange={(e) => setVehicleForm({ ...vehicleForm, color: e.target.value })} placeholder="E.4 — Rəng" className={inputCls} />
+                  <input value={vehicleForm.maxMass} onChange={(e) => setVehicleForm({ ...vehicleForm, maxMass: e.target.value })} placeholder="F.1 — Maks. kütlə" className={inputCls} />
+                  <input value={vehicleForm.unloadedMass} onChange={(e) => setVehicleForm({ ...vehicleForm, unloadedMass: e.target.value })} placeholder="F.2 — Yüksüz kütlə" className={inputCls} />
+                  <input type="number" min="1" max="20" value={vehicleForm.seatCount} onChange={(e) => setVehicleForm({ ...vehicleForm, seatCount: e.target.value })} placeholder="F.3 — Oturacaq sayı" className={inputCls} />
+                  <input value={vehicleForm.engineCapacity} onChange={(e) => setVehicleForm({ ...vehicleForm, engineCapacity: e.target.value })} placeholder="G — Mühərrik həcmi (sm³)" className={inputCls} />
+                  <input value={vehicleForm.validUntil} onChange={(e) => setVehicleForm({ ...vehicleForm, validUntil: e.target.value })} placeholder="H — Etibarlıdır" className={inputCls} />
+                  <input value={vehicleForm.cardSerial} onChange={(e) => setVehicleForm({ ...vehicleForm, cardSerial: e.target.value })} placeholder="Kart seriyası (BB667834)" className={inputCls} />
+                  <input value={vehicleForm.issuedBy} onChange={(e) => setVehicleForm({ ...vehicleForm, issuedBy: e.target.value })} placeholder="Verilib" className={inputCls} />
+                  <input value={vehicleForm.specialMarks} onChange={(e) => setVehicleForm({ ...vehicleForm, specialMarks: e.target.value })} placeholder="Xüsusi qeydlər" className={inputCls} />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2 border-t border-input-border/50">
+                <button
+                  type="submit"
+                  disabled={!vehicleForm.passportImageFront || !vehicleForm.passportImageBack || extractLoading !== null}
+                  className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {vehicleForm.id ? t("adminSave") : "Yadda saxla"}
+                </button>
                 <button type="button" onClick={cancelVehicleForm} className="px-5 py-2 bg-input-bg border border-input-border rounded-xl text-sm">{t("adminCancel")}</button>
               </div>
             </form>
@@ -341,27 +609,66 @@ export default function ProfilePage() {
             <p className="text-muted text-sm text-center py-4">Hələ avtomobil əlavə etməmisiniz.</p>
           ) : (
             <div className="space-y-2">
-              {profile.vehicles?.map((v: any) => (
-                <div key={v.id} className="flex items-center justify-between gap-3 p-3 bg-input-bg/40 border border-input-border/60 rounded-xl">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0">
-                      <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25" /></svg>
+              {profile.vehicles?.map((v: any) => {
+                const passportRows = ([
+                  ['A — Qeydiyyat nişanı', v.registrationNumber],
+                  ['B.1 — Qeydiyyat tarixi', v.registrationDate],
+                  ['B.2 — İstehsal ili', v.manufactureYear],
+                  ['C.1 — Mülkiyyətçi', v.ownerName],
+                  ['C.2 — Ünvan', v.ownerAddress],
+                  ['C.3 — Mülkiyyət növü', v.ownershipType],
+                  ['D.3 — Tip', v.vehicleType],
+                  ['E.1 — Mühərrik №', v.engineNumber],
+                  ['E.2 — Ban / VIN', v.bodyNumber],
+                  ['E.3 — Şassi №', v.chassisNumber],
+                  ['E.4 — Rəng', v.color],
+                  ['F.1 — Maks. kütlə', v.maxMass],
+                  ['F.2 — Yüksüz kütlə', v.unloadedMass],
+                  ['F.3 — Oturacaq sayı', v.seatCount],
+                  ['G — Mühərrik həcmi', v.engineCapacity],
+                  ['H — Etibarlıdır', v.validUntil],
+                  ['Verilib', v.issuedBy],
+                  ['Kart seriyası', v.cardSerial],
+                ] as Array<[string, string | number | null | undefined]>).filter(([, val]) => val !== null && val !== undefined && val !== '');
+                return (
+                  <div key={v.id} className="p-3 bg-input-bg/40 border border-input-border/60 rounded-xl">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0">
+                          <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25" /></svg>
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{v.brand} {v.model}</p>
+                          <p className="text-muted text-xs">📅 {v.year}{v.registrationNumber ? ` · 🚗 ${v.registrationNumber}` : ''}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        <button onClick={() => startEditVehicle(v)} className="p-2 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-colors" title={t("adminEdit")}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        </button>
+                        <button onClick={() => deleteVehicle(v.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors" title={t("adminDelete")}>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                        </button>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{v.brand} {v.model}</p>
-                      <p className="text-muted text-xs">📅 {v.year}</p>
-                    </div>
+                    {passportRows.length > 0 && (
+                      <details className="mt-2">
+                        <summary className="text-xs text-orange-500 cursor-pointer hover:text-orange-400">
+                          Texniki pasport sahələri ({passportRows.length})
+                        </summary>
+                        <dl className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                          {passportRows.map(([label, val]) => (
+                            <div key={label} className="flex justify-between gap-2 border-b border-input-border/30 py-1">
+                              <dt className="text-muted shrink-0">{label}</dt>
+                              <dd className="text-foreground text-right truncate">{String(val)}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      </details>
+                    )}
                   </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    <button onClick={() => startEditVehicle(v)} className="p-2 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-colors" title={t("adminEdit")}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    </button>
-                    <button onClick={() => deleteVehicle(v.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors" title={t("adminDelete")}>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

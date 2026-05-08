@@ -10,8 +10,10 @@ interface Vehicle {
   brand: string;
   model: string;
   year: string;
-  passportImage: File | null;
-  previewUrl: string;
+  passportFront: File | null;
+  passportBack: File | null;
+  previewFront: string;
+  previewBack: string;
 }
 
 export default function CarOwnerForm() {
@@ -21,13 +23,16 @@ export default function CarOwnerForm() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [vehicles, setVehicles] = useState<Vehicle[]>([
-    { brand: "", model: "", year: "", passportImage: null, previewUrl: "" },
+    { brand: "", model: "", year: "", passportFront: null, passportBack: null, previewFront: "", previewBack: "" },
   ]);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
   const addVehicle = () => {
-    setVehicles([...vehicles, { brand: "", model: "", year: "", passportImage: null, previewUrl: "" }]);
+    setVehicles([
+      ...vehicles,
+      { brand: "", model: "", year: "", passportFront: null, passportBack: null, previewFront: "", previewBack: "" },
+    ]);
   };
 
   const removeVehicle = (index: number) => {
@@ -38,12 +43,12 @@ export default function CarOwnerForm() {
 
   const updateVehicle = (index: number, field: keyof Vehicle, value: any) => {
     const updated = [...vehicles];
-    if (field === "passportImage" && value instanceof File) {
-      updated[index].passportImage = value;
-      updated[index].previewUrl = URL.createObjectURL(value);
+    if ((field === "passportFront" || field === "passportBack") && value instanceof File) {
+      updated[index][field] = value;
+      const previewKey = field === "passportFront" ? "previewFront" : "previewBack";
+      updated[index][previewKey] = URL.createObjectURL(value);
     } else {
       (updated[index] as any)[field] = value;
-      // Marka degisince modeli sifirla
       if (field === "brand") {
         updated[index].model = "";
       }
@@ -51,8 +56,29 @@ export default function CarOwnerForm() {
     setVehicles(updated);
   };
 
+  const clearImage = (index: number, side: "front" | "back") => {
+    const updated = [...vehicles];
+    if (side === "front") {
+      updated[index].passportFront = null;
+      updated[index].previewFront = "";
+    } else {
+      updated[index].passportBack = null;
+      updated[index].previewBack = "";
+    }
+    setVehicles(updated);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Hər avtomobil üçün ön + arxa şəkil tələb olunur.
+    for (let i = 0; i < vehicles.length; i++) {
+      if (!vehicles[i].passportFront || !vehicles[i].passportBack) {
+        toast(`Avtomobil #${i + 1}: texniki pasportun ön və arxa şəkilləri tələb olunur`, 'error');
+        return;
+      }
+    }
+
     setLoading(true);
 
     const formData = new FormData();
@@ -62,8 +88,11 @@ export default function CarOwnerForm() {
       "vehicles",
       JSON.stringify(vehicles.map((v) => ({ brand: v.brand, model: v.model, year: v.year })))
     );
+    // Index sırası vacibdir: backend `passportImagesFront[i]` və
+    // `passportImagesBack[i]`-i `vehicles[i]`-ə bağlayır.
     vehicles.forEach((v) => {
-      if (v.passportImage) formData.append("passportImages", v.passportImage);
+      if (v.passportFront) formData.append("passportImagesFront", v.passportFront);
+      if (v.passportBack) formData.append("passportImagesBack", v.passportBack);
     });
 
     try {
@@ -149,34 +178,51 @@ export default function CarOwnerForm() {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-muted mb-2">{t("passportPhoto")}</label>
-              {vehicle.previewUrl ? (
-                <div className="relative group">
-                  <img src={vehicle.previewUrl} alt="Texpassport" className="w-full h-48 object-cover rounded-xl border border-input-border" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updated = [...vehicles];
-                      updated[index].passportImage = null;
-                      updated[index].previewUrl = "";
-                      setVehicles(updated);
-                    }}
-                    className="absolute top-2 right-2 p-1.5 bg-red-500/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-white"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-input-border rounded-xl cursor-pointer hover:border-orange-500/30 transition-colors bg-input-bg/30">
-                  <svg className="w-8 h-8 text-muted-foreground mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
-                  </svg>
-                  <span className="text-sm text-muted-foreground">{t("uploadPhoto")}</span>
-                  <input type="file" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) updateVehicle(index, "passportImage", file); }} className="hidden" />
-                </label>
-              )}
+              <label className="block text-sm text-muted mb-2">
+                Texniki pasport şəkilləri (ön və arxa) — AI hər sətri avtomatik oxuyacaq
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {(["front", "back"] as const).map((side) => {
+                  const preview = side === "front" ? vehicle.previewFront : vehicle.previewBack;
+                  const fieldKey = side === "front" ? "passportFront" : "passportBack";
+                  const sideLabel = side === "front" ? "Ön hissə" : "Arxa hissə";
+                  return (
+                    <div key={side}>
+                      <p className="text-xs text-muted-foreground mb-1.5">{sideLabel}</p>
+                      {preview ? (
+                        <div className="relative group">
+                          <img src={preview} alt={sideLabel} className="w-full h-36 object-cover rounded-xl border border-input-border" />
+                          <button
+                            type="button"
+                            onClick={() => clearImage(index, side)}
+                            className="absolute top-2 right-2 p-1.5 bg-red-500/80 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-input-border rounded-xl cursor-pointer hover:border-orange-500/30 transition-colors bg-input-bg/30">
+                          <svg className="w-7 h-7 text-muted-foreground mb-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+                          </svg>
+                          <span className="text-xs text-muted-foreground text-center px-2">{sideLabel} şəkli</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) updateVehicle(index, fieldKey, file);
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         ))}
