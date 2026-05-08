@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
+import { rotateImageFile } from "@/lib/rotateImage";
 
 export default function ProfilePage() {
   const { t } = useLanguage();
@@ -271,6 +272,28 @@ export default function ProfilePage() {
     }
   };
 
+  // Şəkili 90° fırlat: yeni File yaradılır, preview dəyişir, sonra avtomatik
+  // yenidən extract çağırılır. Kullanıcı yan/tərs çəkilmiş şəkili düzəldə bilir.
+  const rotatePending = async (side: "front" | "back", direction: "left" | "right") => {
+    const cur = side === "front" ? pendingFront : pendingBack;
+    if (!cur) return;
+    setExtractError(null);
+    try {
+      const rotated = await rotateImageFile(cur.file, direction === "right" ? 90 : -90);
+      const preview = URL.createObjectURL(rotated);
+      const next = { file: rotated, preview };
+      if (side === "front") {
+        setPendingFront(next);
+        if (pendingBack) tryRunExtract(rotated, pendingBack.file);
+      } else {
+        setPendingBack(next);
+        if (pendingFront) tryRunExtract(pendingFront.file, rotated);
+      }
+    } catch (err: any) {
+      setExtractError(err?.message || "Şəkil fırlatıla bilmədi");
+    }
+  };
+
   const submitVehicle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!vehicleForm.brand || !vehicleForm.model || !vehicleForm.year) {
@@ -506,8 +529,11 @@ export default function ProfilePage() {
             <form onSubmit={submitVehicle} className="bg-input-bg/50 border border-input-border rounded-xl p-4 mb-4 space-y-4">
               {/* STEP 1 — şəkillər */}
               <div>
-                <p className="text-xs font-medium text-muted mb-2">
-                  1. Texniki pasportun şəkillərini yükləyin — AI hər sahəni avtomatik oxuyacaq
+                <p className="text-xs font-medium text-muted mb-1">
+                  1. Texniki pasportun şəkillərini yükləyin
+                </p>
+                <p className="text-[11px] text-muted-foreground mb-2">
+                  Şəkil yan və ya tərs çəkilibsə, alt-da görünən <span className="text-orange-500 font-medium">"Sola fırlat" / "Sağa fırlat"</span> düymələri ilə düz vəziyyətə gətirin — AI o zaman daha düzgün oxuyacaq.
                 </p>
                 <div className="grid grid-cols-2 gap-3">
                   {(["front", "back"] as const).map((side) => {
@@ -516,20 +542,51 @@ export default function ProfilePage() {
                     const previewSrc = pending?.preview
                       || (uploadedFilename ? `${UPLOADS}/${uploadedFilename}` : null);
                     const sideLabel = side === "front" ? "Ön hissə" : "Arxa hissə";
+                    const pendingSlot = side === "front" ? pendingFront : pendingBack;
                     return (
                       <div key={side}>
                         <p className="text-[11px] text-muted-foreground mb-1">{sideLabel}</p>
                         {previewSrc ? (
-                          <div className="relative group">
-                            <img src={previewSrc} alt={sideLabel} className="w-full h-32 object-cover rounded-xl border border-input-border" />
-                            <button
-                              type="button"
-                              onClick={() => onPickPassportFile(side, null)}
-                              className="absolute top-1.5 right-1.5 p-1 bg-red-500/80 rounded-lg text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                            >×</button>
+                          <div>
+                            <div className="relative">
+                              <img src={previewSrc} alt={sideLabel} className="w-full h-36 object-contain rounded-xl border border-input-border bg-input-bg/40" />
+                              <button
+                                type="button"
+                                onClick={() => onPickPassportFile(side, null)}
+                                className="absolute top-1.5 right-1.5 p-1 bg-red-500/80 rounded-lg text-white text-xs"
+                                title="Şəkili sil"
+                              >×</button>
+                            </div>
+                            {/* Rotation kontrolu yalnız hələ yüklənməmiş (pending) şəkillər üçün */}
+                            {pendingSlot && (
+                              <div className="flex gap-1.5 mt-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => rotatePending(side, "left")}
+                                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 rounded-lg text-[11px] font-medium transition-colors"
+                                  title="90° sola fırlat"
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                                  </svg>
+                                  Sola fırlat
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => rotatePending(side, "right")}
+                                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 rounded-lg text-[11px] font-medium transition-colors"
+                                  title="90° sağa fırlat"
+                                >
+                                  Sağa fırlat
+                                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         ) : (
-                          <label className="flex flex-col items-center justify-center h-32 border-2 border-dashed border-input-border rounded-xl cursor-pointer hover:border-orange-500/30 text-xs text-muted bg-input-bg/30">
+                          <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-input-border rounded-xl cursor-pointer hover:border-orange-500/30 text-xs text-muted bg-input-bg/30">
                             <span>{sideLabel} şəkli</span>
                             <input
                               type="file"

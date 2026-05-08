@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import { brandNames, getModels, years } from "@/lib/vehicleData";
+import { rotateImageFile } from "@/lib/rotateImage";
 
 type UserType = "CAR_OWNER" | "MECHANIC" | "PARTS_SELLER";
 
@@ -183,6 +184,29 @@ export default function CompleteProfilePage() {
     }, 0);
   };
 
+  // Multi-vehicle üçün rotation: hər avtomobilin öz pendingFront/Back-i var.
+  const rotateVehicleImage = async (i: number, side: "front" | "back", direction: "left" | "right") => {
+    const cur = vehicles[i];
+    const slot = side === "front" ? cur.pendingFront : cur.pendingBack;
+    if (!slot) return;
+    try {
+      const rotated = await rotateImageFile(slot.file, direction === "right" ? 90 : -90);
+      const preview = URL.createObjectURL(rotated);
+      setVehicles((prev) => {
+        const copy = [...prev];
+        copy[i] = side === "front"
+          ? { ...copy[i], pendingFront: { file: rotated, preview }, extractError: null }
+          : { ...copy[i], pendingBack: { file: rotated, preview }, extractError: null };
+        return copy;
+      });
+      const front = side === "front" ? rotated : cur.pendingFront?.file || null;
+      const back = side === "back" ? rotated : cur.pendingBack?.file || null;
+      if (front && back) runExtract(i, front, back);
+    } catch (err: any) {
+      updateVehicleField(i, { extractError: err?.message || "Şəkil fırlatıla bilmədi" });
+    }
+  };
+
   const addWorkplace = () => setWorkplaces([...workplaces, { name: "", address: "" }]);
   const removeWorkplace = (i: number) => workplaces.length > 1 && setWorkplaces(workplaces.filter((_, idx) => idx !== i));
   const updateWorkplace = (i: number, field: keyof Workplace, value: string) => {
@@ -320,8 +344,11 @@ export default function CompleteProfilePage() {
 
                   {/* STEP 1 — şəkillər */}
                   <div>
-                    <p className="text-xs font-medium text-muted mb-2">
+                    <p className="text-xs font-medium text-muted mb-1">
                       1. Texniki pasportun ön və arxa şəkillərini yükləyin
+                    </p>
+                    <p className="text-[10px] text-muted-foreground mb-2">
+                      Şəkil yan/tərs olsa, <span className="text-orange-500 font-medium">"Sola"/"Sağa"</span> düymələri ilə düzəldin — AI daha doğru oxuyacaq.
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       {(["front", "back"] as const).map((side) => {
@@ -331,12 +358,24 @@ export default function CompleteProfilePage() {
                           <div key={side}>
                             <p className="text-[10px] text-muted-foreground mb-1">{sideLabel}</p>
                             {pending ? (
-                              <div className="relative">
-                                <img src={pending.preview} className="w-full h-28 object-cover rounded-xl border border-input-border" />
-                                <button type="button" onClick={() => onPickFile(i, side, null)} className="absolute top-1 right-1 p-1 bg-red-500/80 rounded-lg text-white text-xs">×</button>
+                              <div>
+                                <div className="relative">
+                                  <img src={pending.preview} className="w-full h-32 object-contain rounded-xl border border-input-border bg-input-bg/40" />
+                                  <button type="button" onClick={() => onPickFile(i, side, null)} className="absolute top-1 right-1 p-1 bg-red-500/80 rounded-lg text-white text-xs" title="Sil">×</button>
+                                </div>
+                                <div className="flex gap-1 mt-1">
+                                  <button type="button" onClick={() => rotateVehicleImage(i, side, "left")} className="flex-1 flex items-center justify-center gap-1 py-1 px-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 rounded-md text-[10px] font-medium" title="90° sola fırlat">
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                                    Sola
+                                  </button>
+                                  <button type="button" onClick={() => rotateVehicleImage(i, side, "right")} className="flex-1 flex items-center justify-center gap-1 py-1 px-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 rounded-md text-[10px] font-medium" title="90° sağa fırlat">
+                                    Sağa
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" /></svg>
+                                  </button>
+                                </div>
                               </div>
                             ) : (
-                              <label className="flex items-center justify-center h-28 border-2 border-dashed border-input-border rounded-xl cursor-pointer hover:border-orange-500/30 text-xs text-muted">
+                              <label className="flex items-center justify-center h-32 border-2 border-dashed border-input-border rounded-xl cursor-pointer hover:border-orange-500/30 text-xs text-muted">
                                 {sideLabel} şəkli
                                 <input type="file" accept="image/*" className="hidden" onChange={(e) => onPickFile(i, side, e.target.files?.[0] || null)} />
                               </label>
