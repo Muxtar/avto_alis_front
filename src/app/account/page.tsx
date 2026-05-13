@@ -42,11 +42,21 @@ function AccountPageInner() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // User's saved default location — auto-fills city/location in new listings.
+  const [myLocation, setMyLocation] = useState<{ city: string; address: string }>({ city: "", address: "" });
 
   useEffect(() => {
     if (authLoading) return;
     if (!isLoggedIn) { router.push("/"); return; }
     fetchListings();
+    fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user) {
+          setMyLocation({ city: d.user.city || "", address: d.user.address || "" });
+        }
+      })
+      .catch(() => undefined);
   }, [isLoggedIn, authLoading]);
 
   const fetchListings = () => {
@@ -71,7 +81,7 @@ function AccountPageInner() {
 
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
-    setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: "", phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
+    setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "" });
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
     setImages([]);
     setImagePreviews([]);
@@ -290,6 +300,9 @@ function AccountPageInner() {
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("listingLocation")}</label>
                 <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder={t("listingLocation")} className={inputCls} />
+                {myLocation.address && form.location === myLocation.address && (
+                  <p className="text-[11px] text-muted mt-1">Profilinizdəki ünvandan götürüldü — istəsəniz dəyişə bilərsiniz.</p>
+                )}
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

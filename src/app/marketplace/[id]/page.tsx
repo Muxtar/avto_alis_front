@@ -8,6 +8,7 @@ import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
 import { countryLabel } from "@/lib/countries";
+import OrderMap from "@/components/OrderMapWrapper";
 
 
 export default function ListingDetailPage() {
@@ -408,13 +409,37 @@ export default function ListingDetailPage() {
               {showPhone ? (listing.phone || listing.user.phone) : maskPhone(listing.phone || listing.user.phone)}
             </button>
 
-            {listing.location && (
-              <div className="flex items-start gap-2 text-sm text-muted mb-4">
+            {(listing.location || listing.city || listing.user.city) && (
+              <div className="flex items-start gap-2 text-sm text-muted mb-3">
                 <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
                 </svg>
-                {listing.location}
+                <div className="flex-1">
+                  {(listing.city || listing.user.city) && (
+                    <Link
+                      href={`/locations/${encodeURIComponent(listing.city || listing.user.city)}`}
+                      className="font-medium text-foreground hover:text-orange-500 transition-colors"
+                    >
+                      {listing.city || listing.user.city}
+                    </Link>
+                  )}
+                  {listing.location && <p className="text-xs">{listing.location}</p>}
+                </div>
+              </div>
+            )}
+
+            {/* Mini-map: shows where the seller is located. Uses listing's own
+                lat/lng if set (e.g. workplace branch), otherwise falls back to
+                the seller's profile pin. */}
+            {(listing.user.latitude && listing.user.longitude) && (
+              <div className="mb-4">
+                <OrderMap
+                  sellerLat={listing.user.latitude}
+                  sellerLng={listing.user.longitude}
+                  sellerLabel={listing.user.name}
+                  height="180px"
+                />
               </div>
             )}
 

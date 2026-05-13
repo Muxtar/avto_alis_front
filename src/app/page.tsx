@@ -100,6 +100,10 @@ export default function Home() {
               <Link href="/marketplace" className="text-orange-500 hover:text-orange-400 font-semibold">
                 {t("marketplace")}
               </Link>
+              {" · "}
+              <Link href="/locations" className="text-orange-500 hover:text-orange-400 font-semibold">
+                Yer üzrə axtar
+              </Link>
             </p>
           </form>
         </div>

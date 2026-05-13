@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import { brandNames, getModels, years } from "@/lib/vehicleData";
 import { rotateImageFile } from "@/lib/rotateImage";
+import LocationPicker from "@/components/LocationPickerWrapper";
 
 type UserType = "CAR_OWNER" | "MECHANIC" | "PARTS_SELLER";
 
@@ -80,6 +81,9 @@ export default function CompleteProfilePage() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([newVehicle()]);
   const [workplaces, setWorkplaces] = useState<Workplace[]>([{ name: "", address: "" }]);
   const [loading, setLoading] = useState(false);
+  const [location, setLocation] = useState<{ city: string; address: string; latitude: number | null; longitude: number | null }>({
+    city: "", address: "", latitude: null, longitude: null,
+  });
 
   useEffect(() => {
     if (authLoading) return;
@@ -246,7 +250,14 @@ export default function CompleteProfilePage() {
 
     setLoading(true);
     try {
-      const body: any = { name: name.trim(), type };
+      const body: any = {
+        name: name.trim(),
+        type,
+        city: location.city || null,
+        address: location.address || null,
+        latitude: location.latitude,
+        longitude: location.longitude,
+      };
       if (type === "CAR_OWNER") {
         body.vehicles = vehicles.map((v) => ({
           brand: v.brand, model: v.model, year: v.year,
@@ -473,6 +484,23 @@ export default function CompleteProfilePage() {
               ))}
             </div>
           )}
+
+          <div className="space-y-3 pt-2 border-t border-input-border/40">
+            <div>
+              <h3 className="text-base font-semibold mb-1">Mənim yerim</h3>
+              <p className="text-xs text-muted">
+                Şəhəri seçin və xəritədə pin qoyaraq dəqiq yerinizi göstərin. Bu yer elanlarınızda görünəcək və alıcılar sizə daha asan çata biləcəklər.
+              </p>
+            </div>
+            <LocationPicker
+              city={location.city}
+              address={location.address}
+              latitude={location.latitude}
+              longitude={location.longitude}
+              onChange={setLocation}
+              height="300px"
+            />
+          </div>
 
           <button
             type="submit"

@@ -95,10 +95,11 @@ export default function InquiryChatbot() {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button — lifted above MobileBottomNav (~70px) on small
+          screens; back to bottom-6 on md+ where the bottom nav is hidden. */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg hover:scale-110 transition-transform flex items-center justify-center"
+        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg hover:scale-110 transition-transform flex items-center justify-center"
       >
         {open ? (
           <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -109,7 +110,7 @@ export default function InquiryChatbot() {
 
       {/* Chat Panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-[340px] h-[460px] bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-44 right-4 md:bottom-24 md:right-6 z-50 w-[calc(100vw-2rem)] max-w-[340px] h-[460px] max-h-[calc(100vh-12rem)] bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-gradient-to-r from-orange-500 to-red-600 px-4 py-3 text-white">
             <div className="font-bold text-sm">{t('chatbotTitle')}</div>

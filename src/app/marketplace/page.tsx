@@ -215,15 +215,28 @@ export default function MarketplacePage() {
               <h1 className="section-title">{t("marketplace")}</h1>
               <p className="text-muted text-xs sm:text-sm mt-0.5">{t("footerDesc")}</p>
             </div>
-            <Link
-              href={isLoggedIn ? "/account" : "/"}
-              className="hidden sm:inline-flex shrink-0 items-center gap-2 px-4 py-2.5 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25 whitespace-nowrap"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-              </svg>
-              {t("postNewListing")}
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/locations"
+                className="inline-flex shrink-0 items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-xs sm:text-sm font-semibold hover:bg-orange-500/10 hover:border-orange-500/30 hover:text-orange-500 transition-all whitespace-nowrap"
+                title="Yer üzrə axtar"
+              >
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                </svg>
+                <span className="hidden xs:inline">Yer üzrə</span>
+              </Link>
+              <Link
+                href={isLoggedIn ? "/account" : "/"}
+                className="hidden sm:inline-flex shrink-0 items-center gap-2 px-4 py-2.5 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25 whitespace-nowrap"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+                </svg>
+                {t("postNewListing")}
+              </Link>
+            </div>
           </div>
 
           {/* Search + Sort */}
