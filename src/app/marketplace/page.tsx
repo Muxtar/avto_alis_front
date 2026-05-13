@@ -229,7 +229,7 @@ export default function MarketplacePage() {
               </Link>
               <Link
                 href={isLoggedIn ? "/account" : "/"}
-                className="hidden sm:inline-flex shrink-0 items-center gap-2 px-4 py-2.5 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25 whitespace-nowrap"
+                className="hidden md:inline-flex shrink-0 items-center gap-2 px-4 py-2.5 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25 whitespace-nowrap"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
