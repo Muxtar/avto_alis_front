@@ -32,6 +32,7 @@ function AccountPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const editIdParam = searchParams.get("edit");
+  const newParam = searchParams.get("new");
   const [listings, setListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -78,6 +79,19 @@ function AccountPageInner() {
       window.history.replaceState({}, "", url.toString());
     }
   }, [editIdParam, listings]);
+
+  // Auto-open the form when arriving with ?new=1 (e.g. from the mobile
+  // bottom-nav "+" — there's no inline header button on mobile).
+  useEffect(() => {
+    if (newParam === "1" && !showForm && !authLoading && isLoggedIn) {
+      resetForm();
+      setShowForm(true);
+      const url = new URL(window.location.href);
+      url.searchParams.delete("new");
+      window.history.replaceState({}, "", url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newParam, authLoading, isLoggedIn]);
 
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
@@ -209,7 +223,7 @@ function AccountPageInner() {
         </div>
         {!showForm && canAddListing && (
           <button onClick={() => { resetForm(); setShowForm(true); }}
-            className="flex items-center gap-2 px-4 py-2.5 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25">
+            className="hidden md:flex items-center gap-2 px-4 py-2.5 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
             {t("addListing")}
           </button>

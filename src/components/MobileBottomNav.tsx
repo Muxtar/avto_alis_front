@@ -39,7 +39,7 @@ export default function MobileBottomNav() {
       ),
     },
     {
-      href: isLoggedIn ? "/account" : "/",
+      href: isLoggedIn ? "/account?new=1" : "/",
       label: t("addListing") || "Əlavə",
       isPrimary: true,
       icon: (
