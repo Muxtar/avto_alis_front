@@ -76,13 +76,13 @@ export default function Navbar() {
             <Link
               href="/locations"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-muted hover:text-foreground hover:bg-input-bg transition-all whitespace-nowrap"
-              title="Yer üzrə axtarış"
+              title={t('locationsTitle')}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
               </svg>
-              Yer üzrə
+              {t('browseByLocation')}
             </Link>
             <a
               href="/downloads/kassa-sql-setup.zip"

@@ -2,6 +2,7 @@
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { API } from "@/lib/api";
+import { useLanguage } from "@/lib/LanguageContext";
 
 interface CitySummary {
   city: string;
@@ -10,6 +11,7 @@ interface CitySummary {
 }
 
 export default function LocationsPage() {
+  const { t } = useLanguage();
   const [cities, setCities] = useState<CitySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
@@ -38,10 +40,10 @@ export default function LocationsPage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
           </svg>
-          Yer üzrə axtarış
+          {t('locationsTitle')}
         </h1>
         <p className="text-muted text-sm">
-          Şəhər seçərək o yerdə olan satıcıları və elanları görün. Sizə yaxın olanları tapın.
+          {t('locationsSubtitle')}
         </p>
       </div>
 
@@ -49,7 +51,7 @@ export default function LocationsPage() {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Şəhər axtar..."
+        placeholder={t('searchCity')}
         className="w-full px-4 py-3 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm mb-5"
       />
 
@@ -59,7 +61,7 @@ export default function LocationsPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12 surface text-muted">
-          Heç bir nəticə tapılmadı.
+          {t('noCityResults')}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -80,10 +82,10 @@ export default function LocationsPage() {
               </div>
               <div className="flex gap-3 text-xs">
                 <span className="text-muted">
-                  <span className="font-medium text-foreground">{c.listings}</span> elan
+                  <span className="font-medium text-foreground">{c.listings}</span> {t('listingsCount')}
                 </span>
                 <span className="text-muted">
-                  <span className="font-medium text-foreground">{c.sellers}</span> satıcı
+                  <span className="font-medium text-foreground">{c.sellers}</span> {t('sellersCount')}
                 </span>
               </div>
             </Link>

@@ -423,7 +423,7 @@ export default function ProfilePage() {
       });
       const data = await res.json();
       if (data.success) {
-        toast("Yer məlumatı yadda saxlanıldı", "success");
+        toast(t("locationSaved"), "success");
         setEditingLocation(false);
         refreshProfile();
       } else {
@@ -577,7 +577,7 @@ export default function ProfilePage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
             </svg>
-            Mənim yerim
+            {t('myLocation')}
           </h2>
           {!editingLocation && (
             <button
@@ -585,7 +585,7 @@ export default function ProfilePage() {
               className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-medium hover:bg-orange-500/20 transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-              {profile.city || profile.latitude ? "Dəyiş" : "Əlavə et"}
+              {profile.city || profile.latitude ? t('changeLocation') : t('addLocation')}
             </button>
           )}
         </div>
@@ -593,7 +593,7 @@ export default function ProfilePage() {
         {editingLocation ? (
           <div className="space-y-3">
             <p className="text-xs text-muted">
-              Bu sizin obyektinizin yeridir. Yeni elan yaradıldıqda avtomatik olaraq doldurulacaq və alıcılar elan səhifəsində burada olduğunuzu görəcəklər.
+              {t('myLocationDesc')}
             </p>
             <LocationPicker
               city={locationDraft.city}
@@ -609,7 +609,7 @@ export default function ProfilePage() {
                 disabled={locationSaving}
                 className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium disabled:opacity-50"
               >
-                {locationSaving ? "..." : "Yadda saxla"}
+                {locationSaving ? "..." : t('save')}
               </button>
               <button
                 onClick={() => {
@@ -623,7 +623,7 @@ export default function ProfilePage() {
                 }}
                 className="px-5 py-2 bg-input-bg border border-input-border rounded-xl text-sm"
               >
-                Ləğv et
+                {t('cancel')}
               </button>
             </div>
           </div>
@@ -633,13 +633,13 @@ export default function ProfilePage() {
             {profile.address && <p className="text-muted">{profile.address}</p>}
             {profile.latitude && profile.longitude && (
               <p className="text-[11px] text-muted">
-                Xəritədə pin qoyulub ({profile.latitude.toFixed(4)}, {profile.longitude.toFixed(4)})
+                {t('locationPinPlaced')} ({profile.latitude.toFixed(4)}, {profile.longitude.toFixed(4)})
               </p>
             )}
           </div>
         ) : (
           <p className="text-muted text-sm text-center py-4">
-            Hələ yerinizi qeyd etməmisiniz. Əlavə etsəniz, elanlarınızda və "Yer üzrə axtar" bölməsində görünəcəksiz.
+            {t('locationNotSetYet')}
           </p>
         )}
       </div>

@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { API, UPLOADS } from "@/lib/api";
+import { useLanguage } from "@/lib/LanguageContext";
 
 interface Seller {
   id: number;
@@ -29,18 +30,20 @@ interface Listing {
   user: { id: number; name: string; type: string };
 }
 
-const typeLabel = (t: string) =>
-  t === "MECHANIC" ? "Usta" : t === "PARTS_SELLER" ? "Satıcı" : "Avtomobil sahibi";
 const typeColor = (t: string) =>
   t === "MECHANIC" ? "from-green-500 to-emerald-600" : t === "PARTS_SELLER" ? "from-purple-500 to-violet-600" : "from-blue-500 to-blue-600";
 
 export default function CityDetailPage() {
+  const { t } = useLanguage();
   const params = useParams();
   const city = decodeURIComponent(String(params.city || ""));
   const [sellers, setSellers] = useState<Seller[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"sellers" | "listings">("sellers");
+
+  const typeLabel = (type: string) =>
+    type === "MECHANIC" ? t('userTypeMechanic') : type === "PARTS_SELLER" ? t('userTypePartsSeller') : t('userTypeCarOwner');
 
   useEffect(() => {
     if (!city) return;
@@ -61,7 +64,7 @@ export default function CityDetailPage() {
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-5 sm:py-8">
       <Link href="/locations" className="inline-flex items-center gap-1 text-sm text-muted hover:text-orange-500 transition-colors mb-3">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-        Bütün şəhərlər
+        {t('backToAllCities')}
       </Link>
 
       <div className="mb-5">
@@ -69,7 +72,7 @@ export default function CityDetailPage() {
           📍 {city}
         </h1>
         <p className="text-muted text-sm">
-          {sellers.length} satıcı və {listings.length} aktiv elan
+          {t('cityStats').replace('{sellers}', String(sellers.length)).replace('{listings}', String(listings.length))}
         </p>
       </div>
 
@@ -80,7 +83,7 @@ export default function CityDetailPage() {
             tab === "sellers" ? "bg-orange-500 text-white shadow-sm" : "text-muted hover:text-foreground"
           }`}
         >
-          Satıcılar ({sellers.length})
+          {t('citySellersTab')} ({sellers.length})
         </button>
         <button
           onClick={() => setTab("listings")}
@@ -88,7 +91,7 @@ export default function CityDetailPage() {
             tab === "listings" ? "bg-orange-500 text-white shadow-sm" : "text-muted hover:text-foreground"
           }`}
         >
-          Elanlar ({listings.length})
+          {t('cityListingsTab')} ({listings.length})
         </button>
       </div>
 
@@ -99,7 +102,7 @@ export default function CityDetailPage() {
       ) : tab === "sellers" ? (
         sellers.length === 0 ? (
           <div className="text-center py-12 surface text-muted">
-            Bu şəhərdə hələ qeydiyyatdan keçmiş satıcı yoxdur.
+            {t('noSellersInCity')}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -126,7 +129,7 @@ export default function CityDetailPage() {
                     <p className="text-xs text-muted truncate">{s.workplaces[0].address}</p>
                   )}
                   <div className="flex items-center gap-3 mt-1 text-[11px] text-muted">
-                    <span>{s._count.listings} elan</span>
+                    <span>{s._count.listings} {t('listingsCount')}</span>
                     {s.avgRating && (
                       <span>⭐ {s.avgRating.toFixed(1)} ({s.ratingCount})</span>
                     )}
@@ -138,7 +141,7 @@ export default function CityDetailPage() {
         )
       ) : listings.length === 0 ? (
         <div className="text-center py-12 surface text-muted">
-          Bu şəhərdə hələ elan yoxdur.
+          {t('noListingsInCity')}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -160,7 +163,7 @@ export default function CityDetailPage() {
                   <div className="w-full h-full flex items-center justify-center text-muted">—</div>
                 )}
                 <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-md ${l.type === "SERVICE" ? "bg-emerald-500/95 text-white" : "bg-orange-500/95 text-white"}`}>
-                  {l.type === "SERVICE" ? "Xidmət" : "Məhsul"}
+                  {l.type === "SERVICE" ? t('service') : t('product')}
                 </span>
               </div>
               <div className="p-3 flex-1 flex flex-col">

@@ -301,7 +301,7 @@ function AccountPageInner() {
                 <label className="block text-sm font-medium mb-1.5">{t("listingLocation")}</label>
                 <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder={t("listingLocation")} className={inputCls} />
                 {myLocation.address && form.location === myLocation.address && (
-                  <p className="text-[11px] text-muted mt-1">Profilinizdəki ünvandan götürüldü — istəsəniz dəyişə bilərsiniz.</p>
+                  <p className="text-[11px] text-muted mt-1">{t('locationFromProfile')}</p>
                 )}
               </div>
             </div>

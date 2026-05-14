@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-lea
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { AZ_CITIES } from '@/lib/cities';
+import { useLanguage } from '@/lib/LanguageContext';
 
 if (typeof window !== 'undefined') {
   delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -71,6 +72,7 @@ function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }
 }
 
 export default function LocationPicker({ city, address, latitude, longitude, onChange, height = '300px' }: Props) {
+  const { t } = useLanguage();
   const [geoLoading, setGeoLoading] = useState(false);
   const [reverseLoading, setReverseLoading] = useState(false);
 
@@ -95,9 +97,9 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
     }
   };
 
-  const useMyLocation = () => {
+  const useMyLocationHandler = () => {
     if (!navigator.geolocation) {
-      alert('Brauzeriniz yer xidmətini dəstəkləmir');
+      alert(t('geolocationNotSupported'));
       return;
     }
     setGeoLoading(true);
@@ -111,7 +113,7 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
       },
       (err) => {
         setGeoLoading(false);
-        alert('Yerinizi tapa bilmədik: ' + err.message);
+        alert(t('geolocationFailed') + ': ' + err.message);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -144,24 +146,24 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
     <div className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
-          <label className="block text-xs font-medium text-muted mb-1">Şəhər</label>
+          <label className="block text-xs font-medium text-muted mb-1">{t('cityLabel')}</label>
           <select
             value={city}
             onChange={(e) => handleCityChange(e.target.value)}
             className="w-full px-4 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-foreground text-sm"
           >
-            <option value="">Şəhər seçin</option>
+            <option value="">{t('citySelect')}</option>
             {AZ_CITIES.map((c) => (
               <option key={c} value={c}>{c}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-medium text-muted mb-1">Ünvan</label>
+          <label className="block text-xs font-medium text-muted mb-1">{t('streetAddressLabel')}</label>
           <input
             value={address}
             onChange={(e) => onChange({ city, address: e.target.value, latitude, longitude })}
-            placeholder="Küçə, bina, mənzil..."
+            placeholder={t('addressPlaceholderShort')}
             className="w-full px-4 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm"
           />
         </div>
@@ -170,7 +172,7 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          onClick={useMyLocation}
+          onClick={useMyLocationHandler}
           disabled={geoLoading}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
         >
@@ -178,7 +180,7 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          {geoLoading ? 'Tapılır...' : 'Mənim yerim'}
+          {geoLoading ? t('findingLocation') : t('useMyLocation')}
         </button>
         {latitude && longitude && (
           <>
@@ -188,21 +190,21 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
               disabled={reverseLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
             >
-              {reverseLoading ? 'Doldurulur...' : 'Ünvanı pin-dən doldur'}
+              {reverseLoading ? t('fillingAddress') : t('fillAddressFromPin')}
             </button>
             <button
               type="button"
               onClick={() => onChange({ city, address, latitude: null, longitude: null })}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-medium transition-colors"
             >
-              Pin-i sil
+              {t('removePin')}
             </button>
           </>
         )}
       </div>
 
       <p className="text-[11px] text-muted">
-        Xəritənin üzərinə klik edərək pin qoyun, və ya yuxarıda "Mənim yerim" düyməsinə basın.
+        {t('locationPickerHint')}
       </p>
 
       <div style={{ height, borderRadius: 12, overflow: 'hidden' }} className="border border-input-border">
@@ -221,7 +223,7 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
 
       {latitude && longitude && (
         <p className="text-[10px] text-muted">
-          Koordinatlar: {latitude.toFixed(5)}, {longitude.toFixed(5)}
+          {t('coordinatesLabel')}: {latitude.toFixed(5)}, {longitude.toFixed(5)}
         </p>
       )}
     </div>

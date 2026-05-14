@@ -102,7 +102,7 @@ export default function Home() {
               </Link>
               {" · "}
               <Link href="/locations" className="text-orange-500 hover:text-orange-400 font-semibold">
-                Yer üzrə axtar
+                {t("browseByLocationLong")}
               </Link>
             </p>
           </form>

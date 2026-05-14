@@ -487,9 +487,9 @@ export default function CompleteProfilePage() {
 
           <div className="space-y-3 pt-2 border-t border-input-border/40">
             <div>
-              <h3 className="text-base font-semibold mb-1">Mənim yerim</h3>
+              <h3 className="text-base font-semibold mb-1">{t('completeLocationTitle')}</h3>
               <p className="text-xs text-muted">
-                Şəhəri seçin və xəritədə pin qoyaraq dəqiq yerinizi göstərin. Bu yer elanlarınızda görünəcək və alıcılar sizə daha asan çata biləcəklər.
+                {t('completeLocationDesc')}
               </p>
             </div>
             <LocationPicker

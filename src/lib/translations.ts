@@ -476,6 +476,58 @@ export const translations = {
     locationError: "Konum əldə edilə bilmədi",
     locationBroadcast: "Konum yayımlanır",
     courierNotSharingYet: "Kuryer hələ konumunu paylaşmır",
+
+    // Location feature (city + map pin)
+    browseByLocation: "Yer üzrə",
+    browseByLocationLong: "Yer üzrə axtar",
+    locationsTitle: "Yer üzrə axtarış",
+    locationsSubtitle: "Şəhər seçərək o yerdə olan satıcıları və elanları görün. Sizə yaxın olanları tapın.",
+    searchCity: "Şəhər axtar...",
+    noCityResults: "Heç bir nəticə tapılmadı.",
+    listingsCount: "elan",
+    sellersCount: "satıcı",
+    backToAllCities: "Bütün şəhərlər",
+    citySellersTab: "Satıcılar",
+    cityListingsTab: "Elanlar",
+    noSellersInCity: "Bu şəhərdə hələ qeydiyyatdan keçmiş satıcı yoxdur.",
+    noListingsInCity: "Bu şəhərdə hələ elan yoxdur.",
+    cityStats: "{sellers} satıcı və {listings} aktiv elan",
+
+    // My location section in profile
+    myLocation: "Mənim yerim",
+    myLocationDesc: "Bu sizin obyektinizin yeridir. Yeni elan yaradıldıqda avtomatik olaraq doldurulacaq və alıcılar elan səhifəsində burada olduğunuzu görəcəklər.",
+    locationNotSetYet: "Hələ yerinizi qeyd etməmisiniz. Əlavə etsəniz, elanlarınızda və \"Yer üzrə axtar\" bölməsində görünəcəksiz.",
+    locationPinPlaced: "Xəritədə pin qoyulub",
+    locationSaved: "Yer məlumatı yadda saxlanıldı",
+    changeLocation: "Dəyiş",
+    addLocation: "Əlavə et",
+
+    // Complete-profile location step
+    completeLocationTitle: "Mənim yerim",
+    completeLocationDesc: "Şəhəri seçin və xəritədə pin qoyaraq dəqiq yerinizi göstərin. Bu yer elanlarınızda görünəcək və alıcılar sizə daha asan çata biləcəklər.",
+
+    // LocationPicker component
+    citySelect: "Şəhər seçin",
+    cityLabel: "Şəhər",
+    streetAddressLabel: "Ünvan",
+    addressPlaceholderShort: "Küçə, bina, mənzil...",
+    useMyLocation: "Mənim yerim",
+    findingLocation: "Tapılır...",
+    fillAddressFromPin: "Ünvanı pin-dən doldur",
+    fillingAddress: "Doldurulur...",
+    removePin: "Pin-i sil",
+    locationPickerHint: "Xəritənin üzərinə klik edərək pin qoyun, və ya yuxarıda \"Mənim yerim\" düyməsinə basın.",
+    coordinatesLabel: "Koordinatlar",
+    geolocationNotSupported: "Brauzeriniz yer xidmətini dəstəkləmir",
+    geolocationFailed: "Yerinizi tapa bilmədik",
+
+    // Listing form
+    locationFromProfile: "Profilinizdəki ünvandan götürüldü — istəsəniz dəyişə bilərsiniz.",
+
+    // User type labels (used in city detail)
+    userTypeCarOwner: "Avtomobil sahibi",
+    userTypeMechanic: "Usta",
+    userTypePartsSeller: "Satıcı",
   },
   ru: {
     register: "Регистрация",
@@ -936,6 +988,53 @@ export const translations = {
     locationError: "Не удалось получить местоположение",
     locationBroadcast: "Трансляция координат",
     courierNotSharingYet: "Курьер пока не делится местоположением",
+
+    // Location feature (city + map pin)
+    browseByLocation: "По городу",
+    browseByLocationLong: "Поиск по городу",
+    locationsTitle: "Поиск по городу",
+    locationsSubtitle: "Выберите город, чтобы увидеть продавцов и объявления в этой местности. Найдите тех, кто рядом.",
+    searchCity: "Поиск города...",
+    noCityResults: "Ничего не найдено.",
+    listingsCount: "объявл.",
+    sellersCount: "продавц.",
+    backToAllCities: "Все города",
+    citySellersTab: "Продавцы",
+    cityListingsTab: "Объявления",
+    noSellersInCity: "В этом городе пока нет зарегистрированных продавцов.",
+    noListingsInCity: "В этом городе пока нет объявлений.",
+    cityStats: "{sellers} продавцов и {listings} активных объявлений",
+
+    myLocation: "Моё местоположение",
+    myLocationDesc: "Это адрес вашего объекта. При создании нового объявления он заполнится автоматически, и покупатели увидят на странице объявления, где вы находитесь.",
+    locationNotSetYet: "Вы ещё не указали своё местоположение. Добавьте его, чтобы оно появилось в ваших объявлениях и в разделе \"Поиск по городу\".",
+    locationPinPlaced: "Пин на карте установлен",
+    locationSaved: "Местоположение сохранено",
+    changeLocation: "Изменить",
+    addLocation: "Добавить",
+
+    completeLocationTitle: "Моё местоположение",
+    completeLocationDesc: "Выберите город и поставьте пин на карте, чтобы указать точный адрес. Это место будет показано в ваших объявлениях, и покупатели смогут легче с вами связаться.",
+
+    citySelect: "Выберите город",
+    cityLabel: "Город",
+    streetAddressLabel: "Адрес",
+    addressPlaceholderShort: "Улица, дом, квартира...",
+    useMyLocation: "Моё местоположение",
+    findingLocation: "Определение...",
+    fillAddressFromPin: "Заполнить адрес по пину",
+    fillingAddress: "Заполняется...",
+    removePin: "Удалить пин",
+    locationPickerHint: "Кликните по карте, чтобы поставить пин, или нажмите \"Моё местоположение\" выше.",
+    coordinatesLabel: "Координаты",
+    geolocationNotSupported: "Ваш браузер не поддерживает геолокацию",
+    geolocationFailed: "Не удалось определить местоположение",
+
+    locationFromProfile: "Взято из вашего профиля — при необходимости можете изменить.",
+
+    userTypeCarOwner: "Владелец авто",
+    userTypeMechanic: "Мастер",
+    userTypePartsSeller: "Продавец",
   },
   en: {
     register: "Register",
@@ -1396,6 +1495,53 @@ export const translations = {
     locationError: "Could not get location",
     locationBroadcast: "Broadcasting location",
     courierNotSharingYet: "Courier hasn't shared location yet",
+
+    // Location feature (city + map pin)
+    browseByLocation: "By city",
+    browseByLocationLong: "Browse by city",
+    locationsTitle: "Browse by city",
+    locationsSubtitle: "Pick a city to see sellers and listings in that area. Find ones near you.",
+    searchCity: "Search city...",
+    noCityResults: "No results found.",
+    listingsCount: "listings",
+    sellersCount: "sellers",
+    backToAllCities: "All cities",
+    citySellersTab: "Sellers",
+    cityListingsTab: "Listings",
+    noSellersInCity: "No registered sellers in this city yet.",
+    noListingsInCity: "No listings in this city yet.",
+    cityStats: "{sellers} sellers and {listings} active listings",
+
+    myLocation: "My location",
+    myLocationDesc: "This is the location of your business. New listings will be filled in automatically with this location, and buyers will see where you are on the listing page.",
+    locationNotSetYet: "You haven't set your location yet. Add it so it appears on your listings and in the \"Browse by city\" section.",
+    locationPinPlaced: "Pin placed on map",
+    locationSaved: "Location saved",
+    changeLocation: "Change",
+    addLocation: "Add",
+
+    completeLocationTitle: "My location",
+    completeLocationDesc: "Select your city and drop a pin on the map to show your exact location. This will appear on your listings and help buyers reach you more easily.",
+
+    citySelect: "Select a city",
+    cityLabel: "City",
+    streetAddressLabel: "Address",
+    addressPlaceholderShort: "Street, building, apt...",
+    useMyLocation: "Use my location",
+    findingLocation: "Locating...",
+    fillAddressFromPin: "Fill address from pin",
+    fillingAddress: "Filling...",
+    removePin: "Remove pin",
+    locationPickerHint: "Click on the map to drop a pin, or press \"Use my location\" above.",
+    coordinatesLabel: "Coordinates",
+    geolocationNotSupported: "Your browser doesn't support geolocation",
+    geolocationFailed: "Could not find your location",
+
+    locationFromProfile: "Taken from your profile — you can change it if you want.",
+
+    userTypeCarOwner: "Car owner",
+    userTypeMechanic: "Mechanic",
+    userTypePartsSeller: "Parts seller",
   },
 } as const;
 
