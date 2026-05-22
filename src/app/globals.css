@@ -6,26 +6,8 @@
    pop with subtle layering instead of harsh contrast.
    ============================================================ */
 
-/* Dark theme (default) */
+/* Light theme (default) — cool, paper-like, low-glare */
 :root,
-.dark {
-  --background: #0b1120;
-  --background-elevated: #111a2e;
-  --foreground: #e6ecf5;
-  --card: #162033;
-  --card-border: rgba(71, 85, 105, 0.35);
-  --input-bg: rgba(30, 41, 59, 0.55);
-  --input-border: rgba(71, 85, 105, 0.4);
-  --muted: #94a3b8;
-  --muted-foreground: #64748b;
-  --ring: rgba(249, 115, 22, 0.45);
-  --shadow-color: 220 40% 4%;
-  --brand-from: #f97316;
-  --brand-to: #ef4444;
-  --brand-soft: rgba(249, 115, 22, 0.12);
-}
-
-/* Light theme — cool, paper-like, low-glare */
 .light {
   --background: #f5f7fb;
   --background-elevated: #ffffff;
@@ -41,6 +23,24 @@
   --brand-from: #f97316;
   --brand-to: #ef4444;
   --brand-soft: rgba(249, 115, 22, 0.08);
+}
+
+/* Dark theme — activated via .dark class on <html> */
+.dark {
+  --background: #0b1120;
+  --background-elevated: #111a2e;
+  --foreground: #e6ecf5;
+  --card: #162033;
+  --card-border: rgba(71, 85, 105, 0.35);
+  --input-bg: rgba(30, 41, 59, 0.55);
+  --input-border: rgba(71, 85, 105, 0.4);
+  --muted: #94a3b8;
+  --muted-foreground: #64748b;
+  --ring: rgba(249, 115, 22, 0.45);
+  --shadow-color: 220 40% 4%;
+  --brand-from: #f97316;
+  --brand-to: #ef4444;
+  --brand-soft: rgba(249, 115, 22, 0.12);
 }
 
 @theme inline {
