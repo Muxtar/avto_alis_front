@@ -37,6 +37,13 @@ export default function InquiryChatbot() {
     messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Mobil footer-dəki mərkəzi düymə bu hadisə ilə chat-i açıb-bağlayır.
+  useEffect(() => {
+    const toggle = () => setOpen((o) => !o);
+    window.addEventListener('toggle-inquiry-chat', toggle);
+    return () => window.removeEventListener('toggle-inquiry-chat', toggle);
+  }, []);
+
   const send = async () => {
     if (!input.trim() || loading) return;
 
@@ -95,11 +102,11 @@ export default function InquiryChatbot() {
 
   return (
     <>
-      {/* Floating Button — lifted above MobileBottomNav (~70px) on small
-          screens; back to bottom-6 on md+ where the bottom nav is hidden. */}
+      {/* Floating Button — yalnız desktop-da (md+). Mobil-də chat footer-dəki
+          mərkəzi düymədən açılır, ona görə üzən düymə gizlədilir. */}
       <button
         onClick={() => setOpen(!open)}
-        className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg hover:scale-110 transition-transform flex items-center justify-center"
+        className="hidden md:flex fixed md:bottom-6 md:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg hover:scale-110 transition-transform items-center justify-center"
       >
         {open ? (
           <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -110,11 +117,20 @@ export default function InquiryChatbot() {
 
       {/* Chat Panel */}
       {open && (
-        <div className="fixed bottom-44 right-4 md:bottom-24 md:right-6 z-50 w-[calc(100vw-2rem)] max-w-[340px] h-[460px] max-h-[calc(100vh-12rem)] bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="fixed bottom-20 right-4 md:bottom-24 md:right-6 z-50 w-[calc(100vw-2rem)] max-w-[340px] h-[460px] max-h-[calc(100vh-9rem)] bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-orange-500 to-red-600 px-4 py-3 text-white">
-            <div className="font-bold text-sm">{t('chatbotTitle')}</div>
-            <div className="text-xs opacity-80">{t('chatbotSubtitle')}</div>
+          <div className="bg-gradient-to-r from-orange-500 to-red-600 px-4 py-3 text-white flex items-center justify-between gap-2">
+            <div>
+              <div className="font-bold text-sm">{t('chatbotTitle')}</div>
+              <div className="text-xs opacity-80">{t('chatbotSubtitle')}</div>
+            </div>
+            <button
+              onClick={() => setOpen(false)}
+              aria-label="close"
+              className="shrink-0 w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
           </div>
 
           {/* Messages */}
