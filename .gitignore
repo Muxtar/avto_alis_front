@@ -36,6 +36,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# Kassa desktop installer-ləri — böyükdür (>100MB), git-ə commit etmə.
+# GitHub Releases / obyekt-storage-də host et.
+/public/downloads/*.dmg
+/public/downloads/*.exe
+/public/downloads/*.AppImage
+/public/downloads/*.zip
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

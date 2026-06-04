@@ -8,6 +8,7 @@ import { API } from "@/lib/api";
 import { brandNames, getModels, years } from "@/lib/vehicleData";
 import { rotateImageFile } from "@/lib/rotateImage";
 import LocationPicker from "@/components/LocationPickerWrapper";
+import ServiceSpecialtyPicker from "@/components/ServiceSpecialtyPicker";
 
 type UserType = "CAR_OWNER" | "MECHANIC" | "PARTS_SELLER";
 
@@ -80,6 +81,10 @@ export default function CompleteProfilePage() {
   const [name, setName] = useState("");
   const [vehicles, setVehicles] = useState<Vehicle[]>([newVehicle()]);
   const [workplaces, setWorkplaces] = useState<Workplace[]>([{ name: "", address: "" }]);
+  // Usta / satıcı ixtisası
+  const [serviceBrands, setServiceBrands] = useState<string[]>([]);
+  const [serviceAllBrands, setServiceAllBrands] = useState(false);
+  const [serviceCategories, setServiceCategories] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{ city: string; address: string; latitude: number | null; longitude: number | null }>({
     city: "", address: "", latitude: null, longitude: null,
@@ -286,6 +291,9 @@ export default function CompleteProfilePage() {
         }));
       } else {
         body.workplaces = workplaces;
+        body.serviceAllBrands = serviceAllBrands;
+        body.serviceBrands = serviceAllBrands ? [] : serviceBrands;
+        body.serviceCategories = serviceCategories;
       }
 
       const res = await fetch(`${API}/register/complete-json`, {
@@ -482,6 +490,17 @@ export default function CompleteProfilePage() {
                   <input type="text" value={w.address} onChange={(e) => updateWorkplace(i, "address", e.target.value)} required placeholder={t("addressPlaceholder")} className={inputClass} />
                 </div>
               ))}
+
+              <div className="pt-2 border-t border-input-border/40">
+                <ServiceSpecialtyPicker
+                  brands={serviceBrands}
+                  allBrands={serviceAllBrands}
+                  categories={serviceCategories}
+                  onBrandsChange={setServiceBrands}
+                  onAllBrandsChange={setServiceAllBrands}
+                  onCategoriesChange={setServiceCategories}
+                />
+              </div>
             </div>
           )}
 

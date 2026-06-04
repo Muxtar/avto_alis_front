@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import { API } from "@/lib/api";
+import { groupSelectedParts } from "@/lib/sellerCategories";
 
 export default function SellerProfilePage() {
   const { t } = useLanguage();
@@ -99,6 +100,41 @@ export default function SellerProfilePage() {
                     </svg>
                     <span className="font-medium">{w.name}</span>
                     <span className="text-muted">- {w.address}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Xidmət markaları */}
+            {(user.serviceAllBrands || user.serviceBrands?.length > 0) && (
+              <div className="mt-4">
+                <p className="text-xs font-semibold text-muted mb-1.5">{t("serviceBrandsTitle")}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {user.serviceAllBrands ? (
+                    <span className="px-2.5 py-1 bg-orange-500/10 border border-orange-500/30 rounded-lg text-xs font-medium text-orange-500">
+                      {t("allBrands")}
+                    </span>
+                  ) : (
+                    user.serviceBrands.map((b: string) => (
+                      <span key={b} className="px-2.5 py-1 bg-input-bg border border-input-border rounded-lg text-xs font-medium">{b}</span>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* İxtisas kateqoriyaları */}
+            {user.serviceCategories?.length > 0 && (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs font-semibold text-muted">{t("serviceCategoriesTitle")}</p>
+                {groupSelectedParts(user.serviceCategories).map(({ category, parts }) => (
+                  <div key={category.id}>
+                    <p className="text-xs font-medium mb-1">{category.name}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {parts.map((p) => (
+                        <span key={p.id} className="px-2.5 py-1 bg-input-bg border border-input-border rounded-lg text-[11px] text-muted">{p.name}</span>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>
