@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { useLanguage } from "@/lib/LanguageContext";
 
+// Kassa SQL installer-ləri GitHub Releases-də host olunur (faylllar 100MB+ olduğu
+// üçün repo-da saxlanılmır). Repo adı / tag dəyişərsə yalnız bu sətri yenilə.
+const KASSA_RELEASE = "https://github.com/Muxtar/kassa_sql/releases/download/kassa-v0.1.0";
+
 /**
  * Desktop "Yeni elan yerləşdir" düyməsi — mobil footer "+" menyusunun
  * desktop qarşılığı. 3 seçim: Fərdi elan / Excel ilə əlavə / Kassa SQL Yüklə.
@@ -91,15 +95,15 @@ export default function AddListingMenu() {
 
       {kassaOpen && (
         <div className="bg-input-bg/40">
-          <a href="/downloads/AvtoBazar-Kassa-mac.dmg" download onClick={close} className="flex items-center gap-2 pl-14 pr-3 py-2.5 text-sm hover:bg-orange-500/10 text-foreground">
+          <a href={`${KASSA_RELEASE}/AvtoBazar-Kassa-0.1.0-mac.dmg`} onClick={close} className="flex items-center gap-2 pl-14 pr-3 py-2.5 text-sm hover:bg-orange-500/10 text-foreground">
             <span></span><span className="font-medium">{t("downloadForMac")}</span><span className="ml-auto text-[10px] text-muted">.dmg</span>
           </a>
-          <div className="flex items-center gap-2 pl-14 pr-3 py-2.5 text-sm opacity-50 cursor-not-allowed">
-            <span>🪟</span><span className="font-medium">{t("downloadForWin")}</span><span className="ml-auto text-[10px] text-muted">{t("comingSoon")}</span>
-          </div>
-          <div className="flex items-center gap-2 pl-14 pr-3 py-2.5 text-sm opacity-50 cursor-not-allowed">
-            <span>🐧</span><span className="font-medium">{t("downloadForLinux")}</span><span className="ml-auto text-[10px] text-muted">{t("comingSoon")}</span>
-          </div>
+          <a href={`${KASSA_RELEASE}/AvtoBazar-Kassa-0.1.0-win.exe`} onClick={close} className="flex items-center gap-2 pl-14 pr-3 py-2.5 text-sm hover:bg-orange-500/10 text-foreground">
+            <span>🪟</span><span className="font-medium">{t("downloadForWin")}</span><span className="ml-auto text-[10px] text-muted">.exe</span>
+          </a>
+          <a href={`${KASSA_RELEASE}/AvtoBazar-Kassa-0.1.0-linux.AppImage`} onClick={close} className="flex items-center gap-2 pl-14 pr-3 py-2.5 text-sm hover:bg-orange-500/10 text-foreground">
+            <span>🐧</span><span className="font-medium">{t("downloadForLinux")}</span><span className="ml-auto text-[10px] text-muted">.AppImage</span>
+          </a>
         </div>
       )}
     </div>
