@@ -342,10 +342,7 @@ a:focus-visible {
 /* Hero / page-section gradient backdrop */
 .hero-bg {
   position: relative;
-  /* z-index (isolation: isolate əvəzinə) — həm ::before gradient-i daxildə
-     saxlayır, həm də hero-nun içindəki dropdown-ları (Yeni elan menyusu)
-     hero-dan sonrakı elan kartlarının ÜSTündə çəkir (alt-menyu kəsilməsin). */
-  z-index: 20;
+  isolation: isolate;
 }
 .hero-bg::before {
   content: "";
