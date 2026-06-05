@@ -22,13 +22,11 @@ export default function Navbar() {
   const { cartCount } = useCart();
   const [langOpen, setLangOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
-  const [downloadOpen, setDownloadOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const langRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
-  const downloadRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = useCallback(() => {
     if (!token || !isLoggedIn) return;
@@ -51,7 +49,6 @@ export default function Navbar() {
     const handler = (e: MouseEvent) => {
       if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
       if (userRef.current && !userRef.current.contains(e.target as Node)) setUserOpen(false);
-      if (downloadRef.current && !downloadRef.current.contains(e.target as Node)) setDownloadOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -87,53 +84,6 @@ export default function Navbar() {
               </svg>
               {t('browseByLocation')}
             </Link>
-            <div className="relative" ref={downloadRef}>
-              <button
-                type="button"
-                onClick={() => setDownloadOpen((v) => !v)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-orange-500 hover:bg-orange-500/10 transition-all whitespace-nowrap"
-                title={t("downloadKassaTitle")}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                </svg>
-                {t("downloadKassa")}
-                <svg className={`w-3 h-3 transition-transform ${downloadOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {downloadOpen && (
-                <div className="absolute right-0 mt-2 w-60 bg-card border border-card-border rounded-xl shadow-xl overflow-hidden z-50">
-                  <div className="px-3 py-2 text-[11px] text-muted border-b border-card-border">
-                    {t("downloadKassaTitle")}
-                  </div>
-                  {/* macOS — hazırdır */}
-                  <a
-                    href="/downloads/AvtoBazar-Kassa-mac.dmg"
-                    download
-                    onClick={() => setDownloadOpen(false)}
-                    className="flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-orange-500/10 transition-colors"
-                  >
-                    <span className="text-base"></span>
-                    <span className="font-medium">{t("downloadForMac")}</span>
-                    <span className="ml-auto text-[10px] text-muted">.dmg</span>
-                  </a>
-                  {/* Windows — installer hazırlanandan sonra aktivləşir. */}
-                  <div className="flex items-center gap-2.5 px-3 py-2.5 text-sm opacity-50 cursor-not-allowed">
-                    <span className="text-base">🪟</span>
-                    <span className="font-medium">{t("downloadForWin")}</span>
-                    <span className="ml-auto text-[10px] text-muted">{t("comingSoon")}</span>
-                  </div>
-                  {/* Linux — installer hazırlanandan sonra aktivləşir. */}
-                  <div className="flex items-center gap-2.5 px-3 py-2.5 text-sm opacity-50 cursor-not-allowed">
-                    <span className="text-base">🐧</span>
-                    <span className="font-medium">{t("downloadForLinux")}</span>
-                    <span className="ml-auto text-[10px] text-muted">{t("comingSoon")}</span>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
 
           <div className="flex items-center gap-1 sm:gap-1.5">
