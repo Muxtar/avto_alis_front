@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
+import AddListingMenu from "@/components/AddListingMenu";
 import { API } from "@/lib/api";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 
@@ -227,15 +228,7 @@ export default function MarketplacePage() {
                 </svg>
                 <span className="hidden xs:inline">{t("browseByLocation")}</span>
               </Link>
-              <Link
-                href={isLoggedIn ? "/account" : "/"}
-                className="hidden md:inline-flex shrink-0 items-center gap-2 px-4 py-2.5 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 transition-all shadow-md shadow-orange-500/25 whitespace-nowrap"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                </svg>
-                {t("postNewListing")}
-              </Link>
+              <AddListingMenu />
             </div>
           </div>
 

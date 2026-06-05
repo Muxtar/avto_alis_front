@@ -119,16 +119,13 @@ export default function Navbar() {
                     <span className="font-medium">{t("downloadForMac")}</span>
                     <span className="ml-auto text-[10px] text-muted">.dmg</span>
                   </a>
-                  {/* Windows — installer hazırlanandan sonra aktivləşir.
-                      public/downloads/AvtoBazar-Kassa-win.exe əlavə et və bu bloku
-                      aşağıdakı <a> variantı ilə əvəz et. */}
+                  {/* Windows — installer hazırlanandan sonra aktivləşir. */}
                   <div className="flex items-center gap-2.5 px-3 py-2.5 text-sm opacity-50 cursor-not-allowed">
                     <span className="text-base">🪟</span>
                     <span className="font-medium">{t("downloadForWin")}</span>
                     <span className="ml-auto text-[10px] text-muted">{t("comingSoon")}</span>
                   </div>
-                  {/* Linux — installer hazırlanandan sonra aktivləşir.
-                      public/downloads/AvtoBazar-Kassa-linux.AppImage əlavə et. */}
+                  {/* Linux — installer hazırlanandan sonra aktivləşir. */}
                   <div className="flex items-center gap-2.5 px-3 py-2.5 text-sm opacity-50 cursor-not-allowed">
                     <span className="text-base">🐧</span>
                     <span className="font-medium">{t("downloadForLinux")}</span>
