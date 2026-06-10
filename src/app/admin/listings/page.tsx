@@ -14,6 +14,8 @@ export default function AdminListingsPage() {
   const [catFilter, setCatFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<any>(null);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -24,21 +26,27 @@ export default function AdminListingsPage() {
     if (search) params.set("search", search);
     if (typeFilter !== "all") params.set("type", typeFilter);
     if (catFilter) params.set("category", catFilter);
-    params.set("limit", "100");
+    params.set("page", String(page));
+    params.set("limit", "20");
     fetch(`${API}/admin/listings?${params}`, { headers })
       .then((r) => r.json())
-      .then((d) => setListings(d.listings || []))
+      .then((d) => { setListings(d.listings || []); setTotalPages(d.totalPages || 1); })
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchListings(); }, [typeFilter, catFilter]);
-  useEffect(() => { const t = setTimeout(fetchListings, 300); return () => clearTimeout(t); }, [search]);
+  useEffect(() => { fetchListings(); }, [typeFilter, catFilter, page]);
+  useEffect(() => { setPage(1); const tm = setTimeout(fetchListings, 300); return () => clearTimeout(tm); }, [search]);
 
   const handleDelete = async (id: number) => {
     if (!confirm(t("adminConfirmDelete"))) return;
-    await fetch(`${API}/admin/listings/${id}`, { method: "DELETE", headers });
-    setListings(listings.filter((l) => l.id !== id));
+    try {
+      const res = await fetch(`${API}/admin/listings/${id}`, { method: "DELETE", headers });
+      const data = await res.json();
+      if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      setListings(listings.filter((l) => l.id !== id));
+      toast(t("adminDeleted") || "Silindi", "success");
+    } catch { toast(t("error"), "error"); }
   };
 
   const openEdit = (listing: any) => {
@@ -52,9 +60,14 @@ export default function AdminListingsPage() {
   const handleSave = async () => {
     if (!modal) return;
     const { id, ...data } = modal;
-    await fetch(`${API}/admin/listings/${id}`, { method: "PUT", headers, body: JSON.stringify(data) });
-    setModal(null);
-    fetchListings();
+    try {
+      const res = await fetch(`${API}/admin/listings/${id}`, { method: "PUT", headers, body: JSON.stringify(data) });
+      const r = await res.json();
+      if (!res.ok || !r.success) { toast(r.message || t("error"), "error"); return; }
+      setModal(null);
+      fetchListings();
+      toast(t("adminSaved") || "Yadda saxlanıldı", "success");
+    } catch { toast(t("error"), "error"); }
   };
 
   // Unique categories from data
@@ -145,6 +158,18 @@ export default function AdminListingsPage() {
                 </div>
               </div>
             </div>
+          ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2 mt-6 flex-wrap">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button key={p} onClick={() => setPage(p)}
+              className={`w-9 h-9 rounded-lg text-sm font-medium ${page === p ? "bg-orange-500 text-white" : "bg-input-bg border border-input-border text-muted hover:text-foreground"}`}>
+              {p}
+            </button>
           ))}
         </div>
       )}

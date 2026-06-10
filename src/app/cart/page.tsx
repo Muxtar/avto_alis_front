@@ -36,8 +36,24 @@ export default function CartPage() {
   const [promoError, setPromoError] = useState("");
   const [usePoints, setUsePoints] = useState(0);
   const [userPoints, setUserPoints] = useState(0);
+  // Kart ödənişi — bankın səhifəsi iframe modal-da
+  const [payUrl, setPayUrl] = useState<string | null>(null);
 
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  // Bankın iframe-i ödənişdən sonra /payment/return-dən postMessage göndərir.
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type !== "kapital-payment") return;
+      setPayUrl(null);
+      refreshCart();
+      router.push(`/orders?payment=${e.data.status}`);
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -147,6 +163,11 @@ export default function CartPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
+        // Kart ödənişi: bankın səhifəsini saytda modal (iframe) içində aç.
+        if (data.paymentUrl) {
+          setPayUrl(data.paymentUrl);
+          return;
+        }
         setPlaced(true);
         refreshCart();
         toast(`${t('orderPlaced')} ${data.pointsEarned > 0 ? `(+${data.pointsEarned} ${t('points')})` : ''}`, 'success');
@@ -325,6 +346,30 @@ export default function CartPage() {
                   <button onClick={() => setShowCheckout(false)} className="w-full py-2 text-muted text-xs">{t("adminCancel")}</button>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kart ödənişi — bankın səhifəsi saytda iframe modal içində */}
+      {payUrl && (
+        <div className="fixed inset-0 z-[200] bg-black/70 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-card w-full max-w-md h-[640px] max-h-[92vh] rounded-2xl overflow-hidden flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-card-border shrink-0">
+              <div className="flex items-center gap-2">
+                <span className="text-base">🔒</span>
+                <span className="font-semibold text-sm">{t("securePayment") || "Təhlükəsiz ödəniş"}</span>
+              </div>
+              <button onClick={() => setPayUrl(null)} className="w-8 h-8 rounded-full hover:bg-input-bg flex items-center justify-center" aria-label="close">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <iframe src={payUrl} title="payment" className="flex-1 w-full border-0 bg-white" />
+            <div className="px-4 py-2 border-t border-card-border text-center shrink-0">
+              <p className="text-[11px] text-muted">
+                {t("paymentNotOpening") || "Forma açılmırsa"}{" "}
+                <a href={payUrl} className="text-orange-500 font-medium hover:underline">{t("openFullPage") || "tam səhifədə açın"}</a>
+              </p>
             </div>
           </div>
         </div>

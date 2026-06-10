@@ -37,6 +37,18 @@ export default function OrdersPage() {
     fetchOrders();
   }, [isLoggedIn, authLoading]);
 
+  // Bank ödənişindən qayıdış nəticəsini göstər (?payment=success|failed|error).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const p = params.get("payment");
+    if (!p) return;
+    if (p === "success") toast(t("paymentSuccess") || "Ödəniş uğurlu oldu ✓", "success");
+    else if (p === "failed") toast(t("paymentFailed") || "Ödəniş uğursuz oldu", "error");
+    else toast(t("paymentError") || "Ödənişdə xəta baş verdi", "error");
+    // URL-i təmizlə
+    window.history.replaceState({}, "", "/orders");
+  }, []);
+
   const fetchOrders = () => {
     setLoading(true);
     Promise.all([

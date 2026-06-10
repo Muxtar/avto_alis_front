@@ -39,6 +39,7 @@ export default function AdminPromoPage() {
     validUntil: "",
   });
   const [busy, setBusy] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
 
   const adminToken = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
 
@@ -53,12 +54,32 @@ export default function AdminPromoPage() {
     try {
       const res = await fetch(`${API}/admin/promo`, { headers: { Authorization: `Bearer ${adminToken}` } });
       const data = await res.json();
-      setItems(data.promoCodes || []);
+      setItems(data.promos || []);
     } catch {
       toast(t("error"), "error");
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setForm({ code: "", description: "", discountType: "PERCENT", discountValue: "10", minOrderAmount: "", maxDiscount: "", usageLimit: "", validUntil: "" });
+    setEditId(null);
+  };
+
+  const openEdit = (p: Promo) => {
+    setEditId(p.id);
+    setForm({
+      code: p.code,
+      description: p.description || "",
+      discountType: p.discountType,
+      discountValue: String(p.discountValue),
+      minOrderAmount: p.minOrderAmount != null ? String(p.minOrderAmount) : "",
+      maxDiscount: p.maxDiscount != null ? String(p.maxDiscount) : "",
+      usageLimit: p.usageLimit != null ? String(p.usageLimit) : "",
+      validUntil: p.validUntil ? p.validUntil.slice(0, 10) : "",
+    });
+    setShowForm(true);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -70,41 +91,47 @@ export default function AdminPromoPage() {
         description: form.description || undefined,
         discountType: form.discountType,
         discountValue: parseFloat(form.discountValue),
+        minOrderAmount: form.minOrderAmount ? parseFloat(form.minOrderAmount) : null,
+        maxDiscount: form.maxDiscount ? parseFloat(form.maxDiscount) : null,
+        usageLimit: form.usageLimit ? parseInt(form.usageLimit) : null,
+        validUntil: form.validUntil || null,
       };
-      if (form.minOrderAmount) body.minOrderAmount = parseFloat(form.minOrderAmount);
-      if (form.maxDiscount) body.maxDiscount = parseFloat(form.maxDiscount);
-      if (form.usageLimit) body.usageLimit = parseInt(form.usageLimit);
-      if (form.validUntil) body.validUntil = form.validUntil;
-      const res = await fetch(`${API}/admin/promo`, {
-        method: "POST",
+      const res = await fetch(`${API}/admin/promo${editId ? `/${editId}` : ""}`, {
+        method: editId ? "PUT" : "POST",
         headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!data.success) { toast(data.message || t("error"), "error"); return; }
-      toast("Promo kod yaradıldı", "success");
+      if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      toast(editId ? (t("adminSaved") || "Yeniləndi") : "Promo kod yaradıldı", "success");
       setShowForm(false);
-      setForm({ code: "", description: "", discountType: "PERCENT", discountValue: "10", minOrderAmount: "", maxDiscount: "", usageLimit: "", validUntil: "" });
+      resetForm();
       refresh();
-    } finally { setBusy(false); }
+    } catch { toast(t("error"), "error"); } finally { setBusy(false); }
   };
 
   const toggle = async (p: Promo) => {
-    await fetch(`${API}/admin/promo/${p.id}`, {
-      method: "PUT",
-      headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ active: !p.active }),
-    });
-    refresh();
+    try {
+      const res = await fetch(`${API}/admin/promo/${p.id}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${adminToken}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ active: !p.active }),
+      });
+      if (!res.ok) throw new Error();
+      refresh();
+    } catch { toast(t("error"), "error"); }
   };
 
   const remove = async (id: number) => {
-    if (!confirm("Promo kodu silmək istəyirsiniz?")) return;
-    await fetch(`${API}/admin/promo/${id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${adminToken}` },
-    });
-    refresh();
+    if (!confirm(t("adminConfirmDelete") || "Promo kodu silmək istəyirsiniz?")) return;
+    try {
+      const res = await fetch(`${API}/admin/promo/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${adminToken}` },
+      });
+      if (!res.ok) throw new Error();
+      refresh();
+    } catch { toast(t("error"), "error"); }
   };
 
   return (
@@ -114,7 +141,7 @@ export default function AdminPromoPage() {
           <h1 className="text-2xl font-bold">Promo kodları</h1>
           <p className="text-muted text-sm">Endirim kodlarını idarə et</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="btn-primary">
+        <button onClick={() => { if (showForm) { setShowForm(false); resetForm(); } else { resetForm(); setShowForm(true); } }} className="btn-primary">
           {showForm ? "Bağla" : "+ Yeni promo"}
         </button>
       </div>
@@ -207,7 +234,7 @@ export default function AdminPromoPage() {
             />
           </div>
           <button type="submit" disabled={busy} className="btn-primary">
-            {busy ? "..." : "Yarat"}
+            {busy ? "..." : editId ? (t("adminSave") || "Yadda saxla") : "Yarat"}
           </button>
         </form>
       )}
@@ -246,6 +273,9 @@ export default function AdminPromoPage() {
                 <div className="flex gap-2">
                   <button onClick={() => toggle(p)} className="btn-outline text-xs">
                     {p.active ? "Deaktiv et" : "Aktiv et"}
+                  </button>
+                  <button onClick={() => openEdit(p)} className="px-3 py-1.5 bg-orange-500/10 text-orange-500 rounded-lg text-xs hover:bg-orange-500/20">
+                    {t("adminEdit") || "Redaktə"}
                   </button>
                   <button onClick={() => remove(p.id)} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs hover:bg-red-500/20">
                     Sil

@@ -8,6 +8,7 @@ export default function AdminDashboard() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
+  const [analytics, setAnalytics] = useState<any>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -15,6 +16,10 @@ export default function AdminDashboard() {
       .then((r) => r.json())
       .then(setData)
       .catch(() => { toast(t('error'), 'error'); });
+    fetch(`${API}/admin/analytics`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then(setAnalytics)
+      .catch(() => {});
   }, []);
 
   if (!data) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;
@@ -40,6 +45,63 @@ export default function AdminDashboard() {
           </div>
         ))}
       </div>
+
+      {/* Analytics */}
+      {analytics && !analytics.message && (
+        <div className="mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+            <div className="bg-card border border-card-border rounded-xl p-4">
+              <p className="text-muted text-xs">{t("adminRevenue")}</p>
+              <p className="text-2xl font-bold text-green-500">{(analytics.revenueTotal || 0).toFixed(0)} ₼</p>
+            </div>
+            <div className="bg-card border border-card-border rounded-xl p-4">
+              <p className="text-muted text-xs">{t("adminDelivered")}</p>
+              <p className="text-2xl font-bold">{analytics.deliveredCount}</p>
+            </div>
+            <div className="bg-card border border-card-border rounded-xl p-4">
+              <p className="text-muted text-xs">{t("adminNewUsers30")}</p>
+              <p className="text-2xl font-bold text-blue-500">{analytics.newUsers30}</p>
+            </div>
+            <div className="bg-card border border-card-border rounded-xl p-4">
+              <p className="text-muted text-xs">{t("adminOpenIssues")}</p>
+              <p className="text-2xl font-bold text-orange-500">{(analytics.pendingKyc || 0) + (analytics.openReturns || 0)}</p>
+              <p className="text-[10px] text-muted mt-0.5">KYC {analytics.pendingKyc} · {t("adminReturns")} {analytics.openReturns} · Blok {analytics.blockedUsers}</p>
+            </div>
+          </div>
+
+          {/* Orders by status */}
+          {analytics.ordersByStatus?.length > 0 && (
+            <div className="bg-card border border-card-border rounded-xl p-4 sm:p-5 mb-4">
+              <h2 className="font-semibold mb-3 text-sm">{t("adminOrdersByStatus")}</h2>
+              <div className="flex flex-wrap gap-2">
+                {analytics.ordersByStatus.map((s: any) => (
+                  <span key={s.status} className="px-3 py-1.5 bg-input-bg border border-input-border rounded-full text-xs font-medium">
+                    {s.status} <span className="text-orange-500 ml-1">{s.count}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Daily revenue (last 30d) — sadə bar */}
+          {analytics.daily?.length > 0 && (
+            <div className="bg-card border border-card-border rounded-xl p-4 sm:p-5">
+              <h2 className="font-semibold mb-3 text-sm">{t("adminDailyRevenue")}</h2>
+              <div className="flex items-end gap-1 h-32">
+                {(() => {
+                  const max = Math.max(...analytics.daily.map((d: any) => d.revenue), 1);
+                  return analytics.daily.map((d: any) => (
+                    <div key={d.date} className="flex-1 flex flex-col items-center justify-end group" title={`${d.date}: ${d.revenue.toFixed(0)}₼ / ${d.orders} sifariş`}>
+                      <div className="w-full bg-gradient-to-t from-orange-500 to-red-500 rounded-t" style={{ height: `${Math.max(2, (d.revenue / max) * 100)}%` }} />
+                    </div>
+                  ));
+                })()}
+              </div>
+              <p className="text-[10px] text-muted mt-1 text-right">{t("adminLast30Days")}</p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Category Distribution */}
       {data.categoryCounts?.length > 0 && (

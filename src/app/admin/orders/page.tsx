@@ -34,10 +34,34 @@ export default function AdminOrdersPage() {
   useEffect(() => { fetchData(); }, [statusFilter, page]);
 
   const assignCourier = async (orderId: number, courierId: string) => {
-    await fetch(`${API}/admin/orders/${orderId}/assign-courier`, {
-      method: "PUT", headers, body: JSON.stringify({ courierId: courierId || null }),
-    });
-    fetchData();
+    try {
+      const res = await fetch(`${API}/admin/orders/${orderId}/assign-courier`, {
+        method: "PUT", headers, body: JSON.stringify({ courierId: courierId || null }),
+      });
+      if (!res.ok) throw new Error();
+      fetchData();
+    } catch { toast(t("error"), "error"); }
+  };
+
+  const changeStatus = async (orderId: number, status: string) => {
+    try {
+      const res = await fetch(`${API}/admin/orders/${orderId}/status`, {
+        method: "PUT", headers, body: JSON.stringify({ status }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) { toast(t("adminStatusUpdated") || "Status yeniləndi", "success"); fetchData(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+
+  const refundOrder = async (orderId: number, total: number) => {
+    if (!confirm(`${t("adminRefundConfirm") || "Bu sifariş kartına geri qaytarılsın?"} (${total.toFixed(2)} AZN)`)) return;
+    try {
+      const res = await fetch(`${API}/payment/refund/${orderId}`, { method: "POST", headers, body: JSON.stringify({}) });
+      const data = await res.json();
+      if (res.ok && data.success) { toast(t("adminRefunded") || "İadə edildi ✓", "success"); fetchData(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
   };
 
   const statusColor = (status: string) => {
@@ -96,11 +120,27 @@ export default function AdminOrdersPage() {
                   <p className="font-semibold text-sm">{t("orderNumber")} {order.id}</p>
                   <p className="text-muted text-xs">{new Date(order.createdAt).toLocaleString()}</p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${statusColor(order.status)}`}>
                     {statusLabel(order.status)}
                   </span>
+                  {/* Ödəniş statusu */}
+                  <span className={`px-2 py-1 rounded-lg text-[10px] font-medium border ${
+                    order.paymentStatus === "PAID" ? "bg-green-500/10 text-green-500 border-green-500/20"
+                    : order.paymentStatus === "REFUNDED" ? "bg-gray-500/10 text-gray-400 border-gray-500/20"
+                    : order.paymentStatus === "FAILED" ? "bg-red-500/10 text-red-500 border-red-500/20"
+                    : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
+                  }`}>
+                    {order.paymentMethod === "CARD" ? "💳" : order.paymentMethod === "WALLET" ? "👝" : "💵"} {order.paymentStatus}
+                  </span>
                   <span className="text-orange-500 font-bold text-sm">{order.total.toFixed(2)} AZN</span>
+                  {/* İadə et — yalnız kartla ödənilmiş sifarişlər üçün */}
+                  {order.gatewayOrderId && order.paymentStatus === "PAID" && (
+                    <button onClick={() => refundOrder(order.id, order.total)}
+                      className="px-2.5 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-xs font-medium hover:bg-red-500/20">
+                      {t("adminRefund") || "İadə et"}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -138,6 +178,20 @@ export default function AdminOrdersPage() {
                   )}
                 </div>
                 {order.note && <p className="text-muted text-xs mt-2">{order.note}</p>}
+              </div>
+
+              {/* Status dəyişdir */}
+              <div className="p-4 border-t border-card-border flex items-center gap-3 flex-wrap">
+                <p className="text-sm font-medium">{t("adminChangeStatus") || "Status"}:</p>
+                <select
+                  value={order.status}
+                  onChange={(e) => changeStatus(order.id, e.target.value)}
+                  className="px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+                >
+                  {["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"].map((s) => (
+                    <option key={s} value={s}>{statusLabel(s)}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Courier Assignment */}

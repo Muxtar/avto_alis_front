@@ -15,6 +15,8 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<any>(null); // edit modal data
   const [detailUser, setDetailUser] = useState<any>(null); // detail panel
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -24,22 +26,41 @@ export default function AdminUsersPage() {
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (typeFilter) params.set("type", typeFilter);
-    params.set("limit", "100");
+    params.set("page", String(page));
+    params.set("limit", "20");
     fetch(`${API}/admin/users?${params}`, { headers })
       .then((r) => r.json())
-      .then((d) => setUsers(d.users || []))
+      .then((d) => { setUsers(d.users || []); setTotalPages(d.totalPages || 1); })
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchUsers(); }, [typeFilter]);
-  useEffect(() => { const t = setTimeout(fetchUsers, 300); return () => clearTimeout(t); }, [search]);
+  useEffect(() => { fetchUsers(); }, [typeFilter, page]);
+  useEffect(() => { setPage(1); const tm = setTimeout(fetchUsers, 300); return () => clearTimeout(tm); }, [search]);
 
   const handleDelete = async (id: number) => {
     if (!confirm(t("adminConfirmDelete"))) return;
-    await fetch(`${API}/admin/users/${id}`, { method: "DELETE", headers });
-    setUsers(users.filter((u) => u.id !== id));
-    if (detailUser?.id === id) setDetailUser(null);
+    try {
+      const res = await fetch(`${API}/admin/users/${id}`, { method: "DELETE", headers });
+      const data = await res.json();
+      if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      setUsers(users.filter((u) => u.id !== id));
+      if (detailUser?.id === id) setDetailUser(null);
+      toast(t("adminDeleted") || "Silindi", "success");
+    } catch { toast(t("error"), "error"); }
+  };
+
+  const toggleBlock = async (user: any) => {
+    const blocked = !user.isBlocked;
+    if (blocked && !confirm(t("adminBlockConfirm") || "Bu istifadəçi bloklansın?")) return;
+    try {
+      const res = await fetch(`${API}/admin/users/${user.id}/block`, { method: "PUT", headers, body: JSON.stringify({ blocked }) });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsers(users.map((u) => u.id === user.id ? { ...u, isBlocked: blocked } : u));
+        toast(blocked ? (t("adminBlocked") || "Bloklandı") : (t("adminUnblocked") || "Blok açıldı"), "success");
+      } else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
   };
 
   const openEdit = (user: any) => {
@@ -48,9 +69,14 @@ export default function AdminUsersPage() {
 
   const handleSave = async () => {
     if (!modal) return;
-    await fetch(`${API}/admin/users/${modal.id}`, { method: "PUT", headers, body: JSON.stringify(modal) });
-    setModal(null);
-    fetchUsers();
+    try {
+      const res = await fetch(`${API}/admin/users/${modal.id}`, { method: "PUT", headers, body: JSON.stringify(modal) });
+      const data = await res.json();
+      if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      setModal(null);
+      fetchUsers();
+      toast(t("adminSaved") || "Yadda saxlanıldı", "success");
+    } catch { toast(t("error"), "error"); }
   };
 
   const typeLabel = (type: string) => {
@@ -108,12 +134,22 @@ export default function AdminUsersPage() {
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${tl.cls}`}>{tl.text}</span>
                       {user.verified && <span className="w-2 h-2 bg-green-500 rounded-full shrink-0" title="Doğrulanıb" />}
                       {user.role === "ADMIN" && <span className="px-1.5 py-0.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded text-[10px] font-medium">ADMIN</span>}
+                      {user.isBlocked && <span className="px-1.5 py-0.5 bg-red-600/15 text-red-600 border border-red-600/30 rounded text-[10px] font-bold">{t("adminBlockedTag") || "BLOKLU"}</span>}
                     </div>
                     <p className="text-muted text-xs mt-0.5">{user.phone} · {user._count?.listings || 0} elan · ID: {user.id}</p>
                   </div>
 
                   {/* Actions */}
                   <div className="flex gap-1.5 shrink-0">
+                    {user.role !== "ADMIN" && (
+                      <button onClick={() => toggleBlock(user)} className={`p-2 rounded-lg transition-colors ${user.isBlocked ? "bg-green-500/10 text-green-500 hover:bg-green-500/20" : "bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20"}`} title={user.isBlocked ? (t("adminUnblock") || "Blok aç") : (t("adminBlock") || "Blokla")}>
+                        {user.isBlocked ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16.5 10.5V6.75a4.5 4.5 0 00-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
+                        )}
+                      </button>
+                    )}
                     <button onClick={() => openEdit(user)} className="p-2 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-colors" title={t("adminEdit")}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </button>
@@ -163,6 +199,18 @@ export default function AdminUsersPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center gap-2 mt-6 flex-wrap">
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+            <button key={p} onClick={() => setPage(p)}
+              className={`w-9 h-9 rounded-lg text-sm font-medium ${page === p ? "bg-orange-500 text-white" : "bg-input-bg border border-input-border text-muted hover:text-foreground"}`}>
+              {p}
+            </button>
+          ))}
         </div>
       )}
 
