@@ -12,13 +12,10 @@ export default function Footer() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-10">
           {/* Brand */}
           <div className="col-span-2 sm:col-span-1">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 brand-gradient rounded-xl flex items-center justify-center font-bold text-xs text-white shadow-md shadow-orange-500/25">
-                AB
+            <div className="flex items-center mb-4">
+              <div className="px-3 h-9 brand-gradient rounded-xl flex items-center justify-center font-bold text-base text-white shadow-md shadow-orange-500/25 tracking-tight">
+                tradixai
               </div>
-              <span className="text-lg font-bold brand-text tracking-tight">
-                AvtoBazar
-              </span>
             </div>
             <p className="text-muted text-sm leading-relaxed max-w-xs">
               {t('footerDesc')}
@@ -69,7 +66,7 @@ export default function Footer() {
 
         {/* Bottom */}
         <div className="border-t border-card-border mt-8 sm:mt-10 pt-5 sm:pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-muted text-xs">&copy; {year} AvtoBazar. {t('footerRights')}</p>
+          <p className="text-muted text-xs">&copy; {year} tradixai. {t('footerRights')}</p>
           <div className="flex gap-5">
             <span className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{t('footerPrivacy')}</span>
             <span className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{t('footerTerms')}</span>
