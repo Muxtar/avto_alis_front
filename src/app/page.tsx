@@ -17,7 +17,7 @@ export default function Home() {
 
   useEffect(() => {
     if (!authLoading && isLoggedIn) {
-      router.replace("/marketplace");
+      router.replace("/elanlar");
     }
   }, [authLoading, isLoggedIn, router]);
 
@@ -64,8 +64,8 @@ export default function Home() {
 
       <div className="w-full max-w-md animate-fade-in">
         <div className="text-center mb-6 sm:mb-8">
-          <div className="inline-flex w-14 h-14 sm:w-16 sm:h-16 brand-gradient rounded-2xl items-center justify-center font-bold text-white text-lg sm:text-xl shadow-xl shadow-orange-500/25 mb-4">
-            AB
+          <div className="inline-flex px-5 h-14 sm:h-16 brand-gradient rounded-2xl items-center justify-center font-bold text-white text-lg sm:text-2xl shadow-xl shadow-orange-500/25 mb-4 tracking-tight">
+            tradixai
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1.5">{t("registerTitle")}</h1>
           <p className="text-muted text-sm sm:text-base">{t("loginWithPhoneSubtitle")}</p>
@@ -97,7 +97,7 @@ export default function Home() {
 
             <p className="text-center text-xs text-muted pt-1">
               {t("browseWithoutLogin")}{" "}
-              <Link href="/marketplace" className="text-orange-500 hover:text-orange-400 font-semibold">
+              <Link href="/elanlar" className="text-orange-500 hover:text-orange-400 font-semibold">
                 {t("marketplace")}
               </Link>
               {" · "}

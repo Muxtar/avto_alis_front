@@ -60,14 +60,14 @@ export default function Navbar() {
     <nav className="border-b border-card-border glass sticky top-0 z-50 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-16 gap-2">
-          <a href="/marketplace" className="flex items-center shrink-0 group">
+          <a href="/elanlar" className="flex items-center shrink-0 group">
             <div className="px-3 h-9 sm:h-10 brand-gradient rounded-xl flex items-center justify-center font-bold text-base sm:text-lg text-white shadow-md shadow-orange-500/30 group-hover:scale-105 transition-transform tracking-tight">
               tradixai
             </div>
           </a>
 
           <div className="hidden sm:flex items-center gap-1 px-2 sm:px-4">
-            <Link href="/marketplace" className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-muted hover:text-foreground hover:bg-input-bg transition-all whitespace-nowrap">
+            <Link href="/elanlar" className="px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium text-muted hover:text-foreground hover:bg-input-bg transition-all whitespace-nowrap">
               {t("marketplace")}
             </Link>
             <Link

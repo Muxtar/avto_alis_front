@@ -101,7 +101,7 @@ export default function MobileBottomNav() {
       )}
 
       <nav className="bottom-nav md:hidden" aria-label="bottom-nav">
-        <Link href="/marketplace" className={isActive("/marketplace") ? "active" : ""}>
+        <Link href="/elanlar" className={isActive("/elanlar") || isActive("/marketplace") ? "active" : ""}>
           <span className="relative">{HomeIcon}</span>
           <span>{t("homeNav") || "Əsas"}</span>
         </Link>

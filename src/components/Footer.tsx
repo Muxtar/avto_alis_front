@@ -26,7 +26,7 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold mb-4 text-foreground">{t('footerPlatform')}</h3>
             <div className="flex flex-col gap-2.5">
-              <Link href="/marketplace" className="text-muted text-sm hover:text-orange-500 transition-colors">{t('marketplace')}</Link>
+              <Link href="/elanlar" className="text-muted text-sm hover:text-orange-500 transition-colors">{t('marketplace')}</Link>
               <Link href="/inquiries" className="text-muted text-sm hover:text-orange-500 transition-colors">{t('inquiries')}</Link>
               <Link href="/orders" className="text-muted text-sm hover:text-orange-500 transition-colors">{t('orders')}</Link>
               <Link href="/messages" className="text-muted text-sm hover:text-orange-500 transition-colors">{t('messages')}</Link>

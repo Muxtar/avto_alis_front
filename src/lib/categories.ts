@@ -55,3 +55,33 @@ export function isVehicleCat(main: string): boolean {
 export function isServiceCat(main: string): boolean {
   return !!getCat(main)?.service;
 }
+
+// ----- URL slug-ları (tap.az üslubu: /elanlar/elektronika/audio-video) -----
+const AZ_MAP: Record<string, string> = {
+  ə: "e", ç: "c", ğ: "g", ı: "i", İ: "i", ö: "o", ş: "s", ü: "u",
+};
+export function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .split("")
+    .map((ch) => AZ_MAP[ch] ?? ch)
+    .join("")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+// Kateqoriya stringi ("Main › Sub") → slug massivi.
+export function catToSlugs(cat: string): string[] {
+  const { main, sub } = parseCat(cat);
+  return [main && slugify(main), sub && slugify(sub)].filter(Boolean) as string[];
+}
+// Slug massivi → kateqoriya stringi (yoxdursa "").
+export function slugsToCat(slugs: string[]): string {
+  if (!slugs.length) return "";
+  const c = CATEGORIES.find((x) => slugify(x.name) === slugs[0]);
+  if (!c) return "";
+  if (slugs[1]) {
+    const s = c.subs.find((su) => slugify(su) === slugs[1]);
+    return s ? buildCat(c.name, s) : c.name;
+  }
+  return c.name;
+}
