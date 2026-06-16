@@ -262,7 +262,7 @@ export default function MarketplacePage() {
               {typeButtons.map((btn) => (
                 <button
                   key={btn.id}
-                  onClick={() => setActiveType(btn.id)}
+                  onClick={() => { setActiveType(btn.id); setSelectedCategory(null); }}
                   className={activeType === btn.id ? "active" : ""}
                 >
                   {btn.label}
@@ -290,9 +290,29 @@ export default function MarketplacePage() {
             const selMain = selectedCategory ? parseCat(selectedCategory).main : "";
             const cat = CATEGORIES.find((c) => c.name === selMain);
             if (!cat) {
+              // Xidmətlər seçilibsə → xidmət alt-kateqoriyaları kart kimi.
+              if (activeType === "SERVICE") {
+                const svc = CATEGORIES.find((c) => c.service)!;
+                return (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
+                    {svc.subs.map((s) => (
+                      <button
+                        key={s}
+                        onClick={() => setSelectedCategory(buildCat(svc.name, s))}
+                        className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border border-card-border hover:border-orange-500/50 hover:shadow-md transition-all text-center group"
+                      >
+                        <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{svc.icon}</span>
+                        <span className="text-[11px] sm:text-xs font-medium leading-tight">{s}</span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              }
+              // Məhsullar → xidmət kateqoriyası xaric; Hamısı → hamısı.
+              const mains = activeType === "PRODUCT" ? CATEGORIES.filter((c) => !c.service) : CATEGORIES;
               return (
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
-                  {CATEGORIES.map((c) => (
+                  {mains.map((c) => (
                     <button
                       key={c.name}
                       onClick={() => setSelectedCategory(c.name)}
