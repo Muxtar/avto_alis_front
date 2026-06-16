@@ -72,7 +72,7 @@ export default function AdminBroadcastPage() {
         </div>
         <div>
           <label className="block text-sm font-medium mb-1.5">{t("adminBroadcastLink")}</label>
-          <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="/marketplace" className={inputCls} />
+          <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="/elanlar" className={inputCls} />
         </div>
         <button onClick={send} disabled={busy} className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white disabled:opacity-50">
           {busy ? "..." : t("adminBroadcastSend")}

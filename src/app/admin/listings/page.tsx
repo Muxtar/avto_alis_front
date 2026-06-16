@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
-import { TAXONOMY, buildCategoryPath, parseCategoryPath, getSubsFor, getPartsFor } from "@/lib/taxonomy";
+import { CATEGORIES, getSubs, parseCat, buildCat } from "@/lib/categories";
 
 export default function AdminListingsPage() {
   const { t } = useLanguage();
@@ -210,50 +210,35 @@ export default function AdminListingsPage() {
                 </div>
               </div>
               {(() => {
-                const { main, sub, leaf } = parseCategoryPath(modal.category);
-                const mainName = main || TAXONOMY[0].name;
-                const subs = getSubsFor(mainName);
-                const subName = sub || subs[0]?.name || "";
-                const parts = getPartsFor(mainName, subName);
+                const { main, sub } = parseCat(modal.category);
+                const mainName = main || CATEGORIES[0].name;
+                const subs = getSubs(mainName);
+                const subName = sub || subs[0] || "";
                 const selectCls = "w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none";
                 return (
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-muted mb-1">Ana kateqoriya</label>
                       <select
                         value={mainName}
                         onChange={(e) => {
                           const nm = e.target.value;
-                          const ns = getSubsFor(nm);
-                          setModal({ ...modal, category: buildCategoryPath(nm, ns[0]?.name || "", ns[0]?.parts[0] || "") });
+                          const ns = getSubs(nm);
+                          setModal({ ...modal, category: buildCat(nm, ns[0] || "") });
                         }}
                         className={selectCls}
                       >
-                        {TAXONOMY.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
+                        {CATEGORIES.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
                       </select>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-muted mb-1">Alt kateqoriya</label>
                       <select
                         value={subName}
-                        onChange={(e) => {
-                          const ns = e.target.value;
-                          const np = getPartsFor(mainName, ns);
-                          setModal({ ...modal, category: buildCategoryPath(mainName, ns, np[0] || "") });
-                        }}
+                        onChange={(e) => setModal({ ...modal, category: buildCat(mainName, e.target.value) })}
                         className={selectCls}
                       >
-                        {subs.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-muted mb-1">Hissə</label>
-                      <select
-                        value={leaf}
-                        onChange={(e) => setModal({ ...modal, category: buildCategoryPath(mainName, subName, e.target.value) })}
-                        className={selectCls}
-                      >
-                        {parts.map((p) => <option key={p} value={p}>{p}</option>)}
+                        {subs.map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
                   </div>

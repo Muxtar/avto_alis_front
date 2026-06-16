@@ -40,13 +40,14 @@ function VerifyContent() {
       const data = await res.json();
       if (res.ok && data.success) {
         login(data.token, data.user);
-        if (data.profileComplete) {
-          router.push("/marketplace");
+        if (data.user?.profileComplete ?? data.profileComplete) {
+          router.push("/elanlar");
         } else {
           router.push("/complete-profile");
         }
       } else {
-        setError(t("verifyError"));
+        // Backend-in spesifik mesajını göstər (məs. bloklanmış hesab), yoxsa generic.
+        setError(data.message || t("verifyError"));
       }
     } catch {
       setError(t("error"));
@@ -57,17 +58,20 @@ function VerifyContent() {
 
   const handleResend = async () => {
     try {
-      const res = await fetch(`${API}/verify/send`, {
+      // /verify/resend istifadəçi mövcudluğunu yoxlayır (ona görə /verify/send-dən təhlükəsizdir).
+      const res = await fetch(`${API}/verify/resend`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId }),
       });
       const data = await res.json();
-      if (data.success) {
-        setTestCode(data.code);
+      if (res.ok && data.success) {
+        setTestCode(data.verificationCode || "");
         setCountdown(60);
         setCode("");
         setError("");
+      } else {
+        toast(data.message || t('error'), 'error');
       }
     } catch { toast(t('error'), 'error'); }
   };

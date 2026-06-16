@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
-import { CATEGORIES, getSubs, buildCat, parseCat, isVehicleCat, isServiceCat } from "@/lib/categories";
+import { CATEGORIES, getSubs, buildCat, parseCat, isVehicleSub, isServiceCat } from "@/lib/categories";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
 
@@ -13,7 +13,7 @@ const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const DEFAULT_MAIN = CATEGORIES[0].name;
-const DEFAULT_CATEGORY = buildCat(DEFAULT_MAIN, CATEGORIES[0].subs[0]);
+const DEFAULT_CATEGORY = buildCat(DEFAULT_MAIN, CATEGORIES[0].subs[0].name);
 
 export default function AccountPage() {
   return (
@@ -338,28 +338,23 @@ function AccountPageInner() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5">
-                  {t("partBrand") || t("brand")}
-                  <span className="text-orange-500 ml-1">*</span>
+                  {t("brand")}
                 </label>
                 <input
                   value={form.brand}
                   onChange={(e) => setForm({ ...form, brand: e.target.value })}
-                  placeholder={t("partBrandPlaceholder") || "Bosch, Mahle, Brembo..."}
+                  placeholder={t("brandPlaceholderGeneral") || "Məs: Apple, Samsung, Bosch, Nike"}
                   className={inputCls}
-                  required={form.type === "PRODUCT"}
                 />
-                <p className="text-[11px] text-muted mt-1">{t("partBrandHint")}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1.5">
                   {t("countryOfOrigin")}
-                  <span className="text-orange-500 ml-1">*</span>
                 </label>
                 <select
                   value={form.country}
                   onChange={(e) => setForm({ ...form, country: e.target.value })}
                   className={inputCls}
-                  required={form.type === "PRODUCT"}
                 >
                   <option value="">—</option>
                   {MANUFACTURING_COUNTRIES.map((c) => (
@@ -372,7 +367,7 @@ function AccountPageInner() {
               </div>
             </div>
             )}
-            {isVehicleCat(parseCat(form.category).main) && (
+            {isVehicleSub(parseCat(form.category).main, parseCat(form.category).sub) && form.type !== "SERVICE" && (
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("vehicleModel")}</label>
                 <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t("vehicleModelPlaceholder")} className={inputCls} />
@@ -386,7 +381,7 @@ function AccountPageInner() {
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {isVehicleCat(parseCat(form.category).main) && (
+              {isVehicleSub(parseCat(form.category).main, parseCat(form.category).sub) && form.type !== "SERVICE" && (
                 <div>
                   <label className="block text-sm font-medium mb-1.5">{t("fuelType")}</label>
                   <select value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} className={inputCls}>
@@ -403,7 +398,7 @@ function AccountPageInner() {
                 </select>
               </div>
             </div>
-            {isVehicleCat(parseCat(form.category).main) && (
+            {isVehicleSub(parseCat(form.category).main, parseCat(form.category).sub) && form.type !== "SERVICE" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("forVehicle")}</label>

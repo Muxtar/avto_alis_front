@@ -13,8 +13,8 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "AvtoBazar - Avtomobil Platformu",
-  description: "Avtomobil sahibi, usta və ehtiyat hissə satıcıları üçün platform",
+  title: "tradixai — Onlayn Bazar",
+  description: "Hər şeyin alınıb-satıldığı onlayn bazar platforması",
 };
 
 export default function RootLayout({

@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { CATEGORIES, CATEGORY_NAMES, getSubs, parseCat, buildCat } from "@/lib/categories";
 
 // Excel sütun başlıqları — şablon faylındakı və oxunan başlıqlar.
 const COLUMNS = [
@@ -13,6 +14,22 @@ const COLUMNS = [
   "brand", "model", "year", "city", "stock", "type", "condition", "forVehicle",
 ] as const;
 const REQUIRED = ["title", "price", "category"] as const;
+
+// Bütün etibarlı kateqoriyalar (ana + "Ana › Alt") — şablon vərəqi və validasiya üçün.
+const ALL_CATEGORY_PATHS: string[] = CATEGORIES.flatMap((c) => [
+  c.name,
+  ...getSubs(c.name).map((s) => buildCat(c.name, s)),
+]);
+const CATEGORY_SET = new Set(ALL_CATEGORY_PATHS);
+
+// Kateqoriya dəyəri tanınırmı? Ya tam yol ("Ana › Alt"), ya ana adı.
+function isValidCategory(raw: string): boolean {
+  const v = raw.trim();
+  if (CATEGORY_SET.has(v)) return true;
+  // Yalnız alt ad verilibsə də qəbul et, amma yalnız bircə ana altında varsa (qeyri-müəyyənlik olmasın).
+  const { main } = parseCat(v);
+  return CATEGORY_NAMES.includes(main);
+}
 
 type Row = Record<string, unknown>;
 
@@ -42,24 +59,34 @@ export default function ExcelImportPage() {
   // Şablon .xlsx faylı yarat və endir.
   const downloadTemplate = async () => {
     const XLSX = await import("xlsx");
-    const example = {
-      title: "Mühərrik yağı 5W-30",
-      price: 45,
-      category: "Filtrlər və servis hissələri",
-      description: "Original, 4 litr",
-      brand: "Toyota",
-      model: "Camry",
-      year: 2020,
-      city: "Bakı",
-      stock: 10,
-      type: "PRODUCT",
-      condition: "NEW",
-      forVehicle: "Camry 2018-2023",
-    };
-    const ws = XLSX.utils.json_to_sheet([example], { header: COLUMNS as unknown as string[] });
+    const examples = [
+      {
+        title: "iPhone 14 Pro 128GB",
+        price: 1800,
+        category: "Elektronika › Telefonlar",
+        description: "İdeal vəziyyətdə",
+        brand: "Apple", model: "", year: "",
+        city: "Bakı", stock: 1, type: "PRODUCT", condition: "USED", forVehicle: "",
+      },
+      {
+        title: "Mühərrik yağı 5W-30",
+        price: 45,
+        category: "Avtomobil ehtiyat hissələri › Filtrlər və yağlar",
+        description: "Original, 4 litr",
+        brand: "Toyota", model: "Camry", year: 2020,
+        city: "Bakı", stock: 10, type: "PRODUCT", condition: "NEW", forVehicle: "Camry 2018-2023",
+      },
+    ];
+    const ws = XLSX.utils.json_to_sheet(examples, { header: COLUMNS as unknown as string[] });
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Elanlar");
-    XLSX.writeFile(wb, "avtobazar-elan-shablonu.xlsx");
+    // İkinci vərəq — bütün etibarlı kateqoriyalar (kopyala-yapışdır üçün).
+    const catSheet = XLSX.utils.json_to_sheet(
+      ALL_CATEGORY_PATHS.map((p) => ({ kateqoriya: p })),
+      { header: ["kateqoriya"] }
+    );
+    XLSX.utils.book_append_sheet(wb, catSheet, "Kateqoriyalar");
+    XLSX.writeFile(wb, "tradixai-elan-shablonu.xlsx");
   };
 
   const validateRow = (data: Row): string | null => {
@@ -70,6 +97,9 @@ export default function ExcelImportPage() {
       }
     }
     if (isNaN(parseFloat(String(data.price)))) return `"price" rəqəm olmalıdır`;
+    if (!isValidCategory(String(data.category))) {
+      return `"category" tanınmır — "Kateqoriyalar" vərəqindəki dəyərdən istifadə edin`;
+    }
     return null;
   };
 
@@ -166,6 +196,8 @@ export default function ExcelImportPage() {
         <p className="text-sm font-semibold mb-1">1. {t("excelStep1")}</p>
         <p className="text-xs text-muted mb-3">
           {t("excelRequiredCols")}: <b>title, price, category</b>. {t("excelOptionalCols")}: description, brand, model, year, city, stock, type, condition, forVehicle.
+          <br />
+          <span className="text-orange-500">ℹ️</span> <b>category</b> dəyəri şablondakı <b>&quot;Kateqoriyalar&quot;</b> vərəqindən kopyalanmalıdır (məs. <i>Elektronika › Telefonlar</i>).
         </p>
         <button onClick={downloadTemplate} className="px-4 py-2 bg-input-bg border border-input-border rounded-lg text-sm font-medium hover:opacity-80">
           ⬇ {t("excelDownloadTemplate")}

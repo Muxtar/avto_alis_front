@@ -76,6 +76,9 @@ export default function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeType, setActiveType] = useState<TypeFilter>("all");
+  // Kateqoriya gridini yığcam göstər (çox olduqda "Daha çox" ilə aç).
+  const [showAllCats, setShowAllCats] = useState(false);
+  const COLLAPSED_CATS = 11;
   // Filterler
   const [conditionFilter, setConditionFilter] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>("");
@@ -129,6 +132,9 @@ export default function MarketplacePage() {
     const arr = slugKey ? slugKey.split("/") : [];
     setSelectedCategory(slugsToCat(arr) || null);
   }, [slugKey]);
+
+  // Grid konteksti dəyişəndə (kateqoriya/tip) yenidən yığcam göstər.
+  useEffect(() => { setShowAllCats(false); }, [slugKey, activeType]);
 
   const buildParams = (pageNum: number) => {
     const params = new URLSearchParams();
@@ -304,40 +310,60 @@ export default function MarketplacePage() {
           {(() => {
             const selMain = selectedCategory ? parseCat(selectedCategory).main : "";
             const cat = CATEGORIES.find((c) => c.name === selMain);
+            // Çox kateqoriya olduqda yığcam göstər + "Daha çox" düyməsi.
+            const moreBtn = (total: number) => total > COLLAPSED_CATS ? (
+              <div className="flex justify-center mt-4">
+                <button
+                  onClick={() => setShowAllCats((v) => !v)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-orange-500 bg-orange-500/10 border border-orange-500/30 hover:bg-orange-500/20 transition-all"
+                >
+                  {showAllCats ? t("showLessCats") : `${t("showMoreCats")} (+${total - COLLAPSED_CATS})`}
+                  <svg className={`w-4 h-4 transition-transform ${showAllCats ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+              </div>
+            ) : null;
             if (!cat) {
               // Xidmətlər seçilibsə → xidmət alt-kateqoriyaları kart kimi.
               if (activeType === "SERVICE") {
                 const svc = CATEGORIES.find((c) => c.service)!;
+                const visible = showAllCats ? svc.subs : svc.subs.slice(0, COLLAPSED_CATS);
                 return (
-                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
-                    {svc.subs.map((s) => (
-                      <button
-                        key={s}
-                        onClick={() => goCat(buildCat(svc.name, s))}
-                        className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border border-card-border hover:border-orange-500/50 hover:shadow-md transition-all text-center group"
-                      >
-                        <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{svc.icon}</span>
-                        <span className="text-[11px] sm:text-xs font-medium leading-tight">{s}</span>
-                      </button>
-                    ))}
-                  </div>
+                  <>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
+                      {visible.map((s) => (
+                        <button
+                          key={s.name}
+                          onClick={() => goCat(buildCat(svc.name, s.name))}
+                          className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border border-card-border hover:border-orange-500/50 hover:shadow-md transition-all text-center group"
+                        >
+                          <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{s.icon}</span>
+                          <span className="text-[11px] sm:text-xs font-medium leading-tight">{s.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                    {moreBtn(svc.subs.length)}
+                  </>
                 );
               }
               // Məhsullar → xidmət kateqoriyası xaric; Hamısı → hamısı.
               const mains = activeType === "PRODUCT" ? CATEGORIES.filter((c) => !c.service) : CATEGORIES;
+              const visible = showAllCats ? mains : mains.slice(0, COLLAPSED_CATS);
               return (
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
-                  {mains.map((c) => (
-                    <button
-                      key={c.name}
-                      onClick={() => goCat(c.name)}
-                      className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border border-card-border hover:border-orange-500/50 hover:shadow-md transition-all text-center group"
-                    >
-                      <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{c.icon}</span>
-                      <span className="text-[11px] sm:text-xs font-medium leading-tight">{c.name}</span>
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
+                    {visible.map((c) => (
+                      <button
+                        key={c.name}
+                        onClick={() => goCat(c.name)}
+                        className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border border-card-border hover:border-orange-500/50 hover:shadow-md transition-all text-center group"
+                      >
+                        <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{c.icon}</span>
+                        <span className="text-[11px] sm:text-xs font-medium leading-tight">{c.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {moreBtn(mains.length)}
+                </>
               );
             }
             const sub = parseCat(selectedCategory).sub;
@@ -359,17 +385,18 @@ export default function MarketplacePage() {
                     <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{cat.icon}</span>
                     <span className="text-[11px] sm:text-xs font-medium leading-tight">{t("allCategories")}</span>
                   </button>
-                  {cat.subs.map((s) => (
+                  {(showAllCats ? cat.subs : cat.subs.slice(0, COLLAPSED_CATS)).map((s) => (
                     <button
-                      key={s}
-                      onClick={() => goCat(buildCat(cat.name, s))}
-                      className={`${cardBase} ${sub === s ? cardOn : cardOff}`}
+                      key={s.name}
+                      onClick={() => goCat(buildCat(cat.name, s.name))}
+                      className={`${cardBase} ${sub === s.name ? cardOn : cardOff}`}
                     >
-                      <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{cat.icon}</span>
-                      <span className="text-[11px] sm:text-xs font-medium leading-tight">{s}</span>
+                      <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{s.icon}</span>
+                      <span className="text-[11px] sm:text-xs font-medium leading-tight">{s.name}</span>
                     </button>
                   ))}
                 </div>
+                {moreBtn(cat.subs.length)}
               </div>
             );
           })()}

@@ -1,44 +1,266 @@
 // Ümumi marketplace taksonomiyası — sayt hər şeyi satır (təkcə avto deyil).
-// Hər əsas kateqoriyanın öz alt kateqoriyaları var. `vehicle` = avtomobillə
-// bağlıdır (yalnız bu kateqoriyalarda marka/model/yanacaq/il sahələri çıxır).
+// Hər əsas kateqoriyanın və hər alt kateqoriyanın öz ikonu var (bir-birindən fərqli).
+// `vehicle` = avtomobillə bağlıdır (yalnız bu kateqoriyalarda marka/model/yanacaq/il sahələri çıxır).
+// `service` = tip avtomatik SERVICE olsun.
 
+export interface SubCategory {
+  name: string;
+  icon: string;
+}
 export interface MainCategory {
   name: string;
   icon: string; // emoji ikon (kateqoriya kartları üçün)
-  subs: string[];
+  subs: SubCategory[];
   vehicle?: boolean;
-  service?: boolean; // tip avtomatik SERVICE olsun
+  service?: boolean;
 }
 
-export const CATEGORIES: MainCategory[] = [
-  { name: "Nəqliyyat", icon: "🚗", vehicle: true, subs: ["Minik avtomobilləri", "Motosiklet və mopedlər", "Yük və kommersiya", "Tikinti və xüsusi texnika", "Su nəqliyyatı", "Şinlər və disklər"] },
-  { name: "Avtomobil ehtiyat hissələri", icon: "⚙️", vehicle: true, subs: ["Mühərrik hissələri", "Transmissiya", "Asqı və sükan", "Əyləc sistemi", "Elektrik və elektronika", "Filtrlər və servis", "Soyutma və kondisioner", "Kuzov hissələri", "İşıqlandırma", "Şüşə və güzgü", "Salon hissələri", "Təkər və disk", "Multimedia və aksesuar"] },
-  { name: "Daşınmaz əmlak", icon: "🏠", subs: ["Mənzillər", "Evlər və villalar", "Torpaq sahələri", "Ofis və obyektlər", "Qaraj və yer"] },
-  { name: "Elektronika", icon: "📱", subs: ["Telefonlar və aksesuarlar", "Kompüter və noutbuk", "TV, audio, video", "Foto və video", "Oyun və konsollar", "Smart cihazlar"] },
-  { name: "Məişət texnikası", icon: "🧺", subs: ["İri texnika", "Mətbəx texnikası", "İqlim texnikası", "Təmizlik texnikası"] },
-  { name: "Ev və bağ", icon: "🛋️", subs: ["Mebel", "Ev dekoru", "Qab-qacaq və mətbəx", "Bağ və tərəvəz", "Tekstil"] },
-  { name: "Tikinti və təmir", icon: "🧱", subs: ["İnşaat materialları", "Santexnika", "Elektrik malları", "Alət və avadanlıq", "Qapı və pəncərə"] },
-  { name: "Geyim və aksesuar", icon: "👕", subs: ["Qadın geyimi", "Kişi geyimi", "Ayaqqabı", "Çanta və aksesuar", "Saat və zinət"] },
-  { name: "Gözəllik və sağlamlıq", icon: "💄", subs: ["Kosmetika", "Ətriyyat", "Sağlamlıq"] },
-  { name: "Uşaq aləmi", icon: "🧸", subs: ["Uşaq geyimi", "Oyuncaqlar", "Uşaq əşyaları", "Məktəbli"] },
-  { name: "Hobbi və idman", icon: "⚽", subs: ["İdman", "Musiqi alətləri", "Kitablar və media", "Kolleksiya və əntiq", "Ov və balıqçılıq"] },
-  { name: "Heyvanlar", icon: "🐾", subs: ["Ev heyvanları", "Heyvan ləvazimatı", "Kənd təsərrüfatı heyvanları"] },
-  { name: "İş elanları", icon: "💼", subs: ["Vakansiyalar", "İş axtarıram", "Biznes və avadanlıq"] },
-  { name: "Xidmətlər", icon: "🛠️", service: true, subs: ["Avto xidmət", "Təmir və tikinti", "Məişət texnikası təmiri", "Gözəllik xidmətləri", "Təhsil və repetitor", "Nəqliyyat və daşınma", "IT və dizayn", "Tədbir xidmətləri", "Hüquq və maliyyə", "Təmizlik"] },
-  { name: "Kənd təsərrüfatı", icon: "🌾", subs: ["Texnika", "Bitki və toxum", "Məhsullar"] },
-  { name: "Digər", icon: "📦", subs: ["Müxtəlif", "Pulsuz / Bağışlanır"] },
-];
+const s = (name: string, icon: string): SubCategory => ({ name, icon });
 
-export const getIcon = (main: string): string => getCat(main)?.icon || "📦";
+export const CATEGORIES: MainCategory[] = [
+  {
+    name: "Nəqliyyat", icon: "🚗", vehicle: true, subs: [
+      s("Minik avtomobilləri", "🚙"),
+      s("Motosiklet və mopedlər", "🏍️"),
+      s("Yük maşınları", "🚚"),
+      s("Avtobus və mikroavtobus", "🚌"),
+      s("Tikinti və xüsusi texnika", "🚜"),
+      s("Su nəqliyyatı", "⛵"),
+      s("Qoşqu və treyler", "🚛"),
+      s("Təkər və disklər", "🛞"),
+    ],
+  },
+  {
+    name: "Avtomobil ehtiyat hissələri", icon: "⚙️", vehicle: true, subs: [
+      s("Mühərrik hissələri", "🔧"),
+      s("Transmissiya", "⚙️"),
+      s("Asqı və sükan", "🛠️"),
+      s("Əyləc sistemi", "🛑"),
+      s("Elektrik və elektronika", "🔌"),
+      s("Filtrlər və yağlar", "🛢️"),
+      s("Soyutma və kondisioner", "❄️"),
+      s("Kuzov hissələri", "🚘"),
+      s("İşıqlandırma", "💡"),
+      s("Şüşə və güzgülər", "🪟"),
+      s("Salon və aksesuar", "🪑"),
+      s("Akkumulyator", "🔋"),
+      s("Audio və multimedia", "🔊"),
+      s("Şinlər və disklər", "🛞"),
+    ],
+  },
+  {
+    name: "Daşınmaz əmlak", icon: "🏠", subs: [
+      s("Mənzillər (yeni tikili)", "🏢"),
+      s("Mənzillər (köhnə tikili)", "🏬"),
+      s("Evlər və villalar", "🏡"),
+      s("Həyət evləri və bağ", "🏘️"),
+      s("Torpaq sahələri", "🏞️"),
+      s("Ofislər", "🏤"),
+      s("Obyekt və mağazalar", "🏪"),
+      s("Qaraj və anbar", "🏚️"),
+      s("Günlük kirayə", "🛏️"),
+      s("Xaricdə əmlak", "🌍"),
+    ],
+  },
+  {
+    name: "Elektronika", icon: "📱", subs: [
+      s("Telefonlar", "📱"),
+      s("Planşetlər", "📲"),
+      s("Noutbuklar", "💻"),
+      s("Kompüterlər", "🖥️"),
+      s("Komponentlər və monitorlar", "🖲️"),
+      s("TV və proyektorlar", "📺"),
+      s("Audio (qulaqlıq, dinamik)", "🎧"),
+      s("Foto və video kameralar", "📷"),
+      s("Oyun konsolları", "🎮"),
+      s("Smart saat və qurğular", "⌚"),
+      s("Şəbəkə avadanlığı", "📡"),
+      s("Aksesuar və kabellər", "🔌"),
+    ],
+  },
+  {
+    name: "Məişət texnikası", icon: "🧺", subs: [
+      s("Soyuducular", "❄️"),
+      s("Paltaryuyan maşınlar", "🧼"),
+      s("Qabyuyan maşınlar", "🍽️"),
+      s("Sobalar və plitələr", "🔥"),
+      s("Mikrodalğalı sobalar", "♨️"),
+      s("Kondisioner və ventilyator", "🌬️"),
+      s("Tozsoranlar", "🧹"),
+      s("Mətbəx texnikası", "☕"),
+      s("Ütü və tikiş maşınları", "🧵"),
+      s("Su qızdırıcı və qızdırıcılar", "🔆"),
+    ],
+  },
+  {
+    name: "Ev və bağ", icon: "🛋️", subs: [
+      s("Mebel", "🛋️"),
+      s("Yataq və mətbəx mebeli", "🛏️"),
+      s("İşıqlandırma", "💡"),
+      s("Xalça və tekstil", "🧶"),
+      s("Ev dekoru və aksesuar", "🖼️"),
+      s("Qab-qacaq", "🍴"),
+      s("Bağ və həyət", "🌷"),
+      s("Bitki və güllər", "🪴"),
+      s("Bağ alətləri", "🪓"),
+      s("Təmizlik ləvazimatı", "🧴"),
+    ],
+  },
+  {
+    name: "Tikinti və təmir", icon: "🧱", subs: [
+      s("İnşaat materialları", "🧱"),
+      s("Sement, qum, kərpic", "🪨"),
+      s("Santexnika", "🚿"),
+      s("Elektrik malları", "🔌"),
+      s("Alət və avadanlıq", "🛠️"),
+      s("Qapı və pəncərə", "🚪"),
+      s("Boya və laklar", "🎨"),
+      s("İzolyasiya və dam", "🏗️"),
+      s("Furnitura və bərkidici", "🔩"),
+      s("Kafel və döşəmə", "🟫"),
+    ],
+  },
+  {
+    name: "Geyim və aksesuar", icon: "👕", subs: [
+      s("Qadın geyimi", "👗"),
+      s("Kişi geyimi", "👔"),
+      s("Uşaq geyimi", "👶"),
+      s("Ayaqqabı", "👟"),
+      s("Çantalar", "👜"),
+      s("Saatlar", "⌚"),
+      s("Zinət əşyaları", "💍"),
+      s("Eynək və aksesuar", "🕶️"),
+      s("İdman geyimi", "🩳"),
+      s("Üst geyim (gödəkçə, palto)", "🧥"),
+    ],
+  },
+  {
+    name: "Gözəllik və sağlamlıq", icon: "💄", subs: [
+      s("Kosmetika", "💄"),
+      s("Ətriyyat", "🌸"),
+      s("Saç baxımı", "💇"),
+      s("Dəri baxımı", "🧴"),
+      s("Tibbi mallar", "💊"),
+      s("Vitamin və qida əlavələri", "💉"),
+      s("Manikür və pedikür", "💅"),
+      s("Sağlamlıq cihazları", "🩺"),
+    ],
+  },
+  {
+    name: "Uşaq aləmi", icon: "🧸", subs: [
+      s("Uşaq geyimi", "👶"),
+      s("Oyuncaqlar", "🧸"),
+      s("Uşaq arabaları", "🍼"),
+      s("Avtokreslolar", "💺"),
+      s("Uşaq mebeli", "🪑"),
+      s("Məktəbli ləvazimatı", "🎒"),
+      s("Körpə əşyaları", "🧷"),
+    ],
+  },
+  {
+    name: "Hobbi və idman", icon: "⚽", subs: [
+      s("İdman və fitnes", "🏋️"),
+      s("Velosipedlər", "🚲"),
+      s("Musiqi alətləri", "🎸"),
+      s("Kitablar", "📚"),
+      s("Kolleksiya və antikvariat", "🪙"),
+      s("Ov və balıqçılıq", "🎣"),
+      s("Səyahət və kemp", "⛺"),
+      s("Biletlər", "🎟️"),
+      s("Əl işləri və sənət", "✂️"),
+      s("Oyunlar (lövhə, puzzle)", "🎲"),
+    ],
+  },
+  {
+    name: "Heyvanlar", icon: "🐾", subs: [
+      s("İtlər", "🐕"),
+      s("Pişiklər", "🐈"),
+      s("Quşlar", "🦜"),
+      s("Akvarium və balıqlar", "🐠"),
+      s("Kənd təsərrüfatı heyvanları", "🐄"),
+      s("Atlar", "🐎"),
+      s("Yem və ləvazimat", "🦴"),
+    ],
+  },
+  {
+    name: "Kənd təsərrüfatı", icon: "🌾", subs: [
+      s("Kənd təsərrüfatı texnikası", "🚜"),
+      s("Toxum və bitkilər", "🌱"),
+      s("Gübrə və kimyəvi maddələr", "🧪"),
+      s("Heyvandarlıq", "🐑"),
+      s("Məhsullar (bal, meyvə)", "🍯"),
+      s("Suvarma avadanlığı", "💧"),
+    ],
+  },
+  {
+    name: "İş elanları", icon: "💼", subs: [
+      s("Vakansiyalar", "📋"),
+      s("İş axtarıram", "🔍"),
+      s("Biznes və avadanlıq", "🏭"),
+      s("Hazır biznes", "🤝"),
+      s("Françayzinq", "🏷️"),
+    ],
+  },
+  {
+    name: "Xidmətlər", icon: "🛠️", service: true, subs: [
+      s("Təmir və tikinti xidmətləri", "🏗️"),
+      s("Avtomobil xidmətləri", "🔧"),
+      s("Məişət texnikası təmiri", "🔌"),
+      s("Kompüter və telefon təmiri", "💻"),
+      s("Santexnik xidmətləri", "🚿"),
+      s("Elektrik xidmətləri", "⚡"),
+      s("Kondisioner quraşdırma", "❄️"),
+      s("Mebel yığılması və təmiri", "🪑"),
+      s("Təmizlik xidmətləri", "🧹"),
+      s("Köçürmə və yükdaşıma", "🚚"),
+      s("Nəqliyyat və logistika", "🚛"),
+      s("Təhsil və repetitor", "📚"),
+      s("Dil kursları", "🗣️"),
+      s("IT və proqramlaşdırma", "👨‍💻"),
+      s("Veb sayt və dizayn", "🎨"),
+      s("Reklam və marketinq", "📢"),
+      s("Foto və video çəkiliş", "📷"),
+      s("Tədbir təşkili (toy, DJ)", "🎉"),
+      s("Aşpaz və catering", "👨‍🍳"),
+      s("Gözəllik xidmətləri", "💇"),
+      s("Masaj və SPA", "💆"),
+      s("Tibbi xidmətlər", "🩺"),
+      s("Hüquq xidmətləri", "⚖️"),
+      s("Mühasibatlıq və maliyyə", "📊"),
+      s("Tərcümə xidmətləri", "🌐"),
+      s("Çap və poliqrafiya", "🖨️"),
+      s("Dayə və qulluq", "👶"),
+      s("Geyim tikişi və təmiri", "🧵"),
+      s("Bağ və həyət xidmətləri", "🌳"),
+      s("Heyvan xidmətləri (baytar)", "🐾"),
+      s("Quraşdırma və montaj", "🔩"),
+    ],
+  },
+  {
+    name: "Digər", icon: "📦", subs: [
+      s("Müxtəlif", "📦"),
+      s("Pulsuz / Bağışlanır", "🎁"),
+      s("İtmiş və tapılmış", "🔎"),
+    ],
+  },
+];
 
 export const SEP = " › ";
 export const CATEGORY_NAMES = CATEGORIES.map((c) => c.name);
 
+export const getIcon = (main: string): string => getCat(main)?.icon || "📦";
+// Alt kateqoriyanın öz ikonu (yoxdursa əsas kateqoriyanın ikonu).
+export function getSubIcon(main: string, sub: string): string {
+  const c = getCat(main);
+  return c?.subs.find((x) => x.name === sub)?.icon || c?.icon || "📦";
+}
+
 export function getCat(name: string): MainCategory | undefined {
   return CATEGORIES.find((c) => c.name === name);
 }
+// Alt kateqoriya adlarını (string massivi) qaytarır — köhnə istifadəçilərlə uyğun.
 export function getSubs(main: string): string[] {
-  return getCat(main)?.subs || [];
+  return (getCat(main)?.subs || []).map((x) => x.name);
 }
 export function buildCat(main: string, sub: string): string {
   return [main, sub].filter(Boolean).join(SEP);
@@ -55,13 +277,19 @@ export function isVehicleCat(main: string): boolean {
 export function isServiceCat(main: string): boolean {
   return !!getCat(main)?.service;
 }
+// Mühərriksiz alt-kateqoriyalar — yanacaq/il/model/forVehicle sahələri bunlarda mənasızdır.
+const NON_MOTOR_SUBS = new Set(["Təkər və disklər", "Şinlər və disklər", "Qoşqu və treyler"]);
+// Bu alt-kateqoriya mühərrikli nəqliyyat/avto hissəsidirmi (model/yanacaq/il sahələri üçün)?
+export function isVehicleSub(main: string, sub: string): boolean {
+  return isVehicleCat(main) && !NON_MOTOR_SUBS.has(sub);
+}
 
 // ----- URL slug-ları (tap.az üslubu: /elanlar/elektronika/audio-video) -----
 const AZ_MAP: Record<string, string> = {
   ə: "e", ç: "c", ğ: "g", ı: "i", İ: "i", ö: "o", ş: "s", ü: "u",
 };
-export function slugify(s: string): string {
-  return s
+export function slugify(str: string): string {
+  return str
     .toLowerCase()
     .split("")
     .map((ch) => AZ_MAP[ch] ?? ch)
@@ -80,8 +308,8 @@ export function slugsToCat(slugs: string[]): string {
   const c = CATEGORIES.find((x) => slugify(x.name) === slugs[0]);
   if (!c) return "";
   if (slugs[1]) {
-    const s = c.subs.find((su) => slugify(su) === slugs[1]);
-    return s ? buildCat(c.name, s) : c.name;
+    const sub = c.subs.find((su) => slugify(su.name) === slugs[1]);
+    return sub ? buildCat(c.name, sub.name) : c.name;
   }
   return c.name;
 }

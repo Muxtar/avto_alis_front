@@ -21,7 +21,7 @@ export default function CompleteProfilePage() {
   useEffect(() => {
     if (authLoading) return;
     if (!token) { router.push("/"); return; }
-    if (user?.profileComplete) { router.push("/marketplace"); return; }
+    if (user?.profileComplete) { router.push("/elanlar"); return; }
     if (user?.name) {
       const parts = user.name.trim().split(/\s+/);
       setFirstName(parts[0] || "");
@@ -46,7 +46,7 @@ export default function CompleteProfilePage() {
       const data = await res.json();
       if (res.ok && data.success) {
         login(token!, data.user);
-        router.push("/marketplace");
+        router.push("/elanlar");
       } else {
         toast(data.message || t("error"), "error");
       }

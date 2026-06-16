@@ -130,7 +130,7 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`px-2 py-0.5 rounded text-xs ${u.type === 'MECHANIC' ? 'bg-green-500/10 text-green-500' : u.type === 'PARTS_SELLER' ? 'bg-purple-500/10 text-purple-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                    {u.type === 'MECHANIC' ? 'Usta' : u.type === 'PARTS_SELLER' ? 'Satici' : 'Sahib'}
+                    {u.type === 'MECHANIC' ? 'Usta' : u.type === 'PARTS_SELLER' ? 'Satıcı' : 'Sahib'}
                   </span>
                   {u.verified && <span className="w-2 h-2 bg-green-500 rounded-full" />}
                 </div>

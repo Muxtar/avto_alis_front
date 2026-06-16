@@ -243,7 +243,7 @@ export default function BusinessPage() {
                   </div>
                 ))}
                 <div className="flex flex-wrap gap-2 mt-1">
-                  <input className={`${inputCls} flex-1`} placeholder={t("bizMemberId") || "İstifadəçi ID (məs. AB-7F3K2Q)"} value={memberInput[b.id]?.publicId || ""} onChange={(e) => setMemberInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { publicId: "", objectId: "" }), publicId: e.target.value } }))} />
+                  <input className={`${inputCls} flex-1`} placeholder={t("bizMemberId") || "İstifadəçi ID (məs. TX-7F3K2Q)"} value={memberInput[b.id]?.publicId || ""} onChange={(e) => setMemberInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { publicId: "", objectId: "" }), publicId: e.target.value } }))} />
                   <select className={inputCls + " w-auto"} value={memberInput[b.id]?.objectId || ""} onChange={(e) => setMemberInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { publicId: "", objectId: "" }), objectId: e.target.value } }))}>
                     <option value="">{t("bizWholeBusiness") || "Bütün biznes"}</option>
                     {b.objects.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
