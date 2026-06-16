@@ -273,8 +273,9 @@ function AccountPageInner() {
                       onChange={(e) => {
                         const newMain = e.target.value;
                         const newSub = getSubs(newMain)[0] || "";
-                        // Xidmət kateqoriyası → tip avtomatik SERVICE
-                        const nextType = isServiceCat(newMain) ? "SERVICE" : form.type;
+                        // Xidmət kateqoriyası → SERVICE; digər kateqoriyalar → PRODUCT
+                        // (xidmətdən məhsula keçəndə tip düzgün sıfırlansın).
+                        const nextType = isServiceCat(newMain) ? "SERVICE" : "PRODUCT";
                         setForm({ ...form, category: buildCat(newMain, newSub), type: nextType });
                       }}
                       className={inputCls}
@@ -296,17 +297,19 @@ function AccountPageInner() {
               );
             })()}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1.5">{t("listingType")}</label>
-                <select
-                  value={form.type}
-                  onChange={(e) => setForm({ ...form, type: e.target.value })}
-                  className={inputCls}
-                >
-                  <option value="PRODUCT">{t("product")}</option>
-                  <option value="SERVICE">{t("service")}</option>
-                </select>
-              </div>
+              {!isServiceCat(parseCat(form.category).main) && (
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">{t("listingType")}</label>
+                  <select
+                    value={form.type}
+                    onChange={(e) => setForm({ ...form, type: e.target.value })}
+                    className={inputCls}
+                  >
+                    <option value="PRODUCT">{t("product")}</option>
+                    <option value="SERVICE">{t("service")}</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("listingLocation")}</label>
                 <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder={t("listingLocation")} className={inputCls} />
@@ -315,6 +318,7 @@ function AccountPageInner() {
                 )}
               </div>
             </div>
+            {form.type !== "SERVICE" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("condition")}</label>
@@ -329,11 +333,13 @@ function AccountPageInner() {
                 <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} placeholder="1" className={inputCls} />
               </div>
             </div>
+            )}
+            {form.type !== "SERVICE" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5">
                   {t("partBrand") || t("brand")}
-                  {form.type === "PRODUCT" && <span className="text-orange-500 ml-1">*</span>}
+                  <span className="text-orange-500 ml-1">*</span>
                 </label>
                 <input
                   value={form.brand}
@@ -347,7 +353,7 @@ function AccountPageInner() {
               <div>
                 <label className="block text-sm font-medium mb-1.5">
                   {t("countryOfOrigin")}
-                  {form.type === "PRODUCT" && <span className="text-orange-500 ml-1">*</span>}
+                  <span className="text-orange-500 ml-1">*</span>
                 </label>
                 <select
                   value={form.country}
@@ -365,6 +371,7 @@ function AccountPageInner() {
                 <p className="text-[11px] text-muted mt-1">{t("countryOfOriginHint")}</p>
               </div>
             </div>
+            )}
             {isVehicleCat(parseCat(form.category).main) && (
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("vehicleModel")}</label>
@@ -416,6 +423,7 @@ function AccountPageInner() {
               </div>
             </div>
             )}
+            {form.type !== "SERVICE" && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("unit")}</label>
@@ -433,6 +441,7 @@ function AccountPageInner() {
                 <input type="number" step="0.01" value={form.unitValue} onChange={(e) => setForm({ ...form, unitValue: e.target.value })} placeholder="5, 1, 0.5..." className={inputCls} />
               </div>
             </div>
+            )}
             <div>
               <label className="block text-sm font-medium mb-1.5">{t("listingPhone")}</label>
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+994..." className={inputCls} />

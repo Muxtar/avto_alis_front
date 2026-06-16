@@ -9,7 +9,7 @@ import ListingCard from "@/components/ListingCard";
 import AddListingMenu from "@/components/AddListingMenu";
 import { API } from "@/lib/api";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
-import { CATEGORY_NAMES } from "@/lib/categories";
+import { CATEGORIES, getSubs, parseCat, buildCat } from "@/lib/categories";
 
 type TypeFilter = "all" | "PRODUCT" | "SERVICE";
 
@@ -280,141 +280,62 @@ export default function MarketplacePage() {
             </select>
           </div>
 
-          {/* Advanced filters toggle row */}
-          <div className="flex items-center justify-between mt-3 sm:mt-4 gap-2">
-            <button
-              onClick={() => setShowAdvanced(!showAdvanced)}
-              className="flex items-center gap-2 px-3 py-2 bg-input-bg border border-input-border rounded-xl text-xs sm:text-sm text-foreground hover:border-orange-500/50 hover:text-orange-500 transition-all shadow-sm"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 4.5h18M6 12h12M10.5 19.5h3" />
-              </svg>
-              {t("advancedFilters")}
-              {activeFilterCount > 0 && (
-                <span className="min-w-[20px] h-5 px-1 brand-gradient text-white text-[10px] font-bold rounded-full flex items-center justify-center shadow-sm">
-                  {activeFilterCount}
-                </span>
-              )}
-              <svg className={`w-4 h-4 transition-transform ${showAdvanced ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
-            {activeFilterCount > 0 && (
-              <button
-                onClick={resetFilters}
-                className="px-3 py-2 text-xs sm:text-sm text-orange-500 hover:text-orange-400 transition-colors whitespace-nowrap font-medium"
-              >
-                {t("resetFilters")}
-              </button>
-            )}
-          </div>
-
-          {/* Advanced Filter Panel */}
-          {showAdvanced && (
-            <div className="mt-3 p-3 sm:p-4 surface animate-fade-in">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-3">
-                {/* Brand */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("brand")}</label>
-                  <input value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)}
-                    placeholder="BMW, Mercedes..." className={compactInput} />
-                </div>
-                {/* Model */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("vehicleModel")}</label>
-                  <input value={modelFilter} onChange={(e) => setModelFilter(e.target.value)}
-                    placeholder={t("vehicleModelPlaceholder")} className={compactInput} />
-                </div>
-                {/* City */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("city")}</label>
-                  <select value={cityFilter} onChange={(e) => setCityFilter(e.target.value)} className={compactInput}>
-                    <option value="">{t("allCities")}</option>
-                    {AZ_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                {/* Fuel */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("fuelType")}</label>
-                  <select value={fuelFilter} onChange={(e) => setFuelFilter(e.target.value)} className={compactInput}>
-                    <option value="">{t("allFuelTypes")}</option>
-                    {FUEL_TYPES.map((f) => <option key={f.value} value={f.value}>{t(f.azKey)}</option>)}
-                  </select>
-                </div>
-                {/* Payment */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("paymentType")}</label>
-                  <select value={paymentFilter} onChange={(e) => setPaymentFilter(e.target.value)} className={compactInput}>
-                    <option value="">{t("allPaymentTypes")}</option>
-                    {PAYMENT_TYPES.map((p) => <option key={p.value} value={p.value}>{t(p.azKey)}</option>)}
-                  </select>
-                </div>
-                {/* Condition */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("condition")}</label>
-                  <select value={conditionFilter} onChange={(e) => setConditionFilter(e.target.value)} className={compactInput}>
-                    <option value="">{t("allConditions")}</option>
-                    <option value="NEW">{t("conditionNew")}</option>
-                    <option value="USED">{t("conditionUsed")}</option>
-                    <option value="REFURBISHED">{t("conditionRefurbished")}</option>
-                  </select>
-                </div>
-                {/* Year min */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("yearFrom")}</label>
-                  <input type="number" min="1900" max={new Date().getFullYear() + 1}
-                    value={minYear} onChange={(e) => setMinYear(e.target.value)}
-                    placeholder="2010" className={compactInput} />
-                </div>
-                {/* Year max */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("yearTo")}</label>
-                  <input type="number" min="1900" max={new Date().getFullYear() + 1}
-                    value={maxYear} onChange={(e) => setMaxYear(e.target.value)}
-                    placeholder="2025" className={compactInput} />
-                </div>
-                {/* Price min */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("priceFrom")}</label>
-                  <input type="number" min="0" step="0.01"
-                    value={minPrice} onChange={(e) => setMinPrice(e.target.value)}
-                    placeholder="0" className={compactInput} />
-                </div>
-                {/* Price max */}
-                <div>
-                  <label className="block text-[10px] sm:text-xs text-muted mb-1">{t("priceTo")}</label>
-                  <input type="number" min="0" step="0.01"
-                    value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)}
-                    placeholder="100000" className={compactInput} />
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Ümumi kateqoriya filtri — 16 əsas kateqoriya (avto-hissə breadcrumb-ları əvəzinə) */}
-      <div className="border-b border-card-border bg-card/40 backdrop-blur-sm sticky top-14 sm:top-16 z-30">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex gap-2 py-3 overflow-x-auto no-scrollbar">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
-                !selectedCategory ? "brand-gradient text-white shadow-md shadow-orange-500/25" : "bg-input-bg border border-input-border text-muted hover:text-foreground hover:border-orange-500/40"
-              }`}
-            >
-              {t("allCategories")}
-            </button>
-            {CATEGORY_NAMES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
-                  selectedCategory === cat ? "brand-gradient text-white shadow-md shadow-orange-500/25" : "bg-input-bg border border-input-border text-muted hover:text-foreground hover:border-orange-500/40"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
+      {/* Kateqoriyalar (tap.az üslubu): kartlar → klikdə alt-kateqoriya sətri */}
+      <div className="border-b border-card-border bg-card/30">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6">
+          {(() => {
+            const selMain = selectedCategory ? parseCat(selectedCategory).main : "";
+            const cat = CATEGORIES.find((c) => c.name === selMain);
+            if (!cat) {
+              return (
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
+                  {CATEGORIES.map((c) => (
+                    <button
+                      key={c.name}
+                      onClick={() => setSelectedCategory(c.name)}
+                      className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border border-card-border hover:border-orange-500/50 hover:shadow-md transition-all text-center group"
+                    >
+                      <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{c.icon}</span>
+                      <span className="text-[11px] sm:text-xs font-medium leading-tight">{c.name}</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            }
+            const sub = parseCat(selectedCategory).sub;
+            return (
+              <div>
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <button onClick={() => setSelectedCategory(null)} className="flex items-center gap-1 text-sm text-orange-500 font-medium hover:text-orange-400">
+                    ← {t("allCategories")}
+                  </button>
+                  <span className="text-muted">/</span>
+                  <span className="text-xl">{cat.icon}</span>
+                  <h2 className="font-bold text-base sm:text-lg">{cat.name}</h2>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <button
+                    onClick={() => setSelectedCategory(cat.name)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${!sub ? "brand-gradient text-white shadow-md shadow-orange-500/25" : "bg-input-bg border border-input-border text-muted hover:text-foreground hover:border-orange-500/40"}`}
+                  >
+                    {t("allCategories")}
+                  </button>
+                  {cat.subs.map((s) => (
+                    <button
+                      key={s}
+                      onClick={() => setSelectedCategory(buildCat(cat.name, s))}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${sub === s ? "brand-gradient text-white shadow-md shadow-orange-500/25" : "bg-input-bg border border-input-border text-muted hover:text-foreground hover:border-orange-500/40"}`}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
