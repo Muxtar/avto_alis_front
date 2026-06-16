@@ -9,6 +9,7 @@ import ListingCard from "@/components/ListingCard";
 import AddListingMenu from "@/components/AddListingMenu";
 import { API } from "@/lib/api";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
+import { CATEGORY_NAMES } from "@/lib/categories";
 
 type TypeFilter = "all" | "PRODUCT" | "SERVICE";
 
@@ -390,38 +391,32 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      {/* Categories */}
-      {categories.length > 0 && (
-        <div className="border-b border-card-border bg-card/40 backdrop-blur-sm sticky top-14 sm:top-16 z-30">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-            <div className="flex gap-2 py-3 overflow-x-auto no-scrollbar">
+      {/* Ümumi kateqoriya filtri — 16 əsas kateqoriya (avto-hissə breadcrumb-ları əvəzinə) */}
+      <div className="border-b border-card-border bg-card/40 backdrop-blur-sm sticky top-14 sm:top-16 z-30">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex gap-2 py-3 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
+                !selectedCategory ? "brand-gradient text-white shadow-md shadow-orange-500/25" : "bg-input-bg border border-input-border text-muted hover:text-foreground hover:border-orange-500/40"
+              }`}
+            >
+              {t("allCategories")}
+            </button>
+            {CATEGORY_NAMES.map((cat) => (
               <button
-                onClick={() => setSelectedCategory(null)}
+                key={cat}
+                onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
                 className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
-                  !selectedCategory
-                    ? "brand-gradient text-white shadow-md shadow-orange-500/25"
-                    : "bg-input-bg border border-input-border text-muted hover:text-foreground hover:border-orange-500/40"
+                  selectedCategory === cat ? "brand-gradient text-white shadow-md shadow-orange-500/25" : "bg-input-bg border border-input-border text-muted hover:text-foreground hover:border-orange-500/40"
                 }`}
               >
-                {t("allCategories")}
+                {cat}
               </button>
-              {categories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat === selectedCategory ? null : cat)}
-                  className={`px-3.5 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all shrink-0 ${
-                    selectedCategory === cat
-                      ? "brand-gradient text-white shadow-md shadow-orange-500/25"
-                      : "bg-input-bg border border-input-border text-muted hover:text-foreground hover:border-orange-500/40"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Listings Grid with side ads */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">

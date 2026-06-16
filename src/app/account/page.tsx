@@ -5,17 +5,15 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
-import { TAXONOMY, buildCategoryPath, parseCategoryPath, getSubsFor, getPartsFor } from "@/lib/taxonomy";
+import { CATEGORIES, getSubs, buildCat, parseCat, isVehicleCat, isServiceCat } from "@/lib/categories";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
-const DEFAULT_MAIN = TAXONOMY[0].name;
-const DEFAULT_SUB = TAXONOMY[0].subs[0].name;
-const DEFAULT_LEAF = TAXONOMY[0].subs[0].parts[0];
-const DEFAULT_CATEGORY = buildCategoryPath(DEFAULT_MAIN, DEFAULT_SUB, DEFAULT_LEAF);
+const DEFAULT_MAIN = CATEGORIES[0].name;
+const DEFAULT_CATEGORY = buildCat(DEFAULT_MAIN, CATEGORIES[0].subs[0]);
 
 export default function AccountPage() {
   return (
@@ -264,50 +262,34 @@ function AccountPageInner() {
               <textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder={t("listingDesc")} className={inputCls + " resize-none"} />
             </div>
             {(() => {
-              const { main, sub, leaf } = parseCategoryPath(form.category);
-              const subs = getSubsFor(main);
-              const parts = getPartsFor(main, sub);
+              const { main, sub } = parseCat(form.category);
+              const subs = getSubs(main);
               return (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium mb-1.5">Ana kateqoriya</label>
+                    <label className="block text-sm font-medium mb-1.5">{t("mainCategory") || "Ana kateqoriya"}</label>
                     <select
                       value={main}
                       onChange={(e) => {
                         const newMain = e.target.value;
-                        const newSubs = getSubsFor(newMain);
-                        const newSub = newSubs[0]?.name || "";
-                        const newLeaf = newSubs[0]?.parts[0] || "";
-                        setForm({ ...form, category: buildCategoryPath(newMain, newSub, newLeaf) });
+                        const newSub = getSubs(newMain)[0] || "";
+                        // Xidmət kateqoriyası → tip avtomatik SERVICE
+                        const nextType = isServiceCat(newMain) ? "SERVICE" : form.type;
+                        setForm({ ...form, category: buildCat(newMain, newSub), type: nextType });
                       }}
                       className={inputCls}
                     >
-                      {TAXONOMY.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
+                      {CATEGORIES.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium mb-1.5">Alt kateqoriya</label>
+                    <label className="block text-sm font-medium mb-1.5">{t("subCategory") || "Alt kateqoriya"}</label>
                     <select
                       value={sub}
-                      onChange={(e) => {
-                        const newSub = e.target.value;
-                        const newParts = getPartsFor(main, newSub);
-                        const newLeaf = newParts[0] || "";
-                        setForm({ ...form, category: buildCategoryPath(main, newSub, newLeaf) });
-                      }}
+                      onChange={(e) => setForm({ ...form, category: buildCat(main, e.target.value) })}
                       className={inputCls}
                     >
-                      {subs.map((s) => <option key={s.name} value={s.name}>{s.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">Hissə</label>
-                    <select
-                      value={leaf}
-                      onChange={(e) => setForm({ ...form, category: buildCategoryPath(main, sub, e.target.value) })}
-                      className={inputCls}
-                    >
-                      {parts.map((p) => <option key={p} value={p}>{p}</option>)}
+                      {subs.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
                 </div>
@@ -383,10 +365,12 @@ function AccountPageInner() {
                 <p className="text-[11px] text-muted mt-1">{t("countryOfOriginHint")}</p>
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">{t("vehicleModel")}</label>
-              <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t("vehicleModelPlaceholder")} className={inputCls} />
-            </div>
+            {isVehicleCat(parseCat(form.category).main) && (
+              <div>
+                <label className="block text-sm font-medium mb-1.5">{t("vehicleModel")}</label>
+                <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t("vehicleModelPlaceholder")} className={inputCls} />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium mb-1.5">{t("city")}</label>
               <select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={inputCls} required>
@@ -395,13 +379,15 @@ function AccountPageInner() {
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1.5">{t("fuelType")}</label>
-                <select value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} className={inputCls}>
-                  <option value="">—</option>
-                  {FUEL_TYPES.map((f) => <option key={f.value} value={f.value}>{t(f.azKey)}</option>)}
-                </select>
-              </div>
+              {isVehicleCat(parseCat(form.category).main) && (
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">{t("fuelType")}</label>
+                  <select value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} className={inputCls}>
+                    <option value="">—</option>
+                    {FUEL_TYPES.map((f) => <option key={f.value} value={f.value}>{t(f.azKey)}</option>)}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("paymentType")}</label>
                 <select value={form.paymentType} onChange={(e) => setForm({ ...form, paymentType: e.target.value })} className={inputCls}>
@@ -410,6 +396,7 @@ function AccountPageInner() {
                 </select>
               </div>
             </div>
+            {isVehicleCat(parseCat(form.category).main) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("forVehicle")}</label>
@@ -428,6 +415,7 @@ function AccountPageInner() {
                 />
               </div>
             </div>
+            )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("unit")}</label>
