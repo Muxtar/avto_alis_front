@@ -1,10 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { compareFaces, FaceResult } from "@/lib/faceMatch";
 
 export default function CompleteProfilePage() {
   const { t } = useLanguage();
@@ -15,8 +16,20 @@ export default function CompleteProfilePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [profession, setProfession] = useState("");
-  const [idNumber, setIdNumber] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Kimlik şəkli + selfie
+  const [idCardFile, setIdCardFile] = useState<File | null>(null);
+  const [idCardUrl, setIdCardUrl] = useState("");
+  const [selfieBlob, setSelfieBlob] = useState<Blob | null>(null);
+  const [selfieUrl, setSelfieUrl] = useState("");
+  const [cameraOn, setCameraOn] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [faceResult, setFaceResult] = useState<FaceResult | null>(null);
+
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -29,19 +42,86 @@ export default function CompleteProfilePage() {
     }
   }, [token, user, authLoading, router]);
 
+  // Kamera axınını təmizlə (unmount / kamera bağlananda).
+  const stopCamera = () => {
+    streamRef.current?.getTracks().forEach((tr) => tr.stop());
+    streamRef.current = null;
+    setCameraOn(false);
+  };
+  useEffect(() => () => stopCamera(), []);
+
+  const onPickIdCard = (file: File | null) => {
+    if (!file) return;
+    setIdCardFile(file);
+    setIdCardUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
+  };
+
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      streamRef.current = stream;
+      setCameraOn(true);
+      // video elementi render olduqdan sonra bağla
+      setTimeout(() => {
+        if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play().catch(() => {}); }
+      }, 50);
+    } catch {
+      toast("Kameraya icazə verilmədi", "error");
+    }
+  };
+
+  const captureSelfie = () => {
+    const v = videoRef.current, c = canvasRef.current;
+    if (!v || !c) return;
+    c.width = v.videoWidth || 480;
+    c.height = v.videoHeight || 480;
+    c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
+    c.toBlob((blob) => {
+      if (!blob) return;
+      setSelfieBlob(blob);
+      setSelfieUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob); });
+    }, "image/jpeg", 0.9);
+    stopCamera();
+  };
+
+  // İki şəkil hazır olanda üzləri brauzerdə müqayisə et.
+  const loadImg = (url: string) => new Promise<HTMLImageElement>((res, rej) => {
+    const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url;
+  });
+  useEffect(() => {
+    if (!idCardUrl || !selfieUrl) { setFaceResult(null); return; }
+    let cancelled = false;
+    (async () => {
+      setChecking(true); setFaceResult(null);
+      try {
+        const [a, b] = await Promise.all([loadImg(idCardUrl), loadImg(selfieUrl)]);
+        const r = await compareFaces(a, b);
+        if (!cancelled) setFaceResult(r);
+      } catch {
+        if (!cancelled) setFaceResult({ ok: false, reason: "load_error" });
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [idCardUrl, selfieUrl]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim()) { toast(t("nameRequired") || "Ad və soyad tələb olunur", "error"); return; }
+    if (!idCardFile || !selfieBlob) { toast("Şəxsiyyət vəsiqəsi şəkli və selfie tələb olunur", "error"); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${API}/register/complete-json`, {
+      const fd = new FormData();
+      fd.append("name", `${firstName.trim()} ${lastName.trim()}`);
+      if (profession.trim()) fd.append("profession", profession.trim());
+      if (faceResult?.ok) fd.append("faceMatchScore", String(faceResult.score));
+      fd.append("idCardImage", idCardFile);
+      fd.append("selfieImage", new File([selfieBlob], "selfie.jpg", { type: "image/jpeg" }));
+      const res = await fetch(`${API}/register/complete-id`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          name: `${firstName.trim()} ${lastName.trim()}`,
-          profession: profession.trim() || undefined,
-          idNumber: idNumber.trim() || undefined,
-        }),
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -58,6 +138,22 @@ export default function CompleteProfilePage() {
   };
 
   const inputClass = "w-full px-4 py-3 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground transition-all text-foreground";
+
+  // Üz nəticəsi rəngarəng göstər
+  const faceBadge = () => {
+    if (checking) return <span className="text-orange-500">Üz yoxlanılır…</span>;
+    if (!faceResult) return null;
+    if (!faceResult.ok) {
+      const msg = faceResult.reason === "id_no_face" ? "Kimlik şəklində üz tapılmadı"
+        : faceResult.reason === "selfie_no_face" ? "Selfidə üz tapılmadı"
+        : "Üz yoxlaması alınmadı (admin əl ilə yoxlayacaq)";
+      return <span className="text-amber-500">⚠ {msg}</span>;
+    }
+    const pct = Math.round(faceResult.score * 100);
+    return faceResult.matched
+      ? <span className="text-green-500">✓ Üz uyğunluğu: {pct}%</span>
+      : <span className="text-amber-500">⚠ Üz oxşarlığı aşağı: {pct}% (admin yoxlayacaq)</span>;
+  };
 
   return (
     <div className="min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)] flex items-center justify-center py-6 sm:py-12 px-3 sm:px-4">
@@ -84,15 +180,61 @@ export default function CompleteProfilePage() {
             <input value={profession} onChange={(e) => setProfession(e.target.value)} placeholder={t("professionPlaceholder") || "Məs: Mühəndis, Həkim, Satıcı, Tələbə"} className={inputClass} />
           </div>
 
+          {/* Kimlik vəsiqəsi şəkli */}
           <div>
-            <label className="block text-sm font-medium mb-1.5">{t("idNumber") || "Şəxsiyyət vəsiqəsi / FIN"}</label>
-            <input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder={t("idNumberPlaceholder") || "Məs: 5AB12345"} className={inputClass} />
-            <p className="text-[11px] text-muted mt-1">{t("idNumberHint") || "Kimliyiniz təhlükəsiz saxlanılır."}</p>
+            <label className="block text-sm font-medium mb-1.5">Şəxsiyyət vəsiqəsi şəkli</label>
+            {idCardUrl ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={idCardUrl} alt="kimlik" className="w-full h-40 object-cover rounded-xl border border-input-border" />
+                <label className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded-lg cursor-pointer">
+                  Dəyiş
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => onPickIdCard(e.target.files?.[0] || null)} />
+                </label>
+              </div>
+            ) : (
+              <label className={`${inputClass} flex items-center justify-center gap-2 cursor-pointer text-muted`}>
+                <span>📷 Vəsiqənin şəklini yüklə</span>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => onPickIdCard(e.target.files?.[0] || null)} />
+              </label>
+            )}
+            <p className="text-[11px] text-muted mt-1">Üz aydın görünməlidir. Məlumatlarınız təhlükəsiz saxlanılır.</p>
           </div>
+
+          {/* Selfie (canlı kamera) */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">Selfie (üz təsdiqi)</label>
+            {cameraOn ? (
+              <div className="space-y-2">
+                <video ref={videoRef} playsInline muted className="w-full h-48 object-cover rounded-xl border border-input-border bg-black" />
+                <div className="flex gap-2">
+                  <button type="button" onClick={captureSelfie} className="flex-1 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold">Çək</button>
+                  <button type="button" onClick={stopCamera} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv et</button>
+                </div>
+              </div>
+            ) : selfieUrl ? (
+              <div className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={selfieUrl} alt="selfie" className="w-full h-48 object-cover rounded-xl border border-input-border" />
+                <button type="button" onClick={startCamera} className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded-lg">Yenidən çək</button>
+              </div>
+            ) : (
+              <button type="button" onClick={startCamera} className={`${inputClass} flex items-center justify-center gap-2 text-muted`}>
+                🤳 Kameranı aç və selfie çək
+              </button>
+            )}
+            <canvas ref={canvasRef} className="hidden" />
+          </div>
+
+          {/* Üz uyğunluğu nəticəsi */}
+          {(checking || faceResult) && (
+            <div className="text-sm text-center font-medium py-2 rounded-xl bg-input-bg">{faceBadge()}</div>
+          )}
 
           <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50">
             {loading ? t("submitting") : (t("save") || "Yadda saxla")}
           </button>
+          <p className="text-[11px] text-muted text-center">Kimliyiniz admin tərəfindən yoxlanılacaq.</p>
         </form>
       </div>
     </div>
