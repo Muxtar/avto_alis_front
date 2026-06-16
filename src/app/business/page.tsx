@@ -1,0 +1,284 @@
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/AuthContext";
+import { useLanguage } from "@/lib/LanguageContext";
+import { useToast } from "@/components/Toast";
+import { API } from "@/lib/api";
+
+// Obyektin fəaliyyət sahələri — 16 əsas kateqoriya.
+const ACTIVITY_AREAS = [
+  "Nəqliyyat", "Avtomobil ehtiyat hissələri", "Daşınmaz əmlak", "Elektronika",
+  "Məişət texnikası", "Ev və bağ", "Tikinti və təmir", "Geyim və aksesuar",
+  "Gözəllik və sağlamlıq", "Uşaq aləmi", "Hobbi və idman", "Heyvanlar",
+  "İş elanları", "Xidmətlər", "Kənd təsərrüfatı", "Digər",
+];
+
+interface Bank { id: number; iban: string; title: string | null; isActive: boolean }
+interface BizObject { id: number; name: string; phone: string | null; address: string; city: string | null; activityAreas: string[]; isActive: boolean }
+interface Member { id: number; user: { id: number; name: string; publicId: string | null }; object: { id: number; name: string } | null }
+interface Business {
+  id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
+  status: "PENDING" | "APPROVED" | "REJECTED"; isActive: boolean; rejectionReason: string | null;
+  banks: Bank[]; objects: BizObject[]; members: Member[];
+}
+
+const blankFiles = { taxDocImage: null, companyDocImage: null, powerOfAttorneyImage: null, idCardImage: null, selfieImage: null } as Record<string, File | null>;
+
+export default function BusinessPage() {
+  const router = useRouter();
+  const { token, authLoading, isLoggedIn } = useAuth();
+  const { t } = useLanguage();
+  const { toast } = useToast();
+  const [publicId, setPublicId] = useState("");
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  // create form
+  const [kind, setKind] = useState("PHYSICAL");
+  const [proofType, setProofType] = useState("TAX_DOC");
+  const [f, setF] = useState({ name: "", voen: "", ownerName: "", founderName: "", phone: "" });
+  const [files, setFiles] = useState<Record<string, File | null>>(blankFiles);
+  const [banks, setBanks] = useState<{ iban: string; title: string }[]>([{ iban: "", title: "" }]);
+
+  // per-business inline inputs
+  const [bankInput, setBankInput] = useState<Record<number, { iban: string; title: string }>>({});
+  const [objInput, setObjInput] = useState<Record<number, { name: string; phone: string; address: string; city: string; activityAreas: string[] }>>({});
+  const [memberInput, setMemberInput] = useState<Record<number, { publicId: string; objectId: string }>>({});
+
+  const authH: any = { Authorization: `Bearer ${token}` };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/me/businesses`, { headers: authH });
+      const data = await res.json();
+      setBusinesses(data.businesses || []);
+      const pid = await fetch(`${API}/me/public-id`, { headers: authH }).then((r) => r.json());
+      setPublicId(pid.publicId || "");
+    } catch { toast(t("error"), "error"); } finally { setLoading(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  useEffect(() => {
+    if (authLoading) return;
+    if (!isLoggedIn) { router.push("/"); return; }
+    load();
+  }, [authLoading, isLoggedIn, load, router]);
+
+  const jsonReq = async (url: string, method: string, body?: any) => {
+    const res = await fetch(url, { method, headers: { ...authH, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+    const data = await res.json();
+    if (!res.ok || data.success === false) throw new Error(data.message || t("error"));
+    return data;
+  };
+
+  const createBusiness = async () => {
+    if (!f.name || !f.voen || !f.ownerName || !f.founderName) { toast(t("bizAllRequired") || "Sahələri doldurun", "error"); return; }
+    if (proofType === "TAX_DOC" && !files.taxDocImage) { toast("Vergi sənədi tələb olunur", "error"); return; }
+    if (proofType === "POWER_OF_ATTORNEY" && (!files.companyDocImage || !files.powerOfAttorneyImage)) { toast("Şirkət sənədi və etibarnamə tələb olunur", "error"); return; }
+    if (!files.idCardImage || !files.selfieImage) { toast("Şəxsiyyət vəsiqəsi və selfie tələb olunur", "error"); return; }
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("kind", kind); fd.append("proofType", proofType);
+      Object.entries(f).forEach(([k, v]) => fd.append(k, v));
+      Object.entries(files).forEach(([k, file]) => { if (file) fd.append(k, file); });
+      fd.append("banks", JSON.stringify(banks.filter((b) => b.iban.trim())));
+      const res = await fetch(`${API}/me/businesses`, { method: "POST", headers: authH, body: fd });
+      const data = await res.json();
+      if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      toast(t("bizCreated") || "Biznes göndərildi — admin təsdiqini gözləyir", "success");
+      setShowForm(false); setKind("PHYSICAL"); setProofType("TAX_DOC"); setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "" }); setFiles(blankFiles); setBanks([{ iban: "", title: "" }]);
+      load();
+    } catch { toast(t("error"), "error"); } finally { setBusy(false); }
+  };
+
+  const wrap = (fn: () => Promise<any>) => async () => { try { await fn(); load(); } catch (e: any) { toast(e.message || t("error"), "error"); } };
+
+  const statusBadge = (s: string) => s === "APPROVED" ? "bg-green-500/10 text-green-500 border-green-500/20" : s === "REJECTED" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20";
+  const statusText = (s: string) => s === "APPROVED" ? (t("bizApproved") || "Təsdiqləndi") : s === "REJECTED" ? (t("bizRejected") || "Rədd edildi") : (t("bizPending") || "Gözləyir");
+
+  const inputCls = "w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground";
+  const fileLabel = (key: string, label: string) => (
+    <label className="block">
+      <span className="text-xs text-muted">{label}{files[key] ? " ✓" : ""}</span>
+      <input type="file" accept="image/*" onChange={(e) => setFiles((p) => ({ ...p, [key]: e.target.files?.[0] || null }))} className="block w-full text-xs mt-1 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500" />
+    </label>
+  );
+
+  return (
+    <div className="max-w-3xl mx-auto px-3 sm:px-6 py-6">
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold">{t("bizTitle") || "Biznes hesablarım"}</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          {publicId && <span className="px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs font-mono">ID: <b>{publicId}</b></span>}
+          <a href="/business/sales" className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10">{t("bizSales") || "Satış pəncərəsi"}</a>
+          <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold">{showForm ? (t("adminCancel") || "Bağla") : `+ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
+        </div>
+      </div>
+      <p className="text-muted text-sm mb-5">{t("bizDesc") || "Biznes təsdiqləndikdən sonra məhsullarınız kartla satıla bilər."}</p>
+
+      {showForm && (
+        <div className="bg-card border border-card-border rounded-xl p-4 sm:p-5 mb-5 space-y-4">
+          {/* Tip */}
+          <div className="grid grid-cols-2 gap-2">
+            {[["PHYSICAL", t("bizPhysical") || "Fiziki şəxs"], ["LEGAL", t("bizLegal") || "Hüquqi şəxs"]].map(([v, l]) => (
+              <button key={v} onClick={() => setKind(v)} className={`py-2 rounded-lg text-sm ${kind === v ? "bg-orange-500 text-white" : "bg-input-bg border border-input-border"}`}>{l}</button>
+            ))}
+          </div>
+          {/* Sübut növü */}
+          <div className="grid grid-cols-2 gap-2">
+            {[["TAX_DOC", t("bizTaxDoc") || "Vergi sənədi"], ["POWER_OF_ATTORNEY", t("bizPoa") || "Etibarnamə"]].map(([v, l]) => (
+              <button key={v} onClick={() => setProofType(v)} className={`py-2 rounded-lg text-sm ${proofType === v ? "bg-orange-500 text-white" : "bg-input-bg border border-input-border"}`}>{l}</button>
+            ))}
+          </div>
+          {/* Sənədlər */}
+          <div className="space-y-2 p-3 bg-input-bg/40 rounded-xl">
+            {proofType === "TAX_DOC"
+              ? fileLabel("taxDocImage", t("bizTaxDocFile") || "Vergi qeydiyyatı sənədi")
+              : (<>{fileLabel("companyDocImage", t("bizCompanyDoc") || "Şirkət sənədi")}{fileLabel("powerOfAttorneyImage", t("bizPoaFile") || "Etibarnamə")}</>)}
+            {fileLabel("idCardImage", t("bizIdCard") || "Şəxsiyyət vəsiqəsi")}
+            {fileLabel("selfieImage", t("bizSelfie") || "Selfie (üz tanıma)")}
+          </div>
+          {/* Sahələr */}
+          <input className={inputCls} placeholder={t("bizName") || "Şirkət adı"} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input className={inputCls} placeholder="VÖEN" value={f.voen} onChange={(e) => setF({ ...f, voen: e.target.value })} />
+            <input className={inputCls} placeholder={t("phone") || "Telefon"} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+            <input className={inputCls} placeholder={t("bizOwner") || "Şirkətin sahibi"} value={f.ownerName} onChange={(e) => setF({ ...f, ownerName: e.target.value })} />
+            <input className={inputCls} placeholder={t("bizFounder") || "Şirkətin təsisçisi"} value={f.founderName} onChange={(e) => setF({ ...f, founderName: e.target.value })} />
+          </div>
+          {/* Bank hesabları */}
+          <div>
+            <p className="text-xs font-semibold text-muted mb-1">{t("bizBank") || "Bank hesabları"}</p>
+            {banks.map((b, i) => (
+              <div key={i} className="grid grid-cols-2 gap-2 mb-2">
+                <input className={inputCls} placeholder="IBAN" value={b.iban} onChange={(e) => setBanks((p) => p.map((x, j) => j === i ? { ...x, iban: e.target.value } : x))} />
+                <input className={inputCls} placeholder={t("bizBankName") || "Bank adı"} value={b.title} onChange={(e) => setBanks((p) => p.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} />
+              </div>
+            ))}
+            <button onClick={() => setBanks((p) => [...p, { iban: "", title: "" }])} className="text-xs text-orange-500">+ {t("bizAddBank") || "Bank hesabı əlavə et"}</button>
+          </div>
+          <button onClick={createBusiness} disabled={busy} className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : (t("bizSubmit") || "Təsdiq üçün göndər")}</button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
+      ) : businesses.length === 0 ? (
+        <div className="bg-card border border-card-border rounded-xl p-8 text-center text-muted">{t("bizNone") || "Hələ biznesiniz yoxdur"}</div>
+      ) : (
+        <div className="space-y-4">
+          {businesses.map((b) => (
+            <div key={b.id} className={`bg-card border border-card-border rounded-xl p-4 sm:p-5 ${!b.isActive ? "opacity-60" : ""}`}>
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="font-bold">{b.name}</h2>
+                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border ${statusBadge(b.status)}`}>{statusText(b.status)}</span>
+                    <span className="px-2 py-0.5 rounded-lg text-[10px] bg-input-bg border border-input-border">{b.kind === "LEGAL" ? (t("bizLegal") || "Hüquqi") : (t("bizPhysical") || "Fiziki")}</span>
+                  </div>
+                  <p className="text-xs text-muted mt-1">VÖEN: {b.voen} · {b.ownerName}{b.phone ? ` · ${b.phone}` : ""}</p>
+                  {b.status === "REJECTED" && b.rejectionReason && <p className="text-xs text-red-500 mt-1">{b.rejectionReason}</p>}
+                </div>
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <label className="flex items-center gap-1 text-xs cursor-pointer">
+                    <input type="checkbox" checked={b.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/businesses/${b.id}/active`, "PATCH", { isActive: e.target.checked }))()} />
+                    {t("bizActive") || "Aktiv"}
+                  </label>
+                  <button onClick={wrap(async () => { if (confirm(t("bizDeleteConfirm") || "Silinsin?")) await jsonReq(`${API}/me/businesses/${b.id}`, "DELETE"); })} className="text-red-500 text-xs">{t("delete") || "Sil"}</button>
+                </div>
+              </div>
+
+              {/* Banklar */}
+              <div className="border-t border-card-border pt-3 mb-3">
+                <p className="text-xs font-semibold text-muted mb-1.5">{t("bizBank") || "Bank hesabları"}</p>
+                {b.banks.map((bk) => (
+                  <div key={bk.id} className="flex items-center justify-between gap-2 px-3 py-1.5 bg-input-bg/50 rounded-lg text-sm mb-1">
+                    <span className={bk.isActive ? "" : "line-through text-muted"}>{bk.iban}{bk.title ? ` · ${bk.title}` : ""}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={bk.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/banks/${bk.id}/active`, "PATCH", { isActive: e.target.checked }))()} />{t("bizActive") || "Aktiv"}</label>
+                      <button onClick={wrap(() => jsonReq(`${API}/me/banks/${bk.id}`, "DELETE"))} className="text-red-500 text-xs">✕</button>
+                    </div>
+                  </div>
+                ))}
+                <div className="flex gap-2 mt-1">
+                  <input className={inputCls} placeholder="IBAN" value={bankInput[b.id]?.iban || ""} onChange={(e) => setBankInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { iban: "", title: "" }), iban: e.target.value } }))} />
+                  <button onClick={wrap(async () => { const v = bankInput[b.id]; if (!v?.iban?.trim()) throw new Error("IBAN"); await jsonReq(`${API}/me/businesses/${b.id}/banks`, "POST", v); setBankInput((p) => ({ ...p, [b.id]: { iban: "", title: "" } })); })} className="px-3 bg-orange-500/10 text-orange-500 rounded-lg text-xs whitespace-nowrap">+ {t("bizAddBank") || "Bank"}</button>
+                </div>
+              </div>
+
+              {/* Obyektlər */}
+              <div className="border-t border-card-border pt-3 mb-3">
+                <p className="text-xs font-semibold text-muted mb-1.5">{t("bizObjects") || "Obyektlər"}</p>
+                {b.objects.map((o) => (
+                  <div key={o.id} className={`px-3 py-2 bg-input-bg/50 rounded-lg text-sm mb-1.5 ${!o.isActive ? "opacity-50" : ""}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium">{o.name}{o.phone ? ` · ${o.phone}` : ""}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={o.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/objects/${o.id}/active`, "PATCH", { isActive: e.target.checked }))()} />{t("bizActive") || "Aktiv"}</label>
+                        <button onClick={wrap(() => jsonReq(`${API}/me/objects/${o.id}`, "DELETE"))} className="text-red-500 text-xs">✕</button>
+                      </div>
+                    </div>
+                    <p className="text-muted text-xs">{o.city ? o.city + ", " : ""}{o.address}{o.activityAreas?.length ? ` · ${o.activityAreas.join(", ")}` : ""}</p>
+                  </div>
+                ))}
+                {/* Yeni obyekt */}
+                <ObjectAdder bizId={b.id} input={objInput[b.id]} setInput={(v: any) => setObjInput((p) => ({ ...p, [b.id]: v }))} onAdd={wrap(async () => {
+                  const v = objInput[b.id]; if (!v?.name?.trim() || !v?.address?.trim()) throw new Error(t("bizObjRequired") || "Ad və ünvan");
+                  await jsonReq(`${API}/me/businesses/${b.id}/objects`, "POST", v); setObjInput((p) => ({ ...p, [b.id]: { name: "", phone: "", address: "", city: "", activityAreas: [] } }));
+                })} inputCls={inputCls} t={t} />
+              </div>
+
+              {/* Səlahiyyət vermə */}
+              <div className="border-t border-card-border pt-3">
+                <p className="text-xs font-semibold text-muted mb-1.5">{t("bizMembers") || "Səlahiyyət verilmiş şəxslər (ID ilə)"}</p>
+                {b.members.map((m) => (
+                  <div key={m.id} className="flex items-center justify-between gap-2 px-3 py-1.5 bg-input-bg/50 rounded-lg text-sm mb-1">
+                    <span>{m.user.name} <span className="text-muted text-xs">({m.user.publicId})</span> {m.object ? `→ ${m.object.name}` : `→ ${t("bizWholeBusiness") || "bütün biznes"}`}</span>
+                    <button onClick={wrap(() => jsonReq(`${API}/me/members/${m.id}`, "DELETE"))} className="text-red-500 text-xs shrink-0">✕</button>
+                  </div>
+                ))}
+                <div className="flex flex-wrap gap-2 mt-1">
+                  <input className={`${inputCls} flex-1`} placeholder={t("bizMemberId") || "İstifadəçi ID (məs. AB-7F3K2Q)"} value={memberInput[b.id]?.publicId || ""} onChange={(e) => setMemberInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { publicId: "", objectId: "" }), publicId: e.target.value } }))} />
+                  <select className={inputCls + " w-auto"} value={memberInput[b.id]?.objectId || ""} onChange={(e) => setMemberInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { publicId: "", objectId: "" }), objectId: e.target.value } }))}>
+                    <option value="">{t("bizWholeBusiness") || "Bütün biznes"}</option>
+                    {b.objects.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                  </select>
+                  <button onClick={wrap(async () => { const v = memberInput[b.id]; if (!v?.publicId?.trim()) throw new Error("ID"); await jsonReq(`${API}/me/businesses/${b.id}/members`, "POST", { publicId: v.publicId.trim(), objectId: v.objectId || undefined }); setMemberInput((p) => ({ ...p, [b.id]: { publicId: "", objectId: "" } })); })} className="px-3 bg-orange-500/10 text-orange-500 rounded-lg text-xs">+ {t("bizGrant") || "Səlahiyyət ver"}</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t }: any) {
+  const v = input || { name: "", phone: "", address: "", city: "", activityAreas: [] };
+  const toggle = (a: string) => setInput({ ...v, activityAreas: v.activityAreas.includes(a) ? v.activityAreas.filter((x: string) => x !== a) : [...v.activityAreas, a] });
+  return (
+    <div className="mt-2 p-3 bg-input-bg/30 rounded-xl space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <input className={inputCls} placeholder={t("bizObjName") || "Obyekt adı"} value={v.name} onChange={(e) => setInput({ ...v, name: e.target.value })} />
+        <input className={inputCls} placeholder={t("phone") || "Obyekt telefonu"} value={v.phone} onChange={(e) => setInput({ ...v, phone: e.target.value })} />
+        <input className={inputCls} placeholder={t("city") || "Şəhər"} value={v.city} onChange={(e) => setInput({ ...v, city: e.target.value })} />
+        <input className={inputCls} placeholder={t("addressPlaceholder") || "Ünvan"} value={v.address} onChange={(e) => setInput({ ...v, address: e.target.value })} />
+      </div>
+      <div>
+        <p className="text-[11px] text-muted mb-1">{t("bizActivity") || "Fəaliyyət sahələri"}</p>
+        <div className="flex flex-wrap gap-1.5">
+          {ACTIVITY_AREAS.map((a) => (
+            <button key={a} type="button" onClick={() => toggle(a)} className={`px-2 py-1 rounded-full text-[11px] border ${v.activityAreas.includes(a) ? "bg-orange-500 border-orange-500 text-white" : "bg-input-bg border-input-border"}`}>{a}</button>
+          ))}
+        </div>
+      </div>
+      <button onClick={onAdd} className="text-sm text-orange-500 font-medium">+ {t("bizAddObject") || "Obyekt əlavə et"}</button>
+    </div>
+  );
+}

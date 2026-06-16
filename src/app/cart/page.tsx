@@ -306,11 +306,21 @@ export default function CartPage() {
                   {/* Payment */}
                   <div>
                     <label className="block text-xs text-muted mb-1">{t("paymentMethod")}</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      <button onClick={() => setPaymentMethod("CASH")} className={`py-2 rounded-lg text-xs ${paymentMethod === "CASH" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>💵 {t("cash")}</button>
-                      <button onClick={() => setPaymentMethod("CARD")} className={`py-2 rounded-lg text-xs ${paymentMethod === "CARD" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>💳 {t("card")}</button>
-                      <button onClick={() => setPaymentMethod("WALLET")} className={`py-2 rounded-lg text-xs ${paymentMethod === "WALLET" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>👝 {t("wallet")}</button>
-                    </div>
+                    {(() => {
+                      // Kart yalnız bütün məhsullar biznesə bağlıdırsa mümkündür.
+                      const cardAllowed = items.length > 0 && items.every((i) => i.listing?.businessId);
+                      if (!cardAllowed && paymentMethod === "CARD") setTimeout(() => setPaymentMethod("CASH"), 0);
+                      return (
+                        <>
+                          <div className="grid grid-cols-3 gap-2">
+                            <button onClick={() => setPaymentMethod("CASH")} className={`py-2 rounded-lg text-xs ${paymentMethod === "CASH" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>💵 {t("cash")}</button>
+                            <button onClick={() => cardAllowed && setPaymentMethod("CARD")} disabled={!cardAllowed} title={cardAllowed ? "" : (t("cardOnlyBusiness") || "Yalnız biznes məhsulları kartla")} className={`py-2 rounded-lg text-xs ${paymentMethod === "CARD" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'} ${!cardAllowed ? 'opacity-40 cursor-not-allowed' : ''}`}>💳 {t("card")}</button>
+                            <button onClick={() => setPaymentMethod("WALLET")} className={`py-2 rounded-lg text-xs ${paymentMethod === "WALLET" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>👝 {t("wallet")}</button>
+                          </div>
+                          {!cardAllowed && <p className="text-[11px] text-muted mt-1.5">{t("cardOnlyBusinessHint") || "Bu məhsullar fərdi satıcılara aiddir — yalnız nağd/əldən. Kart yalnız biznes məhsullarında işləyir."}</p>}
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Promo Code */}

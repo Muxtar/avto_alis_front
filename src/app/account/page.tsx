@@ -45,11 +45,24 @@ function AccountPageInner() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   // User's saved default location — auto-fills city/location in new listings.
   const [myLocation, setMyLocation] = useState<{ city: string; address: string }>({ city: "", address: "" });
+  // Təsdiqlənmiş biznes obyektləri — elan kartla satıla bilsin deyə seçilir.
+  const [bizObjects, setBizObjects] = useState<{ id: number; label: string }[]>([]);
+  const [selectedObjectId, setSelectedObjectId] = useState<string>("");
 
   useEffect(() => {
     if (authLoading) return;
     if (!isLoggedIn) { router.push("/"); return; }
     fetchListings();
+    fetch(`${API}/me/businesses`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => {
+        const opts: { id: number; label: string }[] = [];
+        (d.businesses || []).filter((b: any) => b.status === "APPROVED").forEach((b: any) => {
+          (b.objects || []).forEach((o: any) => opts.push({ id: o.id, label: `${b.name} — ${o.name}` }));
+        });
+        setBizObjects(opts);
+      })
+      .catch(() => undefined);
     fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => {
@@ -150,6 +163,7 @@ function AccountPageInner() {
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+      if (selectedObjectId) fd.append("businessObjectId", selectedObjectId);
       images.forEach((file) => fd.append("images", file));
       if (editingId) {
         fd.append("existingImages", JSON.stringify(existingImages));
@@ -435,6 +449,20 @@ function AccountPageInner() {
               <label className="block text-sm font-medium mb-1.5">{t("listingPhone")}</label>
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+994..." className={inputCls} />
             </div>
+
+            {/* Biznes obyekti — kartla satış üçün */}
+            {bizObjects.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium mb-1.5">
+                  {t("bizListingObject") || "Biznes obyekti (kartla satış üçün)"}
+                </label>
+                <select value={selectedObjectId} onChange={(e) => setSelectedObjectId(e.target.value)} className={inputCls}>
+                  <option value="">{t("bizNoBusiness") || "Biznessiz (yalnız nağd)"}</option>
+                  {bizObjects.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+                <p className="text-[11px] text-muted mt-1">{t("bizListingHint") || "Obyekt seçsəniz, bu elan kartla da alına bilər."}</p>
+              </div>
+            )}
 
             {/* Şəkillər */}
             {(() => {

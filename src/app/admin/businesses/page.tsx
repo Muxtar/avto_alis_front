@@ -1,0 +1,126 @@
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import { useLanguage } from "@/lib/LanguageContext";
+import { useToast } from "@/components/Toast";
+import { API, UPLOADS } from "@/lib/api";
+
+interface Biz {
+  id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
+  status: string; rejectionReason: string | null; createdAt: string;
+  taxDocImage: string | null; companyDocImage: string | null; powerOfAttorneyImage: string | null; idCardImage: string | null; selfieImage: string | null;
+  user: { id: number; name: string; phone: string; publicId: string | null };
+  banks: { id: number; iban: string; title: string | null; isActive: boolean }[];
+  objects: { id: number; name: string; address: string; city: string | null; activityAreas: string[] }[];
+}
+
+export default function AdminBusinessesPage() {
+  const { t } = useLanguage();
+  const { toast } = useToast();
+  const [items, setItems] = useState<Biz[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("PENDING");
+  const [rejectReason, setRejectReason] = useState<{ [id: number]: string }>({});
+
+  const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/admin/businesses?status=${filter}`, { headers });
+      const data = await res.json();
+      setItems(data.businesses || []);
+    } catch { toast(t("error"), "error"); } finally { setLoading(false); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const approve = async (id: number) => {
+    try {
+      const res = await fetch(`${API}/admin/businesses/${id}/approve`, { method: "PUT", headers });
+      if (res.ok) { toast(t("bizApproved") || "Təsdiqləndi", "success"); load(); } else toast(t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+  const reject = async (id: number) => {
+    const reason = rejectReason[id];
+    if (!reason?.trim()) { toast(t("bizRejectReason") || "Səbəb yazın", "error"); return; }
+    try {
+      const res = await fetch(`${API}/admin/businesses/${id}/reject`, { method: "PUT", headers, body: JSON.stringify({ reason }) });
+      if (res.ok) { toast(t("bizRejected") || "Rədd edildi", "success"); load(); } else toast(t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+
+  const statuses = ["PENDING", "APPROVED", "REJECTED", "all"];
+
+  return (
+    <div>
+      <h1 className="text-xl sm:text-2xl font-bold mb-4">{t("adminBusinesses") || "Biznes təsdiqi"}</h1>
+      <div className="flex gap-1.5 flex-wrap bg-input-bg border border-input-border rounded-xl p-1 mb-6 w-fit">
+        {statuses.map((s) => (
+          <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>
+            {s === "all" ? t("all") : s}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-16 text-muted">{t("adminNoData")}</div>
+      ) : (
+        <div className="space-y-4">
+          {items.map((b) => (
+            <div key={b.id} className="bg-card border border-card-border rounded-xl p-4 sm:p-5">
+              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+                <div>
+                  <h2 className="font-bold">{b.name} <span className="text-xs font-normal text-muted">({b.kind === "LEGAL" ? "Hüquqi" : "Fiziki"} · {b.proofType === "TAX_DOC" ? "Vergi sənədi" : "Etibarnamə"})</span></h2>
+                  <p className="text-xs text-muted">{b.user?.name} · {b.user?.phone}{b.user?.publicId ? ` · ID ${b.user.publicId}` : ""}</p>
+                </div>
+                <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium border bg-input-bg">{b.status}</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
+                <p><span className="text-muted text-xs">VÖEN:</span> {b.voen}</p>
+                <p><span className="text-muted text-xs">{t("phone") || "Tel"}:</span> {b.phone || "—"}</p>
+                <p><span className="text-muted text-xs">{t("bizOwner") || "Sahibi"}:</span> {b.ownerName}</p>
+                <p><span className="text-muted text-xs">{t("bizFounder") || "Təsisçi"}:</span> {b.founderName}</p>
+                <p className="sm:col-span-2"><span className="text-muted text-xs">{t("bizBank") || "Bank"}:</span> {b.banks?.map((bk) => bk.iban).join(", ") || "—"}</p>
+              </div>
+
+              {/* KYC sənədləri — admin əllə yoxlayır (üz tanıma) */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                {([["taxDocImage", "Vergi"], ["companyDocImage", "Şirkət"], ["powerOfAttorneyImage", "Etibarnamə"], ["idCardImage", "Vəsiqə"], ["selfieImage", "Selfie"]] as const).map(([key, label]) => {
+                  const img = (b as any)[key] as string | null;
+                  if (!img) return null;
+                  return (
+                    <a key={key} href={`${UPLOADS}/${img}`} target="_blank" rel="noreferrer" className="block">
+                      <span className="text-[10px] text-muted block">{label}</span>
+                      <img src={`${UPLOADS}/${img}`} alt={label} className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+                    </a>
+                  );
+                })}
+              </div>
+              {b.objects.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs font-semibold text-muted mb-1">{t("bizObjects") || "Obyektlər"}:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {b.objects.map((o) => (
+                      <span key={o.id} className="px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs">{o.name}{o.activityAreas?.length ? ` (${o.activityAreas.join(", ")})` : ""} — {o.city ? o.city + ", " : ""}{o.address}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {b.status === "PENDING" && (
+                <div className="flex flex-col sm:flex-row gap-2 border-t border-card-border pt-3">
+                  <button onClick={() => approve(b.id)} className="px-4 py-2 bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg text-sm font-medium hover:bg-green-500/20">✓ {t("bizApprove") || "Təsdiqlə"}</button>
+                  <input value={rejectReason[b.id] || ""} onChange={(e) => setRejectReason((p) => ({ ...p, [b.id]: e.target.value }))} placeholder={t("bizRejectReason") || "Rədd səbəbi"} className="flex-1 px-3 py-2 bg-input-bg border border-input-border rounded-lg text-sm" />
+                  <button onClick={() => reject(b.id)} className="px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-sm font-medium hover:bg-red-500/20">✕ {t("bizReject") || "Rədd et"}</button>
+                </div>
+              )}
+              {b.status === "REJECTED" && b.rejectionReason && <p className="text-xs text-red-500 border-t border-card-border pt-2">{b.rejectionReason}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
