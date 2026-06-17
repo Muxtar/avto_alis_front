@@ -35,6 +35,7 @@ export default function BusinessPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [idVerified, setIdVerified] = useState<boolean | null>(null); // kimlik təqdim olunub?
 
   // create form
   const [kind, setKind] = useState("PHYSICAL");
@@ -58,6 +59,9 @@ export default function BusinessPage() {
       setBusinesses(data.businesses || []);
       const pid = await fetch(`${API}/me/public-id`, { headers: authH }).then((r) => r.json());
       setPublicId(pid.publicId || "");
+      // Kimlik + üz təsdiqi olmadan biznes yaratmaq olmaz.
+      const me = await fetch(`${API}/me`, { headers: authH }).then((r) => r.json());
+      setIdVerified(!!me?.user?.idVerifyStatus);
     } catch { toast(t("error"), "error"); } finally { setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -116,12 +120,27 @@ export default function BusinessPage() {
         <div className="flex items-center gap-2 flex-wrap">
           {publicId && <span className="px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs font-mono">ID: <b>{publicId}</b></span>}
           <a href="/business/sales" className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10">{t("bizSales") || "Satış pəncərəsi"}</a>
-          <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold">{showForm ? (t("adminCancel") || "Bağla") : `+ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
+          {idVerified === false ? (
+            <a href="/complete-profile" className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold">Profili tamamlayın</a>
+          ) : (
+            <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold">{showForm ? (t("adminCancel") || "Bağla") : `+ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
+          )}
         </div>
       </div>
       <p className="text-muted text-sm mb-5">{t("bizDesc") || "Biznes təsdiqləndikdən sonra məhsullarınız kartla satıla bilər."}</p>
 
-      {showForm && (
+      {idVerified === false && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-5 flex items-start gap-3">
+          <span className="text-2xl">🪪</span>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Biznes yaratmaq üçün kimlik təsdiqi lazımdır</p>
+            <p className="text-xs text-muted mt-0.5">Şəxsiyyət vəsiqəsi şəkli + selfie ilə profilinizi tamamlayın, sonra biznes əlavə edə bilərsiniz.</p>
+            <a href="/complete-profile" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">Profili tamamla →</a>
+          </div>
+        </div>
+      )}
+
+      {showForm && idVerified !== false && (
         <div className="bg-card border border-card-border rounded-xl p-4 sm:p-5 mb-5 space-y-4">
           {/* Tip */}
           <div className="grid grid-cols-2 gap-2">

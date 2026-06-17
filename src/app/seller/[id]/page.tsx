@@ -7,6 +7,8 @@ import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import { API } from "@/lib/api";
 import { groupSelectedParts } from "@/lib/sellerCategories";
+import { SOCIAL_META } from "@/lib/social";
+import SocialIcon from "@/components/SocialIcon";
 
 export default function SellerProfilePage() {
   const { t } = useLanguage();
@@ -72,6 +74,9 @@ export default function SellerProfilePage() {
               <span className={`px-3 py-1 bg-gradient-to-r ${typeColor} rounded-lg text-xs font-medium text-white`}>
                 {typeLabel}
               </span>
+              {user.idVerifyStatus === "APPROVED" && (
+                <span className="px-2.5 py-1 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium">✓ Təsdiqlənmiş</span>
+              )}
             </div>
 
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted mb-4">
@@ -102,6 +107,23 @@ export default function SellerProfilePage() {
                     <span className="text-muted">- {w.address}</span>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Təsdiqlənmiş sosial media hesabları */}
+            {user.socialLinks?.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {user.socialLinks.map((s: any) => {
+                  const meta = SOCIAL_META[s.platform] || { label: s.platform, icon: "🔗" };
+                  return (
+                    <a key={s.platform} href={s.url} target="_blank" rel="noreferrer"
+                       className="flex items-center gap-1.5 px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs hover:border-orange-500/50 transition-colors">
+                      <SocialIcon platform={s.platform} className="w-4 h-4" />
+                      <span className="font-medium">{meta.label}</span>
+                      <span className="text-green-500">✓</span>
+                    </a>
+                  );
+                })}
               </div>
             )}
 

@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import { compareFaces, FaceResult } from "@/lib/faceMatch";
+import { searchProfessions } from "@/lib/professions";
 
 export default function CompleteProfilePage() {
   const { t } = useLanguage();
@@ -16,7 +17,19 @@ export default function CompleteProfilePage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [profession, setProfession] = useState("");
+  const [profList, setProfList] = useState<string[]>([]);
+  const [showProfList, setShowProfList] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const onProfessionChange = (v: string) => {
+    setProfession(v);
+    setProfList(searchProfessions(v));
+    setShowProfList(true);
+  };
+  const pickProfession = (p: string) => {
+    setProfession(p);
+    setShowProfList(false);
+  };
 
   // Kimlik şəkli + selfie
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
@@ -175,9 +188,32 @@ export default function CompleteProfilePage() {
             </div>
           </div>
 
-          <div>
+          <div className="relative">
             <label className="block text-sm font-medium mb-1.5">{t("profession") || "Məslək"}</label>
-            <input value={profession} onChange={(e) => setProfession(e.target.value)} placeholder={t("professionPlaceholder") || "Məs: Mühəndis, Həkim, Satıcı, Tələbə"} className={inputClass} />
+            <input
+              value={profession}
+              onChange={(e) => onProfessionChange(e.target.value)}
+              onFocus={() => { if (profession.trim()) { setProfList(searchProfessions(profession)); setShowProfList(true); } }}
+              onBlur={() => setTimeout(() => setShowProfList(false), 150)}
+              placeholder={t("professionPlaceholder") || "Məs: Həkim, Mühəndis, Satıcı, Tələbə"}
+              className={inputClass}
+              autoComplete="off"
+            />
+            {showProfList && profList.length > 0 && (
+              <ul className="absolute z-20 left-0 right-0 mt-1 bg-card border border-input-border rounded-xl shadow-lg overflow-hidden max-h-56 overflow-y-auto">
+                {profList.map((p) => (
+                  <li key={p}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); pickProfession(p); }}
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-500/10 transition-colors"
+                    >
+                      {p}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Kimlik vəsiqəsi şəkli */}

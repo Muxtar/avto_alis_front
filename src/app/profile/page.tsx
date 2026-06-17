@@ -8,6 +8,8 @@ import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
 import { rotateImageFile } from "@/lib/rotateImage";
 import LocationPicker from "@/components/LocationPickerWrapper";
+import { SOCIAL_META } from "@/lib/social";
+import SocialIcon from "@/components/SocialIcon";
 
 export default function ProfilePage() {
   const { t } = useLanguage();
@@ -89,6 +91,7 @@ export default function ProfilePage() {
   const [emailError, setEmailError] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
+  const [oauthProviders, setOauthProviders] = useState<string[]>([]); // OAuth aktiv platformalar
 
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -132,6 +135,17 @@ export default function ProfilePage() {
     const res = await fetch(`${API}/me/listings`, { headers }).then((r) => r.json());
     setListings(res.listings || []);
   };
+
+  // OAuth: konfiqurasiya olunmuş platformaları çək + callback qayıdışını idarə et.
+  useEffect(() => {
+    fetch(`${API}/social/oauth/providers`).then((r) => r.json()).then((d) => setOauthProviders(d.configured || [])).catch(() => {});
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const s = sp.get("social");
+    if (s === "connected") { toast("Sosial hesab təsdiqləndi ✓", "success"); refreshProfile(); window.history.replaceState({}, "", "/profile"); }
+    else if (s === "error") { toast(sp.get("msg") || "Təsdiq alınmadı", "error"); window.history.replaceState({}, "", "/profile"); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDeleteListing = async (id: number) => {
     if (!confirm(t("confirmDeleteListing"))) return;
@@ -473,6 +487,23 @@ export default function ProfilePage() {
       }
     } catch { setEmailError(t("error")); }
     finally { setEmailLoading(false); }
+  };
+
+  // ---- Sosial media hesabları ----
+  const deleteSocial = async (id: number) => {
+    try {
+      await fetch(`${API}/me/social/${id}`, { method: "DELETE", headers });
+      await refreshProfile();
+    } catch { toast(t("error"), "error"); }
+  };
+  // OAuth ilə təsdiq ("hesabla daxil ol" — platforma özü təsdiqləyir).
+  const connectOauth = async (platform: string) => {
+    try {
+      const res = await fetch(`${API}/me/social/oauth/${platform}/start`, { headers });
+      const data = await res.json();
+      if (res.ok && data.url) window.location.href = data.url;
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
   };
 
   const typeLabel = (type: string) =>
@@ -991,6 +1022,54 @@ export default function ProfilePage() {
               </div>
             </>
           )}
+        </div>
+      </div>
+
+      {/* Sosial media hesabları */}
+      <div className="surface p-5 sm:p-7 mb-5">
+        <h2 className="text-lg font-semibold mb-1">Sosial media</h2>
+        <p className="text-xs text-muted mb-4">Hesabınızla daxil olun — platforma təsdiqindən sonra profilinizdə “✓” ilə görünəcək.</p>
+
+        {(profile.socialLinks?.length > 0) && (
+          <div className="space-y-2 mb-4">
+            {profile.socialLinks.map((s: any) => {
+              const meta = SOCIAL_META[s.platform] || { label: s.platform, icon: "🔗" };
+              return (
+                <div key={s.id} className="flex items-center gap-2 bg-input-bg border border-input-border rounded-xl px-3 py-2">
+                  <SocialIcon platform={s.platform} className="w-5 h-5 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium flex items-center gap-1.5">
+                      {meta.label}
+                      {s.verified
+                        ? <span className="text-[11px] text-green-500 font-semibold">✓ təsdiqlənib</span>
+                        : <span className="text-[11px] text-amber-500">gözləyir</span>}
+                    </p>
+                    <a href={s.url} target="_blank" rel="noreferrer" className="text-xs text-muted truncate block hover:text-orange-500">{s.url}</a>
+                  </div>
+                  <button onClick={() => deleteSocial(s.id)} className="text-red-500 text-xs shrink-0">Sil</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Ən güclü: OAuth ilə "hesabla təsdiqlə" */}
+        <div className="mb-4">
+          <p className="text-xs font-semibold text-muted mb-2">Hesabla təsdiqlə <span className="text-green-500">(ən etibarlı)</span></p>
+          <div className="flex flex-wrap gap-2">
+            {["instagram", "facebook", "tiktok"].map((p) => {
+              const on = oauthProviders.includes(p);
+              return (
+                <button key={p} onClick={() => connectOauth(p)} disabled={!on}
+                  title={on ? "" : "Bu platforma üçün OAuth hələ konfiqurasiya olunmayıb"}
+                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-input-border text-sm font-medium hover:border-orange-500/50 disabled:opacity-40 disabled:cursor-not-allowed">
+                  <SocialIcon platform={p} className="w-5 h-5" />
+                  {SOCIAL_META[p].label} ilə
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-muted mt-1.5">Hesabla daxil olduqda link platforma tərəfindən təsdiqlənir.</p>
         </div>
       </div>
 

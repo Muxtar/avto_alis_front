@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -17,6 +17,7 @@ export default function ListingDetailPage() {
   const { user, token, isLoggedIn } = useAuth();
   const { addToCart } = useCart();
   const params = useParams();
+  const router = useRouter();
   const [listing, setListing] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [msgText, setMsgText] = useState("");
@@ -54,6 +55,16 @@ export default function ListingDetailPage() {
       setTimeout(() => setCartAdded(false), 3000);
     }
     setCartAdding(false);
+  };
+
+  // İndi al — səbətə əlavə edib birbaşa səbətə (ödəniş/sifariş) keçir.
+  const handleBuyNow = async () => {
+    if (!listing) return;
+    setCartAdding(true);
+    const result = await addToCart(listing.id, cartQty);
+    setCartAdding(false);
+    if (result.success) router.push("/cart");
+    else if (result.message) toast(result.message, "error");
   };
 
   const handleAddComment = async () => {
@@ -377,8 +388,13 @@ export default function ListingDetailPage() {
                       <span className="flex-1 text-center font-medium">{cartQty}</span>
                       <button onClick={() => setCartQty(Math.min(listing.stock, cartQty + 1))} className="w-8 h-8 bg-input-bg border border-input-border rounded-lg flex items-center justify-center hover:opacity-80">+</button>
                     </div>
-                    <button onClick={handleAddToCart} disabled={cartAdding}
+                    <button onClick={handleBuyNow} disabled={cartAdding}
                       className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50 mb-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                      {t("buyNow")}
+                    </button>
+                    <button onClick={handleAddToCart} disabled={cartAdding}
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-input-bg border border-input-border rounded-xl font-semibold text-foreground hover:border-orange-500/50 transition-all disabled:opacity-50 mb-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
                       {t("addToCart")}
                     </button>
