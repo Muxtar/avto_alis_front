@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
-import { API } from "@/lib/api";
+import { API, UPLOADS } from "@/lib/api";
 import { groupSelectedParts } from "@/lib/sellerCategories";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
@@ -63,9 +63,14 @@ export default function SellerProfilePage() {
       <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-8 mb-6">
         <div className="flex flex-col sm:flex-row items-start gap-5">
           {/* Avatar */}
-          <div className={`w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br ${typeColor} rounded-2xl flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shrink-0 shadow-lg`}>
-            {user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
-          </div>
+          {user.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={`${UPLOADS}/${user.avatar}`} alt={user.name} className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-full shrink-0 shadow-lg ring-4 ring-card" />
+          ) : (
+            <div className={`w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br ${typeColor} rounded-full flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shrink-0 shadow-lg ring-4 ring-card`}>
+              {user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+            </div>
+          )}
 
           {/* Info */}
           <div className="flex-1">

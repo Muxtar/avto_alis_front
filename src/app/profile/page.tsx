@@ -21,7 +21,8 @@ export default function ProfilePage() {
   const [listingTab, setListingTab] = useState<"active" | "expired">("active");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState({ name: "" });
+  const [editData, setEditData] = useState({ name: "", profession: "" });
+  const [avatarBusy, setAvatarBusy] = useState(false);
 
   // Vehicles state — iki-addımlı flow:
   //   1) extract: kullanıcı şəkilləri yükləyir, AI sahələri qaytarır
@@ -103,7 +104,7 @@ export default function ProfilePage() {
       fetch(`${API}/me/listings`, { headers }).then((r) => r.json()),
     ]).then(([p, l]) => {
       setProfile(p.user);
-      setEditData({ name: p.user.name });
+      setEditData({ name: p.user.name, profession: p.user.profession || "" });
       setListings(l.listings || []);
       setLocationDraft({
         city: p.user.city || "",
@@ -115,11 +116,11 @@ export default function ProfilePage() {
   }, [isLoggedIn, authLoading]);
 
   const handleSave = async () => {
-    const res = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify({ name: editData.name }) });
+    const res = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify({ name: editData.name, profession: editData.profession }) });
     const data = await res.json();
     if (data.success) {
-      setProfile(data.user);
       login(token!, data.user);
+      await refreshProfile();
       setEditing(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -129,6 +130,19 @@ export default function ProfilePage() {
   const refreshProfile = async () => {
     const res = await fetch(`${API}/me`, { headers }).then((r) => r.json());
     if (res.user) setProfile(res.user);
+  };
+
+  const handleAvatarUpload = async (file: File | null) => {
+    if (!file) return;
+    setAvatarBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("avatar", file);
+      const res = await fetch(`${API}/me/avatar`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
+      const data = await res.json();
+      if (res.ok && data.success) { login(token!, data.user); await refreshProfile(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setAvatarBusy(false); }
   };
 
   const refreshListings = async () => {
@@ -529,9 +543,24 @@ export default function ProfilePage() {
           </div>
         )}
         <div className="flex flex-col sm:flex-row items-start gap-5">
-          {/* Avatar */}
-          <div className={`w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br ${typeColor(profile.type)} rounded-2xl flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shrink-0 shadow-lg`}>
-            {profile.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+          {/* Avatar — Facebook üslubu: şəkil + dəyişmə düyməsi */}
+          <div className="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0">
+            {profile.avatar ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`${UPLOADS}/${profile.avatar}`} alt={profile.name} className="w-full h-full object-cover rounded-full shadow-lg ring-4 ring-card" />
+            ) : (
+              <div className={`w-full h-full bg-gradient-to-br ${typeColor(profile.type)} rounded-full flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shadow-lg ring-4 ring-card`}>
+                {profile.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+              </div>
+            )}
+            <label className="absolute bottom-0 right-0 w-9 h-9 bg-orange-500 rounded-full flex items-center justify-center cursor-pointer shadow-md border-2 border-card hover:bg-orange-600 transition-colors" title="Şəkli dəyiş">
+              {avatarBusy ? (
+                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+              )}
+              <input type="file" accept="image/*" className="hidden" disabled={avatarBusy} onChange={(e) => handleAvatarUpload(e.target.files?.[0] || null)} />
+            </label>
           </div>
 
           {/* Info */}
@@ -540,7 +569,11 @@ export default function ProfilePage() {
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">{t("fullName")}</label>
-                  <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} className={inputCls} />
+                  <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} placeholder="Ad Soyad" className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">{t("profession") || "Məslək"}</label>
+                  <input value={editData.profession} onChange={(e) => setEditData({ ...editData, profession: e.target.value })} placeholder={t("professionPlaceholder") || "Məs: Həkim, Mühəndis, Satıcı"} className={inputCls} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">{t("phone")}</label>
@@ -576,8 +609,14 @@ export default function ProfilePage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
                     {t("memberSince")}: {memberDate}
                   </span>
+                  {profile.profession && (
+                    <span className="flex items-center gap-1.5">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z" /></svg>
+                      {profile.profession}
+                    </span>
+                  )}
                 </div>
-                <button onClick={() => setEditing(true)} className="flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
+                <button onClick={() => { setEditData({ name: profile.name, profession: profile.profession || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   {t("editProfile")}
                 </button>
