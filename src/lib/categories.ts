@@ -284,6 +284,93 @@ export function isVehicleSub(main: string, sub: string): boolean {
   return isVehicleCat(main) && !NON_MOTOR_SUBS.has(sub);
 }
 
+// ----- Elan formasında hər kateqoriyaya uyğun sahələr -----
+// Yalnız uyğun gələn sahələr göstərilir (məs. Daşınmaz əmlakda marka/model çıxmır).
+export type ListingField = "brand" | "country" | "condition" | "stock" | "model" | "year" | "fuel" | "forVehicle" | "unit";
+
+const CATEGORY_FIELDS: Record<string, ListingField[]> = {
+  "Nəqliyyat": ["brand", "model", "year", "fuel", "condition"],
+  "Avtomobil ehtiyat hissələri": ["brand", "country", "forVehicle", "condition", "stock", "unit"],
+  "Daşınmaz əmlak": [],
+  "Elektronika": ["brand", "country", "condition", "stock"],
+  "Məişət texnikası": ["brand", "country", "condition", "stock"],
+  "Ev və bağ": ["condition", "stock"],
+  "Tikinti və təmir": ["brand", "condition", "stock", "unit"],
+  "Geyim və aksesuar": ["brand", "condition", "stock"],
+  "Gözəllik və sağlamlıq": ["brand", "condition", "stock"],
+  "Uşaq aləmi": ["brand", "condition", "stock"],
+  "Hobbi və idman": ["brand", "condition", "stock"],
+  "Heyvanlar": ["stock"],
+  "İş elanları": [],
+  "Kənd təsərrüfatı": ["condition", "stock", "unit"],
+  "Xidmətlər": [],
+  "Digər": ["condition", "stock"],
+};
+// Bu əsas kateqoriyada elan formasında hansı sahələr göstərilməlidir?
+export function getListingFields(main: string): ListingField[] {
+  return CATEGORY_FIELDS[main] ?? ["brand", "condition", "stock"];
+}
+
+// ----- Kateqoriyaya xüsusi əlavə sahələr (tap.az üslubu) -----
+export interface AttrDef {
+  key: string;
+  label: string;
+  type: "select" | "number" | "text";
+  options?: string[];
+  suffix?: string; // məs. "m²", "km"
+}
+
+const CATEGORY_ATTRS: Record<string, AttrDef[]> = {
+  "Daşınmaz əmlak": [
+    { key: "estateType", label: "Əmlakın tipi", type: "select", options: ["Mənzil", "Həyət evi / Villa", "Ofis", "Torpaq", "Obyekt", "Qaraj"] },
+    { key: "dealType", label: "Əməliyyat", type: "select", options: ["Satış", "Aylıq kirayə", "Günlük kirayə"] },
+    { key: "rooms", label: "Otaq sayı", type: "select", options: ["1", "2", "3", "4", "5", "6+"] },
+    { key: "area", label: "Sahə", type: "number", suffix: "m²" },
+    { key: "floor", label: "Mərtəbə", type: "number" },
+    { key: "totalFloors", label: "Binanın mərtəbə sayı", type: "number" },
+    { key: "deed", label: "Sənəd", type: "select", options: ["Kupça", "Çıxarış", "Müqavilə ilə"] },
+    { key: "repair", label: "Təmir", type: "select", options: ["Təmirli", "Orta", "Təmirsiz"] },
+  ],
+  "Nəqliyyat": [
+    { key: "bodyType", label: "Ban növü", type: "select", options: ["Sedan", "Hetçbek", "Universal", "Offroader / SUV", "Kupe", "Pikap", "Mikroavtobus", "Furqon", "Motosiklet"] },
+    { key: "mileage", label: "Yürüş", type: "number", suffix: "km" },
+    { key: "transmission", label: "Sürətlər qutusu", type: "select", options: ["Avtomat", "Mexaniki", "Robot", "Variator"] },
+    { key: "engine", label: "Mühərrik həcmi", type: "number", suffix: "L" },
+    { key: "color", label: "Rəng", type: "text" },
+  ],
+  "Elektronika": [
+    { key: "memory", label: "Yaddaş", type: "select", options: ["16 GB", "32 GB", "64 GB", "128 GB", "256 GB", "512 GB", "1 TB"] },
+    { key: "color", label: "Rəng", type: "text" },
+    { key: "warranty", label: "Zəmanət", type: "select", options: ["Var", "Yoxdur"] },
+  ],
+  "Məişət texnikası": [
+    { key: "color", label: "Rəng", type: "text" },
+    { key: "warranty", label: "Zəmanət", type: "select", options: ["Var", "Yoxdur"] },
+  ],
+  "Geyim və aksesuar": [
+    { key: "size", label: "Ölçü", type: "select", options: ["XS", "S", "M", "L", "XL", "XXL", "3XL"] },
+    { key: "color", label: "Rəng", type: "text" },
+  ],
+  "Uşaq aləmi": [
+    { key: "ageGroup", label: "Yaş qrupu", type: "select", options: ["0-1 yaş", "1-3 yaş", "3-6 yaş", "6-12 yaş", "12+ yaş"] },
+  ],
+  "Heyvanlar": [
+    { key: "petKind", label: "Növ", type: "text" },
+    { key: "petAge", label: "Yaş", type: "text" },
+  ],
+  "İş elanları": [
+    { key: "salary", label: "Maaş", type: "text" },
+    { key: "schedule", label: "İş qrafiki", type: "select", options: ["Tam ştat", "Yarım ştat", "Növbəli", "Uzaqdan"] },
+    { key: "experience", label: "Təcrübə", type: "select", options: ["Təcrübəsiz", "1 ilə qədər", "1-3 il", "3-5 il", "5+ il"] },
+  ],
+  "Kənd təsərrüfatı": [
+    { key: "amount", label: "Miqdar", type: "text" },
+  ],
+};
+export function getCategoryAttrs(main: string): AttrDef[] {
+  return CATEGORY_ATTRS[main] ?? [];
+}
+
 // ----- URL slug-ları (tap.az üslubu: /elanlar/elektronika/audio-video) -----
 const AZ_MAP: Record<string, string> = {
   ə: "e", ç: "c", ğ: "g", ı: "i", İ: "i", ö: "o", ş: "s", ü: "u",

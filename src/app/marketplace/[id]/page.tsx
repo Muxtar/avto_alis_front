@@ -8,6 +8,7 @@ import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
 import { countryLabel } from "@/lib/countries";
+import { getCategoryAttrs, parseCat, getListingFields } from "@/lib/categories";
 import OrderMap from "@/components/OrderMapWrapper";
 
 
@@ -193,7 +194,17 @@ export default function ListingDetailPage() {
             <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 mt-4">
               <h3 className="font-semibold mb-3">{t("productInfo")}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                {listing.condition && (
+                {listing.attributes && Object.entries(listing.attributes).map(([k, v]) => {
+                  if (v === null || v === undefined || String(v).trim() === "") return null;
+                  const def = getCategoryAttrs(parseCat(listing.category).main).find((a) => a.key === k);
+                  return (
+                    <div key={k}>
+                      <p className="text-muted text-xs mb-1">{def?.label || k}</p>
+                      <p className="font-medium">{String(v)}{def?.suffix ? ` ${def.suffix}` : ""}</p>
+                    </div>
+                  );
+                })}
+                {getListingFields(parseCat(listing.category).main).includes("condition") && listing.condition && (
                   <div>
                     <p className="text-muted text-xs mb-1">{t("condition")}</p>
                     <p className={`font-medium ${listing.condition === 'NEW' ? 'text-green-500' : listing.condition === 'USED' ? 'text-orange-500' : 'text-blue-500'}`}>
@@ -260,12 +271,14 @@ export default function ListingDetailPage() {
                     </p>
                   </div>
                 )}
+                {getListingFields(parseCat(listing.category).main).includes("stock") && (
                 <div>
                   <p className="text-muted text-xs mb-1">{t("stock")}</p>
                   <p className={`font-medium ${listing.stock > 0 ? 'text-green-500' : 'text-red-500'}`}>
                     {listing.stock > 0 ? `${listing.stock} ${t("items")}` : t("outOfStock")}
                   </p>
                 </div>
+                )}
               </div>
             </div>
           )}

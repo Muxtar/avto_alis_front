@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
-import { CATEGORIES, getSubs, buildCat, parseCat, isVehicleSub, isServiceCat } from "@/lib/categories";
+import { CATEGORIES, getSubs, buildCat, parseCat, isServiceCat, getListingFields, getCategoryAttrs } from "@/lib/categories";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
 
@@ -36,6 +36,7 @@ function AccountPageInner() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
+  const [attrs, setAttrs] = useState<Record<string, string>>({}); // kateqoriyaya xüsusi sahələr
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -107,6 +108,7 @@ function AccountPageInner() {
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
     setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "" });
+    setAttrs({});
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
     setImages([]);
     setImagePreviews([]);
@@ -161,6 +163,10 @@ function AccountPageInner() {
     try {
       const fd = new FormData();
       Object.entries(form).forEach(([k, v]) => fd.append(k, v));
+      // Kateqoriyaya xüsusi sahələr (yalnız bu kateqoriyaya aid, boş olmayanlar).
+      const validKeys = getCategoryAttrs(parseCat(form.category).main).map((a) => a.key);
+      const cleanAttrs = Object.fromEntries(Object.entries(attrs).filter(([k, v]) => validKeys.includes(k) && String(v).trim() !== ""));
+      fd.append("attributes", JSON.stringify(cleanAttrs));
       if (selectedObjectId) fd.append("businessObjectId", selectedObjectId);
       images.forEach((file) => fd.append("images", file));
       if (editingId) {
@@ -202,6 +208,9 @@ function AccountPageInner() {
       fuelType: listing.fuelType || "",
       paymentType: listing.paymentType || "",
     });
+    // Kateqoriyaya xüsusi sahələri yüklə (string-ə çevir).
+    const la = listing.attributes && typeof listing.attributes === "object" ? listing.attributes : {};
+    setAttrs(Object.fromEntries(Object.entries(la).map(([k, v]) => [k, String(v ?? "")])));
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
     setImages([]);
     setImagePreviews([]);
@@ -224,6 +233,10 @@ function AccountPageInner() {
   );
 
   const inputCls = "w-full px-4 py-3 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm";
+
+  // Seçilmiş kateqoriyaya uyğun göstəriləcək sahələr (xidmətdə heç biri).
+  const catFields = form.type === "SERVICE" ? [] : getListingFields(parseCat(form.category).main);
+  const showField = (f: string) => catFields.includes(f as any);
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
@@ -277,6 +290,7 @@ function AccountPageInner() {
                         // (xidmətdən məhsula keçəndə tip düzgün sıfırlansın).
                         const nextType = isServiceCat(newMain) ? "SERVICE" : "PRODUCT";
                         setForm({ ...form, category: buildCat(newMain, newSub), type: nextType });
+                        setAttrs({}); // yeni kateqoriya → atributları sıfırla
                       }}
                       className={inputCls}
                     >
@@ -293,6 +307,28 @@ function AccountPageInner() {
                       {subs.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
+                </div>
+              );
+            })()}
+            {/* Kateqoriyaya xüsusi sahələr (tap.az üslubu) */}
+            {(() => {
+              const catAttrs = form.type === "SERVICE" ? [] : getCategoryAttrs(parseCat(form.category).main);
+              if (!catAttrs.length) return null;
+              return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {catAttrs.map((a) => (
+                    <div key={a.key}>
+                      <label className="block text-sm font-medium mb-1.5">{a.label}{a.suffix ? ` (${a.suffix})` : ""}</label>
+                      {a.type === "select" ? (
+                        <select value={attrs[a.key] || ""} onChange={(e) => setAttrs({ ...attrs, [a.key]: e.target.value })} className={inputCls}>
+                          <option value="">—</option>
+                          {a.options!.map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <input type={a.type === "number" ? "number" : "text"} value={attrs[a.key] || ""} onChange={(e) => setAttrs({ ...attrs, [a.key]: e.target.value })} placeholder={a.label} className={inputCls} />
+                      )}
+                    </div>
+                  ))}
                 </div>
               );
             })()}
@@ -318,8 +354,9 @@ function AccountPageInner() {
                 )}
               </div>
             </div>
-            {form.type !== "SERVICE" && (
+            {(showField("condition") || showField("stock")) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {showField("condition") && (
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("condition")}</label>
                 <select value={form.condition} onChange={(e) => setForm({ ...form, condition: e.target.value })} className={inputCls}>
@@ -328,18 +365,20 @@ function AccountPageInner() {
                   <option value="REFURBISHED">{t("conditionRefurbished")}</option>
                 </select>
               </div>
+              )}
+              {showField("stock") && (
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("stock")}</label>
                 <input type="number" min="0" value={form.stock} onChange={(e) => setForm({ ...form, stock: e.target.value })} placeholder="1" className={inputCls} />
               </div>
+              )}
             </div>
             )}
-            {form.type !== "SERVICE" && (
+            {(showField("brand") || showField("country")) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {showField("brand") && (
               <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  {t("brand")}
-                </label>
+                <label className="block text-sm font-medium mb-1.5">{t("brand")}</label>
                 <input
                   value={form.brand}
                   onChange={(e) => setForm({ ...form, brand: e.target.value })}
@@ -347,10 +386,10 @@ function AccountPageInner() {
                   className={inputCls}
                 />
               </div>
+              )}
+              {showField("country") && (
               <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  {t("countryOfOrigin")}
-                </label>
+                <label className="block text-sm font-medium mb-1.5">{t("countryOfOrigin")}</label>
                 <select
                   value={form.country}
                   onChange={(e) => setForm({ ...form, country: e.target.value })}
@@ -365,9 +404,10 @@ function AccountPageInner() {
                 </select>
                 <p className="text-[11px] text-muted mt-1">{t("countryOfOriginHint")}</p>
               </div>
+              )}
             </div>
             )}
-            {isVehicleSub(parseCat(form.category).main, parseCat(form.category).sub) && form.type !== "SERVICE" && (
+            {showField("model") && (
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("vehicleModel")}</label>
                 <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t("vehicleModelPlaceholder")} className={inputCls} />
@@ -380,8 +420,9 @@ function AccountPageInner() {
                 {AZ_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+            {(showField("fuel") || form.type !== "SERVICE") && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {isVehicleSub(parseCat(form.category).main, parseCat(form.category).sub) && form.type !== "SERVICE" && (
+              {showField("fuel") && (
                 <div>
                   <label className="block text-sm font-medium mb-1.5">{t("fuelType")}</label>
                   <select value={form.fuelType} onChange={(e) => setForm({ ...form, fuelType: e.target.value })} className={inputCls}>
@@ -390,6 +431,7 @@ function AccountPageInner() {
                   </select>
                 </div>
               )}
+              {form.type !== "SERVICE" && (
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("paymentType")}</label>
                 <select value={form.paymentType} onChange={(e) => setForm({ ...form, paymentType: e.target.value })} className={inputCls}>
@@ -397,13 +439,18 @@ function AccountPageInner() {
                   {PAYMENT_TYPES.map((p) => <option key={p.value} value={p.value}>{t(p.azKey)}</option>)}
                 </select>
               </div>
+              )}
             </div>
-            {isVehicleSub(parseCat(form.category).main, parseCat(form.category).sub) && form.type !== "SERVICE" && (
+            )}
+            {(showField("forVehicle") || showField("year")) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {showField("forVehicle") && (
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("forVehicle")}</label>
                 <input value={form.forVehicle} onChange={(e) => setForm({ ...form, forVehicle: e.target.value })} placeholder={t("forVehiclePlaceholder")} className={inputCls} />
               </div>
+              )}
+              {showField("year") && (
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("manufacturingYear")}</label>
                 <input
@@ -416,9 +463,10 @@ function AccountPageInner() {
                   className={inputCls}
                 />
               </div>
+              )}
             </div>
             )}
-            {form.type !== "SERVICE" && (
+            {showField("unit") && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1.5">{t("unit")}</label>
