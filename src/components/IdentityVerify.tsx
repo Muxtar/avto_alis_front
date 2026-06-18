@@ -15,8 +15,14 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
   const [checking, setChecking] = useState(false);
   const [faceResult, setFaceResult] = useState<FaceResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [idName, setIdName] = useState<string | null>(null); // AI-ın vəsiqədən oxuduğu ad-soyad
+  // Kimlikdən AI ilə oxunan və istifadəçinin yoxladığı sahələr.
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [birthDate, setBirthDate] = useState(""); // YYYY-MM-DD
+  const [gender, setGender] = useState("");
+  const [idNumber, setIdNumber] = useState("");
   const [idReading, setIdReading] = useState(false);
+  const [idFilled, setIdFilled] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -36,18 +42,34 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
     readIdName(file);
   };
 
-  // AI ilə vəsiqədən ad-soyadı oxu (təsdiqdə profil adını da yeniləyəcəyik).
+  // AI ilə vəsiqədən bütün məlumatları oxu və input-ları doldur.
   const readIdName = async (file: File) => {
     if (!token) return;
-    setIdReading(true); setIdName(null);
+    setIdReading(true); setIdFilled(false);
     try {
       const fd = new FormData();
       fd.append("idCardImage", file);
       const res = await fetch(`${API}/me/extract-id-name`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
       const data = await res.json();
-      if (res.ok && data.success && data.fullName) setIdName(data.fullName);
+      if (res.ok && data.success) {
+        if (data.firstName) setFirstName(data.firstName);
+        if (data.lastName) setLastName(data.lastName);
+        if (data.birthDate) setBirthDate(data.birthDate);
+        if (data.gender) setGender(data.gender);
+        if (data.idNumber) setIdNumber(data.idNumber);
+        if (data.firstName || data.lastName) setIdFilled(true);
+      }
     } catch { /* səssiz keç */ } finally { setIdReading(false); }
   };
+
+  const age = (() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(birthDate)) return null;
+    const d = new Date(birthDate); const now = new Date();
+    let a = now.getFullYear() - d.getFullYear();
+    const m = now.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < d.getDate())) a--;
+    return a >= 0 && a < 130 ? a : null;
+  })();
 
   const startCamera = async () => {
     try {
@@ -92,11 +114,15 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
 
   const submit = async () => {
     if (!idCardFile || !selfieBlob) { toast("Şəxsiyyət vəsiqəsi şəkli və selfie tələb olunur", "error"); return; }
+    if (!firstName.trim() || !lastName.trim()) { toast("Ad və soyad boşdur — vəsiqəni yenidən yükləyin və ya əl ilə doldurun", "error"); return; }
     setSubmitting(true);
     try {
       const fd = new FormData();
       if (faceResult?.ok) fd.append("faceMatchScore", String(faceResult.score));
-      if (idName) fd.append("name", idName); // vəsiqədən oxunan ad-soyad profil adını yeniləsin
+      fd.append("name", `${firstName.trim()} ${lastName.trim()}`);
+      if (birthDate) fd.append("birthDate", birthDate);
+      if (gender.trim()) fd.append("gender", gender.trim());
+      if (idNumber.trim()) fd.append("idNumber", idNumber.trim());
       fd.append("idCardImage", idCardFile);
       fd.append("selfieImage", new File([selfieBlob], "selfie.jpg", { type: "image/jpeg" }));
       const res = await fetch(`${API}/me/identity`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
@@ -143,9 +169,27 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
             <input type="file" accept="image/*" className="hidden" onChange={(e) => onPickIdCard(e.target.files?.[0] || null)} />
           </label>
         )}
-        {idReading && <p className="text-xs text-orange-500 mt-1">🤖 AI vəsiqədən ad-soyadı oxuyur…</p>}
-        {idName && !idReading && <p className="text-xs text-green-500 mt-1">✓ Vəsiqədən: <b>{idName}</b> — təsdiqdə profilə yazılacaq</p>}
+        {idReading && <p className="text-xs text-orange-500 mt-1">🤖 AI vəsiqədən məlumatları oxuyur…</p>}
       </div>
+
+      {/* Vəsiqədən AI ilə oxunan məlumatlar — yoxlayıb düzəldin, sonra Yadda saxla */}
+      {(idFilled || idReading || firstName || lastName) && (
+        <div className="space-y-2 p-3 bg-input-bg/50 border border-input-border rounded-xl">
+          <p className="text-xs font-semibold text-muted">{idFilled ? "✓ Vəsiqədən oxundu — yoxlayın və lazımsa düzəldin:" : "Vəsiqə məlumatları:"}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Ad" className={`${box} text-sm`} />
+            <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Soyad" className={`${box} text-sm`} />
+            <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={`${box} text-sm`} />
+            <select value={gender} onChange={(e) => setGender(e.target.value)} className={`${box} text-sm`}>
+              <option value="">Cins</option>
+              <option value="Kişi">Kişi</option>
+              <option value="Qadın">Qadın</option>
+            </select>
+            <input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder="FIN" className={`${box} text-sm col-span-2`} />
+          </div>
+          {age !== null && <p className="text-[11px] text-muted">Yaş: <b>{age}</b></p>}
+        </div>
+      )}
 
       {/* Selfie */}
       <div>
@@ -175,7 +219,7 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
       )}
 
       <button onClick={submit} disabled={submitting || !idCardFile || !selfieBlob} className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white disabled:opacity-50">
-        {submitting ? "Göndərilir…" : "Təsdiqə göndər"}
+        {submitting ? "Yadda saxlanılır…" : "💾 Yadda saxla"}
       </button>
     </div>
   );

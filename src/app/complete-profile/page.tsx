@@ -20,8 +20,11 @@ export default function CompleteProfilePage() {
   const [profList, setProfList] = useState<string[]>([]);
   const [showProfList, setShowProfList] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [idReading, setIdReading] = useState(false); // AI vəsiqədən ad oxuyur
+  const [idReading, setIdReading] = useState(false); // AI vəsiqədən məlumat oxuyur
   const [idNameFilled, setIdNameFilled] = useState(false);
+  const [birthDate, setBirthDate] = useState("");
+  const [gender, setGender] = useState("");
+  const [idNumber, setIdNumber] = useState("");
 
   const onProfessionChange = (v: string) => {
     setProfession(v);
@@ -87,10 +90,13 @@ export default function CompleteProfilePage() {
         body: fd,
       });
       const data = await res.json();
-      if (res.ok && data.success && (data.firstName || data.lastName)) {
+      if (res.ok && data.success) {
         if (data.firstName) setFirstName(data.firstName);
         if (data.lastName) setLastName(data.lastName);
-        setIdNameFilled(true);
+        if (data.birthDate) setBirthDate(data.birthDate);
+        if (data.gender) setGender(data.gender);
+        if (data.idNumber) setIdNumber(data.idNumber);
+        if (data.firstName || data.lastName) setIdNameFilled(true);
       }
     } catch { /* səssiz keç — istifadəçi əl ilə yaza bilər */ } finally { setIdReading(false); }
   };
@@ -154,6 +160,9 @@ export default function CompleteProfilePage() {
       const fd = new FormData();
       fd.append("name", `${firstName.trim()} ${lastName.trim()}`);
       if (profession.trim()) fd.append("profession", profession.trim());
+      if (birthDate) fd.append("birthDate", birthDate);
+      if (gender.trim()) fd.append("gender", gender.trim());
+      if (idNumber.trim()) fd.append("idNumber", idNumber.trim());
       if (faceResult?.ok) fd.append("faceMatchScore", String(faceResult.score));
       fd.append("idCardImage", idCardFile);
       fd.append("selfieImage", new File([selfieBlob], "selfie.jpg", { type: "image/jpeg" }));
@@ -213,8 +222,28 @@ export default function CompleteProfilePage() {
               <input value={lastName} onChange={(e) => setLastName(e.target.value)} required placeholder={t("lastName") || "Soyad"} className={inputClass} />
             </div>
           </div>
-          {idReading && <p className="text-xs text-orange-500">🤖 AI vəsiqədən ad-soyadı oxuyur…</p>}
-          {idNameFilled && !idReading && <p className="text-xs text-green-500">✓ Ad-soyad vəsiqədən avtomatik dolduruldu (lazımsa düzəldin)</p>}
+          {idReading && <p className="text-xs text-orange-500">🤖 AI vəsiqədən məlumatları oxuyur…</p>}
+          {idNameFilled && !idReading && <p className="text-xs text-green-500">✓ Məlumatlar vəsiqədən avtomatik dolduruldu (lazımsa düzəldin)</p>}
+
+          {/* Vəsiqədən oxunan əlavə məlumatlar */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Doğum tarixi</label>
+              <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1.5">Cins</label>
+              <select value={gender} onChange={(e) => setGender(e.target.value)} className={inputClass}>
+                <option value="">Seçin</option>
+                <option value="Kişi">Kişi</option>
+                <option value="Qadın">Qadın</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1.5">FIN (şəxsiyyət vəsiqəsi nömrəsi)</label>
+            <input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder="FIN" className={inputClass} />
+          </div>
 
           <div className="relative">
             <label className="block text-sm font-medium mb-1.5">{t("profession") || "Məslək"}</label>

@@ -128,7 +128,8 @@ export default function ProfilePage() {
   }, [isLoggedIn, authLoading]);
 
   const handleSave = async () => {
-    const res = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify({ name: editData.name, profession: editData.profession }) });
+    // Ad-soyad kimlikdən gəlir — əl ilə dəyişdirilmir; yalnız məsləyi yeniləyirik.
+    const res = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify({ profession: editData.profession }) });
     const data = await res.json();
     if (data.success) {
       login(token!, data.user);
@@ -620,7 +621,8 @@ export default function ProfilePage() {
               <div className="space-y-3">
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">{t("fullName")}</label>
-                  <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} placeholder="Ad Soyad" className={inputCls} />
+                  <input value={editData.name} disabled readOnly placeholder="Ad Soyad" className={`${inputCls} opacity-60 cursor-not-allowed`} />
+                  <p className="text-[11px] text-muted mt-1">🔒 Ad-soyad şəxsiyyət vəsiqəsindən gəlir — əl ilə dəyişilmir. Dəyişmək üçün kimliyi yenidən təsdiqləyin.</p>
                 </div>
                 <div className="relative">
                   <label className="block text-xs font-medium text-muted mb-1">{t("profession") || "Məslək"}</label>
