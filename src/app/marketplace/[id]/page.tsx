@@ -393,7 +393,13 @@ export default function ListingDetailPage() {
                   {listing.stock > 0 ? (listing.stock <= 5 ? `${t("onlyLeft")} ${listing.stock} ${t("items")}` : t("inStock")) : t("outOfStock")}
                 </div>
 
-                {isLoggedIn && user?.id !== listing.user.id && listing.stock > 0 && (
+                {/* VÖEN-siz (fərdi) elanlarda sayt üzərindən alış yoxdur — yalnız əlaqə (tap.az üslubu). */}
+                {!listing.businessId && (
+                  <div className="mb-2 px-3 py-2 bg-input-bg border border-input-border rounded-xl text-muted text-xs text-center">
+                    Bu fərdi elandır — satıcı ilə birbaşa əlaqə saxlayın (sayt üzərindən ödəniş yoxdur).
+                  </div>
+                )}
+                {listing.businessId && isLoggedIn && user?.id !== listing.user.id && listing.stock > 0 && (
                   <>
                     {cartAdded && <div className="mb-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg text-green-500 text-xs text-center">{t("addedToCart")}</div>}
                     <div className="flex items-center gap-2 mb-3">

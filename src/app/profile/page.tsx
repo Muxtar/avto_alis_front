@@ -10,6 +10,8 @@ import { rotateImageFile } from "@/lib/rotateImage";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
+import IdentityVerify from "@/components/IdentityVerify";
+import { searchProfessions } from "@/lib/professions";
 
 export default function ProfilePage() {
   const { t } = useLanguage();
@@ -23,6 +25,9 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState({ name: "", profession: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [showIdentity, setShowIdentity] = useState(false);
+  const [profList, setProfList] = useState<string[]>([]);
+  const [showProfList, setShowProfList] = useState(false);
 
   // Vehicles state — iki-addımlı flow:
   //   1) extract: kullanıcı şəkilləri yükləyir, AI sahələri qaytarır
@@ -542,22 +547,22 @@ export default function ProfilePage() {
             {t("profileUpdated")}
           </div>
         )}
-        <div className="flex flex-col sm:flex-row items-start gap-5">
-          {/* Avatar — Facebook üslubu: şəkil + dəyişmə düyməsi */}
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 shrink-0">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+          {/* Avatar — Facebook üslubu: böyük şəkil + dəyişmə düyməsi */}
+          <div className="relative w-36 h-36 sm:w-40 sm:h-40 shrink-0">
             {profile.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={`${UPLOADS}/${profile.avatar}`} alt={profile.name} className="w-full h-full object-cover rounded-full shadow-lg ring-4 ring-card" />
+              <img src={`${UPLOADS}/${profile.avatar}`} alt={profile.name} className="w-full h-full object-cover rounded-full shadow-xl ring-4 ring-card" />
             ) : (
-              <div className={`w-full h-full bg-gradient-to-br ${typeColor(profile.type)} rounded-full flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shadow-lg ring-4 ring-card`}>
+              <div className={`w-full h-full bg-gradient-to-br ${typeColor(profile.type)} rounded-full flex items-center justify-center text-white font-bold text-4xl sm:text-5xl shadow-xl ring-4 ring-card`}>
                 {profile.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
               </div>
             )}
-            <label className="absolute bottom-0 right-0 w-9 h-9 bg-orange-500 rounded-full flex items-center justify-center cursor-pointer shadow-md border-2 border-card hover:bg-orange-600 transition-colors" title="Şəkli dəyiş">
+            <label className="absolute bottom-1.5 right-1.5 w-11 h-11 bg-orange-500 rounded-full flex items-center justify-center cursor-pointer shadow-md border-2 border-card hover:bg-orange-600 transition-colors" title="Şəkli dəyiş">
               {avatarBusy ? (
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
               ) : (
-                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
               )}
               <input type="file" accept="image/*" className="hidden" disabled={avatarBusy} onChange={(e) => handleAvatarUpload(e.target.files?.[0] || null)} />
             </label>
@@ -571,9 +576,26 @@ export default function ProfilePage() {
                   <label className="block text-xs font-medium text-muted mb-1">{t("fullName")}</label>
                   <input value={editData.name} onChange={(e) => setEditData({ ...editData, name: e.target.value })} placeholder="Ad Soyad" className={inputCls} />
                 </div>
-                <div>
+                <div className="relative">
                   <label className="block text-xs font-medium text-muted mb-1">{t("profession") || "Məslək"}</label>
-                  <input value={editData.profession} onChange={(e) => setEditData({ ...editData, profession: e.target.value })} placeholder={t("professionPlaceholder") || "Məs: Həkim, Mühəndis, Satıcı"} className={inputCls} />
+                  <input
+                    value={editData.profession}
+                    onChange={(e) => { const v = e.target.value; setEditData({ ...editData, profession: v }); setProfList(searchProfessions(v)); setShowProfList(true); }}
+                    onFocus={() => { if (editData.profession.trim()) { setProfList(searchProfessions(editData.profession)); setShowProfList(true); } }}
+                    onBlur={() => setTimeout(() => setShowProfList(false), 150)}
+                    placeholder={t("professionPlaceholder") || "Məs: Həkim, Mühəndis, Satıcı"}
+                    className={inputCls}
+                    autoComplete="off"
+                  />
+                  {showProfList && profList.length > 0 && (
+                    <ul className="absolute z-20 left-0 right-0 mt-1 bg-card border border-input-border rounded-xl shadow-lg overflow-hidden max-h-56 overflow-y-auto">
+                      {profList.map((p) => (
+                        <li key={p}>
+                          <button type="button" onMouseDown={(e) => { e.preventDefault(); setEditData((d) => ({ ...d, profession: p })); setShowProfList(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-500/10 transition-colors">{p}</button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">{t("phone")}</label>
@@ -587,14 +609,14 @@ export default function ProfilePage() {
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap items-center gap-3 mb-2">
-                  <h1 className="text-xl sm:text-2xl font-bold">{profile.name}</h1>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mb-2">
+                  <h1 className="text-2xl sm:text-2xl font-bold">{profile.name}</h1>
                   <span className={`px-3 py-1 bg-gradient-to-r ${typeColor(profile.type)} rounded-lg text-xs font-medium text-white`}>
                     {typeLabel(profile.type)}
                   </span>
                   {profile.verified && <span className="px-2 py-0.5 bg-green-500/10 text-green-500 border border-green-500/20 rounded text-xs">{t("adminVerified")}</span>}
                 </div>
-                <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted mb-3">
+                <div className="flex flex-wrap justify-center sm:justify-start gap-x-5 gap-y-1 text-sm text-muted mb-3">
                   <span className="flex items-center gap-1.5">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
                     {profile.phone}
@@ -616,7 +638,7 @@ export default function ProfilePage() {
                     </span>
                   )}
                 </div>
-                <button onClick={() => { setEditData({ name: profile.name, profession: profile.profession || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
+                <button onClick={() => { setEditData({ name: profile.name, profession: profile.profession || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 mx-auto sm:mx-0 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   {t("editProfile")}
                 </button>
@@ -637,6 +659,39 @@ export default function ProfilePage() {
           </div>
         </div>
 
+      </div>
+
+      {/* Kimlik təsdiqi (şəxsiyyət vəsiqəsi + üz tanıma) */}
+      <div className="surface p-5 sm:p-7 mb-5">
+        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+          <h2 className="text-lg font-semibold flex items-center gap-2">🪪 Kimlik təsdiqi</h2>
+          {(() => {
+            const s = profile.idVerifyStatus;
+            const cls = s === "APPROVED" ? "bg-green-500/10 text-green-500" : s === "REJECTED" ? "bg-red-500/10 text-red-500" : s === "PENDING" ? "bg-amber-500/10 text-amber-500" : "bg-input-bg text-muted";
+            const label = s === "APPROVED" ? "✓ Təsdiqlənib" : s === "REJECTED" ? "Rədd edildi" : s === "PENDING" ? "Yoxlanılır" : "Təsdiqlənməyib";
+            return <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${cls}`}>{label}</span>;
+          })()}
+        </div>
+        <p className="text-xs text-muted mb-3">Şəxsiyyət vəsiqəsi şəkli + selfie ilə üz təsdiqi. Admin yoxlayır.</p>
+        {(profile.idCardImage || profile.selfieImage) && !showIdentity && (
+          <div className="flex gap-3 mb-3">
+            {profile.idCardImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`${UPLOADS}/${profile.idCardImage}`} alt="kimlik" className="w-28 h-20 object-cover rounded-lg border border-input-border" />
+            )}
+            {profile.selfieImage && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={`${UPLOADS}/${profile.selfieImage}`} alt="selfie" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+            )}
+          </div>
+        )}
+        {showIdentity ? (
+          <IdentityVerify token={token} onDone={() => { setShowIdentity(false); refreshProfile(); }} />
+        ) : (
+          <button onClick={() => setShowIdentity(true)} className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold hover:bg-orange-500/20 transition-colors">
+            {profile.idVerifyStatus ? "Kimliyi yenidən təsdiqlə" : "Kimliyi təsdiqlə"}
+          </button>
+        )}
       </div>
 
       {/* My location — default seller location, auto-fills new listings */}

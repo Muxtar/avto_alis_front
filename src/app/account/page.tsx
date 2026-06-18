@@ -14,6 +14,8 @@ const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const DEFAULT_MAIN = CATEGORIES[0].name;
 const DEFAULT_CATEGORY = buildCat(DEFAULT_MAIN, CATEGORIES[0].subs[0].name);
+const SERVICE_CATEGORY = buildCat("Xidmətlər", getSubs("Xidmətlər")[0] || "");
+const KASSA_RELEASE = "https://github.com/Muxtar/kassa_sql/releases/download/kassa-v0.1.0";
 
 export default function AccountPage() {
   return (
@@ -31,9 +33,12 @@ function AccountPageInner() {
   const searchParams = useSearchParams();
   const editIdParam = searchParams.get("edit");
   const newParam = searchParams.get("new");
+  const modeParam = searchParams.get("mode"); // voen | novoen (menyudan)
   const [listings, setListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [listingMode, setListingMode] = useState<"" | "voen" | "novoen">(""); // VÖEN ilə / VÖEN-siz
+  const [listingKind, setListingKind] = useState<"" | "product" | "service" | "product-form">(""); // Məhsul / Xidmət sihirbazı
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
   const [attrs, setAttrs] = useState<Record<string, string>>({}); // kateqoriyaya xüsusi sahələr
@@ -98,8 +103,11 @@ function AccountPageInner() {
     if (newParam === "1" && !showForm && !authLoading && isLoggedIn) {
       resetForm();
       setShowForm(true);
+      // Menyudan VÖEN/VÖEN-siz seçilibsə birbaşa o rejimə keç (seçim ekranını ötür).
+      if (modeParam === "voen" || modeParam === "novoen") setListingMode(modeParam);
       const url = new URL(window.location.href);
       url.searchParams.delete("new");
+      url.searchParams.delete("mode");
       window.history.replaceState({}, "", url.toString());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -115,6 +123,9 @@ function AccountPageInner() {
     setExistingImages([]);
     setEditingId(null);
     setShowForm(false);
+    setListingMode("");
+    setListingKind("");
+    setSelectedObjectId("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -159,6 +170,11 @@ function AccountPageInner() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // VÖEN-li elan üçün biznes obyekti mütləqdir (kartla satış obyekt üzərindən).
+    if (listingMode === "voen" && !selectedObjectId) {
+      toast("VÖEN-li elan üçün biznes obyekti seçin", "error");
+      return;
+    }
     setSubmitting(true);
     try {
       const fd = new FormData();
@@ -215,6 +231,10 @@ function AccountPageInner() {
     setImages([]);
     setImagePreviews([]);
     setExistingImages(listing.images || []);
+    // Redaktədə rejimi mövcud elana görə təyin et (biznes obyekti varsa VÖEN-li).
+    setListingMode(listing.businessId ? "voen" : "novoen");
+    setListingKind(listing.type === "SERVICE" ? "service" : "product-form");
+    setSelectedObjectId(listing.businessObjectId ? String(listing.businessObjectId) : "");
     setEditingId(listing.id);
     setShowForm(true);
     window.scrollTo(0, 0);
@@ -255,10 +275,87 @@ function AccountPageInner() {
         )}
       </div>
 
+      {(() => {
+        const cardCls = "text-left p-4 rounded-2xl border border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all";
+        // Addım 1 — VÖEN / VÖEN-siz
+        if (showForm && !listingMode && !editingId) return (
+          <div className="surface p-5 sm:p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold">VÖEN ilə, yoxsa VÖEN-siz?</h2>
+              <button type="button" onClick={resetForm} className="text-sm text-muted hover:text-foreground">{t("adminCancel") || "Bağla"}</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button type="button" onClick={() => setListingMode("voen")} className={cardCls}>
+                <div className="text-2xl mb-2">🏢</div>
+                <p className="font-semibold text-sm">VÖEN ilə (biznes)</p>
+                <p className="text-xs text-muted mt-1">Kartla ödəniş, saytdan sifariş. Biznes və ona bağlı obyekt tələb olunur.</p>
+              </button>
+              <button type="button" onClick={() => setListingMode("novoen")} className={cardCls}>
+                <div className="text-2xl mb-2">👤</div>
+                <p className="font-semibold text-sm">VÖEN-siz (fərdi)</p>
+                <p className="text-xs text-muted mt-1">Sayt üzərindən ödəniş yox — alıcı ilə birbaşa əlaqə.</p>
+              </button>
+            </div>
+          </div>
+        );
+        // Addım 2 — Məhsul / Xidmət
+        if (showForm && listingMode && !listingKind && !editingId) return (
+          <div className="surface p-5 sm:p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold">Məhsul, yoxsa xidmət?</h2>
+              <button type="button" onClick={() => setListingMode("")} className="text-sm text-muted hover:text-foreground">← Geri</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <button type="button" onClick={() => { setListingKind("product"); setForm((f) => ({ ...f, type: "PRODUCT", category: DEFAULT_CATEGORY })); }} className={cardCls}>
+                <div className="text-2xl mb-2">📦</div>
+                <p className="font-semibold text-sm">Məhsul</p>
+                <p className="text-xs text-muted mt-1">Tək elan, Excel və ya Kassa SQL ilə.</p>
+              </button>
+              <button type="button" onClick={() => { setListingKind("service"); setForm((f) => ({ ...f, type: "SERVICE", category: SERVICE_CATEGORY })); }} className={cardCls}>
+                <div className="text-2xl mb-2">🛠️</div>
+                <p className="font-semibold text-sm">Xidmət</p>
+                <p className="text-xs text-muted mt-1">Birbaşa elan formasına keçir.</p>
+              </button>
+            </div>
+          </div>
+        );
+        // Addım 3 — Məhsul üçün: Tək elan / Excel / Kassa SQL
+        if (showForm && listingMode && listingKind === "product" && !editingId) return (
+          <div className="surface p-5 sm:p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold">Məhsulu necə əlavə edəcəksiniz?</h2>
+              <button type="button" onClick={() => setListingKind("")} className="text-sm text-muted hover:text-foreground">← Geri</button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button type="button" onClick={() => setListingKind("product-form")} className={cardCls}>
+                <div className="text-2xl mb-2">📝</div>
+                <p className="font-semibold text-sm">Tək elan (form)</p>
+                <p className="text-xs text-muted mt-1">Bir məhsul əlavə et.</p>
+              </button>
+              <button type="button" onClick={() => router.push("/account/import")} className={cardCls}>
+                <div className="text-2xl mb-2">📊</div>
+                <p className="font-semibold text-sm">Excel ilə əlavə et</p>
+                <p className="text-xs text-muted mt-1">Toplu elan yüklə.</p>
+              </button>
+              <div className="p-4 rounded-2xl border border-input-border">
+                <div className="text-2xl mb-2">🖥️</div>
+                <p className="font-semibold text-sm">Kassa SQL ilə yüklə</p>
+                <div className="flex flex-col gap-1.5 mt-2 text-xs">
+                  <a href={`${KASSA_RELEASE}/AvtoBazar-Kassa-0.1.0-mac.dmg`} className="text-orange-500 hover:underline"> macOS (.dmg)</a>
+                  <a href={`${KASSA_RELEASE}/AvtoBazar-Kassa-0.1.0-win.exe`} className="text-orange-500 hover:underline">🪟 Windows (.exe)</a>
+                  <a href={`${KASSA_RELEASE}/AvtoBazar-Kassa-0.1.0-linux.AppImage`} className="text-orange-500 hover:underline">🐧 Linux (.AppImage)</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+        return null;
+      })()}
+
       {/* Add/Edit Form */}
-      {showForm && (
+      {showForm && (editingId || listingKind === "service" || listingKind === "product-form") && (
         <div className="surface p-5 sm:p-6 mb-6">
-          <h2 className="font-semibold mb-4">{editingId ? t("editListing") : t("addListing")}</h2>
+          <h2 className="font-semibold mb-4">{editingId ? t("editListing") : (listingMode === "voen" ? "Yeni elan — VÖEN ilə" : "Yeni elan — VÖEN-siz")}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -490,18 +587,26 @@ function AccountPageInner() {
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+994..." className={inputCls} />
             </div>
 
-            {/* Biznes obyekti — kartla satış üçün */}
-            {bizObjects.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium mb-1.5">
-                  {t("bizListingObject") || "Biznes obyekti (kartla satış üçün)"}
-                </label>
-                <select value={selectedObjectId} onChange={(e) => setSelectedObjectId(e.target.value)} className={inputCls}>
-                  <option value="">{t("bizNoBusiness") || "Biznessiz (yalnız nağd)"}</option>
-                  {bizObjects.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-                </select>
-                <p className="text-[11px] text-muted mt-1">{t("bizListingHint") || "Obyekt seçsəniz, bu elan kartla da alına bilər."}</p>
-              </div>
+            {/* Biznes obyekti — yalnız VÖEN-li elanda (kartla satış obyekt üzərindən) */}
+            {listingMode === "voen" && (
+              bizObjects.length > 0 ? (
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">
+                    Biznes obyekti <span className="text-orange-500">*</span>
+                  </label>
+                  <select value={selectedObjectId} onChange={(e) => setSelectedObjectId(e.target.value)} className={inputCls} required>
+                    <option value="">— Obyekt seçin —</option>
+                    {bizObjects.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                  </select>
+                  <p className="text-[11px] text-muted mt-1">Məhsul bu obyekt üzərindən satılacaq və kartla alına biləcək.</p>
+                </div>
+              ) : (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                  <p className="font-semibold text-sm">Təsdiqlənmiş biznes obyektiniz yoxdur</p>
+                  <p className="text-xs text-muted mt-0.5">VÖEN-li elan üçün əvvəlcə biznes əlavə edin, ona obyekt bağlayın və admin təsdiqini gözləyin.</p>
+                  <a href="/business" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">Biznes əlavə et →</a>
+                </div>
+              )
             )}
 
             {/* Şəkillər */}

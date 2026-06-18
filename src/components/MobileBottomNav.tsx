@@ -5,9 +5,6 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useLanguage } from "@/lib/LanguageContext";
 
-// Kassa SQL installer-ləri GitHub Releases-də (repo/tag dəyişsə bu sətri yenilə).
-const KASSA_RELEASE = "https://github.com/Muxtar/kassa_sql/releases/download/kassa-v0.1.0";
-
 /**
  * Bottom navigation bar shown only on mobile (< md):
  * Əsas · ＋(menu) · AI Söhbət (mərkəzi böyük) · Mesajlarım · Profil.
@@ -20,13 +17,12 @@ export default function MobileBottomNav() {
   const { isLoggedIn } = useAuth();
   const { t } = useLanguage();
   const [plusOpen, setPlusOpen] = useState(false);
-  const [kassaOpen, setKassaOpen] = useState(false);
 
   // Hide on auth screens to avoid clutter while typing.
   if (pathname === "/" || pathname === "/verify" || pathname?.startsWith("/admin/login")) return null;
 
   const openChat = () => window.dispatchEvent(new Event("toggle-inquiry-chat"));
-  const closeMenu = () => { setPlusOpen(false); setKassaOpen(false); };
+  const closeMenu = () => { setPlusOpen(false); };
 
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname?.startsWith(href));
 
@@ -68,42 +64,23 @@ export default function MobileBottomNav() {
         <>
           <div className="fixed inset-0 z-40 md:hidden" onClick={closeMenu} />
           <div className="fixed bottom-20 left-3 z-50 w-64 bg-card border border-card-border rounded-2xl shadow-2xl overflow-hidden md:hidden">
-            <Link href={isLoggedIn ? "/account?new=1" : "/"} onClick={closeMenu} className={menuItem}>
-              <span className="w-9 h-9 rounded-xl bg-orange-500/15 text-orange-500 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 4v16m8-8H4" /></svg>
+            {/* VÖEN ilə (biznes) */}
+            <Link href={isLoggedIn ? "/account?new=1&mode=voen" : "/"} onClick={closeMenu} className={menuItem}>
+              <span className="w-9 h-9 rounded-xl bg-orange-500/15 text-orange-500 flex items-center justify-center shrink-0 text-lg">🏢</span>
+              <span className="flex-1">
+                <span className="font-medium block">VÖEN ilə (biznes)</span>
+                <span className="text-[11px] text-muted">Kartla ödəniş</span>
               </span>
-              <span className="font-medium">{t("addSingleListing")}</span>
             </Link>
 
-            <Link href={isLoggedIn ? "/account/import" : "/"} onClick={closeMenu} className={`${menuItem} border-t border-card-border`}>
-              <span className="w-9 h-9 rounded-xl bg-green-500/15 text-green-500 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M3.75 9.75h16.5m-16.5 4.5h16.5m-13.5-9v13.5m-3.75 0h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5z" /></svg>
+            {/* VÖEN-siz (fərdi) */}
+            <Link href={isLoggedIn ? "/account?new=1&mode=novoen" : "/"} onClick={closeMenu} className={`${menuItem} border-t border-card-border`}>
+              <span className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0 text-lg">👤</span>
+              <span className="flex-1">
+                <span className="font-medium block">VÖEN-siz (fərdi)</span>
+                <span className="text-[11px] text-muted">Birbaşa əlaqə</span>
               </span>
-              <span className="font-medium">{t("excelAddListing")}</span>
             </Link>
-
-            {/* Kassa SQL — alt menyu (win/linux/mac) */}
-            <button type="button" onClick={() => setKassaOpen((v) => !v)} className={`${menuItem} border-t border-card-border`}>
-              <span className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-              </span>
-              <span className="font-medium flex-1">{t("downloadKassa")}</span>
-              <svg className={`w-4 h-4 text-muted transition-transform ${kassaOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-            </button>
-
-            {kassaOpen && (
-              <div className="bg-input-bg/40">
-                <a href={`${KASSA_RELEASE}/AvtoBazar-Kassa-0.1.0-mac.dmg`} onClick={closeMenu} className="flex items-center gap-2 pl-16 pr-4 py-2.5 text-sm hover:bg-orange-500/10">
-                  <span></span><span className="font-medium">{t("downloadForMac")}</span><span className="ml-auto text-[10px] text-muted">.dmg</span>
-                </a>
-                <a href={`${KASSA_RELEASE}/AvtoBazar-Kassa-0.1.0-win.exe`} onClick={closeMenu} className="flex items-center gap-2 pl-16 pr-4 py-2.5 text-sm hover:bg-orange-500/10">
-                  <span>🪟</span><span className="font-medium">{t("downloadForWin")}</span><span className="ml-auto text-[10px] text-muted">.exe</span>
-                </a>
-                <a href={`${KASSA_RELEASE}/AvtoBazar-Kassa-0.1.0-linux.AppImage`} onClick={closeMenu} className="flex items-center gap-2 pl-16 pr-4 py-2.5 text-sm hover:bg-orange-500/10">
-                  <span>🐧</span><span className="font-medium">{t("downloadForLinux")}</span><span className="ml-auto text-[10px] text-muted">.AppImage</span>
-                </a>
-              </div>
-            )}
           </div>
         </>
       )}
