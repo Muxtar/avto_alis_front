@@ -23,7 +23,7 @@ interface Business {
   banks: Bank[]; objects: BizObject[]; members: Member[];
 }
 
-const blankFiles = { taxDocImage: null, companyDocImage: null, powerOfAttorneyImage: null, idCardImage: null, selfieImage: null } as Record<string, File | null>;
+const blankFiles = { taxDocImage: null, companyDocImage: null, powerOfAttorneyImage: null, bankDocImage: null, idCardImage: null, selfieImage: null } as Record<string, File | null>;
 
 export default function BusinessPage() {
   const router = useRouter();
@@ -88,6 +88,7 @@ export default function BusinessPage() {
     if (proofType === "TAX_DOC" && !files.taxDocImage) { toast("Vergi sənədi tələb olunur", "error"); return; }
     if (proofType === "POWER_OF_ATTORNEY" && (!files.companyDocImage || !files.powerOfAttorneyImage)) { toast("Şirkət sənədi və etibarnamə tələb olunur", "error"); return; }
     if (!identityReusable && (!files.idCardImage || !files.selfieImage)) { toast("Şəxsiyyət vəsiqəsi və selfie tələb olunur", "error"); return; }
+    if (!files.bankDocImage) { toast("Bank hesabı sənədi tələb olunur", "error"); return; }
     setBusy(true);
     try {
       const fd = new FormData();
@@ -98,10 +99,11 @@ export default function BusinessPage() {
       const res = await fetch(`${API}/me/businesses`, { method: "POST", headers: authH, body: fd });
       const data = await res.json();
       if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      const ibanMsg = data.bankAccountsFound ? ` · AI ${data.bankAccountsFound} bank hesabı (IBAN) tapdı` : "";
       toast(
-        data.autoApproved
+        (data.autoApproved
           ? "✓ Biznes AI tərəfindən təsdiqləndi — artıq kartla satış mümkündür!"
-          : (t("bizCreated") || "Biznes göndərildi — admin təsdiqini gözləyir"),
+          : (t("bizCreated") || "Biznes göndərildi — admin təsdiqini gözləyir")) + ibanMsg,
         "success",
       );
       setShowForm(false); setKind("PHYSICAL"); setProofType("TAX_DOC"); setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "" }); setFiles(blankFiles); setBanks([{ iban: "", title: "" }]);
@@ -168,6 +170,7 @@ export default function BusinessPage() {
             {proofType === "TAX_DOC"
               ? fileLabel("taxDocImage", t("bizTaxDocFile") || "Vergi qeydiyyatı sənədi")
               : (<>{fileLabel("companyDocImage", t("bizCompanyDoc") || "Şirkət sənədi")}{fileLabel("powerOfAttorneyImage", t("bizPoaFile") || "Etibarnamə")}</>)}
+            {fileLabel("bankDocImage", "Bank hesabı sənədi (IBAN buradan AI ilə oxunur)")}
             {identityReusable ? (
               <div className="flex items-center gap-2 text-sm text-green-500 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
                 <span>✓</span>
@@ -188,9 +191,10 @@ export default function BusinessPage() {
             <input className={inputCls} placeholder={t("bizOwner") || "Şirkətin sahibi"} value={f.ownerName} onChange={(e) => setF({ ...f, ownerName: e.target.value })} />
             <input className={inputCls} placeholder={t("bizFounder") || "Şirkətin təsisçisi"} value={f.founderName} onChange={(e) => setF({ ...f, founderName: e.target.value })} />
           </div>
-          {/* Bank hesabları */}
+          {/* Bank hesabları — AI bank sənədindən IBAN-ları avtomatik oxuyur; bura ixtiyaridir */}
           <div>
-            <p className="text-xs font-semibold text-muted mb-1">{t("bizBank") || "Bank hesabları"}</p>
+            <p className="text-xs font-semibold text-muted mb-1">{t("bizBank") || "Bank hesabları"} <span className="font-normal">(ixtiyari)</span></p>
+            <p className="text-[11px] text-muted mb-2">🤖 IBAN-lar yüklədiyiniz bank sənədindən avtomatik oxunur. Əlavə hesab varsa əl ilə yaza bilərsiniz.</p>
             {banks.map((b, i) => (
               <div key={i} className="grid grid-cols-2 gap-2 mb-2">
                 <input className={inputCls} placeholder="IBAN" value={b.iban} onChange={(e) => setBanks((p) => p.map((x, j) => j === i ? { ...x, iban: e.target.value } : x))} />

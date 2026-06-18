@@ -8,7 +8,7 @@ interface Biz {
   id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
   status: string; rejectionReason: string | null; createdAt: string;
   aiAuthorized: boolean | null; aiVoenMatch: boolean | null; aiConfidence: number | null; aiFraudSignals: string[]; aiReason: string | null; autoApproved: boolean;
-  taxDocImage: string | null; companyDocImage: string | null; powerOfAttorneyImage: string | null; idCardImage: string | null; selfieImage: string | null;
+  taxDocImage: string | null; companyDocImage: string | null; powerOfAttorneyImage: string | null; bankDocImage: string | null; idCardImage: string | null; selfieImage: string | null;
   user: { id: number; name: string; phone: string; publicId: string | null };
   banks: { id: number; iban: string; title: string | null; isActive: boolean }[];
   objects: { id: number; name: string; address: string; city: string | null; activityAreas: string[] }[];
@@ -116,7 +116,7 @@ export default function AdminBusinessesPage() {
 
               {/* KYC sənədləri — admin əllə yoxlayır (üz tanıma) */}
               <div className="flex flex-wrap gap-2 mb-3">
-                {([["taxDocImage", "Vergi"], ["companyDocImage", "Şirkət"], ["powerOfAttorneyImage", "Etibarnamə"], ["idCardImage", "Vəsiqə"], ["selfieImage", "Selfie"]] as const).map(([key, label]) => {
+                {([["taxDocImage", "Vergi"], ["companyDocImage", "Şirkət"], ["powerOfAttorneyImage", "Etibarnamə"], ["bankDocImage", "Bank sənədi"], ["idCardImage", "Vəsiqə"], ["selfieImage", "Selfie"]] as const).map(([key, label]) => {
                   const img = (b as any)[key] as string | null;
                   if (!img) return null;
                   return (
