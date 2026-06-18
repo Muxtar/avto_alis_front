@@ -44,6 +44,11 @@ export default function BusinessPage() {
   const [f, setF] = useState({ name: "", voen: "", ownerName: "", founderName: "", phone: "" });
   const [files, setFiles] = useState<Record<string, File | null>>(blankFiles);
   const [banks, setBanks] = useState<{ iban: string; title: string }[]>([{ iban: "", title: "" }]);
+  const [bizInfoReading, setBizInfoReading] = useState(false); // AI vergi sənədindən şirkət məlumatı oxuyur
+  const [bizInfoFilled, setBizInfoFilled] = useState(false);
+  // Bank sənədləri (bir neçə) — hər biri AI ilə oxunur, biri "əsas" (ödəniş) seçilir.
+  const [bankDocs, setBankDocs] = useState<{ file: File; accounts: { iban: string; bankName: string | null }[]; reading: boolean }[]>([]);
+  const [primaryBankIdx, setPrimaryBankIdx] = useState(0);
 
   // per-business inline inputs
   const [bankInput, setBankInput] = useState<Record<number, { iban: string; title: string }>>({});
@@ -83,18 +88,63 @@ export default function BusinessPage() {
     return data;
   };
 
+  // Vergi/şirkət sənədi seçiləndə AI ilə şirkət adı/VÖEN/sahib/təsisçi avtomatik dolsun.
+  const onPickCompanyDoc = async (key: string, file: File | null) => {
+    setFiles((p) => ({ ...p, [key]: file }));
+    if (!file) return;
+    setBizInfoReading(true); setBizInfoFilled(false);
+    try {
+      const fd = new FormData();
+      fd.append("doc", file);
+      const res = await fetch(`${API}/me/extract-business-info`, { method: "POST", headers: authH, body: fd });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setF((prev) => ({
+          ...prev,
+          name: data.companyName || prev.name,
+          voen: data.voen || prev.voen,
+          ownerName: data.ownerName || prev.ownerName,
+          founderName: data.founderName || prev.founderName,
+        }));
+        if (data.companyName || data.voen) setBizInfoFilled(true);
+      }
+    } catch { /* səssiz keç */ } finally { setBizInfoReading(false); }
+  };
+
+  // Bank sənədi əlavə et → AI ilə IBAN-ları oxu.
+  const addBankDoc = async (file: File | null) => {
+    if (!file) return;
+    const idx = bankDocs.length;
+    setBankDocs((p) => [...p, { file, accounts: [], reading: true }]);
+    try {
+      const fd = new FormData();
+      fd.append("doc", file);
+      const res = await fetch(`${API}/me/extract-bank-doc`, { method: "POST", headers: authH, body: fd });
+      const data = await res.json();
+      setBankDocs((p) => p.map((d, i) => i === idx ? { ...d, accounts: data.accounts || [], reading: false } : d));
+    } catch {
+      setBankDocs((p) => p.map((d, i) => i === idx ? { ...d, reading: false } : d));
+    }
+  };
+  const removeBankDoc = (idx: number) => {
+    setBankDocs((p) => p.filter((_, i) => i !== idx));
+    setPrimaryBankIdx((pi) => (idx === pi ? 0 : idx < pi ? pi - 1 : pi));
+  };
+
   const createBusiness = async () => {
     if (!f.name || !f.voen || !f.ownerName || !f.founderName) { toast(t("bizAllRequired") || "Sahələri doldurun", "error"); return; }
     if (proofType === "TAX_DOC" && !files.taxDocImage) { toast("Vergi sənədi tələb olunur", "error"); return; }
     if (proofType === "POWER_OF_ATTORNEY" && (!files.companyDocImage || !files.powerOfAttorneyImage)) { toast("Şirkət sənədi və etibarnamə tələb olunur", "error"); return; }
     if (!identityReusable && (!files.idCardImage || !files.selfieImage)) { toast("Şəxsiyyət vəsiqəsi və selfie tələb olunur", "error"); return; }
-    if (!files.bankDocImage) { toast("Bank hesabı sənədi tələb olunur", "error"); return; }
+    if (bankDocs.length === 0) { toast("Ən azı bir bank hesabı sənədi əlavə edin", "error"); return; }
     setBusy(true);
     try {
       const fd = new FormData();
       fd.append("kind", kind); fd.append("proofType", proofType);
       Object.entries(f).forEach(([k, v]) => fd.append(k, v));
       Object.entries(files).forEach(([k, file]) => { if (file) fd.append(k, file); });
+      bankDocs.forEach((d) => fd.append("bankDocImage", d.file)); // çoxlu bank sənədi
+      fd.append("primaryBankIndex", String(primaryBankIdx));
       fd.append("banks", JSON.stringify(banks.filter((b) => b.iban.trim())));
       const res = await fetch(`${API}/me/businesses`, { method: "POST", headers: authH, body: fd });
       const data = await res.json();
@@ -106,7 +156,7 @@ export default function BusinessPage() {
           : (t("bizCreated") || "Biznes göndərildi — admin təsdiqini gözləyir")) + ibanMsg,
         "success",
       );
-      setShowForm(false); setKind("PHYSICAL"); setProofType("TAX_DOC"); setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "" }); setFiles(blankFiles); setBanks([{ iban: "", title: "" }]);
+      setShowForm(false); setKind("PHYSICAL"); setProofType("TAX_DOC"); setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "" }); setFiles(blankFiles); setBanks([{ iban: "", title: "" }]); setBankDocs([]); setPrimaryBankIdx(0); setBizInfoFilled(false);
       load();
     } catch { toast(t("error"), "error"); } finally { setBusy(false); }
   };
@@ -117,10 +167,18 @@ export default function BusinessPage() {
   const statusText = (s: string) => s === "APPROVED" ? (t("bizApproved") || "Təsdiqləndi") : s === "REJECTED" ? (t("bizRejected") || "Rədd edildi") : (t("bizPending") || "Gözləyir");
 
   const inputCls = "w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground";
+  const fileInputCls = "block w-full text-xs mt-1 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500";
   const fileLabel = (key: string, label: string) => (
     <label className="block">
       <span className="text-xs text-muted">{label}{files[key] ? " ✓" : ""}</span>
-      <input type="file" accept="image/*" onChange={(e) => setFiles((p) => ({ ...p, [key]: e.target.files?.[0] || null }))} className="block w-full text-xs mt-1 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500" />
+      <input type="file" accept="image/*" onChange={(e) => setFiles((p) => ({ ...p, [key]: e.target.files?.[0] || null }))} className={fileInputCls} />
+    </label>
+  );
+  // PDF + şəkil qəbul edən sənəd input-u (vergi/şirkət sənədi — AI ilə avtomatik doldurma).
+  const docFileLabel = (key: string, label: string, onPick?: (file: File | null) => void) => (
+    <label className="block">
+      <span className="text-xs text-muted">{label}{files[key] ? " ✓" : ""}</span>
+      <input type="file" accept=".pdf,image/*" onChange={(e) => { const file = e.target.files?.[0] || null; onPick ? onPick(file) : setFiles((p) => ({ ...p, [key]: file })); }} className={fileInputCls} />
     </label>
   );
 
@@ -167,10 +225,35 @@ export default function BusinessPage() {
           </div>
           {/* Sənədlər */}
           <div className="space-y-2 p-3 bg-input-bg/40 rounded-xl">
+            <p className="text-[11px] text-muted">📄 Sənədləri PDF və ya şəkil kimi yükləyin — 🤖 AI şirkət adı, VÖEN və bank hesablarını avtomatik oxuyacaq.</p>
             {proofType === "TAX_DOC"
-              ? fileLabel("taxDocImage", t("bizTaxDocFile") || "Vergi qeydiyyatı sənədi")
-              : (<>{fileLabel("companyDocImage", t("bizCompanyDoc") || "Şirkət sənədi")}{fileLabel("powerOfAttorneyImage", t("bizPoaFile") || "Etibarnamə")}</>)}
-            {fileLabel("bankDocImage", "Bank hesabı sənədi (IBAN buradan AI ilə oxunur)")}
+              ? docFileLabel("taxDocImage", "Vergi qeydiyyatı sənədi (PDF/şəkil)", (file) => onPickCompanyDoc("taxDocImage", file))
+              : (<>{docFileLabel("companyDocImage", "Şirkət sənədi (PDF/şəkil)", (file) => onPickCompanyDoc("companyDocImage", file))}{docFileLabel("powerOfAttorneyImage", "Etibarnamə (PDF/şəkil)")}</>)}
+            {bizInfoReading && <p className="text-xs text-orange-500">🤖 AI sənəddən şirkət məlumatlarını oxuyur…</p>}
+            {bizInfoFilled && !bizInfoReading && <p className="text-xs text-green-500">✓ Şirkət adı / VÖEN sənəddən dolduruldu (aşağıda yoxlayın)</p>}
+
+            {/* Bank hesabı sənədləri — bir neçə, biri əsas (ödəniş) seçilir */}
+            <div className="pt-2 border-t border-input-border">
+              <p className="text-xs font-semibold text-muted mb-1">Bank hesabı sənədləri (bir neçə ola bilər)</p>
+              {bankDocs.map((d, i) => (
+                <div key={i} className="flex items-start gap-2 mb-2 bg-card border border-input-border rounded-lg p-2">
+                  <input type="radio" name="primaryBank" checked={primaryBankIdx === i} onChange={() => setPrimaryBankIdx(i)} className="mt-1 accent-orange-500" title="Ödəniş bu hesaba" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium truncate">{d.file.name}</p>
+                    {d.reading ? <p className="text-[11px] text-orange-500">🤖 IBAN oxunur…</p>
+                      : d.accounts.length ? <p className="text-[11px] text-green-500">✓ {d.accounts.map((a) => a.iban).join(", ")}</p>
+                      : <p className="text-[11px] text-amber-500">IBAN tapılmadı</p>}
+                    {primaryBankIdx === i && <span className="text-[10px] text-orange-500">⬅ Ödəniş bu hesaba gedəcək</span>}
+                  </div>
+                  <button type="button" onClick={() => removeBankDoc(i)} className="text-muted hover:text-red-500 text-xs">✕</button>
+                </div>
+              ))}
+              <label className="inline-block text-xs text-orange-500 cursor-pointer">
+                + Bank sənədi əlavə et (PDF/şəkil)
+                <input type="file" accept=".pdf,image/*" className="hidden" onChange={(e) => { addBankDoc(e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
+              </label>
+            </div>
+
             {identityReusable ? (
               <div className="flex items-center gap-2 text-sm text-green-500 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
                 <span>✓</span>
