@@ -7,6 +7,7 @@ import { API, UPLOADS } from "@/lib/api";
 interface Biz {
   id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
   status: string; rejectionReason: string | null; createdAt: string;
+  aiAuthorized: boolean | null; aiVoenMatch: boolean | null; aiConfidence: number | null; aiFraudSignals: string[]; aiReason: string | null; autoApproved: boolean;
   taxDocImage: string | null; companyDocImage: string | null; powerOfAttorneyImage: string | null; idCardImage: string | null; selfieImage: string | null;
   user: { id: number; name: string; phone: string; publicId: string | null };
   banks: { id: number; iban: string; title: string | null; isActive: boolean }[];
@@ -76,8 +77,35 @@ export default function AdminBusinessesPage() {
                   <h2 className="font-bold">{b.name} <span className="text-xs font-normal text-muted">({b.kind === "LEGAL" ? "Hüquqi" : "Fiziki"} · {b.proofType === "TAX_DOC" ? "Vergi sənədi" : "Etibarnamə"})</span></h2>
                   <p className="text-xs text-muted">{b.user?.name} · {b.user?.phone}{b.user?.publicId ? ` · ID ${b.user.publicId}` : ""}</p>
                 </div>
-                <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium border bg-input-bg">{b.status}</span>
+                <div className="flex items-center gap-1.5">
+                  {b.autoApproved && <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-green-500/10 text-green-500 border border-green-500/20">🤖 AI təsdiqi</span>}
+                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium border bg-input-bg">{b.status}</span>
+                </div>
               </div>
+
+              {/* Claude AI sənəd yoxlaması */}
+              {(b.aiAuthorized !== null || b.aiReason) && (
+                <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
+                  <p className="text-[11px] font-semibold text-muted mb-1.5">🤖 Claude AI sənəd yoxlaması</p>
+                  <div className="flex flex-wrap gap-2">
+                    {b.aiAuthorized !== null && (
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${b.aiAuthorized ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
+                        {b.aiAuthorized ? "✓ Səlahiyyətli (rəhbər/etibarnamə)" : "⚠ Səlahiyyət təsdiqlənmədi"}
+                      </span>
+                    )}
+                    {b.aiVoenMatch !== null && (
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${b.aiVoenMatch ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"}`}>
+                        {b.aiVoenMatch ? "✓ VÖEN uyğun" : "⚠ VÖEN uyğun deyil"}
+                      </span>
+                    )}
+                    {typeof b.aiConfidence === "number" && (
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-input-bg text-muted border border-input-border">Etibarlılıq: {Math.round(b.aiConfidence * 100)}%</span>
+                    )}
+                  </div>
+                  {b.aiFraudSignals?.length > 0 && <p className="text-[11px] text-red-500 mt-1">⚠ Əlamətlər: {b.aiFraudSignals.join(", ")}</p>}
+                  {b.aiReason && <p className="text-[11px] text-muted mt-1 leading-snug">{b.aiReason}</p>}
+                </div>
+              )}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
                 <p><span className="text-muted text-xs">VÖEN:</span> {b.voen}</p>
                 <p><span className="text-muted text-xs">{t("phone") || "Tel"}:</span> {b.phone || "—"}</p>

@@ -94,7 +94,12 @@ export default function BusinessPage() {
       const res = await fetch(`${API}/me/businesses`, { method: "POST", headers: authH, body: fd });
       const data = await res.json();
       if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
-      toast(t("bizCreated") || "Biznes göndərildi — admin təsdiqini gözləyir", "success");
+      toast(
+        data.autoApproved
+          ? "✓ Biznes AI tərəfindən təsdiqləndi — artıq kartla satış mümkündür!"
+          : (t("bizCreated") || "Biznes göndərildi — admin təsdiqini gözləyir"),
+        "success",
+      );
       setShowForm(false); setKind("PHYSICAL"); setProofType("TAX_DOC"); setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "" }); setFiles(blankFiles); setBanks([{ iban: "", title: "" }]);
       load();
     } catch { toast(t("error"), "error"); } finally { setBusy(false); }
