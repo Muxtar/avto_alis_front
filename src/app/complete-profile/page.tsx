@@ -47,7 +47,9 @@ export default function CompleteProfilePage() {
   useEffect(() => {
     if (authLoading) return;
     if (!token) { router.push("/"); return; }
-    if (user?.profileComplete) { router.push("/elanlar"); return; }
+    // Yalnız kimlik artıq göndərilibsə geri at — yoxsa istifadəçi kimliyi tamamlamalıdır.
+    // (profileComplete ad/tip üçündür; biznes üçün isə kimlik təsdiqi lazımdır.)
+    if ((user as { idVerifyStatus?: string } | null)?.idVerifyStatus) { router.push("/elanlar"); return; }
     if (user?.name) {
       const parts = user.name.trim().split(/\s+/);
       setFirstName(parts[0] || "");
