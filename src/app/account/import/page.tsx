@@ -1,6 +1,6 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -40,6 +40,14 @@ interface ParsedRow {
 }
 
 export default function ExcelImportPage() {
+  return (
+    <Suspense fallback={<div className="min-h-[calc(100vh-64px)] flex items-center justify-center"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
+      <ExcelImportInner />
+    </Suspense>
+  );
+}
+
+function ExcelImportInner() {
   const router = useRouter();
   const { token, authLoading } = useAuth();
   const { t } = useLanguage();
@@ -50,6 +58,26 @@ export default function ExcelImportPage() {
   const [parsing, setParsing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ created: number; failed: number } | null>(null);
+
+  // VÖEN-li toplu yükləmə: bütün elanlar bir təsdiqlənmiş biznes obyektinə bağlanır.
+  const searchParams = useSearchParams();
+  const isVoen = searchParams.get("mode") === "voen";
+  const [bizObjects, setBizObjects] = useState<{ id: number; label: string }[]>([]);
+  const [selectedObjectId, setSelectedObjectId] = useState<string>("");
+
+  useEffect(() => {
+    if (!token || !isVoen) return;
+    fetch(`${API}/me/businesses`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => {
+        const opts: { id: number; label: string }[] = [];
+        (d.businesses || []).filter((b: any) => b.status === "APPROVED").forEach((b: any) => {
+          (b.objects || []).forEach((o: any) => opts.push({ id: o.id, label: `${b.name} — ${o.name}` }));
+        });
+        setBizObjects(opts);
+      })
+      .catch(() => undefined);
+  }, [token, isVoen]);
 
   if (!authLoading && !token) {
     router.push("/");
@@ -137,6 +165,10 @@ export default function ExcelImportPage() {
 
   const submit = async () => {
     if (validRows.length === 0) return;
+    if (isVoen && !selectedObjectId) {
+      toast("VÖEN-li toplu yükləmə üçün biznes obyekti seçin", "error");
+      return;
+    }
     setSubmitting(true);
     setResult(null);
     let created = 0;
@@ -164,7 +196,7 @@ export default function ExcelImportPage() {
         const res = await fetch(`${API}/me/listings/bulk`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ items: chunk }),
+          body: JSON.stringify({ items: chunk, listingMode: isVoen ? "voen" : "novoen", businessObjectId: isVoen ? selectedObjectId : undefined }),
         });
         const data = await res.json();
         if (res.ok && data.success) {
@@ -190,6 +222,28 @@ export default function ExcelImportPage() {
       <Link href="/account" className="text-sm text-orange-500 hover:text-orange-400">← {t("backToAccount") || "Hesaba qayıt"}</Link>
       <h1 className="text-2xl font-bold mt-2 mb-1">{t("excelImportTitle")}</h1>
       <p className="text-muted text-sm mb-5">{t("excelImportDesc")}</p>
+
+      {/* VÖEN-li toplu yükləmə üçün biznes obyekti seçimi (mütləq) */}
+      {isVoen && (
+        bizObjects.length > 0 ? (
+          <div className="bg-card border border-card-border rounded-xl p-4 mb-4">
+            <label className="block text-sm font-semibold mb-1.5">
+              Biznes obyekti <span className="text-orange-500">*</span>
+            </label>
+            <select value={selectedObjectId} onChange={(e) => setSelectedObjectId(e.target.value)} className={inputCls} required>
+              <option value="">— Obyekt seçin —</option>
+              {bizObjects.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+            <p className="text-[11px] text-muted mt-1">Bütün bu elanlar seçilmiş obyekt üzərindən satılacaq və kartla alına biləcək.</p>
+          </div>
+        ) : (
+          <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-4">
+            <p className="font-semibold text-sm">Təsdiqlənmiş biznes obyektiniz yoxdur</p>
+            <p className="text-xs text-muted mt-0.5">VÖEN-li toplu yükləmə üçün əvvəlcə biznes əlavə edin, ona obyekt bağlayın və admin təsdiqini gözləyin.</p>
+            <a href="/business" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">Biznes əlavə et →</a>
+          </div>
+        )
+      )}
 
       {/* Addım 1 — şablon */}
       <div className="bg-card border border-card-border rounded-xl p-4 mb-4">

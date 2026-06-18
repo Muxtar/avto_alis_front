@@ -183,6 +183,7 @@ function AccountPageInner() {
       const validKeys = getCategoryAttrs(parseCat(form.category).main).map((a) => a.key);
       const cleanAttrs = Object.fromEntries(Object.entries(attrs).filter(([k, v]) => validKeys.includes(k) && String(v).trim() !== ""));
       fd.append("attributes", JSON.stringify(cleanAttrs));
+      fd.append("listingMode", listingMode || "novoen");
       if (selectedObjectId) fd.append("businessObjectId", selectedObjectId);
       images.forEach((file) => fd.append("images", file));
       if (editingId) {
@@ -332,7 +333,7 @@ function AccountPageInner() {
                 <p className="font-semibold text-sm">Tək elan (form)</p>
                 <p className="text-xs text-muted mt-1">Bir məhsul əlavə et.</p>
               </button>
-              <button type="button" onClick={() => router.push("/account/import")} className={cardCls}>
+              <button type="button" onClick={() => router.push(`/account/import?mode=${listingMode}`)} className={cardCls}>
                 <div className="text-2xl mb-2">📊</div>
                 <p className="font-semibold text-sm">Excel ilə əlavə et</p>
                 <p className="text-xs text-muted mt-1">Toplu elan yüklə.</p>
