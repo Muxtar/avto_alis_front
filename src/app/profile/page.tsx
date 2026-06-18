@@ -718,7 +718,7 @@ export default function ProfilePage() {
             return <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${cls}`}>{label}</span>;
           })()}
         </div>
-        <p className="text-xs text-muted mb-3">Şəxsiyyət vəsiqəsi şəkli + selfie ilə üz təsdiqi. Admin yoxlayır.</p>
+        <p className="text-xs text-muted mb-3">Şəxsiyyət vəsiqəsi şəkli + selfie. <b>AI vəsiqədəki ad-soyadı və üzü selfie ilə yoxlayır</b>, admin son təsdiqi verir.</p>
         {(profile.idCardImage || profile.selfieImage) && !showIdentity && (
           <div className="flex gap-3 mb-3">
             {profile.idCardImage && (
@@ -729,6 +729,27 @@ export default function ProfilePage() {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={`${UPLOADS}/${profile.selfieImage}`} alt="selfie" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
             )}
+          </div>
+        )}
+        {/* AI doğrulama nəticəsi */}
+        {(profile.idAiNameMatch !== null && profile.idAiNameMatch !== undefined || profile.idAiFaceMatch !== null && profile.idAiFaceMatch !== undefined || profile.idAiReason) && !showIdentity && (
+          <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-xl">
+            <p className="text-[11px] font-semibold text-muted mb-1.5">🤖 AI yoxlaması</p>
+            <div className="flex flex-wrap gap-2">
+              {(profile.idAiNameMatch !== null && profile.idAiNameMatch !== undefined) && (
+                <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${profile.idAiNameMatch ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"}`}>
+                  {profile.idAiNameMatch ? "✓ Ad-soyad uyğundur" : "⚠ Ad-soyad uyğun deyil"}
+                  {typeof profile.idAiNameScore === "number" ? ` (${Math.round(profile.idAiNameScore * 100)}%)` : ""}
+                </span>
+              )}
+              {(profile.idAiFaceMatch !== null && profile.idAiFaceMatch !== undefined) && (
+                <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${profile.idAiFaceMatch ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"}`}>
+                  {profile.idAiFaceMatch ? "✓ Üz uyğundur" : "⚠ Üz uyğun deyil"}
+                  {typeof profile.idAiFaceScore === "number" ? ` (${Math.round(profile.idAiFaceScore * 100)}%)` : ""}
+                </span>
+              )}
+            </div>
+            {profile.idAiReason && <p className="text-[11px] text-muted mt-1.5 leading-snug">{profile.idAiReason}</p>}
           </div>
         )}
         {showIdentity ? (
