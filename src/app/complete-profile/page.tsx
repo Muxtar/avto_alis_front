@@ -20,6 +20,8 @@ export default function CompleteProfilePage() {
   const [profList, setProfList] = useState<string[]>([]);
   const [showProfList, setShowProfList] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [idReading, setIdReading] = useState(false); // AI vəsiqədən ad oxuyur
+  const [idNameFilled, setIdNameFilled] = useState(false);
 
   const onProfessionChange = (v: string) => {
     setProfession(v);
@@ -69,6 +71,28 @@ export default function CompleteProfilePage() {
     if (!file) return;
     setIdCardFile(file);
     setIdCardUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
+    // AI ilə vəsiqədən ad-soyadı oxuyub avtomatik doldur.
+    readIdName(file);
+  };
+
+  const readIdName = async (file: File) => {
+    if (!token) return;
+    setIdReading(true); setIdNameFilled(false);
+    try {
+      const fd = new FormData();
+      fd.append("idCardImage", file);
+      const res = await fetch(`${API}/me/extract-id-name`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (res.ok && data.success && (data.firstName || data.lastName)) {
+        if (data.firstName) setFirstName(data.firstName);
+        if (data.lastName) setLastName(data.lastName);
+        setIdNameFilled(true);
+      }
+    } catch { /* səssiz keç — istifadəçi əl ilə yaza bilər */ } finally { setIdReading(false); }
   };
 
   const startCamera = async () => {
@@ -189,6 +213,8 @@ export default function CompleteProfilePage() {
               <input value={lastName} onChange={(e) => setLastName(e.target.value)} required placeholder={t("lastName") || "Soyad"} className={inputClass} />
             </div>
           </div>
+          {idReading && <p className="text-xs text-orange-500">🤖 AI vəsiqədən ad-soyadı oxuyur…</p>}
+          {idNameFilled && !idReading && <p className="text-xs text-green-500">✓ Ad-soyad vəsiqədən avtomatik dolduruldu (lazımsa düzəldin)</p>}
 
           <div className="relative">
             <label className="block text-sm font-medium mb-1.5">{t("profession") || "Məslək"}</label>

@@ -15,6 +15,8 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
   const [checking, setChecking] = useState(false);
   const [faceResult, setFaceResult] = useState<FaceResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [idName, setIdName] = useState<string | null>(null); // AI-ın vəsiqədən oxuduğu ad-soyad
+  const [idReading, setIdReading] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -31,6 +33,20 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
     if (!file) return;
     setIdCardFile(file);
     setIdCardUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
+    readIdName(file);
+  };
+
+  // AI ilə vəsiqədən ad-soyadı oxu (təsdiqdə profil adını da yeniləyəcəyik).
+  const readIdName = async (file: File) => {
+    if (!token) return;
+    setIdReading(true); setIdName(null);
+    try {
+      const fd = new FormData();
+      fd.append("idCardImage", file);
+      const res = await fetch(`${API}/me/extract-id-name`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
+      const data = await res.json();
+      if (res.ok && data.success && data.fullName) setIdName(data.fullName);
+    } catch { /* səssiz keç */ } finally { setIdReading(false); }
   };
 
   const startCamera = async () => {
@@ -80,6 +96,7 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
     try {
       const fd = new FormData();
       if (faceResult?.ok) fd.append("faceMatchScore", String(faceResult.score));
+      if (idName) fd.append("name", idName); // vəsiqədən oxunan ad-soyad profil adını yeniləsin
       fd.append("idCardImage", idCardFile);
       fd.append("selfieImage", new File([selfieBlob], "selfie.jpg", { type: "image/jpeg" }));
       const res = await fetch(`${API}/me/identity`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
@@ -126,6 +143,8 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
             <input type="file" accept="image/*" className="hidden" onChange={(e) => onPickIdCard(e.target.files?.[0] || null)} />
           </label>
         )}
+        {idReading && <p className="text-xs text-orange-500 mt-1">🤖 AI vəsiqədən ad-soyadı oxuyur…</p>}
+        {idName && !idReading && <p className="text-xs text-green-500 mt-1">✓ Vəsiqədən: <b>{idName}</b> — təsdiqdə profilə yazılacaq</p>}
       </div>
 
       {/* Selfie */}
