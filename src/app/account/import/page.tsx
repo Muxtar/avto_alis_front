@@ -63,7 +63,7 @@ function ExcelImportInner() {
   const searchParams = useSearchParams();
   const isVoen = searchParams.get("mode") === "voen";
   const [bizObjects, setBizObjects] = useState<{ id: number; label: string }[]>([]);
-  const [selectedObjectId, setSelectedObjectId] = useState<string>("");
+  const [selectedObjectId, setSelectedObjectId] = useState<string>(searchParams.get("obj") || "");
 
   useEffect(() => {
     if (!token || !isVoen) return;

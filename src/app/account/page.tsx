@@ -299,12 +299,38 @@ function AccountPageInner() {
             </div>
           </div>
         );
+        // Addım 1.5 — VÖEN üçün biznes + obyekt seçimi (Məhsul/Xidmətdən əvvəl)
+        if (showForm && listingMode === "voen" && !selectedObjectId && !editingId) return (
+          <div className="surface p-5 sm:p-6 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-semibold">Hansı biznes və obyekt?</h2>
+              <button type="button" onClick={() => setListingMode("")} className="text-sm text-muted hover:text-foreground">← Geri</button>
+            </div>
+            {bizObjects.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted mb-2">Elan bu obyekt üzərindən satılacaq və kartla alına biləcək.</p>
+                {bizObjects.map((o) => (
+                  <button key={o.id} type="button" onClick={() => setSelectedObjectId(String(o.id))} className="w-full text-left p-4 rounded-2xl border border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all flex items-center gap-3">
+                    <div className="text-xl">🏢</div>
+                    <p className="font-semibold text-sm">{o.label}</p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                <p className="font-semibold text-sm">Təsdiqlənmiş biznes obyektiniz yoxdur</p>
+                <p className="text-xs text-muted mt-0.5">VÖEN-li elan üçün əvvəlcə biznes əlavə edin, ona obyekt bağlayın və admin təsdiqini gözləyin.</p>
+                <a href="/business" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">Biznes əlavə et →</a>
+              </div>
+            )}
+          </div>
+        );
         // Addım 2 — Məhsul / Xidmət
         if (showForm && listingMode && !listingKind && !editingId) return (
           <div className="surface p-5 sm:p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-semibold">Məhsul, yoxsa xidmət?</h2>
-              <button type="button" onClick={() => setListingMode("")} className="text-sm text-muted hover:text-foreground">← Geri</button>
+              <button type="button" onClick={() => { if (listingMode === "voen") setSelectedObjectId(""); else setListingMode(""); }} className="text-sm text-muted hover:text-foreground">← Geri</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button type="button" onClick={() => { setListingKind("product"); setForm((f) => ({ ...f, type: "PRODUCT", category: DEFAULT_CATEGORY })); }} className={cardCls}>
@@ -333,7 +359,7 @@ function AccountPageInner() {
                 <p className="font-semibold text-sm">Tək elan (form)</p>
                 <p className="text-xs text-muted mt-1">Bir məhsul əlavə et.</p>
               </button>
-              <button type="button" onClick={() => router.push(`/account/import?mode=${listingMode}`)} className={cardCls}>
+              <button type="button" onClick={() => router.push(`/account/import?mode=${listingMode}${selectedObjectId ? `&obj=${selectedObjectId}` : ""}`)} className={cardCls}>
                 <div className="text-2xl mb-2">📊</div>
                 <p className="font-semibold text-sm">Excel ilə əlavə et</p>
                 <p className="text-xs text-muted mt-1">Toplu elan yüklə.</p>
@@ -588,9 +614,10 @@ function AccountPageInner() {
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+994..." className={inputCls} />
             </div>
 
-            {/* Biznes obyekti — yalnız VÖEN-li elanda (kartla satış obyekt üzərindən) */}
+            {/* Biznes obyekti — VÖEN-li elanda (kartla satış obyekt üzərindən) */}
             {listingMode === "voen" && (
-              bizObjects.length > 0 ? (
+              editingId ? (
+                // Redaktədə obyekti dəyişmək mümkün olsun.
                 <div>
                   <label className="block text-sm font-medium mb-1.5">
                     Biznes obyekti <span className="text-orange-500">*</span>
@@ -602,10 +629,13 @@ function AccountPageInner() {
                   <p className="text-[11px] text-muted mt-1">Məhsul bu obyekt üzərindən satılacaq və kartla alına biləcək.</p>
                 </div>
               ) : (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-                  <p className="font-semibold text-sm">Təsdiqlənmiş biznes obyektiniz yoxdur</p>
-                  <p className="text-xs text-muted mt-0.5">VÖEN-li elan üçün əvvəlcə biznes əlavə edin, ona obyekt bağlayın və admin təsdiqini gözləyin.</p>
-                  <a href="/business" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">Biznes əlavə et →</a>
+                // Yaratmada obyekt əvvəlki addımda seçilib — təsdiq olaraq göstər.
+                <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-xl flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-[11px] text-muted">Biznes obyekti</p>
+                    <p className="font-semibold text-sm truncate">{bizObjects.find((o) => String(o.id) === selectedObjectId)?.label || "—"}</p>
+                  </div>
+                  <button type="button" onClick={() => { setSelectedObjectId(""); setListingKind(""); }} className="text-xs text-orange-500 font-semibold shrink-0 hover:text-orange-400">Dəyiş</button>
                 </div>
               )
             )}
