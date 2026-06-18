@@ -12,6 +12,11 @@ interface IdUser {
   selfieImage: string | null;
   faceMatchScore: number | null;
   idVerifyStatus: string | null;
+  idAiNameMatch?: boolean | null;
+  idAiNameScore?: number | null;
+  idAiFaceMatch?: boolean | null;
+  idAiFaceScore?: number | null;
+  idAiReason?: string | null;
 }
 
 export default function AdminIdVerificationsPage() {
@@ -83,6 +88,28 @@ export default function AdminIdVerificationsPage() {
                   </span>
                 </div>
               </div>
+
+              {/* Claude AI nəticəsi */}
+              {(u.idAiNameMatch !== null && u.idAiNameMatch !== undefined || u.idAiFaceMatch !== null && u.idAiFaceMatch !== undefined || u.idAiReason) && (
+                <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
+                  <p className="text-[11px] font-semibold text-muted mb-1.5">🤖 Claude AI yoxlaması</p>
+                  <div className="flex flex-wrap gap-2">
+                    {(u.idAiNameMatch !== null && u.idAiNameMatch !== undefined) && (
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${u.idAiNameMatch ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
+                        {u.idAiNameMatch ? "✓ Ad-soyad uyğun" : "⚠ Ad-soyad uyğun deyil"}
+                        {typeof u.idAiNameScore === "number" ? ` (${Math.round(u.idAiNameScore * 100)}%)` : ""}
+                      </span>
+                    )}
+                    {(u.idAiFaceMatch !== null && u.idAiFaceMatch !== undefined) && (
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${u.idAiFaceMatch ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
+                        {u.idAiFaceMatch ? "✓ Üz uyğun" : "⚠ Üz uyğun deyil"}
+                        {typeof u.idAiFaceScore === "number" ? ` (${Math.round(u.idAiFaceScore * 100)}%)` : ""}
+                      </span>
+                    )}
+                  </div>
+                  {u.idAiReason && <p className="text-[11px] text-muted mt-1.5 leading-snug">{u.idAiReason}</p>}
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3 mb-3">
                 {([["idCardImage", "Şəxsiyyət vəsiqəsi"], ["selfieImage", "Selfie"]] as const).map(([key, label]) => {
