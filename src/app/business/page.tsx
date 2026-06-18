@@ -36,6 +36,7 @@ export default function BusinessPage() {
   const [showForm, setShowForm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [idVerified, setIdVerified] = useState<boolean | null>(null); // kimlik təqdim olunub?
+  const [identityReusable, setIdentityReusable] = useState(false); // kimlik+üz təsdiqlənib (>50%) → biznesdə təkrar istənilmir
 
   // create form
   const [kind, setKind] = useState("PHYSICAL");
@@ -62,6 +63,9 @@ export default function BusinessPage() {
       // Kimlik + üz təsdiqi olmadan biznes yaratmaq olmaz.
       const me = await fetch(`${API}/me`, { headers: authH }).then((r) => r.json());
       setIdVerified(!!me?.user?.idVerifyStatus);
+      const u = me?.user || {};
+      const faceOk = (u.faceMatchScore ?? 0) > 0.5 || u.idAiFaceMatch === true || (u.idAiFaceScore ?? 0) > 0.5;
+      setIdentityReusable(!!u.idVerifyStatus && !!u.idCardImage && !!u.selfieImage && faceOk);
     } catch { toast(t("error"), "error"); } finally { setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -83,7 +87,7 @@ export default function BusinessPage() {
     if (!f.name || !f.voen || !f.ownerName || !f.founderName) { toast(t("bizAllRequired") || "Sahələri doldurun", "error"); return; }
     if (proofType === "TAX_DOC" && !files.taxDocImage) { toast("Vergi sənədi tələb olunur", "error"); return; }
     if (proofType === "POWER_OF_ATTORNEY" && (!files.companyDocImage || !files.powerOfAttorneyImage)) { toast("Şirkət sənədi və etibarnamə tələb olunur", "error"); return; }
-    if (!files.idCardImage || !files.selfieImage) { toast("Şəxsiyyət vəsiqəsi və selfie tələb olunur", "error"); return; }
+    if (!identityReusable && (!files.idCardImage || !files.selfieImage)) { toast("Şəxsiyyət vəsiqəsi və selfie tələb olunur", "error"); return; }
     setBusy(true);
     try {
       const fd = new FormData();
@@ -164,8 +168,17 @@ export default function BusinessPage() {
             {proofType === "TAX_DOC"
               ? fileLabel("taxDocImage", t("bizTaxDocFile") || "Vergi qeydiyyatı sənədi")
               : (<>{fileLabel("companyDocImage", t("bizCompanyDoc") || "Şirkət sənədi")}{fileLabel("powerOfAttorneyImage", t("bizPoaFile") || "Etibarnamə")}</>)}
-            {fileLabel("idCardImage", t("bizIdCard") || "Şəxsiyyət vəsiqəsi")}
-            {fileLabel("selfieImage", t("bizSelfie") || "Selfie (üz tanıma)")}
+            {identityReusable ? (
+              <div className="flex items-center gap-2 text-sm text-green-500 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+                <span>✓</span>
+                <span>Kimliyiniz artıq təsdiqlənib — vəsiqə və selfie təkrar istənilmir.</span>
+              </div>
+            ) : (
+              <>
+                {fileLabel("idCardImage", t("bizIdCard") || "Şəxsiyyət vəsiqəsi")}
+                {fileLabel("selfieImage", t("bizSelfie") || "Selfie (üz tanıma)")}
+              </>
+            )}
           </div>
           {/* Sahələr */}
           <input className={inputCls} placeholder={t("bizName") || "Şirkət adı"} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />

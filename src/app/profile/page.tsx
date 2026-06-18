@@ -750,6 +750,13 @@ export default function ProfilePage() {
               )}
             </div>
             {profile.idAiReason && <p className="text-[11px] text-muted mt-1.5 leading-snug">{profile.idAiReason}</p>}
+            {(profile.birthDate || profile.gender || profile.idNumber) && (
+              <p className="text-[11px] text-muted mt-1.5">
+                {profile.birthDate && <>Doğum tarixi: <b>{new Date(profile.birthDate).toLocaleDateString("az-AZ")}</b></>}
+                {profile.gender && <> · Cinsiyyət: <b>{profile.gender}</b></>}
+                {profile.idNumber && <> · FIN: <b>{profile.idNumber}</b></>}
+              </p>
+            )}
           </div>
         )}
         {showIdentity ? (
