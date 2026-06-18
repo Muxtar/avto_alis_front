@@ -46,6 +46,8 @@ export default function BusinessPage() {
   const [banks, setBanks] = useState<{ iban: string; title: string }[]>([{ iban: "", title: "" }]);
   const [bizInfoReading, setBizInfoReading] = useState(false); // AI vergi sənədindən şirkət məlumatı oxuyur
   const [bizInfoFilled, setBizInfoFilled] = useState(false);
+  const [ownerCheck, setOwnerCheck] = useState<{ isOwner: boolean; message: string } | null>(null); // kimlik ↔ rəhbər uyğunluğu
+  const [bankDropOver, setBankDropOver] = useState(false);
   // Bank sənədləri (bir neçə) — hər biri AI ilə oxunur, biri "əsas" (ödəniş) seçilir.
   const [bankDocs, setBankDocs] = useState<{ file: File; accounts: { iban: string; bankName: string | null }[]; reading: boolean }[]>([]);
   const [primaryBankIdx, setPrimaryBankIdx] = useState(0);
@@ -92,7 +94,7 @@ export default function BusinessPage() {
   const onPickCompanyDoc = async (key: string, file: File | null) => {
     setFiles((p) => ({ ...p, [key]: file }));
     if (!file) return;
-    setBizInfoReading(true); setBizInfoFilled(false);
+    setBizInfoReading(true); setBizInfoFilled(false); setOwnerCheck(null);
     try {
       const fd = new FormData();
       fd.append("doc", file);
@@ -107,9 +109,13 @@ export default function BusinessPage() {
           founderName: data.founderName || prev.founderName,
         }));
         if (data.companyName || data.voen) setBizInfoFilled(true);
+        if (typeof data.isOwner === "boolean") setOwnerCheck({ isOwner: data.isOwner, message: data.ownerMessage || "" });
       }
     } catch { /* səssiz keç */ } finally { setBizInfoReading(false); }
   };
+
+  // Vergi sənədi halında rəhbər uyğunsuzluğu varsa biznes yaradıla bilməz.
+  const ownerBlocked = proofType === "TAX_DOC" && ownerCheck !== null && !ownerCheck.isOwner;
 
   // Bank sənədi əlavə et → AI ilə IBAN-ları oxu.
   const addBankDoc = async (file: File | null) => {
@@ -133,6 +139,7 @@ export default function BusinessPage() {
 
   const createBusiness = async () => {
     if (!f.name || !f.voen || !f.ownerName) { toast("Şirkət sənədi oxunmadı — sənədi yenidən yükləyin", "error"); return; }
+    if (ownerBlocked) { toast(ownerCheck?.message || "Kimliyiniz şirkətin rəhbəri ilə uyğun deyil", "error"); return; }
     if (proofType === "TAX_DOC" && !files.taxDocImage) { toast("Vergi sənədi tələb olunur", "error"); return; }
     if (proofType === "POWER_OF_ATTORNEY" && (!files.companyDocImage || !files.powerOfAttorneyImage)) { toast("Şirkət sənədi və etibarnamə tələb olunur", "error"); return; }
     if (!identityReusable && (!files.idCardImage || !files.selfieImage)) { toast("Şəxsiyyət vəsiqəsi və selfie tələb olunur", "error"); return; }
@@ -156,7 +163,7 @@ export default function BusinessPage() {
           : (t("bizCreated") || "Biznes göndərildi — admin təsdiqini gözləyir")) + ibanMsg,
         "success",
       );
-      setShowForm(false); setKind("PHYSICAL"); setProofType("TAX_DOC"); setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "" }); setFiles(blankFiles); setBanks([{ iban: "", title: "" }]); setBankDocs([]); setPrimaryBankIdx(0); setBizInfoFilled(false);
+      setShowForm(false); setKind("PHYSICAL"); setProofType("TAX_DOC"); setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "" }); setFiles(blankFiles); setBanks([{ iban: "", title: "" }]); setBankDocs([]); setPrimaryBankIdx(0); setBizInfoFilled(false); setOwnerCheck(null);
       load();
     } catch { toast(t("error"), "error"); } finally { setBusy(false); }
   };
@@ -231,6 +238,15 @@ export default function BusinessPage() {
               : (<>{docFileLabel("companyDocImage", "Şirkət sənədi (PDF/şəkil)", (file) => onPickCompanyDoc("companyDocImage", file))}{docFileLabel("powerOfAttorneyImage", "Etibarnamə (PDF/şəkil)")}</>)}
             {bizInfoReading && <p className="text-xs text-orange-500">🤖 AI sənəddən şirkət məlumatlarını oxuyur…</p>}
             {bizInfoFilled && !bizInfoReading && <p className="text-xs text-green-500">✓ Şirkət adı / VÖEN sənəddən dolduruldu (aşağıda yoxlayın)</p>}
+            {/* Kimlik ↔ şirkət rəhbəri uyğunluğu */}
+            {ownerCheck && proofType === "TAX_DOC" && (
+              ownerCheck.isOwner
+                ? <p className="text-xs text-green-500">✓ {ownerCheck.message}</p>
+                : <div className="text-xs text-red-500 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">⚠ {ownerCheck.message}</div>
+            )}
+            {ownerCheck && proofType === "POWER_OF_ATTORNEY" && !ownerCheck.isOwner && (
+              <p className="text-[11px] text-muted">ℹ️ Siz rəhbər deyilsiniz — etibarnamə ilə səlahiyyət təsdiqlənəcək.</p>
+            )}
 
             {/* Bank hesabı sənədləri — bir neçə, biri əsas (ödəniş) seçilir */}
             <div className="pt-2 border-t border-input-border">
@@ -248,9 +264,14 @@ export default function BusinessPage() {
                   <button type="button" onClick={() => removeBankDoc(i)} className="text-muted hover:text-red-500 text-xs">✕</button>
                 </div>
               ))}
-              <label className="inline-block text-xs text-orange-500 cursor-pointer">
-                + Bank sənədi əlavə et (PDF/şəkil)
-                <input type="file" accept=".pdf,image/*" className="hidden" onChange={(e) => { addBankDoc(e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
+              <label
+                onDragOver={(e) => { e.preventDefault(); setBankDropOver(true); }}
+                onDragLeave={() => setBankDropOver(false)}
+                onDrop={(e) => { e.preventDefault(); setBankDropOver(false); const fs = Array.from(e.dataTransfer.files || []); fs.forEach((file) => addBankDoc(file)); }}
+                className={`block text-xs cursor-pointer border-2 border-dashed rounded-lg px-3 py-3 text-center transition-colors ${bankDropOver ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border text-muted hover:border-orange-500/50"}`}
+              >
+                📎 Bank sənədi əlavə et — kliklə və ya sürüklə-burax (PDF/şəkil)
+                <input type="file" accept=".pdf,image/*" multiple className="hidden" onChange={(e) => { Array.from(e.target.files || []).forEach((file) => addBankDoc(file)); e.currentTarget.value = ""; }} />
               </label>
             </div>
 
@@ -292,7 +313,8 @@ export default function BusinessPage() {
               </div>
             </div>
           )}
-          <button onClick={createBusiness} disabled={busy} className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : (t("bizSubmit") || "Təsdiq üçün göndər")}</button>
+          {ownerBlocked && <p className="text-xs text-red-500 text-center">Kimliyiniz şirkətin rəhbəri ilə uyğun olmadığı üçün göndərmək mümkün deyil.</p>}
+          <button onClick={createBusiness} disabled={busy || ownerBlocked} className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : (t("bizSubmit") || "Təsdiq üçün göndər")}</button>
         </div>
       )}
 
