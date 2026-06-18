@@ -132,7 +132,7 @@ export default function BusinessPage() {
   };
 
   const createBusiness = async () => {
-    if (!f.name || !f.voen || !f.ownerName || !f.founderName) { toast(t("bizAllRequired") || "Sahələri doldurun", "error"); return; }
+    if (!f.name || !f.voen || !f.ownerName) { toast("Şirkət sənədi oxunmadı — sənədi yenidən yükləyin", "error"); return; }
     if (proofType === "TAX_DOC" && !files.taxDocImage) { toast("Vergi sənədi tələb olunur", "error"); return; }
     if (proofType === "POWER_OF_ATTORNEY" && (!files.companyDocImage || !files.powerOfAttorneyImage)) { toast("Şirkət sənədi və etibarnamə tələb olunur", "error"); return; }
     if (!identityReusable && (!files.idCardImage || !files.selfieImage)) { toast("Şəxsiyyət vəsiqəsi və selfie tələb olunur", "error"); return; }
@@ -266,26 +266,32 @@ export default function BusinessPage() {
               </>
             )}
           </div>
-          {/* Sahələr */}
-          <input className={inputCls} placeholder={t("bizName") || "Şirkət adı"} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <input className={inputCls} placeholder="VÖEN" value={f.voen} onChange={(e) => setF({ ...f, voen: e.target.value })} />
-            <input className={inputCls} placeholder={t("phone") || "Telefon"} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
-            <input className={inputCls} placeholder={t("bizOwner") || "Şirkətin sahibi"} value={f.ownerName} onChange={(e) => setF({ ...f, ownerName: e.target.value })} />
-            <input className={inputCls} placeholder={t("bizFounder") || "Şirkətin təsisçisi"} value={f.founderName} onChange={(e) => setF({ ...f, founderName: e.target.value })} />
+          {/* Şirkət məlumatları — yalnız sənəddən oxunur, əl ilə dəyişilmir (🔒) */}
+          <div className="space-y-2">
+            <p className="text-[11px] text-muted">🔒 Şirkət adı, VÖEN, sahibi və təsisçi yalnız sənəddən AI ilə oxunur — əl ilə dəyişilmir.</p>
+            <input className={`${inputCls} opacity-70 cursor-not-allowed`} placeholder={t("bizName") || "Şirkət adı (sənəddən)"} value={f.name} readOnly disabled />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input className={`${inputCls} opacity-70 cursor-not-allowed`} placeholder="VÖEN (sənəddən)" value={f.voen} readOnly disabled />
+              <input className={inputCls} placeholder={t("phone") || "Telefon (əl ilə)"} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+              <input className={`${inputCls} opacity-70 cursor-not-allowed`} placeholder={t("bizOwner") || "Şirkətin sahibi (sənəddən)"} value={f.ownerName} readOnly disabled />
+              <input className={`${inputCls} opacity-70 cursor-not-allowed`} placeholder={t("bizFounder") || "Şirkətin təsisçisi (sənəddən)"} value={f.founderName} readOnly disabled />
+            </div>
           </div>
-          {/* Bank hesabları — AI bank sənədindən IBAN-ları avtomatik oxuyur; bura ixtiyaridir */}
-          <div>
-            <p className="text-xs font-semibold text-muted mb-1">{t("bizBank") || "Bank hesabları"} <span className="font-normal">(ixtiyari)</span></p>
-            <p className="text-[11px] text-muted mb-2">🤖 IBAN-lar yüklədiyiniz bank sənədindən avtomatik oxunur. Əlavə hesab varsa əl ilə yaza bilərsiniz.</p>
-            {banks.map((b, i) => (
-              <div key={i} className="grid grid-cols-2 gap-2 mb-2">
-                <input className={inputCls} placeholder="IBAN" value={b.iban} onChange={(e) => setBanks((p) => p.map((x, j) => j === i ? { ...x, iban: e.target.value } : x))} />
-                <input className={inputCls} placeholder={t("bizBankName") || "Bank adı"} value={b.title} onChange={(e) => setBanks((p) => p.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} />
+          {/* Bank hesabları — yalnız bank sənədindən AI ilə oxunur (əl ilə girilmir) */}
+          {bankDocs.some((d) => d.accounts.length > 0) && (
+            <div>
+              <p className="text-xs font-semibold text-muted mb-1">🔒 Bank hesabları (sənəddən oxundu)</p>
+              <div className="space-y-1">
+                {bankDocs.flatMap((d, i) => d.accounts.map((a, j) => (
+                  <div key={`${i}-${j}`} className="flex items-center gap-2 text-xs bg-input-bg border border-input-border rounded-lg px-3 py-1.5">
+                    <span className="font-mono">{a.iban}</span>
+                    {a.bankName && <span className="text-muted">· {a.bankName}</span>}
+                    {primaryBankIdx === i && <span className="text-orange-500 text-[10px]">⬅ ödəniş</span>}
+                  </div>
+                )))}
               </div>
-            ))}
-            <button onClick={() => setBanks((p) => [...p, { iban: "", title: "" }])} className="text-xs text-orange-500">+ {t("bizAddBank") || "Bank hesabı əlavə et"}</button>
-          </div>
+            </div>
+          )}
           <button onClick={createBusiness} disabled={busy} className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : (t("bizSubmit") || "Təsdiq üçün göndər")}</button>
         </div>
       )}
