@@ -101,6 +101,10 @@ export default function ProfilePage() {
   const [socialPlatform, setSocialPlatform] = useState("instagram");
   const [socialUrl, setSocialUrl] = useState("");
   const [socialBusy, setSocialBusy] = useState(false);
+  // ---- Peşə sənədləri ----
+  const [credTitle, setCredTitle] = useState("");
+  const [credFile, setCredFile] = useState<File | null>(null);
+  const [credBusy, setCredBusy] = useState(false);
 
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -538,6 +542,35 @@ export default function ProfilePage() {
     } catch { toast(t("error"), "error"); }
   };
 
+  // ---- Peşə sənədləri (AI ad-soyad uyğunluğu) ----
+  const uploadCredential = async () => {
+    if (!credTitle.trim()) { toast("Sənədin başlığını yazın (məs. Diplom)", "error"); return; }
+    if (!credFile) { toast("Sənəd şəkli seçin", "error"); return; }
+    setCredBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("title", credTitle.trim());
+      fd.append("document", credFile);
+      const res = await fetch(`${API}/me/credentials`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` }, // FormData — Content-Type avtomatik
+        body: fd,
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const m = data.document?.nameMatch;
+        toast(m ? "Sənəd yükləndi — AI ad-soyadı uyğun tapdı ✓" : "Sənəd yükləndi — AI yoxlaması tamamlandı", m ? "success" : "info");
+        setCredTitle(""); setCredFile(null); await refreshProfile();
+      } else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setCredBusy(false); }
+  };
+  const deleteCredential = async (id: number) => {
+    try {
+      await fetch(`${API}/me/credentials/${id}`, { method: "DELETE", headers });
+      await refreshProfile();
+    } catch { toast(t("error"), "error"); }
+  };
+
   const typeLabel = (type: string) =>
     type === "MECHANIC" ? t("tabMechanic") : type === "PARTS_SELLER" ? t("tabPartsSeller") : t("tabCarOwner");
   const typeColor = (type: string) =>
@@ -705,6 +738,66 @@ export default function ProfilePage() {
             {profile.idVerifyStatus ? "Kimliyi yenidən təsdiqlə" : "Kimliyi təsdiqlə"}
           </button>
         )}
+      </div>
+
+      {/* Peşə sənədləri (diplom / sertifikat / lisenziya) — AI ad-soyad uyğunluğunu yoxlayır */}
+      <div className="surface p-5 sm:p-7 mb-5">
+        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">🎓 Peşə sənədləri</h2>
+        <p className="text-xs text-muted mb-4">
+          Diplom, sertifikat və ya lisenziyanızı yükləyin. <b>AI sənəddəki ad-soyadın sizin ad-soyadınızla
+          ({profile.name || "—"}) uyğun olduğunu yoxlayır.</b> Bir neçə sənəd əlavə edə bilərsiniz.
+        </p>
+
+        {/* Mövcud sənədlər */}
+        {profile.professionDocuments?.length > 0 && (
+          <div className="space-y-2.5 mb-4">
+            {profile.professionDocuments.map((d: any) => {
+              const score = typeof d.nameMatchScore === "number" ? Math.round(d.nameMatchScore * 100) : null;
+              const matchCls = d.nameMatch ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500";
+              const matchLabel = d.nameMatch ? `✓ Ad-soyad uyğundur${score !== null ? ` (${score}%)` : ""}` : `⚠ Ad-soyad uyğun deyil${score !== null ? ` (${score}%)` : ""}`;
+              const stCls = d.status === "APPROVED" ? "bg-green-500/10 text-green-500" : d.status === "REJECTED" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500";
+              const stLabel = d.status === "APPROVED" ? "Təsdiqlənib" : d.status === "REJECTED" ? "Rədd edildi" : "Yoxlanılır";
+              return (
+                <div key={d.id} className="flex gap-3 items-start bg-input-bg border border-input-border rounded-xl p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`${UPLOADS}/${d.image}`} alt={d.title} className="w-16 h-16 object-cover rounded-lg border border-input-border shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold truncate">{d.title}</p>
+                      {d.documentType && <span className="text-[11px] text-muted">· {d.documentType}</span>}
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${stCls}`}>{stLabel}</span>
+                    </div>
+                    {d.holderName && <p className="text-[11px] text-muted mt-0.5">Sənəddə: {d.holderName}</p>}
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${matchCls}`}>{matchLabel}</span>
+                    {d.aiReason && <p className="text-[11px] text-muted mt-1 leading-snug">{d.aiReason}</p>}
+                  </div>
+                  <button onClick={() => deleteCredential(d.id)} className="text-muted hover:text-red-500 text-xs shrink-0" title="Sil">✕</button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Yeni sənəd əlavə et */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={credTitle}
+            onChange={(e) => setCredTitle(e.target.value)}
+            placeholder="Başlıq (məs. Diplom, Həkimlik lisenziyası)"
+            className={`${inputCls} sm:flex-1`}
+          />
+          <label className="px-4 py-3 bg-input-bg border border-input-border rounded-xl text-sm cursor-pointer text-center hover:bg-orange-500/5 transition-colors">
+            <span className="text-muted">{credFile ? `📎 ${credFile.name.slice(0, 22)}` : "📷 Şəkil seç"}</span>
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => setCredFile(e.target.files?.[0] || null)} />
+          </label>
+          <button
+            onClick={uploadCredential}
+            disabled={credBusy}
+            className="px-5 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 whitespace-nowrap"
+          >
+            {credBusy ? "AI yoxlayır…" : "Yüklə və yoxla"}
+          </button>
+        </div>
       </div>
 
       {/* My location — default seller location, auto-fills new listings */}
