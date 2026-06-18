@@ -68,8 +68,8 @@ export default function Footer() {
         <div className="border-t border-card-border mt-8 sm:mt-10 pt-5 sm:pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-muted text-xs">&copy; {year} tradixai. {t('footerRights')}</p>
           <div className="flex gap-5">
-            <span className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{t('footerPrivacy')}</span>
-            <span className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{t('footerTerms')}</span>
+            <Link href="/privacy" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{t('footerPrivacy')}</Link>
+            <Link href="/terms" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{t('footerTerms')}</Link>
           </div>
         </div>
       </div>

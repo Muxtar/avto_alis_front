@@ -98,6 +98,9 @@ export default function ProfilePage() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [verificationCode, setVerificationCode] = useState("");
   const [oauthProviders, setOauthProviders] = useState<string[]>([]); // OAuth aktiv platformalar
+  const [socialPlatform, setSocialPlatform] = useState("instagram");
+  const [socialUrl, setSocialUrl] = useState("");
+  const [socialBusy, setSocialBusy] = useState(false);
 
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
@@ -509,6 +512,16 @@ export default function ProfilePage() {
   };
 
   // ---- Sosial media hesabları ----
+  const addSocial = async () => {
+    if (!socialUrl.trim()) return;
+    setSocialBusy(true);
+    try {
+      const res = await fetch(`${API}/me/social`, { method: "POST", headers, body: JSON.stringify({ platform: socialPlatform, url: socialUrl.trim() }) });
+      const data = await res.json();
+      if (res.ok && data.success) { setSocialUrl(""); await refreshProfile(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setSocialBusy(false); }
+  };
   const deleteSocial = async (id: number) => {
     try {
       await fetch(`${API}/me/social/${id}`, { method: "DELETE", headers });
@@ -1163,7 +1176,17 @@ export default function ProfilePage() {
               );
             })}
           </div>
-          <p className="text-[11px] text-muted mt-1.5">Hesabla daxil olduqda link platforma tərəfindən təsdiqlənir.</p>
+          <p className="text-[11px] text-muted mt-1.5">{oauthProviders.length > 0 ? "Hesabla daxil olduqda link platforma tərəfindən təsdiqlənir." : "Hesabla təsdiq hələ aktiv deyil (platforma açarları qoyulmayıb). Aşağıdan əl ilə əlavə edin."}</p>
+        </div>
+
+        {/* Əl ilə link əlavə et (admin təsdiqi) — açarsız işlək yol */}
+        <p className="text-xs font-semibold text-muted mb-2">Link əlavə et <span className="text-amber-500">(admin təsdiqi)</span></p>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <select value={socialPlatform} onChange={(e) => setSocialPlatform(e.target.value)} className="px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground sm:w-40">
+            {Object.entries(SOCIAL_META).map(([k, m]) => <option key={k} value={k}>{m.icon} {m.label}</option>)}
+          </select>
+          <input value={socialUrl} onChange={(e) => setSocialUrl(e.target.value)} placeholder="https://instagram.com/istifadeci" className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground" />
+          <button onClick={addSocial} disabled={socialBusy || !socialUrl.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{socialBusy ? "..." : "Əlavə et"}</button>
         </div>
       </div>
 
