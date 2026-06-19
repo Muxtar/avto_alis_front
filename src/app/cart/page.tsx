@@ -38,8 +38,24 @@ export default function CartPage() {
   const [userPoints, setUserPoints] = useState(0);
   // Kart ödənişi — bankın səhifəsi iframe modal-da
   const [payUrl, setPayUrl] = useState<string | null>(null);
+  const [shareLink, setShareLink] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
 
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  // Səbəti link kimi paylaş — linki açan şəxs məhsulları öz adından alır.
+  const shareCart = async () => {
+    setSharing(true);
+    try {
+      const res = await fetch(`${API}/cart/share`, { method: "POST", headers });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        const link = `${window.location.origin}/shared/${data.token}`;
+        setShareLink(link);
+        try { await navigator.clipboard.writeText(link); toast("Link kopyalandı ✓", "success"); } catch { /* clipboard bloklana bilər */ }
+      } else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setSharing(false); }
+  };
 
   // Bankın iframe-i ödənişdən sonra /payment/return-dən postMessage göndərir.
   useEffect(() => {
@@ -202,29 +218,63 @@ export default function CartPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-          <div className="lg:col-span-2 space-y-3">
-            {items.map((item) => (
-              <div key={item.id} className="surface p-3 sm:p-4 flex gap-3 sm:gap-4">
-                <Link href={`/marketplace/${item.listing.id}`} className="w-16 h-16 sm:w-20 sm:h-20 bg-input-bg rounded-xl shrink-0 flex items-center justify-center overflow-hidden">
-                  {item.listing.images?.[0] ? (
-                    <img src={item.listing.images[0].startsWith('http') ? item.listing.images[0] : `${UPLOADS}/${item.listing.images[0]}`} alt={item.listing.title} loading="lazy" className="w-full h-full object-cover" />
-                  ) : null}
-                </Link>
-                <div className="flex-1 min-w-0">
-                  <Link href={`/marketplace/${item.listing.id}`} className="font-medium text-sm hover:text-orange-500 block truncate">{item.listing.title}</Link>
-                  <p className="text-muted text-xs mt-0.5">{item.listing.user.name}</p>
-                  <div className="flex items-center gap-2 mt-2">
-                    <button onClick={() => updateQty(item.id, item.quantity - 1)} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm">−</button>
-                    <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
-                    <button onClick={() => updateQty(item.id, item.quantity + 1)} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm">+</button>
+          <div className="lg:col-span-2 space-y-4">
+            {/* Səbəti paylaş */}
+            <div className="surface p-3 sm:p-4">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-sm font-medium">🔗 Səbəti başqasına göndər</p>
+                <button onClick={shareCart} disabled={sharing} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10 disabled:opacity-50">{sharing ? "..." : "Paylaş"}</button>
+              </div>
+              <p className="text-[11px] text-muted mt-1">Linki göndərdiyiniz şəxs məhsulları öz səbətinə əlavə edib özü sifariş verə bilər.</p>
+              {shareLink && (
+                <div className="flex gap-2 mt-2">
+                  <input readOnly value={shareLink} className="flex-1 px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" onFocus={(e) => e.currentTarget.select()} />
+                  <button onClick={() => { navigator.clipboard?.writeText(shareLink); toast("Kopyalandı ✓", "success"); }} className="px-3 py-2 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-semibold">Kopyala</button>
+                </div>
+              )}
+            </div>
+
+            {/* Mağazaya görə qruplar — eyni mağaza birlikdə çatdırılır */}
+            {(() => {
+              const groups = new Map<number, { name: string; items: any[] }>();
+              for (const it of items) {
+                const sid = it.listing.user?.id ?? 0;
+                const g = groups.get(sid) || { name: it.listing.user?.name || "Mağaza", items: [] as any[] };
+                g.items.push(it); groups.set(sid, g);
+              }
+              return Array.from(groups.values()).map((g, gi) => (
+                <div key={gi} className="surface p-3 sm:p-4">
+                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-card-border">
+                    <p className="text-sm font-semibold flex items-center gap-1.5">🏪 {g.name}</p>
+                    {g.items.length > 1 && <span className="text-[11px] text-green-500">✓ Birlikdə çatdırılır</span>}
+                  </div>
+                  <div className="space-y-3">
+                    {g.items.map((item) => (
+                      <div key={item.id} className="flex gap-3 sm:gap-4">
+                        <Link href={`/marketplace/${item.listing.id}`} className="w-16 h-16 sm:w-20 sm:h-20 bg-input-bg rounded-xl shrink-0 flex items-center justify-center overflow-hidden">
+                          {item.listing.images?.[0] ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={item.listing.images[0].startsWith('http') ? item.listing.images[0] : `${UPLOADS}/${item.listing.images[0]}`} alt={item.listing.title} loading="lazy" className="w-full h-full object-cover" />
+                          ) : null}
+                        </Link>
+                        <div className="flex-1 min-w-0">
+                          <Link href={`/marketplace/${item.listing.id}`} className="font-medium text-sm hover:text-orange-500 block truncate">{item.listing.title}</Link>
+                          <div className="flex items-center gap-2 mt-2">
+                            <button onClick={() => updateQty(item.id, item.quantity - 1)} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm">−</button>
+                            <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
+                            <button onClick={() => updateQty(item.id, item.quantity + 1)} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm">+</button>
+                          </div>
+                        </div>
+                        <div className="text-right flex flex-col justify-between">
+                          <p className="text-orange-500 font-bold text-sm">{(item.listing.price * item.quantity).toFixed(2)} AZN</p>
+                          <button onClick={() => removeItem(item.id)} className="text-red-500 text-xs hover:text-red-400">{t("remove")}</button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="text-right flex flex-col justify-between">
-                  <p className="text-orange-500 font-bold text-sm">{(item.listing.price * item.quantity).toFixed(2)} AZN</p>
-                  <button onClick={() => removeItem(item.id)} className="text-red-500 text-xs hover:text-red-400">{t("remove")}</button>
-                </div>
-              </div>
-            ))}
+              ));
+            })()}
           </div>
 
           <div className="lg:col-span-1">
