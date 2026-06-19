@@ -502,11 +502,11 @@ export default function ProfilePage() {
       const res = await fetch(`${API}/me/email/verify`, { method: "POST", headers, body: JSON.stringify({ email: emailInput, code: emailCode }) });
       const data = await res.json();
       if (data.success) {
-        setProfile(data.user);
-        login(token!, data.user);
+        await refreshProfile(); // tam profili yenilə (profil məlumatlarını silməmək üçün)
         setEmailVerified(true);
         setEmailCodeSent(false);
         setEmailCode("");
+        setEmailInput("");
         setVerificationCode("");
         setTimeout(() => setEmailVerified(false), 3000);
       } else {
@@ -1186,79 +1186,42 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Email Verification */}
-      <div className="surface p-5 sm:p-7 mb-5">
-        <h2 className="font-semibold mb-4 flex items-center gap-2">
-          <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
-          {t("emailSection")}
-        </h2>
-
-        {emailVerified && (
-          <div className="mb-4 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl text-green-500 text-sm text-center">
-            {t("emailVerified")}
-          </div>
-        )}
-        {emailError && (
-          <div className="mb-4 px-4 py-2 bg-red-500/10 border border-red-500/20 rounded-xl text-red-500 text-sm text-center">{emailError}</div>
-        )}
-
-        {profile.email ? (
-          <div className="flex items-center gap-2 mb-4">
-            <span className="px-3 py-1.5 bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg text-sm">{profile.email}</span>
-            <span className="text-xs text-muted">{t("emailConfirmed")}</span>
-          </div>
-        ) : null}
-
-        <div className="space-y-3">
-          <div className="flex gap-2">
-            <input
-              type="email"
-              value={emailInput}
-              onChange={(e) => { setEmailInput(e.target.value); setEmailCodeSent(false); setEmailError(""); }}
-              placeholder={t("emailPlaceholder")}
-              className={inputCls + " flex-1"}
-            />
-            <button
-              onClick={handleSendEmailCode}
-              disabled={emailLoading || !emailInput}
-              className="px-4 py-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium whitespace-nowrap disabled:opacity-50"
-            >
-              {emailLoading ? "..." : t("emailSendCode")}
-            </button>
-          </div>
-
-          {emailCodeSent && (
-            <>
-              {process.env.NODE_ENV === 'development' && verificationCode && (
-                <div className="px-4 py-2 bg-blue-500/10 border border-blue-500/20 rounded-xl text-blue-500 text-sm text-center">
-                  {t("testModeLabel")}: <strong>{verificationCode}</strong>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <input
-                  value={emailCode}
-                  onChange={(e) => setEmailCode(e.target.value)}
-                  placeholder={t("emailCodePlaceholder")}
-                  maxLength={6}
-                  className={inputCls + " flex-1"}
-                />
-                <button
-                  onClick={handleVerifyEmail}
-                  disabled={emailLoading || !emailCode}
-                  className="px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white text-sm font-medium whitespace-nowrap disabled:opacity-50"
-                >
-                  {emailLoading ? "..." : t("emailVerify")}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
       {/* Sosial media hesabları */}
       <div className="surface p-5 sm:p-7 mb-5">
-        <h2 className="text-lg font-semibold mb-1">Sosial media</h2>
+        <h2 className="text-lg font-semibold mb-1">Sosial media və email</h2>
         <p className="text-xs text-muted mb-4">Hesabınızla daxil olun — platforma təsdiqindən sonra profilinizdə “✓” ilə görünəcək.</p>
+
+        {/* Email doğrulaması */}
+        <div className="mb-4 p-3 bg-input-bg border border-input-border rounded-xl">
+          <p className="text-sm font-medium mb-2 flex items-center gap-2">📧 Email
+            {profile.emailVerified && profile.email && <span className="text-[11px] text-green-500 font-semibold">✓ Təsdiqlənmiş</span>}
+          </p>
+          {profile.emailVerified && profile.email ? (
+            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+              <span className="text-sm text-green-500 font-medium truncate">{profile.email}</span>
+              <span className="text-[11px] text-muted ml-auto">təsdiqlənib</span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted">Email ünvanınızı yazın — sizə doğrulama kodu göndəriləcək.</p>
+              <div className="flex gap-2">
+                <input type="email" value={emailInput} onChange={(e) => { setEmailInput(e.target.value); setEmailCodeSent(false); setEmailError(""); }} placeholder="ornek@gmail.com" className={`${inputCls} flex-1`} />
+                <button onClick={handleSendEmailCode} disabled={emailLoading || !emailInput} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{emailLoading ? "..." : "Kod göndər"}</button>
+              </div>
+              {emailError && <p className="text-[11px] text-red-500">{emailError}</p>}
+              {emailCodeSent && (
+                <>
+                  {verificationCode && <div className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-500 text-xs text-center">Test kodu: <b>{verificationCode}</b></div>}
+                  <div className="flex gap-2">
+                    <input value={emailCode} onChange={(e) => setEmailCode(e.target.value)} placeholder="6 rəqəmli kod" maxLength={6} className={`${inputCls} flex-1`} />
+                    <button onClick={handleVerifyEmail} disabled={emailLoading || !emailCode} className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{emailLoading ? "..." : "Təsdiqlə"}</button>
+                  </div>
+                </>
+              )}
+              {emailVerified && <p className="text-[11px] text-green-500">✓ Email təsdiqləndi!</p>}
+            </div>
+          )}
+        </div>
 
         {(profile.socialLinks?.length > 0) && (
           <div className="space-y-2 mb-4">
