@@ -48,6 +48,7 @@ export default function BusinessPage() {
   const [bizInfoFilled, setBizInfoFilled] = useState(false);
   const [ownerCheck, setOwnerCheck] = useState<{ isOwner: boolean; message: string } | null>(null); // kimlik ↔ rəhbər uyğunluğu
   const [bankDropOver, setBankDropOver] = useState(false);
+  const [docDropKey, setDocDropKey] = useState<string | null>(null);
   // Bank sənədləri (bir neçə) — hər biri AI ilə oxunur, biri "əsas" (ödəniş) seçilir.
   const [bankDocs, setBankDocs] = useState<{ file: File; accounts: { iban: string; bankName: string | null }[]; reading: boolean }[]>([]);
   const [primaryBankIdx, setPrimaryBankIdx] = useState(0);
@@ -181,13 +182,23 @@ export default function BusinessPage() {
       <input type="file" accept="image/*" onChange={(e) => setFiles((p) => ({ ...p, [key]: e.target.files?.[0] || null }))} className={fileInputCls} />
     </label>
   );
-  // PDF + şəkil qəbul edən sənəd input-u (vergi/şirkət sənədi — AI ilə avtomatik doldurma).
-  const docFileLabel = (key: string, label: string, onPick?: (file: File | null) => void) => (
-    <label className="block">
-      <span className="text-xs text-muted">{label}{files[key] ? " ✓" : ""}</span>
-      <input type="file" accept=".pdf,image/*" onChange={(e) => { const file = e.target.files?.[0] || null; onPick ? onPick(file) : setFiles((p) => ({ ...p, [key]: file })); }} className={fileInputCls} />
-    </label>
-  );
+  // PDF + şəkil qəbul edən böyük drop-zona (vergi/şirkət sənədi — kliklə və ya sürüklə-burax).
+  const docFileLabel = (key: string, label: string, onPick?: (file: File | null) => void) => {
+    const file = files[key];
+    const pick = (fl: File | null) => { onPick ? onPick(fl) : setFiles((p) => ({ ...p, [key]: fl })); };
+    return (
+      <label
+        onDragOver={(e) => { e.preventDefault(); setDocDropKey(key); }}
+        onDragLeave={() => setDocDropKey((k) => (k === key ? null : k))}
+        onDrop={(e) => { e.preventDefault(); setDocDropKey(null); pick(e.dataTransfer.files?.[0] || null); }}
+        className={`block cursor-pointer border-2 border-dashed rounded-xl px-3 py-4 text-center text-sm transition-colors ${docDropKey === key ? "border-orange-500 bg-orange-500/10 text-orange-500" : file ? "border-green-500/40 bg-green-500/5 text-green-600" : "border-input-border text-muted hover:border-orange-500/50"}`}
+      >
+        {file ? <span className="font-medium">✓ {file.name.length > 32 ? file.name.slice(0, 32) + "…" : file.name}</span>
+          : <span>📎 {label} — kliklə və ya sürüklə-burax</span>}
+        <input type="file" accept=".pdf,image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
+      </label>
+    );
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-3 sm:px-6 py-6">
