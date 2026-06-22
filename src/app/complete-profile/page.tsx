@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import { compareFaces, FaceResult } from "@/lib/faceMatch";
 import { searchProfessions } from "@/lib/professions";
+import LocationPicker from "@/components/LocationPickerWrapper";
 
 export default function CompleteProfilePage() {
   const { t } = useLanguage();
@@ -25,6 +26,7 @@ export default function CompleteProfilePage() {
   const [birthDate, setBirthDate] = useState("");
   const [gender, setGender] = useState("");
   const [idNumber, setIdNumber] = useState("");
+  const [location, setLocation] = useState<{ city: string; address: string; latitude: number | null; longitude: number | null }>({ city: "", address: "", latitude: null, longitude: null });
 
   const onProfessionChange = (v: string) => {
     setProfession(v);
@@ -163,6 +165,10 @@ export default function CompleteProfilePage() {
       if (birthDate) fd.append("birthDate", birthDate);
       if (gender.trim()) fd.append("gender", gender.trim());
       if (idNumber.trim()) fd.append("idNumber", idNumber.trim());
+      if (location.city) fd.append("city", location.city);
+      if (location.address) fd.append("address", location.address);
+      if (location.latitude != null) fd.append("latitude", String(location.latitude));
+      if (location.longitude != null) fd.append("longitude", String(location.longitude));
       if (faceResult?.ok) fd.append("faceMatchScore", String(faceResult.score));
       fd.append("idCardImage", idCardFile);
       fd.append("selfieImage", new File([selfieBlob], "selfie.jpg", { type: "image/jpeg" }));
@@ -271,6 +277,19 @@ export default function CompleteProfilePage() {
                 ))}
               </ul>
             )}
+          </div>
+
+          {/* Konum — xəritədən seç */}
+          <div>
+            <label className="block text-sm font-medium mb-1.5">📍 Yeriniz (xəritədən seçin)</label>
+            <LocationPicker
+              city={location.city}
+              address={location.address}
+              latitude={location.latitude}
+              longitude={location.longitude}
+              onChange={(n: any) => setLocation(n)}
+              height="220px"
+            />
           </div>
 
           {/* Kimlik vəsiqəsi şəkli */}
