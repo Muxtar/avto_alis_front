@@ -7,11 +7,11 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import AddListingMenu from "@/components/AddListingMenu";
-import { API } from "@/lib/api";
+import { API, UPLOADS } from "@/lib/api";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { CATEGORIES, getSubs, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
 
-type TypeFilter = "all" | "PRODUCT" | "SERVICE";
+type TypeFilter = "all" | "PRODUCT" | "SERVICE" | "PROFESSION";
 
 export default function MarketplacePage() {
   const { t } = useLanguage();
@@ -69,6 +69,7 @@ export default function MarketplacePage() {
     setCheapInquiryCities((prev) => prev.includes(city) ? prev.filter((c) => c !== city) : [...prev, city]);
   };
   const [listings, setListings] = useState<any[]>([]);
+  const [professionals, setProfessionals] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -171,6 +172,18 @@ export default function MarketplacePage() {
     if (page !== 1) setPage(1);
     searchTimeout.current = setTimeout(() => {
       setLoading(true);
+      // İxtisas rejimi → mütəxəssis axtarışı (peşəyə görə).
+      if (activeType === "PROFESSION") {
+        const p = new URLSearchParams();
+        if (searchQuery) p.set("q", searchQuery);
+        if (cityFilter) p.set("city", cityFilter);
+        fetch(`${API}/professionals?${p.toString()}`)
+          .then((r) => r.json())
+          .then((data) => { setProfessionals(data.professionals || []); setTotalPages(0); })
+          .catch(() => { toast(t('error'), 'error'); })
+          .finally(() => setLoading(false));
+        return;
+      }
       fetch(`${API}/listings?${buildParams(1)}`)
         .then((r) => r.json())
         .then((data) => {
@@ -223,6 +236,7 @@ export default function MarketplacePage() {
   const typeButtons: { id: TypeFilter; label: string }[] = [
     { id: "PRODUCT", label: t("productsFilter") },
     { id: "SERVICE", label: t("servicesFilter") },
+    { id: "PROFESSION", label: "İxtisas" },
   ];
 
   const compactInput = "w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/30 placeholder-muted-foreground";
@@ -303,7 +317,8 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      {/* Kateqoriyalar (tap.az üslubu): kartlar → klikdə alt-kateqoriya sətri */}
+      {/* Kateqoriyalar (tap.az üslubu): kartlar → klikdə alt-kateqoriya sətri. İxtisas rejimində gizlədilir. */}
+      {activeType !== "PROFESSION" && (
       <div className="border-b border-card-border bg-card/30">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6">
           {(() => {
@@ -401,6 +416,7 @@ export default function MarketplacePage() {
           })()}
         </div>
       </div>
+      )}
 
       {/* Listings Grid with side ads */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
@@ -437,6 +453,39 @@ export default function MarketplacePage() {
                   </div>
                 ))}
               </div>
+            ) : activeType === "PROFESSION" ? (
+              professionals.length === 0 ? (
+                <div className="text-center py-20 animate-fade-in">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-orange-500/10 flex items-center justify-center text-4xl">👤</div>
+                  <p className="text-foreground font-medium text-base mb-1">Mütəxəssis tapılmadı</p>
+                  <p className="text-muted text-sm">İxtisas adı ilə axtarın (məs. Həkim, Mühəndis, Usta)</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 animate-fade-in">
+                  {professionals.map((p) => (
+                    <Link key={p.id} href={`/seller/${p.id}`} className="surface p-4 flex items-center gap-3 hover:border-orange-500/50 transition-colors">
+                      <div className="w-14 h-14 rounded-full bg-input-bg overflow-hidden shrink-0 flex items-center justify-center text-xl">
+                        {p.avatar ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={`${UPLOADS}/${p.avatar}`} alt={p.name} className="w-full h-full object-cover" />
+                        ) : "👤"}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate flex items-center gap-1.5">
+                          {p.name || "İstifadəçi"}
+                          {p.idVerifyStatus === "APPROVED" && <span className="text-green-500 text-xs">✓</span>}
+                        </p>
+                        <p className="text-orange-500 text-xs font-medium truncate">{p.profession}</p>
+                        <p className="text-[11px] text-muted truncate">
+                          {p.city ? `📍 ${p.city}` : ""}
+                          {p.ratingCount > 0 ? ` · ⭐ ${p.avgRating?.toFixed(1)} (${p.ratingCount})` : ""}
+                          {p._count?.listings ? ` · ${p._count.listings} elan` : ""}
+                        </p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )
             ) : listings.length === 0 ? (
               <div className="text-center py-20 animate-fade-in">
                 <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-orange-500/10 flex items-center justify-center">
