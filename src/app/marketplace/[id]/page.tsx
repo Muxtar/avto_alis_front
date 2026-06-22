@@ -305,6 +305,24 @@ export default function ListingDetailPage() {
             </div>
           </div>
 
+          {/* tap.az üslubu footer — № / paylaşım tarixi / baxış sayı */}
+          {(() => {
+            const d = new Date(listing.createdAt);
+            const time = d.toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" });
+            const today = new Date();
+            const yest = new Date(); yest.setDate(today.getDate() - 1);
+            const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+            const azMonths = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"];
+            const dateLabel = sameDay(d, today) ? `Bu gün, ${time}` : sameDay(d, yest) ? `Dünən, ${time}` : `${d.getDate()} ${azMonths[d.getMonth()]} ${d.getFullYear()}, ${time}`;
+            return (
+              <div className="mt-4 p-4 bg-card border border-card-border rounded-2xl text-sm text-muted text-center space-y-1">
+                <p className="font-mono">№ {listing.id}</p>
+                <p>{dateLabel}</p>
+                <p>Baxış sayı: {listing.viewCount || 0}</p>
+              </div>
+            );
+          })()}
+
           {/* Comments */}
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 mt-4">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
