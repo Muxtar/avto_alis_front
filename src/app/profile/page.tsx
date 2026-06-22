@@ -158,6 +158,27 @@ export default function ProfilePage() {
     } catch { toast(t("error"), "error"); } finally { setAvatarBusy(false); }
   };
 
+  // CV yüklə / sil.
+  const [cvBusy, setCvBusy] = useState(false);
+  const handleCvUpload = async (file: File | null) => {
+    if (!file) return;
+    setCvBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("cv", file);
+      const res = await fetch(`${API}/me/cv`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
+      const data = await res.json();
+      if (res.ok && data.success) { toast("CV yükləndi ✓", "success"); await refreshProfile(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setCvBusy(false); }
+  };
+  const handleCvDelete = async () => {
+    try {
+      await fetch(`${API}/me/cv`, { method: "DELETE", headers });
+      await refreshProfile();
+    } catch { toast(t("error"), "error"); }
+  };
+
   const refreshListings = async () => {
     const res = await fetch(`${API}/me/listings`, { headers }).then((r) => r.json());
     setListings(res.listings || []);
@@ -767,6 +788,29 @@ export default function ProfilePage() {
           <button onClick={() => setShowIdentity(true)} className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold hover:bg-orange-500/20 transition-colors">
             {profile.idVerifyStatus ? "Kimliyi yenidən təsdiqlə" : "Kimliyi təsdiqlə"}
           </button>
+        )}
+      </div>
+
+      {/* CV (tərcümeyi-hal) */}
+      <div className="surface p-5 sm:p-7 mb-5">
+        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">📄 CV (Tərcümeyi-hal)</h2>
+        <p className="text-xs text-muted mb-3">CV-nizi PDF və ya şəkil kimi əlavə edin. İstədiyiniz vaxt dəyişə və ya silə bilərsiniz.</p>
+        {profile.cvFile ? (
+          <div className="flex items-center gap-3 flex-wrap">
+            <a href={`${UPLOADS}/${profile.cvFile}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:bg-orange-500/10">
+              📎 CV-yə bax
+            </a>
+            <label className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold cursor-pointer hover:bg-orange-500/20">
+              {cvBusy ? "..." : "Dəyiş"}
+              <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
+            </label>
+            <button onClick={handleCvDelete} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500/20">Sil</button>
+          </div>
+        ) : (
+          <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50">
+            {cvBusy ? "Yüklənir…" : "📤 CV yüklə (PDF/şəkil)"}
+            <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
+          </label>
         )}
       </div>
 

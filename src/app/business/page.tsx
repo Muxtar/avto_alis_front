@@ -5,6 +5,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import LocationPicker from "@/components/LocationPickerWrapper";
 
 // Obyektin fəaliyyət sahələri — 16 əsas kateqoriya.
 const ACTIVITY_AREAS = [
@@ -55,7 +56,7 @@ export default function BusinessPage() {
 
   // per-business inline inputs
   const [bankInput, setBankInput] = useState<Record<number, { iban: string; title: string }>>({});
-  const [objInput, setObjInput] = useState<Record<number, { name: string; phone: string; address: string; city: string; activityAreas: string[] }>>({});
+  const [objInput, setObjInput] = useState<Record<number, { name: string; phone: string; address: string; city: string; activityAreas: string[]; latitude: number | null; longitude: number | null }>>({});
   const [memberInput, setMemberInput] = useState<Record<number, { publicId: string; objectId: string }>>({});
 
   const authH: any = { Authorization: `Bearer ${token}` };
@@ -392,7 +393,7 @@ export default function BusinessPage() {
                 {/* Yeni obyekt */}
                 <ObjectAdder bizId={b.id} input={objInput[b.id]} setInput={(v: any) => setObjInput((p) => ({ ...p, [b.id]: v }))} onAdd={wrap(async () => {
                   const v = objInput[b.id]; if (!v?.name?.trim() || !v?.address?.trim()) throw new Error(t("bizObjRequired") || "Ad və ünvan");
-                  await jsonReq(`${API}/me/businesses/${b.id}/objects`, "POST", v); setObjInput((p) => ({ ...p, [b.id]: { name: "", phone: "", address: "", city: "", activityAreas: [] } }));
+                  await jsonReq(`${API}/me/businesses/${b.id}/objects`, "POST", v); setObjInput((p) => ({ ...p, [b.id]: { name: "", phone: "", address: "", city: "", activityAreas: [], latitude: null, longitude: null } }));
                 })} inputCls={inputCls} t={t} />
               </div>
 
@@ -423,15 +424,23 @@ export default function BusinessPage() {
 }
 
 function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t }: any) {
-  const v = input || { name: "", phone: "", address: "", city: "", activityAreas: [] };
+  const v = input || { name: "", phone: "", address: "", city: "", activityAreas: [], latitude: null, longitude: null };
   const toggle = (a: string) => setInput({ ...v, activityAreas: v.activityAreas.includes(a) ? v.activityAreas.filter((x: string) => x !== a) : [...v.activityAreas, a] });
   return (
     <div className="mt-2 p-3 bg-input-bg/30 rounded-xl space-y-2">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <input className={inputCls} placeholder={t("bizObjName") || "Obyekt adı"} value={v.name} onChange={(e) => setInput({ ...v, name: e.target.value })} />
-        <input className={inputCls} placeholder={t("phone") || "Obyekt telefonu"} value={v.phone} onChange={(e) => setInput({ ...v, phone: e.target.value })} />
-        <input className={inputCls} placeholder={t("city") || "Şəhər"} value={v.city} onChange={(e) => setInput({ ...v, city: e.target.value })} />
-        <input className={inputCls} placeholder={t("addressPlaceholder") || "Ünvan"} value={v.address} onChange={(e) => setInput({ ...v, address: e.target.value })} />
+      <input className={inputCls} placeholder={t("bizObjName") || "Obyekt adı (mağaza, dükan...)"} value={v.name} onChange={(e) => setInput({ ...v, name: e.target.value })} />
+      <input className={inputCls} placeholder={t("phone") || "Obyekt telefonu"} value={v.phone} onChange={(e) => setInput({ ...v, phone: e.target.value })} />
+      {/* Xəritədən konum seç — şəhər/ünvan/koordinat avtomatik dolur */}
+      <div>
+        <p className="text-[11px] text-muted mb-1">📍 Obyektin yerini xəritədən seçin:</p>
+        <LocationPicker
+          city={v.city}
+          address={v.address}
+          latitude={v.latitude ?? null}
+          longitude={v.longitude ?? null}
+          onChange={(n: any) => setInput({ ...v, ...n })}
+          height="220px"
+        />
       </div>
       <div>
         <p className="text-[11px] text-muted mb-1">{t("bizActivity") || "Fəaliyyət sahələri"}</p>

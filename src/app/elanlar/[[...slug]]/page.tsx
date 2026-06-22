@@ -75,7 +75,7 @@ export default function MarketplacePage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeType, setActiveType] = useState<TypeFilter>("all");
+  const [activeType, setActiveType] = useState<TypeFilter>("PRODUCT");
   // Kateqoriya gridini yığcam göstər (çox olduqda "Daha çox" ilə aç).
   const [showAllCats, setShowAllCats] = useState(false);
   const COLLAPSED_CATS = 11;
@@ -124,7 +124,7 @@ export default function MarketplacePage() {
       setMinYear(p.get("year") || "");
       setMaxYear(p.get("year") || "");
     }
-    if (p.get("type")) setActiveType((p.get("type") || "all") as TypeFilter);
+    if (p.get("type")) setActiveType((p.get("type") || "PRODUCT") as TypeFilter);
   }, []);
 
   // URL slug dəyişəndə seçilmiş kateqoriyanı sinxronla (mount + naviqasiya).
@@ -221,7 +221,6 @@ export default function MarketplacePage() {
   }, [hasMore, loadingMore, loading]);
 
   const typeButtons: { id: TypeFilter; label: string }[] = [
-    { id: "all", label: t("all") },
     { id: "PRODUCT", label: t("productsFilter") },
     { id: "SERVICE", label: t("servicesFilter") },
   ];
