@@ -23,7 +23,7 @@ export default function ProfilePage() {
   const [listingTab, setListingTab] = useState<"active" | "expired">("active");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState({ name: "", profession: "" });
+  const [editData, setEditData] = useState({ name: "", profession: "", idNumber: "", birthDate: "", gender: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [showIdentity, setShowIdentity] = useState(false);
 
@@ -114,7 +114,7 @@ export default function ProfilePage() {
       fetch(`${API}/me/listings`, { headers }).then((r) => r.json()),
     ]).then(([p, l]) => {
       setProfile(p.user);
-      setEditData({ name: p.user.name, profession: p.user.profession || "" });
+      setEditData({ name: p.user.name, profession: p.user.profession || "", idNumber: p.user.idNumber || "", birthDate: p.user.birthDate ? String(p.user.birthDate).slice(0, 10) : "", gender: p.user.gender || "" });
       setListings(l.listings || []);
       setLocationDraft({
         city: p.user.city || "",
@@ -126,8 +126,17 @@ export default function ProfilePage() {
   }, [isLoggedIn, authLoading]);
 
   const handleSave = async () => {
-    // Ad-soyad kimlikdən gəlir — əl ilə dəyişdirilmir; yalnız məsləyi yeniləyirik.
-    const res = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify({ profession: editData.profession }) });
+    // Kimlik təsdiqlənibsə (şəkil var) ad/FIN/doğum/cins kilidlidir — yalnız məsləyi göndəririk.
+    // Təsdiqlənməyibsə istifadəçi bu sahələri əl ilə dəyişə bilər.
+    const idLocked = !!profile.idCardImage;
+    const body: any = { profession: editData.profession };
+    if (!idLocked) {
+      body.name = editData.name;
+      body.idNumber = editData.idNumber;
+      body.birthDate = editData.birthDate;
+      body.gender = editData.gender;
+    }
+    const res = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify(body) });
     const data = await res.json();
     if (data.success) {
       login(token!, data.user);
@@ -189,6 +198,15 @@ export default function ProfilePage() {
   };
   const toggleDocPublic = async (id: number, pub: boolean) => {
     try { await fetch(`${API}/me/credentials/${id}/public`, { method: "PUT", headers, body: JSON.stringify({ public: pub }) }); await refreshProfile(); } catch { toast(t("error"), "error"); }
+  };
+
+  const removeIdentity = async () => {
+    if (!confirm("Kimliyi qaldırsanız profiliniz təsdiqlənməmiş olacaq və ad, FIN, doğum tarixi, cins yenidən əl ilə dəyişdirilə biləcək. Davam edək?")) return;
+    try {
+      const r = await fetch(`${API}/me/identity`, { method: "DELETE", headers }).then((x) => x.json());
+      if (r.success) { toast("Kimlik qaldırıldı — məlumatlar yenidən redaktə oluna bilər", "success"); await refreshProfile(); }
+      else toast(r.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
   };
 
   const computeAge = (iso?: string) => {
@@ -695,11 +713,41 @@ export default function ProfilePage() {
           <div className="flex-1 w-full">
             {editing ? (
               <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-muted mb-1">{t("fullName")}</label>
-                  <input value={editData.name} disabled readOnly placeholder="Ad Soyad" className={`${inputCls} opacity-60 cursor-not-allowed`} />
-                  <p className="text-[11px] text-muted mt-1">🔒 Ad-soyad şəxsiyyət vəsiqəsindən gəlir — əl ilə dəyişilmir. Dəyişmək üçün kimliyi yenidən təsdiqləyin.</p>
-                </div>
+                {profile.idCardImage ? (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">{t("fullName")}</label>
+                      <input value={editData.name} disabled readOnly placeholder="Ad Soyad" className={`${inputCls} opacity-60 cursor-not-allowed`} />
+                      <p className="text-[11px] text-muted mt-1">🔒 Ad-soyad, FIN, doğum tarixi və cins təsdiqlənmiş kimlikdən gəlir — dəyişmək üçün aşağıdakı «Kimliyi qaldır» düyməsini istifadə edin.</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">{t("fullName")}</label>
+                      <input value={editData.name} onChange={(e) => setEditData((d) => ({ ...d, name: e.target.value }))} placeholder="Ad Soyad" className={inputCls} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-medium text-muted mb-1">FIN</label>
+                        <input value={editData.idNumber} onChange={(e) => setEditData((d) => ({ ...d, idNumber: e.target.value }))} placeholder="FIN" className={inputCls} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-muted mb-1">Cins</label>
+                        <select value={editData.gender} onChange={(e) => setEditData((d) => ({ ...d, gender: e.target.value }))} className={inputCls}>
+                          <option value="">—</option>
+                          <option value="Kişi">Kişi</option>
+                          <option value="Qadın">Qadın</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Doğum tarixi</label>
+                      <input type="date" value={editData.birthDate} onChange={(e) => setEditData((d) => ({ ...d, birthDate: e.target.value }))} className={inputCls} />
+                    </div>
+                    <p className="text-[11px] text-amber-500">ⓘ Bu məlumatlar əl ilə girilib — profiliniz <b>təsdiqlənməmiş</b> sayılır. Təsdiq üçün aşağıdan kimlik və üz şəkillərini göndərin.</p>
+                  </>
+                )}
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">{t("profession") || "Məslək"} (İxtisas)</label>
                   <ProfessionPicker value={editData.profession} onChange={(v) => setEditData((d) => ({ ...d, profession: v }))} className={inputCls} />
@@ -745,7 +793,7 @@ export default function ProfilePage() {
                     </span>
                   )}
                 </div>
-                <button onClick={() => { setEditData({ name: profile.name, profession: profile.profession || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 mx-auto sm:mx-0 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
+                <button onClick={() => { setEditData({ name: profile.name, profession: profile.profession || "", idNumber: profile.idNumber || "", birthDate: profile.birthDate ? String(profile.birthDate).slice(0, 10) : "", gender: profile.gender || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 mx-auto sm:mx-0 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   {t("editProfile")}
                 </button>
@@ -816,7 +864,10 @@ export default function ProfilePage() {
             return <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${cls}`}>{label}</span>;
           })()}
         </div>
-        <p className="text-xs text-muted mb-3">Şəxsiyyət vəsiqəsi şəkli + selfie. <b>AI vəsiqədəki ad-soyadı və üzü selfie ilə yoxlayır</b>, admin son təsdiqi verir.</p>
+        <p className="text-xs text-muted mb-3">Şəxsiyyət vəsiqəsi + 3 üz şəkli (ön, sağ, sol). <b>AI vəsiqədəki ad-soyad, FIN, doğum tarixi, cinsi oxuyur və üzü selfie ilə yoxlayır</b>, admin son təsdiqi verir.</p>
+        {!profile.idCardImage && !showIdentity && (
+          <p className="text-[11px] text-amber-500 mb-3">ⓘ Profiliniz təsdiqlənməyib. Məlumatlarınız (ad, FIN, doğum tarixi, cins) əl ilə girilib. Təsdiq üçün «Profilini təsdiqlə» düyməsinə basın.</p>
+        )}
         {(profile.idCardImage || profile.selfieImage) && !showIdentity && (
           <div className="mb-3">
             <p className="text-[11px] text-muted mb-1">🔒 Bu şəkilləri yalnız siz görürsünüz (kimsə başqası görmür):</p>
@@ -831,7 +882,15 @@ export default function ProfilePage() {
               )}
               {profile.selfieImage && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${UPLOADS}/${profile.selfieImage}`} alt="selfie" title="Selfie" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+                <img src={`${UPLOADS}/${profile.selfieImage}`} alt="selfie ön" title="Üz (ön)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+              )}
+              {profile.selfieRightImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${UPLOADS}/${profile.selfieRightImage}`} alt="selfie sağ" title="Üz (sağ)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+              )}
+              {profile.selfieLeftImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${UPLOADS}/${profile.selfieLeftImage}`} alt="selfie sol" title="Üz (sol)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
               )}
             </div>
           </div>
@@ -868,9 +927,16 @@ export default function ProfilePage() {
         {showIdentity ? (
           <IdentityVerify token={token} onDone={() => { setShowIdentity(false); refreshProfile(); }} />
         ) : (
-          <button onClick={() => setShowIdentity(true)} className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold hover:bg-orange-500/20 transition-colors">
-            {profile.idVerifyStatus ? "Kimliyi yenidən təsdiqlə" : "Kimliyi təsdiqlə"}
-          </button>
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => setShowIdentity(true)} className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold hover:bg-orange-500/20 transition-colors">
+              {profile.idCardImage ? "Kimliyi yenidən təsdiqlə" : "Profilini təsdiqlə"}
+            </button>
+            {profile.idCardImage && (
+              <button onClick={removeIdentity} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500/20 transition-colors">
+                Kimliyi qaldır
+              </button>
+            )}
+          </div>
         )}
       </div>
 

@@ -11,8 +11,10 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
   const [idCardUrl, setIdCardUrl] = useState("");
   const [idCardBackFile, setIdCardBackFile] = useState<File | null>(null);
   const [idCardBackUrl, setIdCardBackUrl] = useState("");
-  const [selfieBlob, setSelfieBlob] = useState<Blob | null>(null);
-  const [selfieUrl, setSelfieUrl] = useState("");
+  // 3 üz şəkli: ön (qarşıdan), sağ, sol.
+  const [selfieBlobs, setSelfieBlobs] = useState<{ front: Blob | null; right: Blob | null; left: Blob | null }>({ front: null, right: null, left: null });
+  const [selfieUrls, setSelfieUrls] = useState<{ front: string; right: string; left: string }>({ front: "", right: "", left: "" });
+  const [activePose, setActivePose] = useState<null | "front" | "right" | "left">(null);
   const [cameraOn, setCameraOn] = useState(false);
   const [checking, setChecking] = useState(false);
   const [faceResult, setFaceResult] = useState<FaceResult | null>(null);
@@ -79,7 +81,8 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
     return a >= 0 && a < 130 ? a : null;
   })();
 
-  const startCamera = async () => {
+  const startCamera = async (pose: "front" | "right" | "left") => {
+    setActivePose(pose);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       streamRef.current = stream;
@@ -92,48 +95,50 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
 
   const captureSelfie = () => {
     const v = videoRef.current, c = canvasRef.current;
-    if (!v || !c) return;
+    if (!v || !c || !activePose) return;
+    const pose = activePose;
     c.width = v.videoWidth || 480;
     c.height = v.videoHeight || 480;
     c.getContext("2d")?.drawImage(v, 0, 0, c.width, c.height);
     c.toBlob((blob) => {
       if (!blob) return;
-      setSelfieBlob(blob);
-      setSelfieUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(blob); });
+      setSelfieBlobs((prev) => ({ ...prev, [pose]: blob }));
+      setSelfieUrls((prev) => { if (prev[pose]) URL.revokeObjectURL(prev[pose]); return { ...prev, [pose]: URL.createObjectURL(blob) }; });
     }, "image/jpeg", 0.9);
     stopCamera();
   };
 
   const loadImg = (url: string) => new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
   useEffect(() => {
-    if (!idCardUrl || !selfieUrl) { setFaceResult(null); return; }
+    if (!idCardUrl || !selfieUrls.front) { setFaceResult(null); return; }
     let cancelled = false;
     (async () => {
       setChecking(true); setFaceResult(null);
       try {
-        const [a, b] = await Promise.all([loadImg(idCardUrl), loadImg(selfieUrl)]);
+        const [a, b] = await Promise.all([loadImg(idCardUrl), loadImg(selfieUrls.front)]);
         const r = await compareFaces(a, b);
         if (!cancelled) setFaceResult(r);
       } catch { if (!cancelled) setFaceResult({ ok: false, reason: "load_error" }); }
       finally { if (!cancelled) setChecking(false); }
     })();
     return () => { cancelled = true; };
-  }, [idCardUrl, selfieUrl]);
+  }, [idCardUrl, selfieUrls.front]);
 
   const submit = async () => {
-    if (!idCardFile || !selfieBlob) { toast("Şəxsiyyət vəsiqəsi şəkli və selfie tələb olunur", "error"); return; }
-    if (!firstName.trim() || !lastName.trim()) { toast("Ad və soyad boşdur — vəsiqəni yenidən yükləyin və ya əl ilə doldurun", "error"); return; }
+    if (!idCardFile || !selfieBlobs.front || !selfieBlobs.right || !selfieBlobs.left) {
+      toast("Şəxsiyyət vəsiqəsi və 3 üz şəkli (ön, sağ, sol) tələb olunur", "error"); return;
+    }
+    if (!firstName.trim() || !lastName.trim()) { toast("Vəsiqə oxunmadı — vəsiqə şəklini yenidən yükləyin", "error"); return; }
     setSubmitting(true);
     try {
       const fd = new FormData();
       if (faceResult?.ok) fd.append("faceMatchScore", String(faceResult.score));
-      fd.append("name", `${firstName.trim()} ${lastName.trim()}`);
-      if (birthDate) fd.append("birthDate", birthDate);
-      if (gender.trim()) fd.append("gender", gender.trim());
-      if (idNumber.trim()) fd.append("idNumber", idNumber.trim());
+      // Ad/FIN/doğum tarixi/cins server-də vəsiqədən (AI) oxunur — buradan göndərilmir, kilidlidir.
       fd.append("idCardImage", idCardFile);
       if (idCardBackFile) fd.append("idCardBackImage", idCardBackFile);
-      fd.append("selfieImage", new File([selfieBlob], "selfie.jpg", { type: "image/jpeg" }));
+      fd.append("selfieImage", new File([selfieBlobs.front], "selfie-front.jpg", { type: "image/jpeg" }));
+      fd.append("selfieRightImage", new File([selfieBlobs.right], "selfie-right.jpg", { type: "image/jpeg" }));
+      fd.append("selfieLeftImage", new File([selfieBlobs.left], "selfie-left.jpg", { type: "image/jpeg" }));
       const res = await fetch(`${API}/me/identity`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
       const data = await res.json();
       if (res.ok && data.success) { toast("Kimlik təsdiqə göndərildi", "success"); onDone?.(); }
@@ -201,44 +206,55 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
         )}
       </div>
 
-      {/* Vəsiqədən AI ilə oxunan məlumatlar — yoxlayıb düzəldin, sonra Yadda saxla */}
+      {/* Vəsiqədən AI ilə oxunan məlumatlar — KİLİDLİDİR (əl ilə dəyişilmir) */}
       {(idFilled || idReading || firstName || lastName) && (
         <div className="space-y-2 p-3 bg-input-bg/50 border border-input-border rounded-xl">
-          <p className="text-xs font-semibold text-muted">{idFilled ? "✓ Vəsiqədən oxundu — yoxlayın və lazımsa düzəldin:" : "Vəsiqə məlumatları:"}</p>
-          <div className="grid grid-cols-2 gap-2">
-            <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Ad" className={`${box} text-sm`} />
-            <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Soyad" className={`${box} text-sm`} />
-            <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={`${box} text-sm`} />
-            <select value={gender} onChange={(e) => setGender(e.target.value)} className={`${box} text-sm`}>
-              <option value="">Cins</option>
-              <option value="Kişi">Kişi</option>
-              <option value="Qadın">Qadın</option>
-            </select>
-            <input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder="FIN" className={`${box} text-sm col-span-2`} />
+          <p className="text-xs font-semibold text-muted">🔒 {idFilled ? "Vəsiqədən oxundu — bu məlumatlar əl ilə dəyişilmir:" : "Vəsiqə məlumatları oxunur…"}</p>
+          <div className="grid grid-cols-2 gap-2 text-sm">
+            <div className={`${box} opacity-80`}><span className="text-[11px] text-muted">Ad:</span> <b>{firstName || "—"}</b></div>
+            <div className={`${box} opacity-80`}><span className="text-[11px] text-muted">Soyad:</span> <b>{lastName || "—"}</b></div>
+            <div className={`${box} opacity-80`}><span className="text-[11px] text-muted">Doğum:</span> <b>{birthDate || "—"}</b></div>
+            <div className={`${box} opacity-80`}><span className="text-[11px] text-muted">Cins:</span> <b>{gender || "—"}</b></div>
+            <div className={`${box} opacity-80 col-span-2`}><span className="text-[11px] text-muted">FIN:</span> <b>{idNumber || "—"}</b></div>
           </div>
           {age !== null && <p className="text-[11px] text-muted">Yaş: <b>{age}</b></p>}
         </div>
       )}
 
-      {/* Selfie */}
+      {/* 3 üz şəkli: ön, sağ, sol */}
       <div>
-        <label className="block text-sm font-medium mb-1.5">Selfie (üz təsdiqi)</label>
+        <label className="block text-sm font-medium mb-1.5">Üz şəkilləri (3 tərəfdən: ön, sağ, sol)</label>
         {cameraOn ? (
           <div className="space-y-2">
+            <p className="text-xs text-orange-500">Çəkilir: <b>{activePose === "front" ? "Ön (qarşıdan)" : activePose === "right" ? "Sağ tərəf" : "Sol tərəf"}</b></p>
             <video ref={videoRef} playsInline muted className="w-full h-48 object-cover rounded-xl border border-input-border bg-black" />
             <div className="flex gap-2">
               <button type="button" onClick={captureSelfie} className="flex-1 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold">Çək</button>
               <button type="button" onClick={stopCamera} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv et</button>
             </div>
           </div>
-        ) : selfieUrl ? (
-          <div className="relative">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={selfieUrl} alt="selfie" className="w-full h-48 object-cover rounded-xl border border-input-border" />
-            <button type="button" onClick={startCamera} className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded-lg">Yenidən çək</button>
-          </div>
         ) : (
-          <button type="button" onClick={startCamera} className={`${box} flex items-center justify-center gap-2 text-muted`}>🤳 Kameranı aç və selfie çək</button>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { key: "front", label: "Ön", icon: "🙂" },
+              { key: "right", label: "Sağ", icon: "👉" },
+              { key: "left", label: "Sol", icon: "👈" },
+            ] as const).map((p) => (
+              <div key={p.key}>
+                {selfieUrls[p.key] ? (
+                  <div className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={selfieUrls[p.key]} alt={p.label} className="w-full h-24 object-cover rounded-xl border border-green-500/40" />
+                    <button type="button" onClick={() => startCamera(p.key)} className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white px-1.5 py-0.5 rounded">Yenidən</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => startCamera(p.key)} className="w-full h-24 flex flex-col items-center justify-center gap-1 text-muted bg-input-bg border border-dashed border-input-border rounded-xl text-xs">
+                    <span className="text-lg">{p.icon}</span>{p.label}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
         )}
         <canvas ref={canvasRef} className="hidden" />
       </div>
@@ -247,8 +263,8 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
         <div className="text-sm text-center font-medium py-2 rounded-xl bg-input-bg">{faceBadge()}</div>
       )}
 
-      <button onClick={submit} disabled={submitting || !idCardFile || !selfieBlob} className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white disabled:opacity-50">
-        {submitting ? "Yadda saxlanılır…" : "💾 Yadda saxla"}
+      <button onClick={submit} disabled={submitting || !idCardFile || !selfieBlobs.front || !selfieBlobs.right || !selfieBlobs.left} className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white disabled:opacity-50">
+        {submitting ? "Yadda saxlanılır…" : "💾 Profili təsdiqə göndər"}
       </button>
     </div>
   );
