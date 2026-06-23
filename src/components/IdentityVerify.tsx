@@ -9,6 +9,8 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
   const { toast } = useToast();
   const [idCardFile, setIdCardFile] = useState<File | null>(null);
   const [idCardUrl, setIdCardUrl] = useState("");
+  const [idCardBackFile, setIdCardBackFile] = useState<File | null>(null);
+  const [idCardBackUrl, setIdCardBackUrl] = useState("");
   const [selfieBlob, setSelfieBlob] = useState<Blob | null>(null);
   const [selfieUrl, setSelfieUrl] = useState("");
   const [cameraOn, setCameraOn] = useState(false);
@@ -40,6 +42,12 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
     setIdCardFile(file);
     setIdCardUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
     readIdName(file);
+  };
+
+  const onPickIdCardBack = (file: File | null) => {
+    if (!file) return;
+    setIdCardBackFile(file);
+    setIdCardBackUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return URL.createObjectURL(file); });
   };
 
   // AI ilə vəsiqədən bütün məlumatları oxu və input-ları doldur.
@@ -124,6 +132,7 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
       if (gender.trim()) fd.append("gender", gender.trim());
       if (idNumber.trim()) fd.append("idNumber", idNumber.trim());
       fd.append("idCardImage", idCardFile);
+      if (idCardBackFile) fd.append("idCardBackImage", idCardBackFile);
       fd.append("selfieImage", new File([selfieBlob], "selfie.jpg", { type: "image/jpeg" }));
       const res = await fetch(`${API}/me/identity`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
       const data = await res.json();
@@ -170,6 +179,26 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
           </label>
         )}
         {idReading && <p className="text-xs text-orange-500 mt-1">🤖 AI vəsiqədən məlumatları oxuyur…</p>}
+      </div>
+
+      {/* Kimlik vəsiqəsinin arxa tərəfi (istəyə bağlı) */}
+      <div>
+        <label className="block text-sm font-medium mb-1.5">Vəsiqənin arxa tərəfi <span className="text-muted font-normal">(istəyə bağlı)</span></label>
+        {idCardBackUrl ? (
+          <div className="relative">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={idCardBackUrl} alt="kimlik arxa" className="w-full h-40 object-cover rounded-xl border border-input-border" />
+            <label className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded-lg cursor-pointer">
+              Dəyiş
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => onPickIdCardBack(e.target.files?.[0] || null)} />
+            </label>
+          </div>
+        ) : (
+          <label className={`${box} flex items-center justify-center gap-2 cursor-pointer text-muted`}>
+            <span>📷 Arxa tərəfin şəklini yüklə</span>
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => onPickIdCardBack(e.target.files?.[0] || null)} />
+          </label>
+        )}
       </div>
 
       {/* Vəsiqədən AI ilə oxunan məlumatlar — yoxlayıb düzəldin, sonra Yadda saxla */}

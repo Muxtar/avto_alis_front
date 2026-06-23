@@ -143,6 +143,63 @@ export default function ProfilePage() {
     if (res.user) setProfile(res.user);
   };
 
+  // ---- Telefon nömrələri (çoxlu, biri əsas) ----
+  const [phones, setPhones] = useState<any[]>([]);
+  const [newPhone, setNewPhone] = useState("");
+  const [phoneCode, setPhoneCode] = useState("");
+  const [phoneStep, setPhoneStep] = useState<"" | "code">("");
+  const [phoneDevCode, setPhoneDevCode] = useState("");
+  const [phoneBusy, setPhoneBusy] = useState(false);
+  const loadPhones = async () => {
+    try { const r = await fetch(`${API}/me/phones`, { headers }).then((x) => x.json()); setPhones(r.phones || []); } catch { /* keç */ }
+  };
+  const phoneSendCode = async () => {
+    if (!newPhone.trim()) return;
+    setPhoneBusy(true);
+    try {
+      const r = await fetch(`${API}/me/phones/send-code`, { method: "POST", headers, body: JSON.stringify({ phone: newPhone.trim() }) }).then((x) => x.json());
+      if (r.success) { setPhoneStep("code"); setPhoneDevCode(r.code || ""); toast(r.code ? "Test kodu göstərilir" : "Kod göndərildi", "info"); }
+      else toast(r.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setPhoneBusy(false); }
+  };
+  const phoneVerify = async () => {
+    setPhoneBusy(true);
+    try {
+      const r = await fetch(`${API}/me/phones/verify`, { method: "POST", headers, body: JSON.stringify({ phone: newPhone.trim(), code: phoneCode.trim() }) }).then((x) => x.json());
+      if (r.success) { toast("Nömrə təsdiqləndi ✓", "success"); setNewPhone(""); setPhoneCode(""); setPhoneStep(""); setPhoneDevCode(""); await loadPhones(); }
+      else toast(r.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setPhoneBusy(false); }
+  };
+  const phoneSetPrimary = async (id: number) => {
+    if (!confirm("Bu nömrə əsas olacaq və bütün elanlarınızdakı nömrə bununla əvəz olunacaq. Davam edək?")) return;
+    try {
+      const r = await fetch(`${API}/me/phones/${id}/primary`, { method: "POST", headers }).then((x) => x.json());
+      if (r.success) { toast("Əsas nömrə dəyişdi — elanlar yeniləndi ✓", "success"); await loadPhones(); await refreshProfile(); }
+      else toast(r.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+  const phoneDelete = async (id: number) => {
+    try { await fetch(`${API}/me/phones/${id}`, { method: "DELETE", headers }); await loadPhones(); } catch { toast(t("error"), "error"); }
+  };
+  useEffect(() => { if (token) loadPhones(); /* eslint-disable-next-line */ }, [token]);
+
+  // ---- Görünürlük (CV / sənəd public-gizli) ----
+  const toggleCvPublic = async (pub: boolean) => {
+    try { await fetch(`${API}/me/cv/public`, { method: "PUT", headers, body: JSON.stringify({ public: pub }) }); await refreshProfile(); } catch { toast(t("error"), "error"); }
+  };
+  const toggleDocPublic = async (id: number, pub: boolean) => {
+    try { await fetch(`${API}/me/credentials/${id}/public`, { method: "PUT", headers, body: JSON.stringify({ public: pub }) }); await refreshProfile(); } catch { toast(t("error"), "error"); }
+  };
+
+  const computeAge = (iso?: string) => {
+    if (!iso) return null;
+    const d = new Date(iso); const now = new Date();
+    let a = now.getFullYear() - d.getFullYear();
+    const m = now.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < d.getDate())) a--;
+    return a >= 0 && a < 130 ? a : null;
+  };
+
   const handleAvatarUpload = async (file: File | null) => {
     if (!file) return;
     setAvatarBusy(true);
@@ -711,6 +768,43 @@ export default function ProfilePage() {
 
       </div>
 
+      {/* Telefon nömrələri (çoxlu, biri əsas) */}
+      <div className="surface p-5 sm:p-7 mb-5">
+        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">📱 Telefon nömrələri</h2>
+        <p className="text-xs text-muted mb-3">Əsas nömrə elanlarınızda göstərilir. Yeni nömrə doğrulama kodu ilə təsdiqlənir; əsas etsəniz bütün elanlarınızdakı nömrə dəyişər.</p>
+        {phones.length > 0 && (
+          <div className="space-y-2 mb-3">
+            {phones.map((p) => (
+              <div key={p.id} className="flex items-center gap-2 bg-input-bg border border-input-border rounded-xl px-3 py-2">
+                <span className="text-sm font-medium">{p.phone}</span>
+                {p.isPrimary
+                  ? <span className="text-[11px] text-orange-500 font-semibold">★ Əsas</span>
+                  : p.verified ? <span className="text-[11px] text-green-500">✓ təsdiqli</span> : <span className="text-[11px] text-amber-500">təsdiqlənməyib</span>}
+                <div className="ml-auto flex items-center gap-2">
+                  {!p.isPrimary && p.verified && <button onClick={() => phoneSetPrimary(p.id)} className="text-[11px] text-orange-500 font-semibold">Əsas et</button>}
+                  {!p.isPrimary && <button onClick={() => phoneDelete(p.id)} className="text-muted hover:text-red-500 text-xs">✕</button>}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input value={newPhone} onChange={(e) => { setNewPhone(e.target.value); setPhoneStep(""); }} placeholder="+994..." className={`${inputCls} flex-1`} />
+            <button onClick={phoneSendCode} disabled={phoneBusy || !newPhone.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{phoneBusy ? "..." : "Kod göndər"}</button>
+          </div>
+          {phoneStep === "code" && (
+            <>
+              {phoneDevCode && <div className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-500 text-xs text-center">Test kodu: <b>{phoneDevCode}</b></div>}
+              <div className="flex gap-2">
+                <input value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} placeholder="6 rəqəmli kod" maxLength={6} className={`${inputCls} flex-1`} />
+                <button onClick={phoneVerify} disabled={phoneBusy || !phoneCode} className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{phoneBusy ? "..." : "Təsdiqlə"}</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
       {/* Kimlik təsdiqi (şəxsiyyət vəsiqəsi + üz tanıma) */}
       <div className="surface p-5 sm:p-7 mb-5">
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
@@ -724,15 +818,22 @@ export default function ProfilePage() {
         </div>
         <p className="text-xs text-muted mb-3">Şəxsiyyət vəsiqəsi şəkli + selfie. <b>AI vəsiqədəki ad-soyadı və üzü selfie ilə yoxlayır</b>, admin son təsdiqi verir.</p>
         {(profile.idCardImage || profile.selfieImage) && !showIdentity && (
-          <div className="flex gap-3 mb-3">
-            {profile.idCardImage && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={`${UPLOADS}/${profile.idCardImage}`} alt="kimlik" className="w-28 h-20 object-cover rounded-lg border border-input-border" />
-            )}
-            {profile.selfieImage && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={`${UPLOADS}/${profile.selfieImage}`} alt="selfie" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
-            )}
+          <div className="mb-3">
+            <p className="text-[11px] text-muted mb-1">🔒 Bu şəkilləri yalnız siz görürsünüz (kimsə başqası görmür):</p>
+            <div className="flex gap-3 flex-wrap">
+              {profile.idCardImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${UPLOADS}/${profile.idCardImage}`} alt="vəsiqə ön" title="Vəsiqə (ön)" className="w-28 h-20 object-cover rounded-lg border border-input-border" />
+              )}
+              {profile.idCardBackImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${UPLOADS}/${profile.idCardBackImage}`} alt="vəsiqə arxa" title="Vəsiqə (arxa)" className="w-28 h-20 object-cover rounded-lg border border-input-border" />
+              )}
+              {profile.selfieImage && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${UPLOADS}/${profile.selfieImage}`} alt="selfie" title="Selfie" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+              )}
+            </div>
           </div>
         )}
         {/* AI doğrulama nəticəsi */}
@@ -757,7 +858,8 @@ export default function ProfilePage() {
             {(profile.birthDate || profile.gender || profile.idNumber) && (
               <p className="text-[11px] text-muted mt-1.5">
                 {profile.birthDate && <>Doğum tarixi: <b>{new Date(profile.birthDate).toLocaleDateString("az-AZ")}</b></>}
-                {profile.gender && <> · Cinsiyyət: <b>{profile.gender}</b></>}
+                {computeAge(profile.birthDate) !== null && <> · Yaş: <b>{computeAge(profile.birthDate)}</b></>}
+                {profile.gender && <> · Cins: <b>{profile.gender}</b></>}
                 {profile.idNumber && <> · FIN: <b>{profile.idNumber}</b></>}
               </p>
             )}
@@ -786,6 +888,9 @@ export default function ProfilePage() {
               <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
             </label>
             <button onClick={handleCvDelete} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500/20">Sil</button>
+            <button onClick={() => toggleCvPublic(!profile.cvPublic)} className={`px-4 py-2.5 rounded-xl text-sm font-semibold ${profile.cvPublic ? "bg-green-500/10 text-green-500" : "bg-input-bg text-muted border border-input-border"}`}>
+              {profile.cvPublic ? "✓ Public (görünür)" : "Gizli — public et"}
+            </button>
           </div>
         ) : (
           <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50">
@@ -825,6 +930,9 @@ export default function ProfilePage() {
                     {d.holderName && <p className="text-[11px] text-muted mt-0.5">Sənəddə: {d.holderName}</p>}
                     <span className={`inline-block mt-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${matchCls}`}>{matchLabel}</span>
                     {d.aiReason && <p className="text-[11px] text-muted mt-1 leading-snug">{d.aiReason}</p>}
+                    <button onClick={() => toggleDocPublic(d.id, !d.isPublic)} className={`inline-block mt-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold ${d.isPublic ? "bg-green-500/10 text-green-500" : "bg-input-bg text-muted border border-input-border"}`}>
+                      {d.isPublic ? "✓ Public (YES)" : "Gizli — public et"}
+                    </button>
                   </div>
                   <button onClick={() => deleteCredential(d.id)} className="text-muted hover:text-red-500 text-xs shrink-0" title="Sil">✕</button>
                 </div>

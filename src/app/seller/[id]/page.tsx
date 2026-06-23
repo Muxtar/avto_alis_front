@@ -190,6 +190,30 @@ export default function SellerProfilePage() {
         </div>
       </div>
 
+      {/* İctimai CV və peşə sənədləri */}
+      {(user.cvFile || user.professionDocuments?.length > 0) && (
+        <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-6 mb-6">
+          <h2 className="text-base font-semibold mb-3">Sənədlər və ixtisas</h2>
+          <div className="flex flex-wrap gap-2.5">
+            {user.cvFile && (
+              <a href={`${UPLOADS}/${user.cvFile}`} target="_blank" rel="noreferrer"
+                 className="flex items-center gap-2 px-3.5 py-2 bg-input-bg border border-input-border rounded-xl text-sm hover:border-orange-500/50 transition-colors">
+                <span>📄 CV-yə bax</span>
+                <span className="px-1.5 py-0.5 bg-green-500/10 text-green-500 rounded text-[11px] font-bold">YES</span>
+              </a>
+            )}
+            {user.professionDocuments?.map((d: any) => (
+              <a key={d.id} href={`${UPLOADS}/${d.image}`} target="_blank" rel="noreferrer"
+                 className="flex items-center gap-2 px-3.5 py-2 bg-input-bg border border-input-border rounded-xl text-sm hover:border-orange-500/50 transition-colors">
+                <span className="font-medium">{d.title}</span>
+                {d.documentType && <span className="text-[11px] text-muted">· {d.documentType}</span>}
+                <span className="px-1.5 py-0.5 bg-green-500/10 text-green-500 rounded text-[11px] font-bold">YES</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Filter + Listings */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">{t("sellerListings")}</h2>
