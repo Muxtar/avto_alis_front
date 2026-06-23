@@ -241,7 +241,7 @@ export default function CompleteProfilePage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1.5">{t("profession") || "Məslək"} (İxtisas)</label>
+            <label className="block text-sm font-medium mb-1.5">İxtisas</label>
             <ProfessionPicker value={profession} onChange={setProfession} className={inputClass} />
           </div>
 

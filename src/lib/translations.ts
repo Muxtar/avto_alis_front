@@ -390,7 +390,7 @@ export const translations = {
     browseWithoutLogin: "Qeydiyyatsız baxış üçün:",
     completeProfileTitle: "Profili tamamlayın",
     completeProfileSimpleSub: "Davam etmək üçün məlumatlarınızı daxil edin",
-    firstName: "Ad", lastName: "Soyad", profession: "Məslək",
+    firstName: "Ad", lastName: "Soyad", profession: "İxtisas",
     professionPlaceholder: "Məs: Mühəndis, Həkim, Satıcı, Tələbə",
     idNumber: "Şəxsiyyət vəsiqəsi / FIN", idNumberPlaceholder: "Məs: 5AB12345",
     idNumberHint: "Kimliyiniz təhlükəsiz saxlanılır.", nameRequired: "Ad və soyad tələb olunur",

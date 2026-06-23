@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         <section>
           <h2 className="text-lg font-semibold mb-2 text-foreground">1. Topladığımız məlumatlar</h2>
           <ul className="list-disc pl-5 space-y-1">
-            <li><b>Hesab məlumatları:</b> ad, soyad, telefon nömrəsi, e-poçt, məslək.</li>
+            <li><b>Hesab məlumatları:</b> ad, soyad, telefon nömrəsi, e-poçt, ixtisas.</li>
             <li><b>Kimlik təsdiqi:</b> şəxsiyyət vəsiqəsi şəkli və selfie (üz uyğunluğunun yoxlanması üçün).</li>
             <li><b>Profil:</b> profil şəkli, əlaqələndirdiyiniz sosial media hesabları.</li>
             <li><b>Elanlar:</b> yerləşdirdiyiniz məhsul/xidmət məlumatları, şəkillər, qiymət, yer.</li>

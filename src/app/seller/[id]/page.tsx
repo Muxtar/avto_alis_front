@@ -99,6 +99,10 @@ export default function SellerProfilePage() {
               </span>
             </div>
 
+            {user.bio && (
+              <p className="text-sm text-foreground/80 mb-4 whitespace-pre-line max-w-prose">{user.bio}</p>
+            )}
+
             {/* Workplaces */}
             {user.workplaces?.length > 0 && (
               <div className="flex flex-wrap gap-2">

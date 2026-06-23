@@ -23,7 +23,7 @@ export default function ProfilePage() {
   const [listingTab, setListingTab] = useState<"active" | "expired">("active");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState({ name: "", profession: "", idNumber: "", birthDate: "", gender: "" });
+  const [editData, setEditData] = useState({ name: "", profession: "", bio: "", idNumber: "", birthDate: "", gender: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [showIdentity, setShowIdentity] = useState(false);
 
@@ -114,7 +114,7 @@ export default function ProfilePage() {
       fetch(`${API}/me/listings`, { headers }).then((r) => r.json()),
     ]).then(([p, l]) => {
       setProfile(p.user);
-      setEditData({ name: p.user.name, profession: p.user.profession || "", idNumber: p.user.idNumber || "", birthDate: p.user.birthDate ? String(p.user.birthDate).slice(0, 10) : "", gender: p.user.gender || "" });
+      setEditData({ name: p.user.name, profession: p.user.profession || "", bio: p.user.bio || "", idNumber: p.user.idNumber || "", birthDate: p.user.birthDate ? String(p.user.birthDate).slice(0, 10) : "", gender: p.user.gender || "" });
       setListings(l.listings || []);
       setLocationDraft({
         city: p.user.city || "",
@@ -129,7 +129,7 @@ export default function ProfilePage() {
     // Kimlik təsdiqlənibsə (şəkil var) ad/FIN/doğum/cins kilidlidir — yalnız məsləyi göndəririk.
     // Təsdiqlənməyibsə istifadəçi bu sahələri əl ilə dəyişə bilər.
     const idLocked = !!profile.idCardImage;
-    const body: any = { profession: editData.profession };
+    const body: any = { profession: editData.profession, bio: editData.bio };
     if (!idLocked) {
       body.name = editData.name;
       body.idNumber = editData.idNumber;
@@ -159,6 +159,10 @@ export default function ProfilePage() {
   const [phoneStep, setPhoneStep] = useState<"" | "code">("");
   const [phoneDevCode, setPhoneDevCode] = useState("");
   const [phoneBusy, setPhoneBusy] = useState(false);
+  // "primary" = əsas nömrəni dəyiş (təsdiqdən sonra avtomatik əsas olur), "add" = əlavə nömrə.
+  const [phoneMode, setPhoneMode] = useState<"" | "primary" | "add">("");
+  const openPhoneMode = (m: "primary" | "add") => { setPhoneMode(m); setNewPhone(""); setPhoneCode(""); setPhoneStep(""); setPhoneDevCode(""); };
+  const cancelPhoneMode = () => { setPhoneMode(""); setNewPhone(""); setPhoneCode(""); setPhoneStep(""); setPhoneDevCode(""); };
   const loadPhones = async () => {
     try { const r = await fetch(`${API}/me/phones`, { headers }).then((x) => x.json()); setPhones(r.phones || []); } catch { /* keç */ }
   };
@@ -173,10 +177,24 @@ export default function ProfilePage() {
   };
   const phoneVerify = async () => {
     setPhoneBusy(true);
+    const phoneStr = newPhone.trim();
+    const makePrimary = phoneMode === "primary";
     try {
-      const r = await fetch(`${API}/me/phones/verify`, { method: "POST", headers, body: JSON.stringify({ phone: newPhone.trim(), code: phoneCode.trim() }) }).then((x) => x.json());
-      if (r.success) { toast("Nömrə təsdiqləndi ✓", "success"); setNewPhone(""); setPhoneCode(""); setPhoneStep(""); setPhoneDevCode(""); await loadPhones(); }
-      else toast(r.message || t("error"), "error");
+      const r = await fetch(`${API}/me/phones/verify`, { method: "POST", headers, body: JSON.stringify({ phone: phoneStr, code: phoneCode.trim() }) }).then((x) => x.json());
+      if (r.success) {
+        const fresh = await fetch(`${API}/me/phones`, { headers }).then((x) => x.json()).catch(() => null);
+        const list = fresh?.phones || [];
+        setPhones(list);
+        if (makePrimary) {
+          const norm = (s: string) => s.replace(/[^\d+]/g, "");
+          const match = list.find((p: any) => norm(p.phone) === norm(phoneStr));
+          if (match && !match.isPrimary) {
+            const pr = await fetch(`${API}/me/phones/${match.id}/primary`, { method: "POST", headers }).then((x) => x.json());
+            if (pr.success) { toast("Əsas nömrə dəyişdi — bütün elanlar yeniləndi ✓", "success"); await loadPhones(); await refreshProfile(); }
+          } else { toast("Nömrə təsdiqləndi ✓", "success"); }
+        } else { toast("Nömrə təsdiqləndi ✓", "success"); }
+        setNewPhone(""); setPhoneCode(""); setPhoneStep(""); setPhoneDevCode(""); setPhoneMode("");
+      } else toast(r.message || t("error"), "error");
     } catch { toast(t("error"), "error"); } finally { setPhoneBusy(false); }
   };
   const phoneSetPrimary = async (id: number) => {
@@ -699,6 +717,14 @@ export default function ProfilePage() {
                 {profile.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
               </div>
             )}
+            {profile.idCardImage && (
+              <span className="absolute top-1.5 right-1.5 w-9 h-9 bg-card rounded-full flex items-center justify-center shadow-md" title={profile.idVerifyStatus === "APPROVED" ? "Təsdiqlənmiş profil" : "Kimlik təqdim olunub"}>
+                <svg viewBox="0 0 24 24" className="w-8 h-8 text-blue-500" fill="currentColor">
+                  <path d="M12 2l2.39 1.74 2.95-.02 1.13 2.72 2.46 1.62-.62 2.88.62 2.88-2.46 1.62-1.13 2.72-2.95-.02L12 22l-2.39-1.74-2.95.02-1.13-2.72-2.46-1.62.62-2.88-.62-2.88 2.46-1.62 1.13-2.72 2.95.02L12 2z"/>
+                  <path d="M10.6 14.6l-2.2-2.2-1.2 1.2 3.4 3.4 6-6-1.2-1.2-4.8 4.8z" fill="#fff"/>
+                </svg>
+              </span>
+            )}
             <label className="absolute bottom-1.5 right-1.5 w-11 h-11 bg-orange-500 rounded-full flex items-center justify-center cursor-pointer shadow-md border-2 border-card hover:bg-orange-600 transition-colors" title="Şəkli dəyiş">
               {avatarBusy ? (
                 <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -749,13 +775,18 @@ export default function ProfilePage() {
                   </>
                 )}
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">{t("profession") || "Məslək"} (İxtisas)</label>
+                  <label className="block text-xs font-medium text-muted mb-1">İxtisas</label>
                   <ProfessionPicker value={editData.profession} onChange={(v) => setEditData((d) => ({ ...d, profession: v }))} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">Qeyd</label>
+                  <textarea value={editData.bio} onChange={(e) => setEditData((d) => ({ ...d, bio: e.target.value }))} rows={3} maxLength={1000} placeholder="Özünüz haqqında qısa məlumat yazın…" className={`${inputCls} resize-none`} />
+                  <p className="text-[11px] text-muted mt-1">Bu qeyd profilinizdə görünəcək.</p>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">{t("phone")}</label>
                   <input value={profile.phone} disabled className={inputCls + " opacity-60 cursor-not-allowed"} />
-                  <p className="text-[11px] text-muted mt-1">Telefon nömrəsi dəyişdirilə bilməz</p>
+                  <p className="text-[11px] text-muted mt-1">Nömrəni aşağıdakı «📱 Telefon nömrələri» bölməsindən kod ilə dəyişə bilərsiniz.</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={handleSave} className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">{t("adminSave")}</button>
@@ -793,7 +824,10 @@ export default function ProfilePage() {
                     </span>
                   )}
                 </div>
-                <button onClick={() => { setEditData({ name: profile.name, profession: profile.profession || "", idNumber: profile.idNumber || "", birthDate: profile.birthDate ? String(profile.birthDate).slice(0, 10) : "", gender: profile.gender || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 mx-auto sm:mx-0 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
+                {profile.bio && (
+                  <p className="text-sm text-foreground/80 mb-3 whitespace-pre-line max-w-prose text-center sm:text-left">{profile.bio}</p>
+                )}
+                <button onClick={() => { setEditData({ name: profile.name, profession: profile.profession || "", bio: profile.bio || "", idNumber: profile.idNumber || "", birthDate: profile.birthDate ? String(profile.birthDate).slice(0, 10) : "", gender: profile.gender || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 mx-auto sm:mx-0 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   {t("editProfile")}
                 </button>
@@ -814,43 +848,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-      </div>
-
-      {/* Telefon nömrələri (çoxlu, biri əsas) */}
-      <div className="surface p-5 sm:p-7 mb-5">
-        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">📱 Telefon nömrələri</h2>
-        <p className="text-xs text-muted mb-3">Əsas nömrə elanlarınızda göstərilir. Yeni nömrə doğrulama kodu ilə təsdiqlənir; əsas etsəniz bütün elanlarınızdakı nömrə dəyişər.</p>
-        {phones.length > 0 && (
-          <div className="space-y-2 mb-3">
-            {phones.map((p) => (
-              <div key={p.id} className="flex items-center gap-2 bg-input-bg border border-input-border rounded-xl px-3 py-2">
-                <span className="text-sm font-medium">{p.phone}</span>
-                {p.isPrimary
-                  ? <span className="text-[11px] text-orange-500 font-semibold">★ Əsas</span>
-                  : p.verified ? <span className="text-[11px] text-green-500">✓ təsdiqli</span> : <span className="text-[11px] text-amber-500">təsdiqlənməyib</span>}
-                <div className="ml-auto flex items-center gap-2">
-                  {!p.isPrimary && p.verified && <button onClick={() => phoneSetPrimary(p.id)} className="text-[11px] text-orange-500 font-semibold">Əsas et</button>}
-                  {!p.isPrimary && <button onClick={() => phoneDelete(p.id)} className="text-muted hover:text-red-500 text-xs">✕</button>}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        <div className="space-y-2">
-          <div className="flex gap-2">
-            <input value={newPhone} onChange={(e) => { setNewPhone(e.target.value); setPhoneStep(""); }} placeholder="+994..." className={`${inputCls} flex-1`} />
-            <button onClick={phoneSendCode} disabled={phoneBusy || !newPhone.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{phoneBusy ? "..." : "Kod göndər"}</button>
-          </div>
-          {phoneStep === "code" && (
-            <>
-              {phoneDevCode && <div className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-500 text-xs text-center">Test kodu: <b>{phoneDevCode}</b></div>}
-              <div className="flex gap-2">
-                <input value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} placeholder="6 rəqəmli kod" maxLength={6} className={`${inputCls} flex-1`} />
-                <button onClick={phoneVerify} disabled={phoneBusy || !phoneCode} className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{phoneBusy ? "..." : "Təsdiqlə"}</button>
-              </div>
-            </>
-          )}
-        </div>
       </div>
 
       {/* Kimlik təsdiqi (şəxsiyyət vəsiqəsi + üz tanıma) */}
@@ -937,6 +934,74 @@ export default function ProfilePage() {
               </button>
             )}
           </div>
+        )}
+      </div>
+
+      {/* Telefon nömrələri (çoxlu, biri əsas) */}
+      <div className="surface p-5 sm:p-7 mb-5">
+        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">📱 Telefon nömrələri</h2>
+        <p className="text-xs text-muted mb-3">Əsas nömrə elanlarınızda göstərilir. Hər nömrə doğrulama kodu ilə təsdiqlənir.</p>
+
+        {/* Əsas nömrə */}
+        {(() => {
+          const primary = phones.find((p) => p.isPrimary);
+          return (
+            <div className="mb-3">
+              <p className="text-[11px] font-semibold text-muted mb-1">Əsas nömrə</p>
+              <div className="flex items-center gap-2 bg-input-bg border border-input-border rounded-xl px-3 py-2">
+                <span className="text-sm font-medium">{primary?.phone || profile.phone || "—"}</span>
+                <span className="text-[11px] text-orange-500 font-semibold">★ Əsas</span>
+                <button onClick={() => openPhoneMode("primary")} className="ml-auto text-[12px] text-orange-500 font-semibold">Dəyiş</button>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Dəyişmə / əlavə formu (kod ilə) */}
+        {phoneMode && (
+          <div className="mb-3 p-3 bg-input-bg/50 border border-input-border rounded-xl space-y-2">
+            <p className="text-[11px] font-semibold text-muted">{phoneMode === "primary" ? "Yeni əsas nömrə — kod ilə təsdiqlənəcək və bütün elanlarda dəyişəcək" : "Yeni nömrə əlavə et — kod ilə təsdiqlənəcək"}</p>
+            <div className="flex gap-2">
+              <input value={newPhone} onChange={(e) => { setNewPhone(e.target.value); setPhoneStep(""); }} placeholder="+994..." className={`${inputCls} flex-1`} />
+              <button onClick={phoneSendCode} disabled={phoneBusy || !newPhone.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{phoneBusy ? "..." : "Kod göndər"}</button>
+            </div>
+            {phoneStep === "code" && (
+              <>
+                {phoneDevCode && <div className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-500 text-xs text-center">Test kodu: <b>{phoneDevCode}</b></div>}
+                <div className="flex gap-2">
+                  <input value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} placeholder="6 rəqəmli kod" maxLength={6} className={`${inputCls} flex-1`} />
+                  <button onClick={phoneVerify} disabled={phoneBusy || !phoneCode} className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{phoneBusy ? "..." : "Təsdiqlə"}</button>
+                </div>
+              </>
+            )}
+            <button onClick={cancelPhoneMode} className="text-[12px] text-muted">Ləğv et</button>
+          </div>
+        )}
+
+        {/* Digər (əlavə) nömrələr */}
+        {phones.filter((p) => !p.isPrimary).length > 0 && (
+          <div className="mb-3">
+            <p className="text-[11px] font-semibold text-muted mb-1">Digər nömrələr</p>
+            <div className="space-y-2">
+              {phones.filter((p) => !p.isPrimary).map((p) => (
+                <div key={p.id} className="flex items-center gap-2 bg-input-bg border border-input-border rounded-xl px-3 py-2">
+                  <span className="text-sm font-medium">{p.phone}</span>
+                  {p.verified ? <span className="text-[11px] text-green-500">✓ təsdiqli</span> : <span className="text-[11px] text-amber-500">təsdiqlənməyib</span>}
+                  <div className="ml-auto flex items-center gap-2">
+                    {p.verified && <button onClick={() => phoneSetPrimary(p.id)} className="text-[11px] text-orange-500 font-semibold">Əsas et</button>}
+                    <button onClick={() => phoneDelete(p.id)} className="text-muted hover:text-red-500 text-xs">✕</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* + Yeni nömrə əlavə et */}
+        {phoneMode !== "add" && (
+          <button onClick={() => openPhoneMode("add")} className="inline-flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold hover:bg-orange-500/20 transition-colors">
+            <span className="text-base leading-none">＋</span> Yeni nömrə əlavə et
+          </button>
         )}
       </div>
 
