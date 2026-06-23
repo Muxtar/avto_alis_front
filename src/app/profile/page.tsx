@@ -11,7 +11,7 @@ import LocationPicker from "@/components/LocationPickerWrapper";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
 import IdentityVerify from "@/components/IdentityVerify";
-import { searchProfessions } from "@/lib/professions";
+import ProfessionPicker from "@/components/ProfessionPicker";
 
 export default function ProfilePage() {
   const { t } = useLanguage();
@@ -26,8 +26,6 @@ export default function ProfilePage() {
   const [editData, setEditData] = useState({ name: "", profession: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [showIdentity, setShowIdentity] = useState(false);
-  const [profList, setProfList] = useState<string[]>([]);
-  const [showProfList, setShowProfList] = useState(false);
 
   // Vehicles state — iki-addımlı flow:
   //   1) extract: kullanıcı şəkilləri yükləyir, AI sahələri qaytarır
@@ -645,26 +643,9 @@ export default function ProfilePage() {
                   <input value={editData.name} disabled readOnly placeholder="Ad Soyad" className={`${inputCls} opacity-60 cursor-not-allowed`} />
                   <p className="text-[11px] text-muted mt-1">🔒 Ad-soyad şəxsiyyət vəsiqəsindən gəlir — əl ilə dəyişilmir. Dəyişmək üçün kimliyi yenidən təsdiqləyin.</p>
                 </div>
-                <div className="relative">
-                  <label className="block text-xs font-medium text-muted mb-1">{t("profession") || "Məslək"}</label>
-                  <input
-                    value={editData.profession}
-                    onChange={(e) => { const v = e.target.value; setEditData({ ...editData, profession: v }); setProfList(searchProfessions(v)); setShowProfList(true); }}
-                    onFocus={() => { if (editData.profession.trim()) { setProfList(searchProfessions(editData.profession)); setShowProfList(true); } }}
-                    onBlur={() => setTimeout(() => setShowProfList(false), 150)}
-                    placeholder={t("professionPlaceholder") || "Məs: Həkim, Mühəndis, Satıcı"}
-                    className={inputCls}
-                    autoComplete="off"
-                  />
-                  {showProfList && profList.length > 0 && (
-                    <ul className="absolute z-20 left-0 right-0 mt-1 bg-card border border-input-border rounded-xl shadow-lg overflow-hidden max-h-56 overflow-y-auto">
-                      {profList.map((p) => (
-                        <li key={p}>
-                          <button type="button" onMouseDown={(e) => { e.preventDefault(); setEditData((d) => ({ ...d, profession: p })); setShowProfList(false); }} className="w-full text-left px-4 py-2.5 text-sm hover:bg-orange-500/10 transition-colors">{p}</button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">{t("profession") || "Məslək"} (İxtisas)</label>
+                  <ProfessionPicker value={editData.profession} onChange={(v) => setEditData((d) => ({ ...d, profession: v }))} className={inputCls} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">{t("phone")}</label>
