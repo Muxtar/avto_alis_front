@@ -10,6 +10,7 @@ import AddListingMenu from "@/components/AddListingMenu";
 import { API, UPLOADS } from "@/lib/api";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { CATEGORIES, getSubs, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
+import { IXTISAS_SECTORS } from "@/lib/ixtisas";
 
 type TypeFilter = "all" | "PRODUCT" | "SERVICE" | "PROFESSION";
 
@@ -70,6 +71,7 @@ export default function MarketplacePage() {
   };
   const [listings, setListings] = useState<any[]>([]);
   const [professionals, setProfessionals] = useState<any[]>([]);
+  const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -416,6 +418,28 @@ export default function MarketplacePage() {
           })()}
         </div>
       </div>
+      )}
+
+      {/* İxtisas rejimi — sektor → ixtisas seçici (axtarışı doldurur) */}
+      {activeType === "PROFESSION" && (
+        <div className="border-b border-card-border bg-card/30">
+          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-5">
+            <p className="text-xs font-semibold text-muted mb-2">Sektor seçin:</p>
+            <div className="flex flex-wrap gap-1.5 mb-3">
+              <button onClick={() => { setSelectedSector(null); setSearchQuery(""); }} className={`px-3 py-1.5 rounded-full text-xs font-medium border ${!selectedSector ? "bg-orange-500 border-orange-500 text-white" : "bg-input-bg border-input-border hover:border-orange-500/50"}`}>Hamısı</button>
+              {IXTISAS_SECTORS.map((s) => (
+                <button key={s.sector} onClick={() => { setSelectedSector(s.sector === selectedSector ? null : s.sector); setSearchQuery(""); }} className={`px-3 py-1.5 rounded-full text-xs font-medium border ${selectedSector === s.sector ? "bg-orange-500 border-orange-500 text-white" : "bg-input-bg border-input-border hover:border-orange-500/50"}`}>{s.sector}</button>
+              ))}
+            </div>
+            {selectedSector && (
+              <div className="flex flex-wrap gap-1.5">
+                {IXTISAS_SECTORS.find((s) => s.sector === selectedSector)?.professions.map((p) => (
+                  <button key={p} onClick={() => setSearchQuery(p)} className={`px-2.5 py-1 rounded-lg text-[11px] border ${searchQuery === p ? "bg-orange-500/20 border-orange-500 text-orange-500 font-semibold" : "bg-input-bg border-input-border hover:border-orange-500/50"}`}>{p}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Listings Grid with side ads */}

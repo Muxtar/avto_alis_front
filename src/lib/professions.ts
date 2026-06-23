@@ -1,8 +1,13 @@
 // Azərbaycanca peşə/məslək siyahısı (türkcə sözlər yoxdur) — Məslək sahəsində
 // yazdıqca təklif üçün. İstifadəçi "hek" yazanda "Həkim" tapılsın deyə
 // axtarışda Azərbaycan hərfləri latına normallaşdırılır (ə→e, ş→s, ç→c, ...).
+//
+// Əsas mənbə: İxtisas Təsnifatı (15 sektor, 223 ixtisas) — bax: ixtisas.ts.
+// Aşağıdakı ümumi siyahı onunla birləşdirilir (geriyə uyğunluq üçün).
 
-export const PROFESSIONS: string[] = [
+import { ALL_IXTISAS } from "./ixtisas";
+
+const GENERIC_PROFESSIONS: string[] = [
   "Həkim", "Diş həkimi", "Cərrah", "Pediatr", "Tibb bacısı", "Əczaçı", "Baytar", "Psixoloq",
   "Müəllim", "Tərbiyəçi", "Repetitor", "Tələbə", "Alim", "Tədqiqatçı",
   "Mühəndis", "Memar", "İnşaatçı", "Proqramçı", "Veb proqramçı", "Sistem administratoru",
@@ -26,6 +31,9 @@ export const PROFESSIONS: string[] = [
   "Dayə", "Qulluqçu", "Təmizlikçi", "Bağça müdiri",
   "Stilist", "Florist", "Ailə həkimi", "Pensiyaçı", "Sərbəst çalışan", "İşsiz",
 ];
+
+// İxtisas Təsnifatı (223 ixtisas) + ümumi siyahı, təkrar olmadan.
+export const PROFESSIONS: string[] = Array.from(new Set([...ALL_IXTISAS, ...GENERIC_PROFESSIONS]));
 
 const AZ_NORM: Record<string, string> = { ə: "e", ç: "c", ğ: "g", ö: "o", ş: "s", ü: "u" };
 function normAz(s: string): string {
