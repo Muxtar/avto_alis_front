@@ -445,9 +445,14 @@ export default function ListingDetailPage() {
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
             <h3 className="font-semibold mb-4">{t("sellerInfo")}</h3>
             <Link href={`/seller/${listing.user.id}`} className="flex items-center gap-3 mb-4 group">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all">
-                {listing.user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
-              </div>
+              {listing.user.avatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${UPLOADS}/${listing.user.avatar}`} alt={listing.user.name} className="w-12 h-12 rounded-xl object-cover shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all" />
+              ) : (
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all">
+                  {listing.user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+                </div>
+              )}
               <div>
                 <p className="font-medium group-hover:text-orange-500 transition-colors">{listing.user.name}</p>
                 <p className="text-muted text-xs">{t("sellerProfile")} &rarr;</p>
