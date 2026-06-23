@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { API } from "@/lib/api";
 import { useLanguage } from "@/lib/LanguageContext";
+import MapExplorer from "@/components/MapExplorerWrapper";
 
 interface CitySummary {
   city: string;
@@ -47,6 +48,13 @@ export default function LocationsPage() {
         </p>
       </div>
 
+      {/* Xəritə — Azərbaycan üzrə obyekt və istifadəçi konumları (birbaşa açılır) */}
+      <div className="mb-7">
+        <MapExplorer height="72vh" />
+        <p className="text-[11px] text-muted mt-2">Xəritədə işarəyə klikləyin: 🏪 obyektin məhsullarına, 👤 istifadəçinin profilinə keçin. Yuxarıdakı axtarışdan ad ilə tapın.</p>
+      </div>
+
+      <h2 className="text-lg font-semibold mb-3">Şəhər üzrə</h2>
       <input
         type="text"
         value={query}
