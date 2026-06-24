@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
+import ComplaintButton from "@/components/ComplaintButton";
 import { API } from "@/lib/api";
 
 function fmt(sec: number) {
@@ -195,6 +196,14 @@ export default function ConsultationDetailPage() {
         </div>
       )}
       {!isPro && session.rated && <p className="text-center text-sm text-green-500 mt-3">✓ Qiymətləndirildi</p>}
+
+      {/* Şikayət — alıcı (peşəkar vaxtı boşa xərclədisə və s.) */}
+      {!isPro && (session.status === "ENDED" || session.status === "ACTIVE" || session.status === "PAUSED") && (
+        <div className="text-center mt-4">
+          <ComplaintButton consultationId={Number(id)} label="Bu konsultasiyadan şikayət et" className="text-xs text-red-500 hover:underline" />
+          <p className="text-[11px] text-muted mt-1">Peşəkar vaxtı boşa xərclədisə və ya rəy vermədisə — admin söhbəti və vaxt loglarını yoxlayacaq.</p>
+        </div>
+      )}
     </div>
   );
 }

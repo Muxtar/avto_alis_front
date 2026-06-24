@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
+import ComplaintButton from "@/components/ComplaintButton";
 import { API, UPLOADS } from "@/lib/api";
 import { groupSelectedParts } from "@/lib/sellerCategories";
 import { SOCIAL_META } from "@/lib/social";
@@ -168,6 +169,11 @@ export default function SellerProfilePage() {
                 ))}
               </div>
             )}
+
+            {/* Profil haqqında şikayət */}
+            <div className="mb-3">
+              <ComplaintButton targetUserId={Number(params.id)} label="⚠ Bu profil haqqında şikayət et" className="text-xs text-muted hover:text-red-500" />
+            </div>
 
             {/* Workplaces */}
             {user.workplaces?.length > 0 && (
