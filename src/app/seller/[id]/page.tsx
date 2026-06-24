@@ -110,9 +110,11 @@ export default function SellerProfilePage() {
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-3 mb-2">
               <h1 className="text-xl sm:text-2xl font-bold">{user.name}</h1>
-              <span className={`px-3 py-1 bg-gradient-to-r ${typeColor} rounded-lg text-xs font-medium text-white`}>
-                {typeLabel}
-              </span>
+              {user.type !== "CAR_OWNER" && (
+                <span className={`px-3 py-1 bg-gradient-to-r ${typeColor} rounded-lg text-xs font-medium text-white`}>
+                  {typeLabel}
+                </span>
+              )}
               {user.idVerifyStatus === "APPROVED" && (
                 <span className="px-2.5 py-1 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium">✓ Təsdiqlənmiş</span>
               )}

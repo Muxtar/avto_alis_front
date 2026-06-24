@@ -141,14 +141,35 @@ export default function Navbar() {
                 <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {catOpen && (
-                <div className="absolute left-0 mt-2 w-64 bg-card border border-card-border rounded-xl shadow-xl overflow-hidden z-50 max-h-[70vh] overflow-y-auto py-1">
-                  {CATEGORIES.map((c) => (
-                    <Link key={c.name} href={`/elanlar/${slugify(c.name)}`} onClick={() => setCatOpen(false)}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
-                      <span className="text-lg shrink-0">{c.icon}</span>
-                      <span className="truncate">{c.name}</span>
-                    </Link>
-                  ))}
+                <div className="absolute left-0 mt-2 w-64 bg-card border border-card-border rounded-xl shadow-xl z-50 py-1">
+                  {CATEGORIES.map((c) => {
+                    const hasSubs = c.subs && c.subs.length > 0;
+                    return (
+                      <div key={c.name} className="relative group">
+                        <Link href={`/elanlar/${slugify(c.name)}`} onClick={() => setCatOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm group-hover:bg-input-bg transition-colors text-foreground">
+                          <span className="text-lg shrink-0">{c.icon}</span>
+                          <span className="truncate flex-1">{c.name}</span>
+                          {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+                        </Link>
+                        {hasSubs && (
+                          <div className="hidden group-hover:block absolute left-full top-0 z-50 w-64 max-h-[80vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5">
+                            <Link href={`/elanlar/${slugify(c.name)}`} onClick={() => setCatOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-input-bg" style={{ color: PINK }}>
+                              <span>{c.icon}</span> {c.name} — hamısı
+                            </Link>
+                            <div className="border-t border-card-border my-1" />
+                            {c.subs.map((s) => (
+                              <Link key={s.name} href={`/elanlar/${slugify(c.name)}/${slugify(s.name)}`} onClick={() => setCatOpen(false)}
+                                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors">
+                                <span className="text-base shrink-0">{s.icon}</span>
+                                <span className="truncate">{s.name}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                   <Link href="/elanlar" onClick={() => setCatOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-t border-card-border mt-1" style={{ color: PINK }}>
                     Bütün kateqoriyalar →
                   </Link>

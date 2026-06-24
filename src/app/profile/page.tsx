@@ -829,9 +829,11 @@ export default function ProfilePage() {
               <>
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mb-2">
                   <h1 className="text-2xl sm:text-2xl font-bold">{profile.name}</h1>
-                  <span className={`px-3 py-1 bg-gradient-to-r ${typeColor(profile.type)} rounded-lg text-xs font-medium text-white`}>
-                    {typeLabel(profile.type)}
-                  </span>
+                  {profile.type !== "CAR_OWNER" && (
+                    <span className={`px-3 py-1 bg-gradient-to-r ${typeColor(profile.type)} rounded-lg text-xs font-medium text-white`}>
+                      {typeLabel(profile.type)}
+                    </span>
+                  )}
                   {profile.verified && <span className="px-2 py-0.5 bg-green-500/10 text-green-500 border border-green-500/20 rounded text-xs">{t("adminVerified")}</span>}
                 </div>
                 <div className="flex flex-wrap justify-center sm:justify-start gap-x-5 gap-y-1 text-sm text-muted mb-3">
