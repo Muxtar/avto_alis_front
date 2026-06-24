@@ -446,22 +446,43 @@ export default function MarketplacePage() {
       {/* Listings Grid with side ads */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
         <div className="lg:grid lg:grid-cols-[230px_1fr] lg:gap-6">
-          {/* Sol kateqoriya paneli (umico/birmarket üslubu) */}
+          {/* Sol kateqoriya paneli (umico üslubu) — hover-da sağda alt-kateqoriyalar açılır */}
           <aside className="hidden lg:block">
-            <div className="sticky top-20 surface overflow-hidden">
+            <div className="sticky top-20 surface">
               <p className="px-4 py-3 text-sm font-bold border-b border-card-border">Kateqoriyalar</p>
-              <nav className="py-1 max-h-[70vh] overflow-y-auto">
+              <nav className="py-1">
                 {CATEGORIES.map((c) => {
                   const active = selectedCategory ? parseCat(selectedCategory).main === c.name : false;
+                  const hasSubs = c.subs && c.subs.length > 0;
                   return (
-                    <Link
-                      key={c.name}
-                      href={`/elanlar/${catToSlugs(c.name).join("/")}`}
-                      className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${active ? "text-orange-500 font-semibold bg-orange-500/10" : "text-foreground hover:bg-input-bg"}`}
-                    >
-                      <span className="text-base shrink-0">{c.icon}</span>
-                      <span className="truncate">{c.name}</span>
-                    </Link>
+                    <div key={c.name} className="relative group">
+                      <Link
+                        href={`/elanlar/${catToSlugs(c.name).join("/")}`}
+                        className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${active ? "text-orange-500 font-semibold bg-orange-500/10" : "text-foreground group-hover:bg-input-bg"}`}
+                      >
+                        <span className="text-base shrink-0">{c.icon}</span>
+                        <span className="truncate flex-1">{c.name}</span>
+                        {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+                      </Link>
+                      {hasSubs && (
+                        <div className="hidden group-hover:block absolute left-full top-0 z-50 w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5">
+                          <Link href={`/elanlar/${catToSlugs(c.name).join("/")}`} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-orange-500 hover:bg-orange-500/10">
+                            <span>{c.icon}</span> {c.name} — hamısı
+                          </Link>
+                          <div className="border-t border-card-border my-1" />
+                          {c.subs.map((s) => (
+                            <Link
+                              key={s.name}
+                              href={`/elanlar/${catToSlugs(buildCat(c.name, s.name)).join("/")}`}
+                              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors"
+                            >
+                              <span className="text-base shrink-0">{s.icon}</span>
+                              <span className="truncate">{s.name}</span>
+                            </Link>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </nav>
