@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
@@ -14,12 +14,21 @@ import { IXTISAS_SECTORS } from "@/lib/ixtisas";
 
 type TypeFilter = "all" | "PRODUCT" | "SERVICE" | "PROFESSION";
 
-export default function MarketplacePage() {
+export default function MarketplacePageWrapper() {
+  return (
+    <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
+      <MarketplacePage />
+    </Suspense>
+  );
+}
+
+function MarketplacePage() {
   const { t } = useLanguage();
   const { isLoggedIn, token } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   // URL slug → seçilmiş kateqoriya (/elanlar/elektronika/audio-video).
   const slugKey = Array.isArray((params as any)?.slug)
     ? ((params as any).slug as string[]).join("/")
@@ -83,6 +92,8 @@ export default function MarketplacePage() {
   const [showAllCats, setShowAllCats] = useState(false);
   const COLLAPSED_CATS = 11;
   const SHOW_TAPAZ_GRID: boolean = false; // tap.az grid söndürülüb — kateqoriyalar sol paneldədir
+  // Sol panel scroll edəndə flyout kəsilməsin deyə alt-kateqoriya menyusu fixed render olunur.
+  const [hoverCat, setHoverCat] = useState<{ cat: any; top: number; left: number } | null>(null);
   // Filterler
   const [conditionFilter, setConditionFilter] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>("");
@@ -116,11 +127,15 @@ export default function MarketplacePage() {
       .catch(() => { toast(t('error'), 'error'); });
   }, []);
 
-  // Read URL params on mount (used by GlobalSearchBar redirects).
+  // Header axtarışı (?search=) reaktiv sinxronlaşır — istifadəçi /elanlar-da olsa belə yenilənir.
+  useEffect(() => {
+    setSearchQuery(searchParams.get("search") || "");
+  }, [searchParams]);
+
+  // Digər URL paramlarını mount-da oxu (GlobalSearchBar yönləndirmələri üçün).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const p = new URLSearchParams(window.location.search);
-    if (p.get("search")) setSearchQuery(p.get("search") || "");
     if (p.get("brand")) setBrandFilter(p.get("brand") || "");
     if (p.get("model")) setModelFilter(p.get("model") || "");
     if (p.get("city")) setCityFilter(p.get("city") || "");
@@ -270,20 +285,9 @@ export default function MarketplacePage() {
             </div>
           </div>
 
-          {/* Search + Sort */}
+          {/* Filtr sətri (axtarış başlıqdadır — burada təkrar input yoxdur) */}
           <div className="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3">
-            <div className="relative flex-1 min-w-0">
-              <svg className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="w-full pl-11 pr-4 py-3 input-base placeholder-muted-foreground text-sm shadow-sm"
-              />
-            </div>
+            <div className="flex-1 min-w-0 hidden sm:block" />
             <button
               type="button"
               onClick={openCheapModal}
@@ -316,6 +320,16 @@ export default function MarketplacePage() {
               <option value="yearAsc">{t("sortYearAsc")}</option>
             </select>
           </div>
+
+          {/* Aktiv axtarış göstəricisi (header-dən gələn) — təmizləmək üçün */}
+          {searchQuery && (
+            <div className="mt-2.5 flex items-center gap-2">
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-orange-500/10 text-orange-500 border border-orange-500/30 rounded-lg text-sm font-medium">
+                «{searchQuery}» üçün nəticələr
+                <button onClick={() => router.push(slugKey ? `/elanlar/${slugKey}` : "/elanlar")} className="hover:text-orange-400" title="Təmizlə">✕</button>
+              </span>
+            </div>
+          )}
 
         </div>
       </div>
@@ -446,46 +460,51 @@ export default function MarketplacePage() {
       {/* Listings Grid with side ads */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
         <div className="lg:grid lg:grid-cols-[230px_1fr] lg:gap-6">
-          {/* Sol kateqoriya paneli (umico üslubu) — hover-da sağda alt-kateqoriyalar açılır */}
+          {/* Sol kateqoriya paneli (umico üslubu) — sabit hündürlük + scroll, hover-da sağda alt-kateqoriyalar */}
           <aside className="hidden lg:block">
-            <div className="sticky top-20 z-30 surface">
+            <div className="sticky top-20 z-30 surface" onMouseLeave={() => setHoverCat(null)}>
               <p className="px-4 py-3 text-sm font-bold border-b border-card-border">Kateqoriyalar</p>
-              <nav className="py-1">
+              <nav className="py-1 max-h-[calc(100vh-9rem)] overflow-y-auto">
                 {CATEGORIES.map((c) => {
                   const active = selectedCategory ? parseCat(selectedCategory).main === c.name : false;
                   const hasSubs = c.subs && c.subs.length > 0;
                   return (
-                    <div key={c.name} className="relative group">
-                      <Link
-                        href={`/elanlar/${catToSlugs(c.name).join("/")}`}
-                        className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${active ? "text-orange-500 font-semibold bg-orange-500/10" : "text-foreground group-hover:bg-input-bg"}`}
-                      >
-                        <span className="text-base shrink-0">{c.icon}</span>
-                        <span className="truncate flex-1">{c.name}</span>
-                        {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
-                      </Link>
-                      {hasSubs && (
-                        <div className="hidden group-hover:block absolute left-full top-0 z-50 w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5">
-                          <Link href={`/elanlar/${catToSlugs(c.name).join("/")}`} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-orange-500 hover:bg-orange-500/10">
-                            <span>{c.icon}</span> {c.name} — hamısı
-                          </Link>
-                          <div className="border-t border-card-border my-1" />
-                          {c.subs.map((s) => (
-                            <Link
-                              key={s.name}
-                              href={`/elanlar/${catToSlugs(buildCat(c.name, s.name)).join("/")}`}
-                              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors"
-                            >
-                              <span className="text-base shrink-0">{s.icon}</span>
-                              <span className="truncate">{s.name}</span>
-                            </Link>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <Link
+                      key={c.name}
+                      href={`/elanlar/${catToSlugs(c.name).join("/")}`}
+                      onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoverCat(hasSubs ? { cat: c, top: r.top, left: r.right } : null); }}
+                      className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${active ? "text-orange-500 font-semibold bg-orange-500/10" : "text-foreground hover:bg-input-bg"}`}
+                    >
+                      <span className="text-base shrink-0">{c.icon}</span>
+                      <span className="truncate flex-1">{c.name}</span>
+                      {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+                    </Link>
                   );
                 })}
               </nav>
+
+              {/* Alt-kateqoriya flyout-u — fixed (scroll konteynerindən kənar, kəsilmir) */}
+              {hoverCat && (
+                <div
+                  style={{ position: "fixed", top: Math.min(hoverCat.top, (typeof window !== "undefined" ? window.innerHeight : 800) - 380), left: hoverCat.left }}
+                  className="z-[60] w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5"
+                >
+                  <Link href={`/elanlar/${catToSlugs(hoverCat.cat.name).join("/")}`} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-orange-500 hover:bg-orange-500/10">
+                    <span>{hoverCat.cat.icon}</span> {hoverCat.cat.name} — hamısı
+                  </Link>
+                  <div className="border-t border-card-border my-1" />
+                  {hoverCat.cat.subs.map((s: any) => (
+                    <Link
+                      key={s.name}
+                      href={`/elanlar/${catToSlugs(buildCat(hoverCat.cat.name, s.name)).join("/")}`}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors"
+                    >
+                      <span className="text-base shrink-0">{s.icon}</span>
+                      <span className="truncate">{s.name}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           </aside>
 
