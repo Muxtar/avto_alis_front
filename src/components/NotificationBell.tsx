@@ -44,10 +44,35 @@ export default function NotificationBell() {
   }, [fetchNotifs]);
 
   const markAll = async () => {
+    setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
+    setUnreadCount(0);
     await fetch(`${API}/notifications/read-all`, {
       method: 'PUT', headers: { Authorization: `Bearer ${token}` },
-    });
-    fetchNotifs();
+    }).catch(() => {});
+  };
+
+  // Tək bildirişi oxunmuş et (klikləyəndə).
+  const markRead = (id: number) => {
+    setNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setUnreadCount((c) => Math.max(0, c - 1));
+    fetch(`${API}/notifications/${id}/read`, {
+      method: 'PUT', headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => {});
+  };
+
+  // Zəngi açanda: gətir və hamısını oxunmuş say (qırmızı badge dərhal gedir).
+  const openBell = () => {
+    const willOpen = !open;
+    setOpen(willOpen);
+    if (willOpen) {
+      fetchNotifs();
+      if (unreadCount > 0) {
+        setUnreadCount(0);
+        fetch(`${API}/notifications/read-all`, {
+          method: 'PUT', headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => {});
+      }
+    }
   };
 
   if (!isLoggedIn) return null;
@@ -65,7 +90,7 @@ export default function NotificationBell() {
   return (
     <div ref={ref} className="relative">
       <button
-        onClick={() => { setOpen(!open); if (!open) fetchNotifs(); }}
+        onClick={openBell}
         className="relative p-2 sm:p-2.5 bg-input-bg border border-input-border rounded-lg sm:rounded-xl hover:opacity-80"
         title={t('notifications')}
       >
@@ -97,7 +122,7 @@ export default function NotificationBell() {
                 <Link
                   key={n.id}
                   href={n.link || '#'}
-                  onClick={() => { setOpen(false); }}
+                  onClick={() => { if (!n.read) markRead(n.id); setOpen(false); }}
                   className={`flex gap-3 p-3 border-b border-card-border/50 hover:bg-input-bg transition-colors ${!n.read ? 'bg-orange-500/5' : ''}`}
                 >
                   <span className="text-xl">{iconFor(n.type)}</span>
