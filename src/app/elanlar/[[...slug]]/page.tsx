@@ -464,7 +464,7 @@ function MarketplacePage() {
           <aside className="hidden lg:block">
             <div className="sticky top-20 z-30 surface" onMouseLeave={() => setHoverCat(null)}>
               <p className="px-4 py-3 text-sm font-bold border-b border-card-border">Kateqoriyalar</p>
-              <nav className="py-1 max-h-[calc(100vh-9rem)] overflow-y-auto">
+              <nav className="py-1 max-h-[60vh] overflow-y-auto">
                 {CATEGORIES.map((c) => {
                   const active = selectedCategory ? parseCat(selectedCategory).main === c.name : false;
                   const hasSubs = c.subs && c.subs.length > 0;
