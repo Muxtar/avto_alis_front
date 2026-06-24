@@ -543,7 +543,7 @@ export default function MarketplacePage() {
                   {professionals.map((p) => {
                     const offer = p.consultationOffers?.[0];
                     return (
-                      <Link key={p.id} href={`/seller/${p.id}`} className="surface overflow-hidden hover:border-orange-500/50 hover:shadow-lg transition-all group">
+                      <Link key={p.id} href={`/seller/${p.id}?from=ixtisas`} className="surface overflow-hidden hover:border-orange-500/50 hover:shadow-lg transition-all group">
                         {/* Üst yaşıl başlıq + böyük avatar */}
                         <div className="h-16 bg-gradient-to-r from-orange-500/15 to-emerald-500/15 relative" />
                         <div className="px-4 pb-4 -mt-9">

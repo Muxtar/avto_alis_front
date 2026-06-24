@@ -22,6 +22,9 @@ export default function SellerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [reqBusy, setReqBusy] = useState<number | null>(null);
+  // İxtisas bölməsindən gəlibsə (?from=ixtisas) → məhsul satışı gizlədilir, Rəy yönümlü kompakt profil.
+  const [ixtisasMode, setIxtisasMode] = useState(false);
+  useEffect(() => { setIxtisasMode(new URLSearchParams(window.location.search).get("from") === "ixtisas"); }, []);
 
   const requestConsultation = async (offerId: number) => {
     if (!isLoggedIn) { router.push("/"); return; }
@@ -116,12 +119,14 @@ export default function SellerProfilePage() {
             </div>
 
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted mb-4">
+              {!ixtisasMode && (
               <span className="flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
                 </svg>
                 {user.phone}
               </span>
+              )}
               <span className="flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
@@ -244,7 +249,8 @@ export default function SellerProfilePage() {
             )}
           </div>
 
-          {/* Stats */}
+          {/* Stats — İxtisas rejimində məhsul saylarını göstərmirik (kompakt) */}
+          {!ixtisasMode && (
           <div className="flex gap-4 sm:gap-6 shrink-0">
             <div className="text-center">
               <p className="text-2xl font-bold text-orange-500">{stats.totalListings}</p>
@@ -263,6 +269,7 @@ export default function SellerProfilePage() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 
@@ -290,36 +297,45 @@ export default function SellerProfilePage() {
         </div>
       )}
 
-      {/* Filter + Listings */}
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold">{t("sellerListings")}</h2>
-        <div className="flex gap-1 bg-input-bg border border-input-border rounded-xl p-1">
-          {[
-            { id: "all", label: t("all") },
-            { id: "PRODUCT", label: t("productsFilter") },
-            { id: "SERVICE", label: t("servicesFilter") },
-          ].map((btn) => (
-            <button
-              key={btn.id}
-              onClick={() => setTypeFilter(btn.id)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                typeFilter === btn.id ? "bg-orange-500 text-white shadow-sm" : "text-muted hover:text-foreground"
-              }`}
-            >
-              {btn.label}
-            </button>
-          ))}
+      {/* İxtisas rejimi: məhsul satışı yox — yalnız Rəy konsultasiyası */}
+      {ixtisasMode ? (
+        <div className="text-center py-8 text-muted text-sm bg-card border border-card-border rounded-2xl">
+          🗣️ Bu peşəkarla əlaqə <b className="text-foreground">Rəy konsultasiyası</b> üzərindən qurulur. Yuxarıdakı təklifdən «Rəy al» düyməsinə basın.
         </div>
-      </div>
-
-      {filteredListings.length === 0 ? (
-        <div className="text-center py-16 text-muted">{t("noResults")}</div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-          {filteredListings.map((listing: any) => (
-            <ListingCard key={listing.id} listing={listing} />
-          ))}
-        </div>
+        <>
+          {/* Filter + Listings */}
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">{t("sellerListings")}</h2>
+            <div className="flex gap-1 bg-input-bg border border-input-border rounded-xl p-1">
+              {[
+                { id: "all", label: t("all") },
+                { id: "PRODUCT", label: t("productsFilter") },
+                { id: "SERVICE", label: t("servicesFilter") },
+              ].map((btn) => (
+                <button
+                  key={btn.id}
+                  onClick={() => setTypeFilter(btn.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    typeFilter === btn.id ? "bg-orange-500 text-white shadow-sm" : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {btn.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredListings.length === 0 ? (
+            <div className="text-center py-16 text-muted">{t("noResults")}</div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+              {filteredListings.map((listing: any) => (
+                <ListingCard key={listing.id} listing={listing} />
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
