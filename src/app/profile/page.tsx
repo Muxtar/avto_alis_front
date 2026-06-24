@@ -227,6 +227,32 @@ export default function ProfilePage() {
     } catch { toast(t("error"), "error"); }
   };
 
+  // ---- Rəy konsultasiyası təklifi ----
+  const [offer, setOffer] = useState<any>(null);
+  const [offerHasVoen, setOfferHasVoen] = useState(false);
+  const [offerForm, setOfferForm] = useState({ title: "", durationMinutes: "30", price: "", active: true });
+  const [offerBusy, setOfferBusy] = useState(false);
+  const loadOffer = async () => {
+    try {
+      const r = await fetch(`${API}/me/consultation-offer`, { headers }).then((x) => x.json());
+      setOfferHasVoen(!!r.hasVoen);
+      if (r.offer) { setOffer(r.offer); setOfferForm({ title: r.offer.title || "", durationMinutes: String(r.offer.durationMinutes), price: String(r.offer.price), active: r.offer.active }); }
+    } catch { /* keç */ }
+  };
+  const saveOffer = async () => {
+    setOfferBusy(true);
+    try {
+      const r = await fetch(`${API}/me/consultation-offer`, { method: "PUT", headers, body: JSON.stringify({ title: offerForm.title, durationMinutes: parseInt(offerForm.durationMinutes) || 30, price: parseFloat(offerForm.price) || 0, active: offerForm.active }) }).then((x) => x.json());
+      if (r.success) { setOffer(r.offer); toast("Rəy təklifi yadda saxlandı ✓", "success"); }
+      else toast(r.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setOfferBusy(false); }
+  };
+  const deleteOffer = async () => {
+    if (!confirm("Rəy təklifini silmək istəyirsiniz?")) return;
+    try { await fetch(`${API}/me/consultation-offer`, { method: "DELETE", headers }); setOffer(null); setOfferForm({ title: "", durationMinutes: "30", price: "", active: true }); } catch { toast(t("error"), "error"); }
+  };
+  useEffect(() => { if (token) loadOffer(); /* eslint-disable-next-line */ }, [token]);
+
   const computeAge = (iso?: string) => {
     if (!iso) return null;
     const d = new Date(iso); const now = new Date();
@@ -1003,6 +1029,44 @@ export default function ProfilePage() {
             <span className="text-base leading-none">＋</span> Yeni nömrə əlavə et
           </button>
         )}
+      </div>
+
+      {/* Rəy konsultasiyası təklifi */}
+      <div className="surface p-5 sm:p-7 mb-5">
+        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">🗣️ Rəy konsultasiyası</h2>
+        <p className="text-xs text-muted mb-3">İxtisasınız üzrə ödənişli konsultasiya təklif edin. İstifadəçi sizi İxtisas bölməsindən tapıb sorğu göndərə bilər; siz vaxtı Başlat/Dayandır ilə idarə edirsiniz.</p>
+
+        {!offerHasVoen && (
+          <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-600">
+            ⚠ Təklif yarada bilərsiniz və sorğular sizə gələcək, amma <b>ödənişlərin aktivləşməsi üçün VÖEN (biznes) əlavə etməlisiniz</b>. VÖEN yoxdursa sorğular gəlir, lakin işləmir.
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+          <div className="sm:col-span-3">
+            <label className="block text-xs font-medium text-muted mb-1">Başlıq (istəyə bağlı)</label>
+            <input value={offerForm.title} onChange={(e) => setOfferForm((f) => ({ ...f, title: e.target.value }))} placeholder="məs. Onlayn həkim məsləhəti" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted mb-1">Müddət (dəq)</label>
+            <input type="number" min={1} value={offerForm.durationMinutes} onChange={(e) => setOfferForm((f) => ({ ...f, durationMinutes: e.target.value }))} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted mb-1">Qiymət (AZN)</label>
+            <input type="number" min={0} value={offerForm.price} onChange={(e) => setOfferForm((f) => ({ ...f, price: e.target.value }))} placeholder="30" className={inputCls} />
+          </div>
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 text-sm py-2.5">
+              <input type="checkbox" checked={offerForm.active} onChange={(e) => setOfferForm((f) => ({ ...f, active: e.target.checked }))} className="w-4 h-4 accent-orange-500" />
+              Aktiv (sorğu qəbul et)
+            </label>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={saveOffer} disabled={offerBusy} className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{offerBusy ? "..." : offer ? "Yenilə" : "Təklif yarat"}</button>
+          {offer && <button onClick={deleteOffer} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold">Sil</button>}
+          <Link href="/consultations" className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold self-center">Sorğularıma bax →</Link>
+        </div>
       </div>
 
       {/* CV (tərcümeyi-hal) */}

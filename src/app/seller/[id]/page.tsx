@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
+import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import { API, UPLOADS } from "@/lib/api";
@@ -13,10 +14,29 @@ import SocialIcon from "@/components/SocialIcon";
 export default function SellerProfilePage() {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { token, isLoggedIn } = useAuth();
+  const router = useRouter();
   const params = useParams();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [reqBusy, setReqBusy] = useState(false);
+
+  const requestConsultation = async () => {
+    if (!isLoggedIn) { router.push("/"); return; }
+    setReqBusy(true);
+    try {
+      const r = await fetch(`${API}/consultations/request`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ professionalId: Number(params.id) }),
+      }).then((x) => x.json());
+      if (r.success) {
+        toast(r.needsVoen ? "Sorğu göndərildi (peşəkar VÖEN əlavə edənə qədər ödəniş donur)" : "Sorğu göndərildi ✓", "success");
+        router.push(`/consultations/${r.session.id}`);
+      } else toast(r.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setReqBusy(false); }
+  };
 
   useEffect(() => {
     fetch(`${API}/sellers/${params.id}`)
@@ -129,6 +149,20 @@ export default function SellerProfilePage() {
 
             {user.bio && (
               <p className="text-sm text-foreground/80 mb-4 whitespace-pre-line max-w-prose">{user.bio}</p>
+            )}
+
+            {/* Rəy konsultasiyası təklifi */}
+            {user.consultationOffer?.active && (
+              <div className="mb-4 p-3.5 bg-orange-500/5 border border-orange-500/30 rounded-xl flex items-center gap-3 flex-wrap">
+                <span className="text-2xl">🗣️</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm">{user.consultationOffer.title || "Rəy konsultasiyası"}</p>
+                  <p className="text-xs text-muted">{user.consultationOffer.durationMinutes} dəq · <b className="text-foreground">{user.consultationOffer.price} AZN</b></p>
+                </div>
+                <button onClick={requestConsultation} disabled={reqBusy} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                  {reqBusy ? "..." : "Rəy al"}
+                </button>
+              </div>
             )}
 
             {/* Workplaces */}

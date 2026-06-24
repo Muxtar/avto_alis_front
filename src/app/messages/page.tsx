@@ -169,7 +169,10 @@ export default function MessagesPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm truncate">{conv.partner.name}</span>
+                      <span className="font-medium text-sm truncate flex items-center gap-1">
+                        {conv.lastMessage?.consultationId && <span title="Rəy konsultasiyası">🗣️</span>}
+                        {conv.partner.name}
+                      </span>
                       {conv.unreadCount > 0 && (
                         <span className="w-5 h-5 bg-orange-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0">
                           {conv.unreadCount}
@@ -230,6 +233,11 @@ export default function MessagesPage() {
                         {msg.listing && (
                           <Link href={`/marketplace/${msg.listing.id}`} className={`block text-[10px] mb-1 ${isMine ? 'text-white/70' : 'text-orange-500'} hover:underline`}>
                             {t("messageAbout")}: {msg.listing.title}
+                          </Link>
+                        )}
+                        {msg.consultationId && (
+                          <Link href={`/consultations/${msg.consultationId}`} className={`block text-[10px] mb-1 ${isMine ? 'text-white/70' : 'text-orange-500'} hover:underline`}>
+                            🗣️ Rəy konsultasiyası — aç
                           </Link>
                         )}
                         <p>{msg.content}</p>
