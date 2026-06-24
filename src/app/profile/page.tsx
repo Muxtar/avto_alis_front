@@ -227,31 +227,37 @@ export default function ProfilePage() {
     } catch { toast(t("error"), "error"); }
   };
 
-  // ---- Rəy konsultasiyası təklifi ----
-  const [offer, setOffer] = useState<any>(null);
+  // ---- Rəy konsultasiyası təklifləri (çoxlu) ----
+  const [offers, setOffers] = useState<any[]>([]);
   const [offerHasVoen, setOfferHasVoen] = useState(false);
-  const [offerForm, setOfferForm] = useState({ title: "", durationMinutes: "30", price: "", active: true });
+  const emptyOfferForm = { title: "", durationMinutes: "30", price: "", active: true };
+  const [offerForm, setOfferForm] = useState(emptyOfferForm);
+  const [editingOfferId, setEditingOfferId] = useState<number | null>(null);
   const [offerBusy, setOfferBusy] = useState(false);
-  const loadOffer = async () => {
+  const loadOffers = async () => {
     try {
-      const r = await fetch(`${API}/me/consultation-offer`, { headers }).then((x) => x.json());
+      const r = await fetch(`${API}/me/consultation-offers`, { headers }).then((x) => x.json());
       setOfferHasVoen(!!r.hasVoen);
-      if (r.offer) { setOffer(r.offer); setOfferForm({ title: r.offer.title || "", durationMinutes: String(r.offer.durationMinutes), price: String(r.offer.price), active: r.offer.active }); }
+      setOffers(r.offers || []);
     } catch { /* keç */ }
   };
+  const resetOfferForm = () => { setOfferForm(emptyOfferForm); setEditingOfferId(null); };
+  const editOffer = (o: any) => { setEditingOfferId(o.id); setOfferForm({ title: o.title || "", durationMinutes: String(o.durationMinutes), price: String(o.price), active: o.active }); };
   const saveOffer = async () => {
     setOfferBusy(true);
+    const body = JSON.stringify({ title: offerForm.title, durationMinutes: parseInt(offerForm.durationMinutes) || 30, price: parseFloat(offerForm.price) || 0, active: offerForm.active });
+    const url = editingOfferId ? `${API}/me/consultation-offers/${editingOfferId}` : `${API}/me/consultation-offers`;
     try {
-      const r = await fetch(`${API}/me/consultation-offer`, { method: "PUT", headers, body: JSON.stringify({ title: offerForm.title, durationMinutes: parseInt(offerForm.durationMinutes) || 30, price: parseFloat(offerForm.price) || 0, active: offerForm.active }) }).then((x) => x.json());
-      if (r.success) { setOffer(r.offer); toast("Rəy təklifi yadda saxlandı ✓", "success"); }
+      const r = await fetch(url, { method: editingOfferId ? "PUT" : "POST", headers, body }).then((x) => x.json());
+      if (r.success) { toast("Təklif yadda saxlandı ✓", "success"); resetOfferForm(); await loadOffers(); }
       else toast(r.message || t("error"), "error");
     } catch { toast(t("error"), "error"); } finally { setOfferBusy(false); }
   };
-  const deleteOffer = async () => {
-    if (!confirm("Rəy təklifini silmək istəyirsiniz?")) return;
-    try { await fetch(`${API}/me/consultation-offer`, { method: "DELETE", headers }); setOffer(null); setOfferForm({ title: "", durationMinutes: "30", price: "", active: true }); } catch { toast(t("error"), "error"); }
+  const deleteOffer = async (id: number) => {
+    if (!confirm("Bu təklifi silmək istəyirsiniz?")) return;
+    try { await fetch(`${API}/me/consultation-offers/${id}`, { method: "DELETE", headers }); if (editingOfferId === id) resetOfferForm(); await loadOffers(); } catch { toast(t("error"), "error"); }
   };
-  useEffect(() => { if (token) loadOffer(); /* eslint-disable-next-line */ }, [token]);
+  useEffect(() => { if (token) loadOffers(); /* eslint-disable-next-line */ }, [token]);
 
   const computeAge = (iso?: string) => {
     if (!iso) return null;
@@ -1038,34 +1044,55 @@ export default function ProfilePage() {
 
         {!offerHasVoen && (
           <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-600">
-            ⚠ Təklif yarada bilərsiniz və sorğular sizə gələcək, amma <b>ödənişlərin aktivləşməsi üçün VÖEN (biznes) əlavə etməlisiniz</b>. VÖEN yoxdursa sorğular gəlir, lakin işləmir.
+            ⚠ Təkliflər yarada bilərsiniz və sorğular sizə gələcək, amma <b>ödənişlərin aktivləşməsi üçün VÖEN (biznes) əlavə etməlisiniz</b>. VÖEN yoxdursa sorğular gəlir, lakin işləmir.
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-          <div className="sm:col-span-3">
-            <label className="block text-xs font-medium text-muted mb-1">Başlıq (istəyə bağlı)</label>
-            <input value={offerForm.title} onChange={(e) => setOfferForm((f) => ({ ...f, title: e.target.value }))} placeholder="məs. Onlayn həkim məsləhəti" className={inputCls} />
+        {/* Mövcud təkliflər */}
+        {offers.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {offers.map((o) => (
+              <div key={o.id} className="flex items-center gap-3 bg-input-bg border border-input-border rounded-xl px-3.5 py-2.5">
+                <span className="text-lg">🗣️</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{o.title || "Rəy konsultasiyası"}</p>
+                  <p className="text-xs text-muted">{o.durationMinutes} dəq · {o.price} AZN {!o.active && <span className="text-amber-500">· deaktiv</span>}</p>
+                </div>
+                <button onClick={() => editOffer(o)} className="text-[12px] text-orange-500 font-semibold">Redaktə</button>
+                <button onClick={() => deleteOffer(o.id)} className="text-muted hover:text-red-500 text-sm">✕</button>
+              </div>
+            ))}
           </div>
-          <div>
-            <label className="block text-xs font-medium text-muted mb-1">Müddət (dəq)</label>
-            <input type="number" min={1} value={offerForm.durationMinutes} onChange={(e) => setOfferForm((f) => ({ ...f, durationMinutes: e.target.value }))} className={inputCls} />
+        )}
+
+        {/* Əlavə et / redaktə formu */}
+        <div className="p-3 bg-input-bg/40 border border-input-border rounded-xl">
+          <p className="text-xs font-semibold text-muted mb-2">{editingOfferId ? "Təklifi redaktə et" : "Yeni təklif əlavə et"}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+            <div className="sm:col-span-3">
+              <label className="block text-xs font-medium text-muted mb-1">Başlıq</label>
+              <input value={offerForm.title} onChange={(e) => setOfferForm((f) => ({ ...f, title: e.target.value }))} placeholder="məs. İlk konsultasiya" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1">Müddət (dəq)</label>
+              <input type="number" min={1} value={offerForm.durationMinutes} onChange={(e) => setOfferForm((f) => ({ ...f, durationMinutes: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1">Qiymət (AZN)</label>
+              <input type="number" min={0} value={offerForm.price} onChange={(e) => setOfferForm((f) => ({ ...f, price: e.target.value }))} placeholder="30" className={inputCls} />
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm py-2.5">
+                <input type="checkbox" checked={offerForm.active} onChange={(e) => setOfferForm((f) => ({ ...f, active: e.target.checked }))} className="w-4 h-4 accent-orange-500" />
+                Aktiv
+              </label>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-muted mb-1">Qiymət (AZN)</label>
-            <input type="number" min={0} value={offerForm.price} onChange={(e) => setOfferForm((f) => ({ ...f, price: e.target.value }))} placeholder="30" className={inputCls} />
+          <div className="flex gap-2">
+            <button onClick={saveOffer} disabled={offerBusy} className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{offerBusy ? "..." : editingOfferId ? "Yenilə" : "Əlavə et"}</button>
+            {editingOfferId && <button onClick={resetOfferForm} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv et</button>}
+            <Link href="/consultations" className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold self-center ml-auto">Sorğularıma bax →</Link>
           </div>
-          <div className="flex items-end">
-            <label className="flex items-center gap-2 text-sm py-2.5">
-              <input type="checkbox" checked={offerForm.active} onChange={(e) => setOfferForm((f) => ({ ...f, active: e.target.checked }))} className="w-4 h-4 accent-orange-500" />
-              Aktiv (sorğu qəbul et)
-            </label>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={saveOffer} disabled={offerBusy} className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{offerBusy ? "..." : offer ? "Yenilə" : "Təklif yarat"}</button>
-          {offer && <button onClick={deleteOffer} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold">Sil</button>}
-          <Link href="/consultations" className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold self-center">Sorğularıma bax →</Link>
         </div>
       </div>
 

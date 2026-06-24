@@ -20,22 +20,22 @@ export default function SellerProfilePage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [reqBusy, setReqBusy] = useState(false);
+  const [reqBusy, setReqBusy] = useState<number | null>(null);
 
-  const requestConsultation = async () => {
+  const requestConsultation = async (offerId: number) => {
     if (!isLoggedIn) { router.push("/"); return; }
-    setReqBusy(true);
+    setReqBusy(offerId);
     try {
       const r = await fetch(`${API}/consultations/request`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ professionalId: Number(params.id) }),
+        body: JSON.stringify({ offerId }),
       }).then((x) => x.json());
       if (r.success) {
         toast(r.needsVoen ? "Sorğu göndərildi (peşəkar VÖEN əlavə edənə qədər ödəniş donur)" : "Sorğu göndərildi ✓", "success");
         router.push(`/consultations/${r.session.id}`);
       } else toast(r.message || t("error"), "error");
-    } catch { toast(t("error"), "error"); } finally { setReqBusy(false); }
+    } catch { toast(t("error"), "error"); } finally { setReqBusy(null); }
   };
 
   useEffect(() => {
@@ -151,17 +151,21 @@ export default function SellerProfilePage() {
               <p className="text-sm text-foreground/80 mb-4 whitespace-pre-line max-w-prose">{user.bio}</p>
             )}
 
-            {/* Rəy konsultasiyası təklifi */}
-            {user.consultationOffer?.active && (
-              <div className="mb-4 p-3.5 bg-orange-500/5 border border-orange-500/30 rounded-xl flex items-center gap-3 flex-wrap">
-                <span className="text-2xl">🗣️</span>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm">{user.consultationOffer.title || "Rəy konsultasiyası"}</p>
-                  <p className="text-xs text-muted">{user.consultationOffer.durationMinutes} dəq · <b className="text-foreground">{user.consultationOffer.price} AZN</b></p>
-                </div>
-                <button onClick={requestConsultation} disabled={reqBusy} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
-                  {reqBusy ? "..." : "Rəy al"}
-                </button>
+            {/* Rəy konsultasiyası təklifləri (çoxlu) */}
+            {user.consultationOffers?.length > 0 && (
+              <div className="mb-4 space-y-2">
+                <p className="text-xs font-semibold text-muted flex items-center gap-1.5">🗣️ Rəy konsultasiyası</p>
+                {user.consultationOffers.map((o: any) => (
+                  <div key={o.id} className="p-3.5 bg-orange-500/5 border border-orange-500/30 rounded-xl flex items-center gap-3 flex-wrap">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{o.title || "Rəy konsultasiyası"}</p>
+                      <p className="text-xs text-muted">{o.durationMinutes} dəq · <b className="text-foreground">{o.price} AZN</b></p>
+                    </div>
+                    <button onClick={() => requestConsultation(o.id)} disabled={reqBusy === o.id} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                      {reqBusy === o.id ? "..." : "Rəy al"}
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
 
