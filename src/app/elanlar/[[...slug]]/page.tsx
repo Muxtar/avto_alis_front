@@ -448,7 +448,7 @@ export default function MarketplacePage() {
         <div className="lg:grid lg:grid-cols-[230px_1fr] lg:gap-6">
           {/* Sol kateqoriya paneli (umico üslubu) — hover-da sağda alt-kateqoriyalar açılır */}
           <aside className="hidden lg:block">
-            <div className="sticky top-20 surface">
+            <div className="sticky top-20 z-30 surface">
               <p className="px-4 py-3 text-sm font-bold border-b border-card-border">Kateqoriyalar</p>
               <nav className="py-1">
                 {CATEGORIES.map((c) => {

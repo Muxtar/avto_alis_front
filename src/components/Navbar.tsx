@@ -75,7 +75,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50">
       {/* ── Yuxarı utility bar ── */}
-      <div className="hidden md:block bg-input-bg/80 backdrop-blur border-b border-card-border">
+      <div className="hidden md:block relative z-20 bg-input-bg/80 backdrop-blur border-b border-card-border">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-9 text-xs">
             <div className="flex items-center gap-4">
@@ -116,7 +116,7 @@ export default function Navbar() {
       </div>
 
       {/* ── Əsas başlıq ── */}
-      <div className="bg-card border-b border-card-border">
+      <div className="relative z-10 bg-card border-b border-card-border">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 sm:gap-4 h-16">
             {/* Logo */}
@@ -195,7 +195,6 @@ export default function Navbar() {
                   <button onClick={() => setUserOpen(!userOpen)}
                     className="relative flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-white text-xs sm:text-sm font-medium hover:opacity-90 transition-opacity" style={{ background: PINK }}>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                    <span className="hidden sm:inline max-w-[80px] truncate">{user?.name}</span>
                     {totalUnread > 0 && (
                       <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 bg-red-500 ring-2 ring-card text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse-soft">
                         {totalUnread > 99 ? "99+" : totalUnread}
