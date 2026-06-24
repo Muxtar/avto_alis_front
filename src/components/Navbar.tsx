@@ -10,6 +10,7 @@ import { Locale } from "@/lib/translations";
 import { API } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
 import AddListingMenu from "@/components/AddListingMenu";
+import { CATEGORIES, slugify } from "@/lib/categories";
 
 const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "az", label: "AZ", flag: "🇦🇿" },
@@ -17,8 +18,8 @@ const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "en", label: "EN", flag: "🇬🇧" },
 ];
 
-// birmarket üslublu çəhrayı/magenta vurğu rəngləri.
-const PINK = "#e6007e";
+// Vahid brend rəngi (globals.css orange-* remap ilə eyni — rose-magenta).
+const PINK = "#db1d72";
 
 export default function Navbar() {
   const { locale, setLocale, t } = useLanguage();
@@ -28,12 +29,14 @@ export default function Navbar() {
   const router = useRouter();
   const [langOpen, setLangOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [catOpen, setCatOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const langRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
+  const catRef = useRef<HTMLDivElement>(null);
 
   const fetchNotifications = useCallback(() => {
     if (!token || !isLoggedIn) return;
@@ -56,6 +59,7 @@ export default function Navbar() {
     const handler = (e: MouseEvent) => {
       if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
       if (userRef.current && !userRef.current.contains(e.target as Node)) setUserOpen(false);
+      if (catRef.current && !catRef.current.contains(e.target as Node)) setCatOpen(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -130,11 +134,28 @@ export default function Navbar() {
               <span>Şəhər: <b className="text-foreground">Bakı</b></span>
             </Link>
 
-            {/* Kataloq */}
-            <Link href="/elanlar" className="hidden sm:flex items-center gap-2 px-4 h-11 rounded-xl text-white font-semibold text-sm shrink-0 hover:opacity-90 transition-opacity" style={{ background: PINK }}>
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-              Kataloq
-            </Link>
+            {/* Kataloq — kateqoriya menyusu */}
+            <div ref={catRef} className="relative hidden sm:block shrink-0">
+              <button onClick={() => setCatOpen((v) => !v)} className="flex items-center gap-2 px-4 h-11 rounded-xl text-white font-semibold text-sm hover:opacity-90 transition-opacity" style={{ background: PINK }}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                Kataloq
+                <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              </button>
+              {catOpen && (
+                <div className="absolute left-0 mt-2 w-64 bg-card border border-card-border rounded-xl shadow-xl overflow-hidden z-50 max-h-[70vh] overflow-y-auto py-1">
+                  {CATEGORIES.map((c) => (
+                    <Link key={c.name} href={`/elanlar/${slugify(c.name)}`} onClick={() => setCatOpen(false)}
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <span className="text-lg shrink-0">{c.icon}</span>
+                      <span className="truncate">{c.name}</span>
+                    </Link>
+                  ))}
+                  <Link href="/elanlar" onClick={() => setCatOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-t border-card-border mt-1" style={{ color: PINK }}>
+                    Bütün kateqoriyalar →
+                  </Link>
+                </div>
+              )}
+            </div>
 
             {/* Axtarış */}
             <form onSubmit={submitSearch} className="flex-1 min-w-[120px] flex items-stretch h-11 rounded-xl overflow-hidden border-2 transition-colors" style={{ borderColor: PINK }}>
