@@ -9,7 +9,6 @@ import { useCart } from "@/lib/CartContext";
 import { Locale } from "@/lib/translations";
 import { API } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
-import AddListingMenu from "@/components/AddListingMenu";
 import { CATEGORIES, slugify } from "@/lib/categories";
 
 const languages: { code: Locale; label: string; flag: string }[] = [
@@ -18,8 +17,8 @@ const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "en", label: "EN", flag: "🇬🇧" },
 ];
 
-// Vahid brend rəngi (globals.css orange-* remap ilə eyni — rose-magenta).
-const PINK = "#db1d72";
+// Vahid brend rəngi (globals.css orange-* remap ilə eyni — WhatsApp yaşılı).
+const PINK = "#16a34a";
 
 export default function Navbar() {
   const { locale, setLocale, t } = useLanguage();
@@ -158,7 +157,7 @@ export default function Navbar() {
             </div>
 
             {/* Axtarış */}
-            <form onSubmit={submitSearch} className="flex-1 min-w-[120px] flex items-stretch h-11 rounded-xl overflow-hidden border-2 transition-colors" style={{ borderColor: PINK }}>
+            <form onSubmit={submitSearch} className="flex-1 min-w-[160px] flex items-stretch h-11 rounded-xl overflow-hidden border-2 transition-colors" style={{ borderColor: PINK }}>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -189,8 +188,6 @@ export default function Navbar() {
                   )}
                 </Link>
               )}
-
-              <AddListingMenu />
 
               {/* İstifadəçi */}
               {isLoggedIn ? (

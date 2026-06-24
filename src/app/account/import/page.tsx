@@ -311,7 +311,7 @@ function ExcelImportInner() {
           <button
             onClick={submit}
             disabled={submitting || validRows.length === 0}
-            className="mt-4 w-full py-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white disabled:opacity-50"
+            className="mt-4 w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white disabled:opacity-50"
           >
             {submitting ? t("submitting") : `${validRows.length} ${t("excelSubmitBtn")}`}
           </button>

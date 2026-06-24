@@ -309,7 +309,7 @@ export default function CompleteProfilePage() {
             <div className="text-sm text-center font-medium py-2 rounded-xl bg-input-bg">{faceBadge()}</div>
           )}
 
-          <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50">
+          <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50">
             {loading ? t("submitting") : (t("save") || "Yadda saxla")}
           </button>
           <p className="text-[11px] text-muted text-center">Kimliyiniz admin tərəfindən yoxlanılacaq.</p>

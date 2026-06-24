@@ -263,7 +263,7 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
         <div className="text-sm text-center font-medium py-2 rounded-xl bg-input-bg">{faceBadge()}</div>
       )}
 
-      <button onClick={submit} disabled={submitting || !idCardFile || !selfieBlobs.front || !selfieBlobs.right || !selfieBlobs.left} className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white disabled:opacity-50">
+      <button onClick={submit} disabled={submitting || !idCardFile || !selfieBlobs.front || !selfieBlobs.right || !selfieBlobs.left} className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white disabled:opacity-50">
         {submitting ? "Yadda saxlanılır…" : "💾 Profili təsdiqə göndər"}
       </button>
     </div>

@@ -216,7 +216,7 @@ export default function InquiriesPage() {
                         <div className="flex items-center gap-2">
                           {statusBadge(offer.status)}
                           {offer.status === 'PENDING' && inq.status === 'OPEN' && (
-                            <button onClick={() => acceptOffer(inq.id, offer.id)} className="bg-gradient-to-r from-orange-500 to-red-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:opacity-90">
+                            <button onClick={() => acceptOffer(inq.id, offer.id)} className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:opacity-90">
                               {t('acceptOffer')}
                             </button>
                           )}
@@ -326,7 +326,7 @@ export default function InquiriesPage() {
                         onChange={e => setOfferForms(prev => ({ ...prev, [inq.id]: { ...prev[inq.id], message: e.target.value, price: prev[inq.id]?.price || '' } }))}
                         className={`${inputCls} flex-1`} />
                       <button onClick={() => submitOffer(inq.id)}
-                        className="bg-gradient-to-r from-orange-500 to-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90">
+                        className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90">
                         {t('submitOffer')}
                       </button>
                     </div>

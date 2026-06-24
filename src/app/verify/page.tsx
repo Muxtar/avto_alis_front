@@ -121,7 +121,7 @@ function VerifyContent() {
           <button
             onClick={handleVerify}
             disabled={loading || code.length !== 6}
-            className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed mb-4"
+            className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50 disabled:cursor-not-allowed mb-4"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

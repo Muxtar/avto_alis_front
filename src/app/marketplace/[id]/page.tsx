@@ -336,7 +336,7 @@ export default function ListingDetailPage() {
                   placeholder={t("commentPlaceholder")}
                   className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
                 <button onClick={handleAddComment} disabled={!commentText.trim() || commentSending}
-                  className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50">
+                  className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50">
                   {t("addComment")}
                 </button>
               </div>
@@ -352,7 +352,7 @@ export default function ListingDetailPage() {
               <div className="space-y-3">
                 {listing.comments?.map((c: any) => (
                   <div key={c.id} className="flex gap-3 p-3 bg-input-bg/50 rounded-xl">
-                    <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0">
+                    <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0">
                       {c.user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -394,7 +394,7 @@ export default function ListingDetailPage() {
             {isLoggedIn && user?.id === listing.user.id && (
               <Link
                 href={`/account?edit=${listing.id}`}
-                className="w-full flex items-center justify-center gap-2 py-3 mb-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20"
+                className="w-full flex items-center justify-center gap-2 py-3 mb-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -426,7 +426,7 @@ export default function ListingDetailPage() {
                       <button onClick={() => setCartQty(Math.min(listing.stock, cartQty + 1))} className="w-8 h-8 bg-input-bg border border-input-border rounded-lg flex items-center justify-center hover:opacity-80">+</button>
                     </div>
                     <button onClick={handleBuyNow} disabled={cartAdding}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50 mb-2">
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50 mb-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                       {t("buyNow")}
                     </button>
@@ -449,7 +449,7 @@ export default function ListingDetailPage() {
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={`${UPLOADS}/${listing.user.avatar}`} alt={listing.user.name} className="w-12 h-12 rounded-xl object-cover shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all" />
               ) : (
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all">
+                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all">
                   {listing.user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                 </div>
               )}
@@ -535,7 +535,7 @@ export default function ListingDetailPage() {
                 <button
                   onClick={handleSendMessage}
                   disabled={msgSending || !msgText.trim()}
-                  className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-medium text-white text-sm hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50"
+                  className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-medium text-white text-sm hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50"
                 >
                   {msgSending ? "..." : t("sendMessage")}
                 </button>

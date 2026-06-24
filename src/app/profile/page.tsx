@@ -821,7 +821,7 @@ export default function ProfilePage() {
                   <p className="text-[11px] text-muted mt-1">Nömrəni aşağıdakı «📱 Telefon nömrələri» bölməsindən kod ilə dəyişə bilərsiniz.</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={handleSave} className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">{t("adminSave")}</button>
+                  <button onClick={handleSave} className="px-5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium">{t("adminSave")}</button>
                   <button onClick={() => setEditing(false)} className="px-5 py-2 bg-input-bg border border-input-border rounded-xl text-sm">{t("adminCancel")}</button>
                 </div>
               </div>
@@ -995,7 +995,7 @@ export default function ProfilePage() {
             <p className="text-[11px] font-semibold text-muted">{phoneMode === "primary" ? "Yeni əsas nömrə — kod ilə təsdiqlənəcək və bütün elanlarda dəyişəcək" : "Yeni nömrə əlavə et — kod ilə təsdiqlənəcək"}</p>
             <div className="flex gap-2">
               <input value={newPhone} onChange={(e) => { setNewPhone(e.target.value); setPhoneStep(""); }} placeholder="+994..." className={`${inputCls} flex-1`} />
-              <button onClick={phoneSendCode} disabled={phoneBusy || !newPhone.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{phoneBusy ? "..." : "Kod göndər"}</button>
+              <button onClick={phoneSendCode} disabled={phoneBusy || !newPhone.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{phoneBusy ? "..." : "Kod göndər"}</button>
             </div>
             {phoneStep === "code" && (
               <>
@@ -1089,7 +1089,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={saveOffer} disabled={offerBusy} className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{offerBusy ? "..." : editingOfferId ? "Yenilə" : "Əlavə et"}</button>
+            <button onClick={saveOffer} disabled={offerBusy} className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{offerBusy ? "..." : editingOfferId ? "Yenilə" : "Əlavə et"}</button>
             {editingOfferId && <button onClick={resetOfferForm} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv et</button>}
             <Link href="/consultations" className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold self-center ml-auto">Sorğularıma bax →</Link>
           </div>
@@ -1115,7 +1115,7 @@ export default function ProfilePage() {
             </button>
           </div>
         ) : (
-          <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50">
+          <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50">
             {cvBusy ? "Yüklənir…" : "📤 CV yüklə (PDF/şəkil)"}
             <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
           </label>
@@ -1178,7 +1178,7 @@ export default function ProfilePage() {
           <button
             onClick={uploadCredential}
             disabled={credBusy}
-            className="px-5 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 whitespace-nowrap"
+            className="px-5 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 whitespace-nowrap"
           >
             {credBusy ? "AI yoxlayır…" : "Yüklə və yoxla"}
           </button>
@@ -1223,7 +1223,7 @@ export default function ProfilePage() {
               <button
                 onClick={saveLocation}
                 disabled={locationSaving}
-                className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium disabled:opacity-50"
+                className="px-5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium disabled:opacity-50"
               >
                 {locationSaving ? "..." : t('save')}
               </button>
@@ -1404,7 +1404,7 @@ export default function ProfilePage() {
                 <button
                   type="submit"
                   disabled={!vehicleForm.passportImageFront || !vehicleForm.passportImageBack || extractLoading !== null}
-                  className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {vehicleForm.id ? t("adminSave") : "Yadda saxla"}
                 </button>
@@ -1505,7 +1505,7 @@ export default function ProfilePage() {
                 <input value={workplaceForm.address} onChange={(e) => setWorkplaceForm({ ...workplaceForm, address: e.target.value })} placeholder="Ünvan" className={inputCls} required />
               </div>
               <div className="flex gap-2">
-                <button type="submit" className="px-5 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">{workplaceForm.id ? t("adminSave") : "Əlavə et"}</button>
+                <button type="submit" className="px-5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium">{workplaceForm.id ? t("adminSave") : "Əlavə et"}</button>
                 <button type="button" onClick={cancelWorkplaceForm} className="px-5 py-2 bg-input-bg border border-input-border rounded-xl text-sm">{t("adminCancel")}</button>
               </div>
             </form>
@@ -1561,7 +1561,7 @@ export default function ProfilePage() {
               <p className="text-[11px] text-muted">Email ünvanınızı yazın — sizə doğrulama kodu göndəriləcək.</p>
               <div className="flex gap-2">
                 <input type="email" value={emailInput} onChange={(e) => { setEmailInput(e.target.value); setEmailCodeSent(false); setEmailError(""); }} placeholder="ornek@gmail.com" className={`${inputCls} flex-1`} />
-                <button onClick={handleSendEmailCode} disabled={emailLoading || !emailInput} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{emailLoading ? "..." : "Kod göndər"}</button>
+                <button onClick={handleSendEmailCode} disabled={emailLoading || !emailInput} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{emailLoading ? "..." : "Kod göndər"}</button>
               </div>
               {emailError && <p className="text-[11px] text-red-500">{emailError}</p>}
               {emailCodeSent && (
@@ -1627,7 +1627,7 @@ export default function ProfilePage() {
             {Object.entries(SOCIAL_META).map(([k, m]) => <option key={k} value={k}>{m.icon} {m.label}</option>)}
           </select>
           <input value={socialUrl} onChange={(e) => setSocialUrl(e.target.value)} placeholder="https://instagram.com/istifadeci" className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground" />
-          <button onClick={addSocial} disabled={socialBusy || !socialUrl.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{socialBusy ? "..." : "Əlavə et"}</button>
+          <button onClick={addSocial} disabled={socialBusy || !socialUrl.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{socialBusy ? "..." : "Əlavə et"}</button>
         </div>
       </div>
 

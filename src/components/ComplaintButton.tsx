@@ -57,7 +57,7 @@ export default function ComplaintButton({
             <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder="Nə baş verdi?" className="w-full px-3.5 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-3" />
             <div className="flex gap-2 justify-end">
               <button onClick={() => setOpen(false)} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv</button>
-              <button onClick={submit} disabled={busy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : "Göndər"}</button>
+              <button onClick={submit} disabled={busy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : "Göndər"}</button>
             </div>
           </div>
         </div>

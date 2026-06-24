@@ -64,7 +64,7 @@ export default function AdminCouriersPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl sm:text-2xl font-bold">{t("adminCouriers")}</h1>
         <button onClick={() => setShowForm(!showForm)}
-          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">
+          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium">
           {showForm ? t("adminCancel") : t("courierAdd")}
         </button>
       </div>
@@ -80,7 +80,7 @@ export default function AdminCouriersPage() {
           <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })}
             placeholder={t("courierPassword")} className={inputCls} />
           <button onClick={handleCreate}
-            className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">
+            className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium">
             {t("adminSave")}
           </button>
         </div>
@@ -105,7 +105,7 @@ export default function AdminCouriersPage() {
                   <input type="password" value={editForm.password} onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
                     placeholder={t("courierNewPassword")} className={inputCls} />
                   <div className="flex gap-2">
-                    <button onClick={handleUpdate} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">{t("adminSave")}</button>
+                    <button onClick={handleUpdate} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium">{t("adminSave")}</button>
                     <button onClick={() => setEditId(null)} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm">{t("adminCancel")}</button>
                   </div>
                 </div>

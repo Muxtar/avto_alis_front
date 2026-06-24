@@ -106,7 +106,7 @@ export default function InquiryChatbot() {
           mərkəzi düymədən açılır, ona görə üzən düymə gizlədilir. */}
       <button
         onClick={() => setOpen(!open)}
-        className="hidden md:flex fixed md:bottom-6 md:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg hover:scale-110 transition-transform items-center justify-center"
+        className="hidden md:flex fixed md:bottom-6 md:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg hover:scale-110 transition-transform items-center justify-center"
       >
         {open ? (
           <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -129,7 +129,7 @@ export default function InquiryChatbot() {
       {open && (
         <div className="fixed z-50 top-2 left-2 right-2 bottom-2 md:top-auto md:left-auto md:bottom-24 md:right-6 md:w-[440px] md:h-[78vh] md:max-h-[720px] bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Header */}
-          <div className="bg-gradient-to-r from-orange-500 to-red-600 px-4 py-3 text-white flex items-center justify-between gap-2">
+          <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-white flex items-center justify-between gap-2">
             <div>
               <div className="font-bold text-sm">{t('chatbotTitle')}</div>
               <div className="text-xs opacity-80">{t('chatbotSubtitle')}</div>
@@ -150,7 +150,7 @@ export default function InquiryChatbot() {
                 <div
                   className={`max-w-[85%] px-3 py-2 rounded-xl text-sm whitespace-pre-line ${
                     msg.role === 'user'
-                      ? 'bg-gradient-to-r from-orange-500 to-red-600 text-white'
+                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
                       : 'bg-input-bg text-foreground border border-input-border'
                   }`}
                 >
@@ -214,7 +214,7 @@ export default function InquiryChatbot() {
               <button
                 onClick={send}
                 disabled={loading || !input.trim()}
-                className="bg-gradient-to-r from-orange-500 to-red-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
+                className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
               </button>

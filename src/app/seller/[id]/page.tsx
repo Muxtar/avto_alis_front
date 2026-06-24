@@ -162,7 +162,7 @@ export default function SellerProfilePage() {
                       <p className="font-semibold text-sm">{o.title || "Rəy konsultasiyası"}</p>
                       <p className="text-xs text-muted">{o.durationMinutes} dəq · <b className="text-foreground">{o.price} AZN</b></p>
                     </div>
-                    <button onClick={() => requestConsultation(o.id)} disabled={reqBusy === o.id} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                    <button onClick={() => requestConsultation(o.id)} disabled={reqBusy === o.id} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
                       {reqBusy === o.id ? "..." : "Rəy al"}
                     </button>
                   </div>

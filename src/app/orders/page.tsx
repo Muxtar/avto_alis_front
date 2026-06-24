@@ -365,7 +365,7 @@ export default function OrdersPage() {
                         </div>
                         <div className="flex gap-2">
                           <button onClick={() => submitReturn(order.id)} disabled={returnLoading}
-                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-xs font-medium disabled:opacity-50">
+                            className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-xs font-medium disabled:opacity-50">
                             {returnLoading ? "..." : t("submitReturn")}
                           </button>
                           <button onClick={() => setReturnModal(null)}

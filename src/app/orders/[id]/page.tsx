@@ -234,7 +234,7 @@ export default function OrderDetailPage() {
           <button
             onClick={submitRating}
             disabled={submittingRating || ratingValue < 1}
-            className="w-full py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            className="w-full py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
           >
             {submittingRating ? '...' : t('writeReview')}
           </button>

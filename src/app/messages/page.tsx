@@ -227,7 +227,7 @@ export default function MessagesPage() {
                     <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
                       <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm break-words ${
                         isMine
-                          ? "bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-br-md"
+                          ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-br-md"
                           : "bg-input-bg border border-input-border text-foreground rounded-bl-md"
                       }`}>
                         {msg.listing && (
@@ -263,7 +263,7 @@ export default function MessagesPage() {
                 <button
                   onClick={handleSend}
                   disabled={sending || !newMsg.trim()}
-                  className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white font-medium text-sm hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50 shrink-0"
+                  className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white font-medium text-sm hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50 shrink-0"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
                 </button>

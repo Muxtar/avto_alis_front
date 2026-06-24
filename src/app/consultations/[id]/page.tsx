@@ -141,7 +141,7 @@ export default function ConsultationDetailPage() {
           ) : (
             <>
               {(session.status === "REQUESTED" || session.status === "ENDED") && session.status !== "PENDING_VOEN" && (
-                <button onClick={() => act("pay")} disabled={busy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                <button onClick={() => act("pay")} disabled={busy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
                   {session.status === "ENDED" ? "Yenidən ödə (vaxt artır)" : `Ödə — ${session.price} AZN`}
                 </button>
               )}
@@ -192,7 +192,7 @@ export default function ConsultationDetailPage() {
             <button onClick={() => setLike(false)} className={`px-3 py-1.5 rounded-lg text-sm ${like === false ? "bg-red-500/20 text-red-500" : "bg-input-bg text-muted"}`}>👎 Bəyənmədim</button>
           </div>
           <textarea value={rateText} onChange={(e) => setRateText(e.target.value)} rows={2} placeholder="Rəyiniz (istəyə bağlı)…" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-2" />
-          <button onClick={submitRate} disabled={busy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Qiymətləndir</button>
+          <button onClick={submitRate} disabled={busy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Qiymətləndir</button>
         </div>
       )}
       {!isPro && session.rated && <p className="text-center text-sm text-green-500 mt-3">✓ Qiymətləndirildi</p>}

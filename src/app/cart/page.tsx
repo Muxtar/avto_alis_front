@@ -214,7 +214,7 @@ export default function CartPage() {
         <div className="text-center py-20 surface">
           <svg className="w-16 h-16 text-muted-foreground/20 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272" /></svg>
           <p className="text-muted mb-4">{t("cartEmpty")}</p>
-          <Link href="/elanlar" className="inline-block px-6 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium">{t("marketplace")}</Link>
+          <Link href="/elanlar" className="inline-block px-6 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium">{t("marketplace")}</Link>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
@@ -306,7 +306,7 @@ export default function CartPage() {
               </div>
 
               {!showCheckout ? (
-                <button onClick={() => setShowCheckout(true)} className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-semibold">
+                <button onClick={() => setShowCheckout(true)} className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-semibold">
                   {t("checkout")}
                 </button>
               ) : (

@@ -89,7 +89,7 @@ export default function SharedCartPage() {
             <span className="font-semibold">Cəmi</span>
             <span className="text-orange-500 font-bold text-lg">{Number(data.total || 0).toFixed(2)} AZN</span>
           </div>
-          <button onClick={importToCart} disabled={importing} className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-semibold disabled:opacity-50">
+          <button onClick={importToCart} disabled={importing} className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold disabled:opacity-50">
             {importing ? "Əlavə olunur…" : "Səbətimə əlavə et və al"}
           </button>
         </>

@@ -99,11 +99,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="w-16 sm:w-56 bg-card border-r border-card-border flex flex-col shrink-0 transition-colors">
         <div className="p-3 sm:p-4 border-b border-card-border">
           <div className="hidden sm:flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center font-bold text-xs text-white">A</div>
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center font-bold text-xs text-white">A</div>
             <span className="font-semibold text-sm">{t("adminPanel")}</span>
           </div>
           <div className="sm:hidden flex justify-center">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-600 rounded-lg flex items-center justify-center font-bold text-xs text-white">A</div>
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center font-bold text-xs text-white">A</div>
           </div>
         </div>
 

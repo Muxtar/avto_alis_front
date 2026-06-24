@@ -92,7 +92,7 @@ export default function AddressesPage() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">{t('myAddresses')}</h1>
         <button onClick={() => { setShowForm(!showForm); setEditId(null); setForm({ label: '', address: '', phone: '', isDefault: false }); }}
-          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg text-sm font-medium">
+          className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-sm font-medium">
           {showForm ? t('cancel') : `+ ${t('addAddress')}`}
         </button>
       </div>
@@ -106,7 +106,7 @@ export default function AddressesPage() {
             <input type="checkbox" checked={form.isDefault} onChange={e => setForm({ ...form, isDefault: e.target.checked })} />
             {t('setAsDefault')}
           </label>
-          <button type="submit" className="w-full py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg text-sm font-medium">
+          <button type="submit" className="w-full py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-sm font-medium">
             {editId ? t('save') : t('add')}
           </button>
         </form>

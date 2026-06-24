@@ -82,6 +82,7 @@ export default function MarketplacePage() {
   // Kateqoriya gridini yığcam göstər (çox olduqda "Daha çox" ilə aç).
   const [showAllCats, setShowAllCats] = useState(false);
   const COLLAPSED_CATS = 11;
+  const SHOW_TAPAZ_GRID: boolean = false; // tap.az grid söndürülüb — kateqoriyalar sol paneldədir
   // Filterler
   const [conditionFilter, setConditionFilter] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>("");
@@ -319,8 +320,8 @@ export default function MarketplacePage() {
         </div>
       </div>
 
-      {/* Kateqoriyalar (tap.az üslubu): kartlar → klikdə alt-kateqoriya sətri. İxtisas rejimində gizlədilir. */}
-      {activeType !== "PROFESSION" && (
+      {/* tap.az üslublu kateqoriya gridi söndürüldü — kateqoriyalar artıq sol paneldədir (umico üslubu). */}
+      {SHOW_TAPAZ_GRID && activeType !== "PROFESSION" && (
       <div className="border-b border-card-border bg-card/30">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6">
           {(() => {
@@ -444,21 +445,52 @@ export default function MarketplacePage() {
 
       {/* Listings Grid with side ads */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
-        <div className="lg:grid lg:grid-cols-[160px_1fr_160px] lg:gap-6">
-          {/* Left ad column */}
+        <div className="lg:grid lg:grid-cols-[230px_1fr] lg:gap-6">
+          {/* Sol kateqoriya paneli (umico/birmarket üslubu) */}
           <aside className="hidden lg:block">
-            <div className="sticky top-20 space-y-4">
-              <div className="w-[160px] h-[600px] surface overflow-hidden flex flex-col items-center justify-center text-muted text-xs">
-                <svg className="w-8 h-8 mb-2 text-muted-foreground/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
-                </svg>
-                <span>Reklam</span>
-              </div>
+            <div className="sticky top-20 surface overflow-hidden">
+              <p className="px-4 py-3 text-sm font-bold border-b border-card-border">Kateqoriyalar</p>
+              <nav className="py-1 max-h-[70vh] overflow-y-auto">
+                {CATEGORIES.map((c) => {
+                  const active = selectedCategory ? parseCat(selectedCategory).main === c.name : false;
+                  return (
+                    <Link
+                      key={c.name}
+                      href={`/elanlar/${catToSlugs(c.name).join("/")}`}
+                      className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${active ? "text-orange-500 font-semibold bg-orange-500/10" : "text-foreground hover:bg-input-bg"}`}
+                    >
+                      <span className="text-base shrink-0">{c.icon}</span>
+                      <span className="truncate">{c.name}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
             </div>
           </aside>
 
           {/* Center column - listings */}
           <div className="min-w-0">
+            {/* Hero banner (umico üslubu) */}
+            <div className="grid sm:grid-cols-3 gap-3 mb-5">
+              <Link href="/elanlar" className="sm:col-span-2 relative overflow-hidden rounded-2xl p-6 sm:p-8 flex flex-col justify-center text-white min-h-[160px]" style={{ background: "linear-gradient(135deg,#25d366 0%,#0e8a5f 100%)" }}>
+                <p className="text-lg sm:text-2xl font-extrabold leading-tight">Hər şey bir platformada</p>
+                <p className="text-sm text-white/90 mt-1">Al, sat, kəşf et — məhsul, xidmət və peşəkarlar.</p>
+                <span className="mt-3 inline-flex w-fit items-center gap-1.5 bg-white/20 hover:bg-white/30 transition-colors rounded-xl px-4 py-2 text-sm font-semibold">Bazara keç →</span>
+              </Link>
+              <div className="flex sm:flex-col gap-3">
+                <Link href="/consultations" className="flex-1 rounded-2xl p-4 bg-emerald-500/10 border border-emerald-500/30 hover:border-emerald-500/60 transition-colors flex flex-col justify-center">
+                  <span className="text-2xl">🗣️</span>
+                  <p className="font-bold text-sm mt-1">Peşəkardan Rəy al</p>
+                  <p className="text-[11px] text-muted">Onlayn konsultasiya</p>
+                </Link>
+                <Link href="/locations" className="flex-1 rounded-2xl p-4 bg-orange-500/10 border border-orange-500/30 hover:border-orange-500/60 transition-colors flex flex-col justify-center">
+                  <span className="text-2xl">🗺️</span>
+                  <p className="font-bold text-sm mt-1">Xəritədə tap</p>
+                  <p className="text-[11px] text-muted">Yaxınında obyekt və usta</p>
+                </Link>
+              </div>
+            </div>
+
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
                 {Array.from({ length: 8 }).map((_, i) => (
@@ -543,17 +575,6 @@ export default function MarketplacePage() {
             )}
           </div>
 
-          {/* Right ad column */}
-          <aside className="hidden lg:block">
-            <div className="sticky top-20 space-y-4">
-              <div className="w-[160px] h-[600px] surface overflow-hidden flex flex-col items-center justify-center text-muted text-xs">
-                <svg className="w-8 h-8 mb-2 text-muted-foreground/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
-                </svg>
-                <span>Reklam</span>
-              </div>
-            </div>
-          </aside>
         </div>
       </div>
 

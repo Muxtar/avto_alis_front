@@ -102,7 +102,7 @@ export default function SellerApplyPage() {
             </div>
             <h3 className="text-lg font-semibold text-green-500 mb-1">{t("kycApproved")}</h3>
             <p className="text-sm text-muted">Artıq elan verə bilərsiniz</p>
-            <Link href="/account" className="inline-block mt-4 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white font-medium">Elanlarım</Link>
+            <Link href="/account" className="inline-block mt-4 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white font-medium">Elanlarım</Link>
           </div>
         )}
 
@@ -163,7 +163,7 @@ export default function SellerApplyPage() {
               <label className="block text-sm font-medium mb-2">{t("businessName")}</label>
               <input type="text" value={businessName} onChange={(e) => setBusinessName(e.target.value)} className={inputClass} />
             </div>
-            <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50">
+            <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50">
               {loading ? t("submitting") : t("submitApplication")}
             </button>
           </form>

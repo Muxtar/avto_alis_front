@@ -260,7 +260,7 @@ export default function AdminUsersPage() {
             </div>
 
             <div className="flex gap-2 mt-6">
-              <button onClick={handleSave} className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 rounded-xl text-white text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all">
+              <button onClick={handleSave} className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all">
                 {t("adminSave")}
               </button>
               <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:opacity-80 transition-all">
