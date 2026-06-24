@@ -517,30 +517,50 @@ export default function MarketplacePage() {
                   <p className="text-muted text-sm">İxtisas adı ilə axtarın (məs. Həkim, Mühəndis, Usta)</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 animate-fade-in">
-                  {professionals.map((p) => (
-                    <Link key={p.id} href={`/seller/${p.id}`} className="surface p-4 flex items-center gap-3 hover:border-orange-500/50 transition-colors">
-                      <div className="w-14 h-14 rounded-full bg-input-bg overflow-hidden shrink-0 flex items-center justify-center text-xl">
-                        {p.avatar ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={`${UPLOADS}/${p.avatar}`} alt={p.name} className="w-full h-full object-cover" />
-                        ) : "👤"}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate flex items-center gap-1.5">
-                          {p.name || "İstifadəçi"}
-                          {p.idVerifyStatus === "APPROVED" && <span className="text-green-500 text-xs">✓</span>}
-                        </p>
-                        <p className="text-orange-500 text-xs font-medium truncate">{p.profession}</p>
-                        <p className="text-[11px] text-muted truncate">
-                          {p.city ? `📍 ${p.city}` : ""}
-                          {p.ratingCount > 0 ? ` · ⭐ ${p.avgRating?.toFixed(1)} (${p.ratingCount})` : ""}
-                          {p._count?.listings ? ` · ${p._count.listings} elan` : ""}
-                        </p>
-                      </div>
-                    </Link>
-                  ))}
+                <>
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 animate-fade-in">
+                  {professionals.map((p) => {
+                    const offer = p.consultationOffers?.[0];
+                    return (
+                      <Link key={p.id} href={`/seller/${p.id}`} className="surface overflow-hidden hover:border-orange-500/50 hover:shadow-lg transition-all group">
+                        {/* Üst yaşıl başlıq + böyük avatar */}
+                        <div className="h-16 bg-gradient-to-r from-orange-500/15 to-emerald-500/15 relative" />
+                        <div className="px-4 pb-4 -mt-9">
+                          <div className="w-[72px] h-[72px] rounded-2xl bg-input-bg overflow-hidden ring-4 ring-card shadow-md flex items-center justify-center text-3xl">
+                            {p.avatar ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={`${UPLOADS}/${p.avatar}`} alt={p.name} className="w-full h-full object-cover" />
+                            ) : "👤"}
+                          </div>
+                          <div className="mt-2.5 flex items-center gap-1.5">
+                            <p className="font-bold text-base truncate">{p.name || "İstifadəçi"}</p>
+                            {p.idVerifyStatus === "APPROVED" && (
+                              <svg viewBox="0 0 24 24" className="w-4 h-4 text-orange-500 shrink-0" fill="currentColor"><path d="M12 2l2.39 1.74 2.95-.02 1.13 2.72 2.46 1.62-.62 2.88.62 2.88-2.46 1.62-1.13 2.72-2.95-.02L12 22l-2.39-1.74-2.95.02-1.13-2.72-2.46-1.62.62-2.88-.62-2.88 2.46-1.62 1.13-2.72 2.95.02L12 2z"/><path d="M10.6 14.6l-2.2-2.2-1.2 1.2 3.4 3.4 6-6-1.2-1.2-4.8 4.8z" fill="#fff"/></svg>
+                            )}
+                          </div>
+                          {p.profession && (
+                            <span className="inline-block mt-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-orange-500/10 text-orange-500">{p.profession}</span>
+                          )}
+                          {p.bio && <p className="text-xs text-muted mt-2 line-clamp-2">{p.bio}</p>}
+                          <div className="flex items-center gap-3 mt-2.5 text-xs text-muted">
+                            {p.city && <span className="flex items-center gap-1">📍 {p.city}</span>}
+                            {p.ratingCount > 0 && <span className="flex items-center gap-1">⭐ <b className="text-foreground">{p.avgRating?.toFixed(1)}</b> ({p.ratingCount})</span>}
+                          </div>
+                          <div className="mt-3 flex items-center justify-between gap-2">
+                            {offer ? (
+                              <span className="text-sm"><b className="text-orange-500">{offer.price} AZN</b><span className="text-muted text-xs">/{offer.durationMinutes}dəq</span></span>
+                            ) : <span className="text-xs text-muted">Profili gör</span>}
+                            <span className="px-3 py-1.5 rounded-xl text-white text-xs font-semibold bg-gradient-to-r from-orange-500 to-orange-600 group-hover:opacity-90">
+                              {offer ? "Rəy al" : "Profilə bax →"}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
+                <p className="text-[11px] text-muted text-center mt-4">İxtisas üzrə əlaqə platforma üzərindən (Rəy konsultasiyası) qurulur — telefon nömrəsi göstərilmir.</p>
+                </>
               )
             ) : listings.length === 0 ? (
               <div className="text-center py-20 animate-fade-in">
