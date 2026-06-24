@@ -302,7 +302,9 @@ export default function SellerProfilePage() {
       {/* İxtisas rejimi: məhsul satışı yox — yalnız Rəy konsultasiyası */}
       {ixtisasMode ? (
         <div className="text-center py-8 text-muted text-sm bg-card border border-card-border rounded-2xl">
-          🗣️ Bu peşəkarla əlaqə <b className="text-foreground">Rəy konsultasiyası</b> üzərindən qurulur. Yuxarıdakı təklifdən «Rəy al» düyməsinə basın.
+          {user.consultationOffers?.length > 0
+            ? <>🗣️ Bu peşəkarla əlaqə <b className="text-foreground">Rəy konsultasiyası</b> üzərindən qurulur. Yuxarıdakı təklifdən «Rəy al» düyməsinə basın.</>
+            : <>🗣️ Bu peşəkar hələ <b className="text-foreground">Rəy konsultasiyası</b> təklifi yaratmayıb. Daha sonra yenidən yoxlayın.</>}
         </div>
       ) : (
         <>
