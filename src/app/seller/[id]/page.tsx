@@ -84,7 +84,7 @@ export default function SellerProfilePage() {
   const filteredListings = typeFilter === "all" ? listings : listings.filter((l: any) => l.type === typeFilter);
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+    <div className={`${ixtisasMode ? "max-w-3xl" : "max-w-7xl"} mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6`}>
       {/* Back */}
       <Link href="/elanlar" className="inline-flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-400 mb-4 transition-colors">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,21 +159,32 @@ export default function SellerProfilePage() {
               <p className="text-sm text-foreground/80 mb-4 whitespace-pre-line max-w-prose">{user.bio}</p>
             )}
 
-            {/* Rəy konsultasiyası təklifləri (çoxlu) */}
+            {/* Rəy konsultasiyası təklifləri (çoxlu) — detallı kartlar */}
             {user.consultationOffers?.length > 0 && (
-              <div className="mb-4 space-y-2">
-                <p className="text-xs font-semibold text-muted flex items-center gap-1.5">🗣️ Rəy konsultasiyası</p>
-                {user.consultationOffers.map((o: any) => (
-                  <div key={o.id} className="p-3.5 bg-orange-500/5 border border-orange-500/30 rounded-xl flex items-center gap-3 flex-wrap">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">{o.title || "Rəy konsultasiyası"}</p>
-                      <p className="text-xs text-muted">{o.durationMinutes} dəq · <b className="text-foreground">{o.price} AZN</b></p>
+              <div className="mb-4">
+                <p className="text-xs font-semibold text-muted flex items-center gap-1.5 mb-2">🗣️ Rəy konsultasiyası</p>
+                <div className="space-y-2.5">
+                  {user.consultationOffers.map((o: any) => (
+                    <div key={o.id} className="rounded-2xl border border-orange-500/30 bg-orange-500/5 overflow-hidden">
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-bold text-[15px] leading-tight">{o.title || "Rəy konsultasiyası"}</p>
+                            <div className="flex items-center gap-2 mt-1.5">
+                              <span className="inline-flex items-center gap-1 text-[11px] text-muted bg-input-bg border border-input-border rounded-md px-2 py-0.5">⏱ {o.durationMinutes} dəq</span>
+                              <span className="text-lg font-extrabold text-orange-500">{o.price} <span className="text-xs font-bold">AZN</span></span>
+                            </div>
+                          </div>
+                          <button onClick={() => requestConsultation(o.id)} disabled={reqBusy === o.id} className="shrink-0 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm">
+                            {reqBusy === o.id ? "..." : "Rəy al"}
+                          </button>
+                        </div>
+                        {o.description && <p className="text-[13px] text-foreground/80 mt-2.5 whitespace-pre-line leading-snug">{o.description}</p>}
+                      </div>
                     </div>
-                    <button onClick={() => requestConsultation(o.id)} disabled={reqBusy === o.id} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
-                      {reqBusy === o.id ? "..." : "Rəy al"}
-                    </button>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted mt-2">ℹ️ «Rəy al» basdıqda söhbət açılır; peşəkar sayğacı başladanda vaxt işləyir, ödədiyiniz müddət bitəndə yazışma dayanır.</p>
               </div>
             )}
 

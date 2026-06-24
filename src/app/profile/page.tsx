@@ -230,7 +230,7 @@ export default function ProfilePage() {
   // ---- Rəy konsultasiyası təklifləri (çoxlu) ----
   const [offers, setOffers] = useState<any[]>([]);
   const [offerHasVoen, setOfferHasVoen] = useState(false);
-  const emptyOfferForm = { title: "", durationMinutes: "30", price: "", active: true };
+  const emptyOfferForm = { title: "", description: "", durationMinutes: "30", price: "", active: true };
   const [offerForm, setOfferForm] = useState(emptyOfferForm);
   const [editingOfferId, setEditingOfferId] = useState<number | null>(null);
   const [offerBusy, setOfferBusy] = useState(false);
@@ -242,10 +242,10 @@ export default function ProfilePage() {
     } catch { /* keç */ }
   };
   const resetOfferForm = () => { setOfferForm(emptyOfferForm); setEditingOfferId(null); };
-  const editOffer = (o: any) => { setEditingOfferId(o.id); setOfferForm({ title: o.title || "", durationMinutes: String(o.durationMinutes), price: String(o.price), active: o.active }); };
+  const editOffer = (o: any) => { setEditingOfferId(o.id); setOfferForm({ title: o.title || "", description: o.description || "", durationMinutes: String(o.durationMinutes), price: String(o.price), active: o.active }); };
   const saveOffer = async () => {
     setOfferBusy(true);
-    const body = JSON.stringify({ title: offerForm.title, durationMinutes: parseInt(offerForm.durationMinutes) || 30, price: parseFloat(offerForm.price) || 0, active: offerForm.active });
+    const body = JSON.stringify({ title: offerForm.title, description: offerForm.description, durationMinutes: parseInt(offerForm.durationMinutes) || 30, price: parseFloat(offerForm.price) || 0, active: offerForm.active });
     const url = editingOfferId ? `${API}/me/consultation-offers/${editingOfferId}` : `${API}/me/consultation-offers`;
     try {
       const r = await fetch(url, { method: editingOfferId ? "PUT" : "POST", headers, body }).then((x) => x.json());
@@ -1059,6 +1059,7 @@ export default function ProfilePage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{o.title || "Rəy konsultasiyası"}</p>
                   <p className="text-xs text-muted">{o.durationMinutes} dəq · {o.price} AZN {!o.active && <span className="text-amber-500">· deaktiv</span>}</p>
+                  {o.description && <p className="text-[11px] text-muted mt-0.5 line-clamp-1">{o.description}</p>}
                 </div>
                 <button onClick={() => editOffer(o)} className="text-[12px] text-orange-500 font-semibold">Redaktə</button>
                 <button onClick={() => deleteOffer(o.id)} className="text-muted hover:text-red-500 text-sm">✕</button>
@@ -1074,6 +1075,10 @@ export default function ProfilePage() {
             <div className="sm:col-span-3">
               <label className="block text-xs font-medium text-muted mb-1">Başlıq</label>
               <input value={offerForm.title} onChange={(e) => setOfferForm((f) => ({ ...f, title: e.target.value }))} placeholder="məs. İlk konsultasiya" className={inputCls} />
+            </div>
+            <div className="sm:col-span-3">
+              <label className="block text-xs font-medium text-muted mb-1">Qeyd / təsvir <span className="text-muted font-normal">(nə daxildir, necə keçir)</span></label>
+              <textarea value={offerForm.description} onChange={(e) => setOfferForm((f) => ({ ...f, description: e.target.value }))} rows={3} maxLength={1000} placeholder="məs. Backend memarlığı, kod baxışı və suallarınıza cavab. Zoom/çat ilə." className={`${inputCls} resize-none`} />
             </div>
             <div>
               <label className="block text-xs font-medium text-muted mb-1">Müddət (dəq)</label>
