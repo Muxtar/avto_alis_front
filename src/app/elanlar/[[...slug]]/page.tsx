@@ -472,7 +472,14 @@ function MarketplacePage() {
                     <Link
                       key={c.name}
                       href={`/elanlar/${catToSlugs(c.name).join("/")}`}
-                      onMouseEnter={(e) => { const r = e.currentTarget.getBoundingClientRect(); setHoverCat(hasSubs ? { cat: c, top: r.top, left: r.right } : null); }}
+                      onMouseEnter={(e) => {
+                        if (!hasSubs) { setHoverCat(null); return; }
+                        const r = e.currentTarget.getBoundingClientRect();
+                        const vh = window.innerHeight;
+                        const est = Math.min((c.subs.length + 2) * 38, vh * 0.7);
+                        const top = Math.max(8, Math.min(r.top, vh - est - 8));
+                        setHoverCat({ cat: c, top, left: r.right });
+                      }}
                       className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${active ? "text-orange-500 font-semibold bg-orange-500/10" : "text-foreground hover:bg-input-bg"}`}
                     >
                       <span className="text-base shrink-0">{c.icon}</span>
@@ -486,7 +493,7 @@ function MarketplacePage() {
               {/* Alt-kateqoriya flyout-u — fixed (scroll konteynerindən kənar, kəsilmir) */}
               {hoverCat && (
                 <div
-                  style={{ position: "fixed", top: Math.min(hoverCat.top, (typeof window !== "undefined" ? window.innerHeight : 800) - 380), left: hoverCat.left }}
+                  style={{ position: "fixed", top: hoverCat.top, left: hoverCat.left }}
                   className="z-[60] w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5"
                 >
                   <Link href={`/elanlar/${catToSlugs(hoverCat.cat.name).join("/")}`} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-orange-500 hover:bg-orange-500/10">

@@ -29,6 +29,7 @@ export default function Navbar() {
   const [langOpen, setLangOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
+  const [catHover, setCatHover] = useState<{ cat: any; top: number; left: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -58,7 +59,7 @@ export default function Navbar() {
     const handler = (e: MouseEvent) => {
       if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
       if (userRef.current && !userRef.current.contains(e.target as Node)) setUserOpen(false);
-      if (catRef.current && !catRef.current.contains(e.target as Node)) setCatOpen(false);
+      if (catRef.current && !catRef.current.contains(e.target as Node)) { setCatOpen(false); setCatHover(null); }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -135,44 +136,53 @@ export default function Navbar() {
 
             {/* Kataloq — kateqoriya menyusu */}
             <div ref={catRef} className="relative hidden sm:block shrink-0">
-              <button onClick={() => setCatOpen((v) => !v)} className="flex items-center gap-2 px-4 h-11 rounded-xl text-white font-semibold text-sm hover:opacity-90 transition-opacity" style={{ background: PINK }}>
+              <button onClick={() => { setCatOpen((v) => !v); setCatHover(null); }} className="flex items-center gap-2 px-4 h-11 rounded-xl text-white font-semibold text-sm hover:opacity-90 transition-opacity" style={{ background: PINK }}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                 Kataloq
                 <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {catOpen && (
-                <div className="absolute left-0 mt-2 w-64 bg-card border border-card-border rounded-xl shadow-xl z-50 py-1">
+                <div className="absolute left-0 mt-2 w-64 bg-card border border-card-border rounded-xl shadow-xl z-50 py-1 max-h-[70vh] overflow-y-auto" onMouseLeave={() => setCatHover(null)}>
                   {CATEGORIES.map((c) => {
                     const hasSubs = c.subs && c.subs.length > 0;
                     return (
-                      <div key={c.name} className="relative group">
-                        <Link href={`/elanlar/${slugify(c.name)}`} onClick={() => setCatOpen(false)}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm group-hover:bg-input-bg transition-colors text-foreground">
-                          <span className="text-lg shrink-0">{c.icon}</span>
-                          <span className="truncate flex-1">{c.name}</span>
-                          {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
-                        </Link>
-                        {hasSubs && (
-                          <div className="hidden group-hover:block absolute left-full top-0 z-50 w-64 max-h-[80vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5">
-                            <Link href={`/elanlar/${slugify(c.name)}`} onClick={() => setCatOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-input-bg" style={{ color: PINK }}>
-                              <span>{c.icon}</span> {c.name} — hamısı
-                            </Link>
-                            <div className="border-t border-card-border my-1" />
-                            {c.subs.map((s) => (
-                              <Link key={s.name} href={`/elanlar/${slugify(c.name)}/${slugify(s.name)}`} onClick={() => setCatOpen(false)}
-                                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors">
-                                <span className="text-base shrink-0">{s.icon}</span>
-                                <span className="truncate">{s.name}</span>
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <Link key={c.name} href={`/elanlar/${slugify(c.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
+                        onMouseEnter={(e) => {
+                          if (!hasSubs) { setCatHover(null); return; }
+                          const r = e.currentTarget.getBoundingClientRect();
+                          const vh = window.innerHeight;
+                          const est = Math.min((c.subs.length + 2) * 38, vh * 0.7);
+                          const top = Math.max(8, Math.min(r.top, vh - est - 8));
+                          setCatHover({ cat: c, top, left: r.right });
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                        <span className="text-lg shrink-0">{c.icon}</span>
+                        <span className="truncate flex-1">{c.name}</span>
+                        {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+                      </Link>
                     );
                   })}
-                  <Link href="/elanlar" onClick={() => setCatOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-t border-card-border mt-1" style={{ color: PINK }}>
+                  <Link href="/elanlar" onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-t border-card-border mt-1" style={{ color: PINK }}>
                     Bütün kateqoriyalar →
                   </Link>
+
+                  {/* Alt-kateqoriya flyout-u — fixed (klamplanmış, ekrandan çıxmır) */}
+                  {catHover && (
+                    <div style={{ position: "fixed", top: catHover.top, left: catHover.left }}
+                      className="z-[60] w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5">
+                      <Link href={`/elanlar/${slugify(catHover.cat.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-input-bg" style={{ color: PINK }}>
+                        <span>{catHover.cat.icon}</span> {catHover.cat.name} — hamısı
+                      </Link>
+                      <div className="border-t border-card-border my-1" />
+                      {catHover.cat.subs.map((s: any) => (
+                        <Link key={s.name} href={`/elanlar/${slugify(catHover.cat.name)}/${slugify(s.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
+                          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors">
+                          <span className="text-base shrink-0">{s.icon}</span>
+                          <span className="truncate">{s.name}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
