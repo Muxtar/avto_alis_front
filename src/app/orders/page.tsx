@@ -37,6 +37,12 @@ export default function OrdersPage() {
     fetchOrders();
   }, [isLoggedIn, authLoading]);
 
+  // ?tab=selling/buying → uyğun tab açılsın (menyudan deep-link).
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "selling" || tab === "buying") setActiveTab(tab);
+  }, []);
+
   // Bank ödənişindən qayıdış nəticəsini göstər (?payment=success|failed|error).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
