@@ -31,6 +31,31 @@ export default function ListingDetailPage() {
   const [cartAdded, setCartAdded] = useState(false);
   const [showPhone, setShowPhone] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favBusy, setFavBusy] = useState(false);
+
+  // Seçilmiş statusunu yoxla.
+  useEffect(() => {
+    if (!listing || !token || !isLoggedIn) return;
+    fetch(`${API}/favorites/check`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ listingIds: [listing.id] }),
+    }).then((r) => r.json()).then((d) => setIsFavorited((d.favorites || []).includes(listing.id))).catch(() => {});
+  }, [listing, token, isLoggedIn]);
+
+  const toggleFavorite = async () => {
+    if (!isLoggedIn || !listing) { toast(t("loginRequired"), "error"); return; }
+    setFavBusy(true);
+    try {
+      if (isFavorited) {
+        await fetch(`${API}/favorites/${listing.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+        setIsFavorited(false);
+      } else {
+        await fetch(`${API}/favorites`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ listingId: listing.id }) });
+        setIsFavorited(true);
+      }
+    } catch { toast(t("error"), "error"); } finally { setFavBusy(false); }
+  };
 
   const maskPhone = (phone: string | undefined | null) => {
     if (!phone) return "";
@@ -413,9 +438,18 @@ export default function ListingDetailPage() {
 
                 {/* VÖEN-siz (fərdi) elanlarda sayt üzərindən alış yoxdur — yalnız əlaqə (tap.az üslubu). */}
                 {!listing.businessId && (
-                  <div className="mb-2 px-3 py-2 bg-input-bg border border-input-border rounded-xl text-muted text-xs text-center">
-                    Bu fərdi elandır — satıcı ilə birbaşa əlaqə saxlayın (sayt üzərindən ödəniş yoxdur).
-                  </div>
+                  <>
+                    <div className="mb-2 px-3 py-2 bg-input-bg border border-input-border rounded-xl text-muted text-xs text-center">
+                      Bu fərdi elandır — satıcı ilə birbaşa əlaqə saxlayın (sayt üzərindən ödəniş yoxdur).
+                    </div>
+                    {user?.id !== listing.user.id && (
+                      <button onClick={toggleFavorite} disabled={favBusy}
+                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all mb-2 disabled:opacity-50 ${isFavorited ? "bg-orange-500/10 text-orange-500 border border-orange-500/40" : "bg-input-bg border border-input-border text-foreground hover:border-orange-500/50"}`}>
+                        <svg className="w-5 h-5" fill={isFavorited ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                        {isFavorited ? "Seçilmişlərdədir ✓" : "Seçilmişlərə əlavə et"}
+                      </button>
+                    )}
+                  </>
                 )}
                 {listing.businessId && isLoggedIn && user?.id !== listing.user.id && listing.stock > 0 && (
                   <>
