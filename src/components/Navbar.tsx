@@ -123,10 +123,9 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 sm:gap-4 h-16">
             {/* Logo */}
-            <Link href="/elanlar" className="flex items-center gap-1.5 shrink-0 group">
-              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="none" style={{ color: PINK }}>
-                <path d="M12 2l3.5 6.5L22 12l-6.5 3.5L12 22l-3.5-6.5L2 12l6.5-3.5L12 2z" fill="currentColor" />
-              </svg>
+            <Link href="/elanlar" className="flex items-center gap-2 shrink-0 group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/tradixai-icon.svg" alt="tradixai" className="w-9 h-9 rounded-xl shrink-0" />
               <span className="text-xl sm:text-2xl font-extrabold tracking-tight" style={{ color: PINK }}>tradixai</span>
             </Link>
 
