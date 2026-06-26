@@ -179,7 +179,7 @@ export default function Navbar() {
                       {catHover.cat.subs.map((s: any) => (
                         <Link key={s.name} href={`/elanlar/${slugify(catHover.cat.name)}/${slugify(s.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
                           className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors">
-                          <span className="text-base shrink-0">{s.icon}</span>
+                          <svg className="w-4 h-4 text-muted-foreground shrink-0" fill="none" stroke="currentColor" strokeWidth={1.7} viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round"><path d="M3 8.5V5a2 2 0 0 1 2-2h3.5a2 2 0 0 1 1.4.6l8.5 8.5a2 2 0 0 1 0 2.8l-3.5 3.5a2 2 0 0 1-2.8 0L3.6 9.9A2 2 0 0 1 3 8.5z" /><circle cx="7.5" cy="7.5" r="1" /></svg>
                           <span className="truncate">{s.name}</span>
                         </Link>
                       ))}
