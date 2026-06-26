@@ -404,10 +404,16 @@ export default function ListingDetailPage() {
               {isService ? t("service") : t("product")}
             </div>
             <h1 className="text-xl sm:text-2xl font-bold mb-2">{listing.title}</h1>
-            <div className="flex items-baseline gap-1 mb-3">
+            <div className="flex items-baseline gap-1 mb-2">
               <span className="text-2xl sm:text-3xl font-bold text-orange-500">{listing.price}</span>
-              <span className="text-muted text-sm">{t("azn")}</span>
+              <span className="text-muted text-sm">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
             </div>
+            {(listing.forRent || listing.barter) && (
+              <div className="flex items-center gap-2 mb-3">
+                {listing.forRent && <span className="px-2.5 py-1 bg-indigo-500/10 text-indigo-500 rounded-lg text-xs font-semibold">🔑 İcarəyə verilir</span>}
+                {listing.barter && <span className="px-2.5 py-1 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-semibold">🔄 Barter (dəyiş-düş) qəbul olunur</span>}
+              </div>
+            )}
             <div className="flex items-center gap-2 text-muted text-sm mb-4">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />

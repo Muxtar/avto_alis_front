@@ -29,6 +29,8 @@ interface Listing {
   city?: string;
   fuelType?: "GASOLINE" | "DIESEL" | "HYBRID" | "ELECTRIC" | "GAS" | "OTHER";
   paymentType?: "CASH" | "CREDIT" | "BOTH";
+  barter?: boolean;
+  forRent?: boolean;
   user: { id?: number; name: string; avgRating?: number | null; ratingCount?: number };
   _count?: { comments: number; favorites?: number };
 }
@@ -154,6 +156,12 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               </span>
               {listing.createdAt && isNew(listing.createdAt) && (
                 <span className="px-2 py-0.5 bg-sky-500/95 text-white rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm">{t("newBadge")}</span>
+              )}
+              {listing.forRent && (
+                <span className="px-2 py-0.5 bg-indigo-500/95 text-white rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm">🔑 İcarə</span>
+              )}
+              {listing.barter && (
+                <span className="px-2 py-0.5 bg-purple-500/95 text-white rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm">🔄 Barter</span>
               )}
             </div>
             {listing.condition && !isService && (

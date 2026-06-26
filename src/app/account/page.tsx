@@ -41,6 +41,8 @@ function AccountPageInner() {
   const [listingKind, setListingKind] = useState<"" | "product" | "service" | "product-form">(""); // Məhsul / Xidmət sihirbazı
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
+  const [barter, setBarter] = useState(false);   // dəyiş-düş qəbul olunur
+  const [forRent, setForRent] = useState(false); // satış yox, icarə/kirayə
   const [attrs, setAttrs] = useState<Record<string, string>>({}); // kateqoriyaya xüsusi sahələr
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -116,6 +118,7 @@ function AccountPageInner() {
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
     setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "" });
+    setBarter(false); setForRent(false);
     setAttrs({});
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
     setImages([]);
@@ -183,6 +186,8 @@ function AccountPageInner() {
       const validKeys = getCategoryAttrs(parseCat(form.category).main).map((a) => a.key);
       const cleanAttrs = Object.fromEntries(Object.entries(attrs).filter(([k, v]) => validKeys.includes(k) && String(v).trim() !== ""));
       fd.append("attributes", JSON.stringify(cleanAttrs));
+      fd.append("barter", String(barter));
+      fd.append("forRent", String(forRent));
       fd.append("listingMode", listingMode || "novoen");
       if (selectedObjectId) fd.append("businessObjectId", selectedObjectId);
       images.forEach((file) => fd.append("images", file));
@@ -225,6 +230,7 @@ function AccountPageInner() {
       fuelType: listing.fuelType || "",
       paymentType: listing.paymentType || "",
     });
+    setBarter(!!listing.barter); setForRent(!!listing.forRent);
     // Kateqoriyaya xüsusi sahələri yüklə (string-ə çevir).
     const la = listing.attributes && typeof listing.attributes === "object" ? listing.attributes : {};
     setAttrs(Object.fromEntries(Object.entries(la).map(([k, v]) => [k, String(v ?? "")])));
@@ -566,6 +572,27 @@ function AccountPageInner() {
               )}
             </div>
             )}
+
+            {/* Barter + İcarə seçimləri */}
+            {form.type !== "SERVICE" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${barter ? "border-orange-500/50 bg-orange-500/5" : "border-input-border bg-input-bg hover:border-orange-500/30"}`}>
+                <input type="checkbox" checked={barter} onChange={(e) => setBarter(e.target.checked)} className="w-4 h-4 accent-orange-500" />
+                <span>
+                  <span className="block text-sm font-medium">🔄 Barter (dəyiş-düş)</span>
+                  <span className="block text-[11px] text-muted">Pula yox, dəyişməyə də razıyam</span>
+                </span>
+              </label>
+              <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${forRent ? "border-orange-500/50 bg-orange-500/5" : "border-input-border bg-input-bg hover:border-orange-500/30"}`}>
+                <input type="checkbox" checked={forRent} onChange={(e) => setForRent(e.target.checked)} className="w-4 h-4 accent-orange-500" />
+                <span>
+                  <span className="block text-sm font-medium">🔑 İcarəyə verilir</span>
+                  <span className="block text-[11px] text-muted">Satış yox — kirayə/icarə</span>
+                </span>
+              </label>
+            </div>
+            )}
+
             {(showField("forVehicle") || showField("year")) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {showField("forVehicle") && (
