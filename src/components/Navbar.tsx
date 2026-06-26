@@ -10,6 +10,7 @@ import { Locale } from "@/lib/translations";
 import { API } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
 import { CATEGORIES, slugify } from "@/lib/categories";
+import CategoryIcon from "@/components/CategoryIcon";
 
 const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "az", label: "AZ", flag: "🇦🇿" },
@@ -157,7 +158,7 @@ export default function Navbar() {
                           setCatHover({ cat: c, top, left: r.right });
                         }}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
-                        <span className="text-lg shrink-0">{c.icon}</span>
+                        <span className="w-8 h-8 rounded-lg bg-input-bg text-muted flex items-center justify-center shrink-0"><CategoryIcon name={c.name} className="w-[18px] h-[18px]" /></span>
                         <span className="truncate flex-1">{c.name}</span>
                         {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                       </Link>
@@ -172,7 +173,7 @@ export default function Navbar() {
                     <div style={{ position: "fixed", top: catHover.top, left: catHover.left }}
                       className="z-[60] w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5">
                       <Link href={`/elanlar/${slugify(catHover.cat.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-input-bg" style={{ color: PINK }}>
-                        <span>{catHover.cat.icon}</span> {catHover.cat.name} — hamısı
+                        <CategoryIcon name={catHover.cat.name} className="w-[18px] h-[18px]" /> {catHover.cat.name} — hamısı
                       </Link>
                       <div className="border-t border-card-border my-1" />
                       {catHover.cat.subs.map((s: any) => (

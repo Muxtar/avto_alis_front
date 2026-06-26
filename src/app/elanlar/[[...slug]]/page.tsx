@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import AddListingMenu from "@/components/AddListingMenu";
+import CategoryIcon from "@/components/CategoryIcon";
 import { API, UPLOADS } from "@/lib/api";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { CATEGORIES, getSubs, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
@@ -482,7 +483,7 @@ function MarketplacePage() {
                       }}
                       className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${active ? "text-orange-500 font-semibold bg-orange-500/10" : "text-foreground hover:bg-input-bg"}`}
                     >
-                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 ${active ? "bg-orange-500/15" : "bg-input-bg"}`}>{c.icon}</span>
+                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${active ? "bg-orange-500/15 text-orange-500" : "bg-input-bg text-muted"}`}><CategoryIcon name={c.name} className="w-[18px] h-[18px]" /></span>
                       <span className="truncate flex-1">{c.name}</span>
                       {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                     </Link>

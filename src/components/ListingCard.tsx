@@ -188,7 +188,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           {/* Brand + Country + Model + Year */}
           {(listing.brand || listing.country || listing.model || listing.year) && (
             <div className="flex items-center gap-1.5 mb-1 text-[10px] text-muted-foreground flex-wrap">
-              {listing.brand && <span className="font-medium">🏷️ {listing.brand}</span>}
+              {listing.brand && <span className="font-semibold text-muted">{listing.brand}</span>}
               {listing.country && (
                 <span title={listing.country}>
                   {COUNTRY_BY_CODE[listing.country]?.flag || "🌍"}{" "}
@@ -196,15 +196,20 @@ export default function ListingCard({ listing }: { listing: Listing }) {
                 </span>
               )}
               {listing.model && <span>· {listing.model}</span>}
-              {listing.year && <span>· 📅 {listing.year}</span>}
+              {listing.year && <span>· {listing.year}</span>}
             </div>
           )}
           {/* City + Fuel + Payment */}
           {(listing.city || listing.fuelType || listing.paymentType) && (
-            <div className="flex items-center gap-1.5 mb-1 text-[10px] text-muted-foreground flex-wrap">
-              {listing.city && <span>📍 {listing.city}</span>}
-              {listing.fuelType && <span>⛽ {t(`fuel${listing.fuelType.charAt(0) + listing.fuelType.slice(1).toLowerCase()}` as any)}</span>}
-              {listing.paymentType && <span>💳 {t(`payment${listing.paymentType.charAt(0) + listing.paymentType.slice(1).toLowerCase()}` as any)}</span>}
+            <div className="flex items-center gap-2 mb-1 text-[10px] text-muted-foreground flex-wrap">
+              {listing.city && (
+                <span className="inline-flex items-center gap-0.5">
+                  <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                  {listing.city}
+                </span>
+              )}
+              {listing.fuelType && <span>· {t(`fuel${listing.fuelType.charAt(0) + listing.fuelType.slice(1).toLowerCase()}` as any)}</span>}
+              {listing.paymentType && <span>· {t(`payment${listing.paymentType.charAt(0) + listing.paymentType.slice(1).toLowerCase()}` as any)}</span>}
             </div>
           )}
 
