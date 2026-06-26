@@ -291,7 +291,7 @@ function MarketplacePage() {
             <button
               type="button"
               onClick={openCheapModal}
-              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-3 bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 rounded-xl text-xs sm:text-sm font-semibold hover:bg-emerald-500/20 transition-all whitespace-nowrap"
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-3 bg-orange-500/10 text-orange-500 border border-orange-500/30 rounded-xl text-xs sm:text-sm font-semibold hover:bg-orange-500/20 transition-all whitespace-nowrap"
               title={t("cheaperSearchTitle")}
             >
               <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -480,9 +480,9 @@ function MarketplacePage() {
                         const top = Math.max(8, Math.min(r.top, vh - est - 8));
                         setHoverCat({ cat: c, top, left: r.right });
                       }}
-                      className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors ${active ? "text-orange-500 font-semibold bg-orange-500/10" : "text-foreground hover:bg-input-bg"}`}
+                      className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${active ? "text-orange-500 font-semibold bg-orange-500/10" : "text-foreground hover:bg-input-bg"}`}
                     >
-                      <span className="text-base shrink-0">{c.icon}</span>
+                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-base shrink-0 ${active ? "bg-orange-500/15" : "bg-input-bg"}`}>{c.icon}</span>
                       <span className="truncate flex-1">{c.name}</span>
                       {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                     </Link>
@@ -517,23 +517,33 @@ function MarketplacePage() {
 
           {/* Center column - listings */}
           <div className="min-w-0">
-            {/* Hero banner (umico üslubu) */}
-            <div className="grid sm:grid-cols-3 gap-3 mb-5">
-              <Link href="/elanlar" className="sm:col-span-2 relative overflow-hidden rounded-2xl p-6 sm:p-8 flex flex-col justify-center text-white min-h-[160px]" style={{ background: "linear-gradient(135deg,#5e8bff 0%,#2f6bff 100%)" }}>
-                <p className="text-lg sm:text-2xl font-extrabold leading-tight">Hər şey bir platformada</p>
-                <p className="text-sm text-white/90 mt-1">Al, sat, kəşf et — məhsul, xidmət və peşəkarlar.</p>
-                <span className="mt-3 inline-flex w-fit items-center gap-1.5 bg-white/20 hover:bg-white/30 transition-colors rounded-xl px-4 py-2 text-sm font-semibold">Bazara keç →</span>
+            {/* Hero banner */}
+            <div className="grid sm:grid-cols-3 gap-3.5 mb-6">
+              <Link href="/elanlar" className="sm:col-span-2 group relative overflow-hidden rounded-3xl p-7 sm:p-9 flex flex-col justify-center text-white min-h-[190px] shadow-xl shadow-blue-500/20" style={{ background: "linear-gradient(135deg,#5e8bff 0%,#2f6bff 55%,#2056e6 100%)" }}>
+                <div className="absolute -top-14 -right-12 w-52 h-52 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+                <div className="absolute -bottom-20 -left-12 w-64 h-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
+                <span className="relative inline-flex w-fit items-center gap-1.5 bg-white/15 backdrop-blur ring-1 ring-white/25 rounded-full px-3 py-1 text-[11px] font-semibold mb-3">✦ Azərbaycanın onlayn bazarı</span>
+                <p className="relative text-2xl sm:text-3xl font-extrabold leading-tight tracking-tight">Hər şey bir platformada</p>
+                <p className="relative text-sm sm:text-base text-white/85 mt-1.5 max-w-md">Məhsul, xidmət və peşəkarlar — al, sat, kəşf et.</p>
+                <span className="relative mt-4 inline-flex w-fit items-center gap-2 bg-white rounded-xl px-5 py-2.5 text-sm font-bold shadow-md group-hover:gap-3 transition-all" style={{ color: "#2056e6" }}>
+                  Bazara keç
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                </span>
               </Link>
-              <div className="flex sm:flex-col gap-3">
-                <Link href="/consultations" className="flex-1 rounded-2xl p-4 bg-orange-500/10 border border-orange-500/30 hover:border-orange-500/60 transition-colors flex flex-col justify-center">
-                  <span className="text-2xl">🗣️</span>
-                  <p className="font-bold text-sm mt-1">Peşəkardan Rəy al</p>
-                  <p className="text-[11px] text-muted">Onlayn konsultasiya</p>
+              <div className="flex sm:flex-col gap-3.5">
+                <Link href="/consultations" className="group flex-1 rounded-2xl p-4 surface card-hover flex items-center gap-3">
+                  <span className="w-11 h-11 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center text-xl shrink-0 group-hover:scale-110 transition-transform">🗣️</span>
+                  <span className="min-w-0">
+                    <p className="font-bold text-sm">Peşəkardan Rəy al</p>
+                    <p className="text-[11px] text-muted">Onlayn konsultasiya</p>
+                  </span>
                 </Link>
-                <Link href="/locations" className="flex-1 rounded-2xl p-4 bg-orange-500/10 border border-orange-500/30 hover:border-orange-500/60 transition-colors flex flex-col justify-center">
-                  <span className="text-2xl">🗺️</span>
-                  <p className="font-bold text-sm mt-1">Xəritədə tap</p>
-                  <p className="text-[11px] text-muted">Yaxınında obyekt və usta</p>
+                <Link href="/locations" className="group flex-1 rounded-2xl p-4 surface card-hover flex items-center gap-3">
+                  <span className="w-11 h-11 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center text-xl shrink-0 group-hover:scale-110 transition-transform">🗺️</span>
+                  <span className="min-w-0">
+                    <p className="font-bold text-sm">Xəritədə tap</p>
+                    <p className="text-[11px] text-muted">Yaxınında obyekt və usta</p>
+                  </span>
                 </Link>
               </div>
             </div>
