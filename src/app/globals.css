@@ -18,11 +18,11 @@
   --input-border: #d8dfe9;
   --muted: #64748b;
   --muted-foreground: #94a3b8;
-  --ring: rgba(22, 163, 74, 0.35);
+  --ring: rgba(47, 107, 255, 0.35);
   --shadow-color: 220 35% 70%;
-  --brand-from: #25d366;
-  --brand-to: #0e8a5f;
-  --brand-soft: rgba(22, 163, 74, 0.08);
+  --brand-from: #5e8bff;
+  --brand-to: #2f6bff;
+  --brand-soft: rgba(47, 107, 255, 0.08);
 }
 
 /* Dark theme — activated via .dark class on <html> */
@@ -36,11 +36,11 @@
   --input-border: rgba(71, 85, 105, 0.4);
   --muted: #94a3b8;
   --muted-foreground: #64748b;
-  --ring: rgba(37, 211, 102, 0.45);
+  --ring: rgba(94, 139, 255, 0.45);
   --shadow-color: 220 40% 4%;
-  --brand-from: #25d366;
-  --brand-to: #0e8a5f;
-  --brand-soft: rgba(37, 211, 102, 0.12);
+  --brand-from: #5e8bff;
+  --brand-to: #2f6bff;
+  --brand-soft: rgba(94, 139, 255, 0.12);
 }
 
 @theme inline {
@@ -59,17 +59,17 @@
    "orange-*" Tailwind utiliti qlobal olaraq bu çəhrayı ailəyə remap edilir,
    beləcə bütün səhifələrdəki vurğu rəngi tək yerdən idarə olunur. */
 @theme {
-  --color-orange-50: #ecfdf3;
-  --color-orange-100: #d1fadf;
-  --color-orange-200: #a4f4c0;
-  --color-orange-300: #6ce79b;
-  --color-orange-400: #25d366;
-  --color-orange-500: #16a34a;
-  --color-orange-600: #128a3e;
-  --color-orange-700: #0f6f33;
-  --color-orange-800: #0d5829;
-  --color-orange-900: #0b4922;
-  --color-orange-950: #04220f;
+  --color-orange-50: #eef3ff;
+  --color-orange-100: #dbe5ff;
+  --color-orange-200: #bccfff;
+  --color-orange-300: #93b0ff;
+  --color-orange-400: #5e8bff;
+  --color-orange-500: #2f6bff;
+  --color-orange-600: #2056e6;
+  --color-orange-700: #1a45bf;
+  --color-orange-800: #173a9c;
+  --color-orange-900: #16357d;
+  --color-orange-950: #0f2150;
 }
 
 * {
@@ -88,21 +88,21 @@ body {
 /* Subtle ambient gradient on dark mode for depth */
 .dark body {
   background-image:
-    radial-gradient(at 20% 0%, rgba(37, 211, 102, 0.06) 0px, transparent 50%),
+    radial-gradient(at 20% 0%, rgba(47, 107, 255, 0.07) 0px, transparent 50%),
     radial-gradient(at 80% 100%, rgba(99, 102, 241, 0.05) 0px, transparent 55%);
   background-attachment: fixed;
 }
 
 .light body {
   background-image:
-    radial-gradient(at 20% 0%, rgba(37, 211, 102, 0.05) 0px, transparent 50%),
+    radial-gradient(at 20% 0%, rgba(47, 107, 255, 0.05) 0px, transparent 50%),
     radial-gradient(at 80% 100%, rgba(99, 102, 241, 0.04) 0px, transparent 55%);
   background-attachment: fixed;
 }
 
 /* Selection */
 ::selection {
-  background: rgba(37, 211, 102, 0.25);
+  background: rgba(47, 107, 255, 0.25);
   color: inherit;
 }
 

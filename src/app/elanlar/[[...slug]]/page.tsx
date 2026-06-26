@@ -519,13 +519,13 @@ function MarketplacePage() {
           <div className="min-w-0">
             {/* Hero banner (umico üslubu) */}
             <div className="grid sm:grid-cols-3 gap-3 mb-5">
-              <Link href="/elanlar" className="sm:col-span-2 relative overflow-hidden rounded-2xl p-6 sm:p-8 flex flex-col justify-center text-white min-h-[160px]" style={{ background: "linear-gradient(135deg,#25d366 0%,#0e8a5f 100%)" }}>
+              <Link href="/elanlar" className="sm:col-span-2 relative overflow-hidden rounded-2xl p-6 sm:p-8 flex flex-col justify-center text-white min-h-[160px]" style={{ background: "linear-gradient(135deg,#5e8bff 0%,#2f6bff 100%)" }}>
                 <p className="text-lg sm:text-2xl font-extrabold leading-tight">Hər şey bir platformada</p>
                 <p className="text-sm text-white/90 mt-1">Al, sat, kəşf et — məhsul, xidmət və peşəkarlar.</p>
                 <span className="mt-3 inline-flex w-fit items-center gap-1.5 bg-white/20 hover:bg-white/30 transition-colors rounded-xl px-4 py-2 text-sm font-semibold">Bazara keç →</span>
               </Link>
               <div className="flex sm:flex-col gap-3">
-                <Link href="/consultations" className="flex-1 rounded-2xl p-4 bg-emerald-500/10 border border-emerald-500/30 hover:border-emerald-500/60 transition-colors flex flex-col justify-center">
+                <Link href="/consultations" className="flex-1 rounded-2xl p-4 bg-orange-500/10 border border-orange-500/30 hover:border-orange-500/60 transition-colors flex flex-col justify-center">
                   <span className="text-2xl">🗣️</span>
                   <p className="font-bold text-sm mt-1">Peşəkardan Rəy al</p>
                   <p className="text-[11px] text-muted">Onlayn konsultasiya</p>

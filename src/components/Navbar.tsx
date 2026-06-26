@@ -17,8 +17,8 @@ const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "en", label: "EN", flag: "🇬🇧" },
 ];
 
-// Vahid brend rəngi (globals.css orange-* remap ilə eyni — WhatsApp yaşılı).
-const PINK = "#16a34a";
+// Vahid brend rəngi (globals.css orange-* remap ilə eyni — logo mavisi (#2f6bff)).
+const PINK = "#2f6bff";
 
 export default function Navbar() {
   const { locale, setLocale, t } = useLanguage();
