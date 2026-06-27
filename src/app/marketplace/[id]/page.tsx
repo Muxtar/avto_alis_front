@@ -83,6 +83,19 @@ export default function ListingDetailPage() {
     setCartAdding(false);
   };
 
+  // Sahib öz elanını silir (detal səhifəsindən).
+  const [deleting, setDeleting] = useState(false);
+  const handleDeleteListing = async () => {
+    if (!listing) return;
+    if (!confirm("Bu elanı silmək istədiyinizə əminsiniz? Bu əməliyyat geri qaytarıla bilməz.")) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`${API}/me/listings/${listing.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) { toast("Elan silindi", "success"); router.push("/account"); }
+      else { const e = await res.json().catch(() => ({})); toast(e.message || t("error"), "error"); setDeleting(false); }
+    } catch { toast(t("error"), "error"); setDeleting(false); }
+  };
+
   // İndi al — səbətə əlavə edib birbaşa səbətə (ödəniş/sifariş) keçir.
   const handleBuyNow = async () => {
     if (!listing) return;
@@ -421,17 +434,29 @@ export default function ListingDetailPage() {
               {listing.category}
             </div>
 
-            {/* Owner actions */}
+            {/* Owner actions — redaktə + sil */}
             {isLoggedIn && user?.id === listing.user.id && (
-              <Link
-                href={`/account?edit=${listing.id}`}
-                className="w-full flex items-center justify-center gap-2 py-3 mb-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                {t("editListing")}
-              </Link>
+              <div className="flex gap-2 mb-3">
+                <Link
+                  href={`/account?edit=${listing.id}`}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  {t("editListing")}
+                </Link>
+                <button
+                  onClick={handleDeleteListing}
+                  disabled={deleting}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 text-red-500 border border-red-500/30 rounded-xl font-semibold hover:bg-red-500/20 transition-all disabled:opacity-50"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  {t("delete") || "Sil"}
+                </button>
+              </div>
             )}
 
             {/* Stock Status & Add to Cart */}
