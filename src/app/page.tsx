@@ -31,13 +31,17 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone.trim()) return;
+    const local = phone.replace(/\D/g, "");
+    if (local.length !== 9) {
+      toast("Nömrə +994-dən sonra dəqiq 9 rəqəm olmalıdır (məs. 50 123 45 67)", "error");
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch(`${API}/register/phone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone: phone.trim() }),
+        body: JSON.stringify({ phone: `+994${local}` }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -75,21 +79,31 @@ export default function Home() {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium mb-2">{t("phone")}</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder={t("phonePlaceholder")}
-                className="w-full px-4 py-3 input-base placeholder-muted-foreground"
-                autoFocus
-                required
-              />
-              <p className="text-xs text-muted mt-2">{t("loginWithPhoneHint")}</p>
+              <div className="flex items-stretch w-full input-base p-0 overflow-hidden focus-within:ring-2 focus-within:ring-orange-500/40">
+                <span className="flex items-center px-3.5 bg-input-bg/70 border-r border-input-border text-sm font-semibold text-foreground select-none">
+                  🇦🇿 +994
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 9))}
+                  placeholder="50 123 45 67"
+                  className="flex-1 min-w-0 px-4 py-3 bg-transparent outline-none placeholder-muted-foreground tracking-wide"
+                  autoFocus
+                  required
+                />
+              </div>
+              <p className={`text-xs mt-2 ${phone.length > 0 && phone.length !== 9 ? "text-red-500" : "text-muted"}`}>
+                {phone.length > 0 && phone.length !== 9
+                  ? `+994-dən sonra 9 rəqəm yazın (hazırda ${phone.length})`
+                  : "Yalnız nömrəni yazın — +994 avtomatik əlavə olunur."}
+              </p>
             </div>
 
             <button
               type="submit"
-              disabled={loading || !phone.trim()}
+              disabled={loading || phone.length !== 9}
               className="w-full py-3.5 btn-primary text-base"
             >
               {loading ? t("submitting") : t("sendCodeButton")}
