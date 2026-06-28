@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
+import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import { API } from "@/lib/api";
@@ -10,9 +11,16 @@ import { API } from "@/lib/api";
 export default function ObjectPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { token, isLoggedIn } = useAuth();
   const params = useParams();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // Referal
+  const [elig, setElig] = useState<any>(null);
+  const [refMode, setRefMode] = useState(false);
+  const [sel, setSel] = useState<Record<number, number>>({});
+  const [refBusy, setRefBusy] = useState(false);
+  const [refLink, setRefLink] = useState("");
 
   useEffect(() => {
     fetch(`${API}/objects/${params.id}`)
@@ -21,6 +29,31 @@ export default function ObjectPage() {
       .catch(() => { toast(t("error"), "error"); })
       .finally(() => setLoading(false));
   }, [params.id]);
+
+  useEffect(() => {
+    if (!isLoggedIn || !token || !data?.object?.referralEnabled) return;
+    fetch(`${API}/objects/${params.id}/referral-eligibility`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json()).then((d) => { if (d.success) setElig(d); }).catch(() => {});
+  }, [isLoggedIn, token, data, params.id]);
+
+  const toggleSel = (id: number) => setSel((s) => { const n = { ...s }; if (n[id]) delete n[id]; else n[id] = 1; return n; });
+  const setQty = (id: number, q: number) => setSel((s) => ({ ...s, [id]: Math.max(1, q) }));
+
+  const generateLink = async () => {
+    const items = Object.entries(sel).map(([listingId, quantity]) => ({ listingId: Number(listingId), quantity }));
+    if (items.length === 0) { toast("Ən azı bir məhsul seçin", "error"); return; }
+    setRefBusy(true);
+    try {
+      const r = await fetch(`${API}/referral/cart`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ objectId: Number(params.id), items }),
+      }).then((x) => x.json());
+      if (r.success) { setRefLink(`${window.location.origin}/r/${r.token}`); toast("Link yaradıldı ✓", "success"); }
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); } finally { setRefBusy(false); }
+  };
+
+  const copyLink = () => { navigator.clipboard?.writeText(refLink); toast("Link kopyalandı", "success"); };
 
   if (loading) {
     return (
@@ -83,9 +116,63 @@ export default function ObjectPage() {
                 ))}
               </div>
             )}
+            {object.referralEnabled && (
+              <div className="mt-3">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-500/10 text-orange-500 border border-orange-500/30 rounded-lg text-[11px] font-semibold">
+                  🤝 Referal satışa icazə verir
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Referal — peşəkar üçün */}
+      {object.referralEnabled && elig && (
+        <div className="bg-card border border-card-border rounded-2xl p-5 mb-6">
+          <h2 className="font-semibold mb-1 flex items-center gap-2">🤝 Referal satış</h2>
+          {elig.eligible ? (
+            <>
+              <p className="text-sm text-muted mb-3">Siz uyğunsunuz — komissiya <b className="text-orange-500">{elig.commissionPercent}%</b>. Məhsul seçin, link yaradın və alıcıya göndərin. Sifariş verildikdə komissiya hesabınıza yazılır.</p>
+              {!refMode && !refLink && (
+                <button onClick={() => setRefMode(true)} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">Referal səbət yarat</button>
+              )}
+              {refMode && !refLink && (
+                <div className="space-y-2">
+                  <div className="max-h-72 overflow-y-auto space-y-1.5 border border-input-border rounded-xl p-2">
+                    {listings.map((l: any) => (
+                      <div key={l.id} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-input-bg">
+                        <input type="checkbox" checked={!!sel[l.id]} onChange={() => toggleSel(l.id)} className="w-4 h-4 accent-orange-500" />
+                        <span className="flex-1 min-w-0 text-sm truncate">{l.title}</span>
+                        <span className="text-xs text-muted">{l.price} AZN</span>
+                        {sel[l.id] && (
+                          <input type="number" min={1} value={sel[l.id]} onChange={(e) => setQty(l.id, parseInt(e.target.value) || 1)} className="w-14 px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={generateLink} disabled={refBusy} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{refBusy ? "..." : "Link yarat"}</button>
+                    <button onClick={() => { setRefMode(false); setSel({}); }} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv</button>
+                  </div>
+                </div>
+              )}
+              {refLink && (
+                <div className="space-y-2">
+                  <p className="text-sm text-green-500 font-medium">✓ Link hazırdır — alıcıya göndərin:</p>
+                  <div className="flex gap-2">
+                    <input readOnly value={refLink} className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+                    <button onClick={copyLink} className="px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold">Kopyala</button>
+                  </div>
+                  <button onClick={() => { setRefLink(""); setRefMode(false); setSel({}); }} className="text-xs text-orange-500">Yeni link yarat</button>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted">{elig.reason}{elig.commissionPercent ? ` (komissiya ${elig.commissionPercent}%)` : ""}</p>
+          )}
+        </div>
+      )}
 
       <h2 className="text-lg font-semibold mb-4">Məhsullar / Xidmətlər ({listings?.length || 0})</h2>
       {!listings || listings.length === 0 ? (

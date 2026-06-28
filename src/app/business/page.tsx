@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import LocationPicker from "@/components/LocationPickerWrapper";
+import ProfessionPicker from "@/components/ProfessionPicker";
 
 // Obyektin fəaliyyət sahələri — 16 əsas kateqoriya.
 const ACTIVITY_AREAS = [
@@ -388,6 +389,7 @@ export default function BusinessPage() {
                       </div>
                     </div>
                     <p className="text-muted text-xs">{o.city ? o.city + ", " : ""}{o.address}{o.activityAreas?.length ? ` · ${o.activityAreas.join(", ")}` : ""}</p>
+                    <ObjectReferral objectId={o.id} inputCls={inputCls} />
                   </div>
                 ))}
                 {/* Yeni obyekt */}
@@ -451,6 +453,69 @@ function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t }: any) {
         </div>
       </div>
       <button onClick={onAdd} className="text-sm text-orange-500 font-medium">+ {t("bizAddObject") || "Obyekt əlavə et"}</button>
+    </div>
+  );
+}
+
+// Obyekt üçün referal (komissiyalı) satış qaydaları redaktoru.
+function ObjectReferral({ objectId, inputCls }: { objectId: number; inputCls: string }) {
+  const { token } = useAuth();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  const [rules, setRules] = useState<{ profession: string; commissionPercent: string; requiredDoc: string }[]>([]);
+  const [busy, setBusy] = useState(false);
+  const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  const load = async () => {
+    try {
+      const r = await fetch(`${API}/me/objects/${objectId}/referral`, { headers }).then((x) => x.json());
+      if (r.success) {
+        setEnabled(!!r.referralEnabled);
+        setRules((r.rules || []).map((x: any) => ({ profession: x.profession, commissionPercent: String(x.commissionPercent), requiredDoc: x.requiredDoc || "NONE" })));
+      }
+    } catch { /* keç */ } finally { setLoaded(true); }
+  };
+  const toggleOpen = () => { const n = !open; setOpen(n); if (n && !loaded) load(); };
+  const addRule = () => { if (rules.length < 4) setRules([...rules, { profession: "", commissionPercent: "", requiredDoc: "NONE" }]); };
+  const save = async () => {
+    setBusy(true);
+    try {
+      const body = JSON.stringify({ enabled, rules: rules.map((r) => ({ profession: r.profession, commissionPercent: parseFloat(r.commissionPercent) || 0, requiredDoc: r.requiredDoc })) });
+      const r = await fetch(`${API}/me/objects/${objectId}/referral`, { method: "PUT", headers, body }).then((x) => x.json());
+      if (r.success) toast("Referal qaydaları yadda saxlandı ✓", "success");
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mt-2 border-t border-card-border/50 pt-2">
+      <button onClick={toggleOpen} className="text-xs text-orange-500 font-medium">🤝 Referal satış {open ? "▲" : "▼"}</button>
+      {open && (
+        <div className="mt-2 space-y-2">
+          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="w-4 h-4 accent-orange-500" /> Bu mağazada referal (komissiyalı) satışa icazə ver</label>
+          {enabled && (
+            <>
+              {rules.map((r, i) => (
+                <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_70px_110px_auto] gap-1.5 items-center">
+                  <ProfessionPicker value={r.profession} onChange={(v) => setRules(rules.map((x, j) => j === i ? { ...x, profession: v } : x))} className={inputCls + " text-xs"} />
+                  <input type="number" min={0} max={100} placeholder="%" value={r.commissionPercent} onChange={(e) => setRules(rules.map((x, j) => j === i ? { ...x, commissionPercent: e.target.value } : x))} className={inputCls + " text-xs"} />
+                  <select value={r.requiredDoc} onChange={(e) => setRules(rules.map((x, j) => j === i ? { ...x, requiredDoc: e.target.value } : x))} className={inputCls + " text-xs"}>
+                    <option value="NONE">Sənəd yox</option>
+                    <option value="DIPLOMA">Diplom</option>
+                    <option value="CV">CV</option>
+                    <option value="ANY">Diplom və ya CV</option>
+                  </select>
+                  <button onClick={() => setRules(rules.filter((_, j) => j !== i))} className="text-red-500 text-xs px-1">✕</button>
+                </div>
+              ))}
+              {rules.length < 4 && <button onClick={addRule} className="text-xs text-orange-500">+ İxtisas əlavə et (max 4)</button>}
+            </>
+          )}
+          <button onClick={save} disabled={busy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-xs font-semibold disabled:opacity-50">{busy ? "..." : "Yadda saxla"}</button>
+        </div>
+      )}
     </div>
   );
 }
