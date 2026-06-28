@@ -325,6 +325,10 @@ export default function Navbar() {
                         <span className="w-4 h-4 text-muted flex items-center justify-center">💸</span>
                         {t("navReferralEarnings")}
                       </Link>
+                      <Link href="/bookings" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                        <span className="w-4 h-4 text-muted flex items-center justify-center">📅</span>
+                        {t("navBookings")}
+                      </Link>
 
                       {(user?.type === "MECHANIC" || user?.type === "PARTS_SELLER") && !user?.sellerVerified && (
                         <Link href="/seller/apply" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-amber-500 font-medium">

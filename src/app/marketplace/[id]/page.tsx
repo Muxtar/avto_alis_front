@@ -33,6 +33,31 @@ export default function ListingDetailPage() {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
+  // Bron / rezervasiya
+  const [bookingOpen, setBookingOpen] = useState(false);
+  const [bookingBusy, setBookingBusy] = useState(false);
+  const [bk, setBk] = useState({ date: "", time: "", checkIn: "", checkOut: "", guests: "1", rooms: "1", note: "", contactName: "", contactPhone: "" });
+
+  const submitBooking = async () => {
+    if (!isLoggedIn) { router.push("/"); return; }
+    if (!bk.contactPhone.trim()) { toast("Əlaqə nömrəsi tələb olunur", "error"); return; }
+    const isStay = listing.bookingType === "STAY";
+    if (isStay) {
+      if (!bk.checkIn || !bk.checkOut) { toast("Giriş və çıxış tarixini seçin", "error"); return; }
+    } else if (!bk.date) { toast("Tarix seçin", "error"); return; }
+    setBookingBusy(true);
+    try {
+      const r = await fetch(`${API}/bookings`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listingId: listing.id, guests: bk.guests, note: bk.note, contactName: bk.contactName, contactPhone: bk.contactPhone,
+          ...(isStay ? { checkIn: bk.checkIn, checkOut: bk.checkOut, rooms: bk.rooms } : { date: bk.date, time: bk.time }),
+        }),
+      }).then((x) => x.json());
+      if (r.success) { toast("Bron sorğusu göndərildi ✓", "success"); setBookingOpen(false); router.push("/bookings"); }
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta baş verdi", "error"); } finally { setBookingBusy(false); }
+  };
 
   // Seçilmiş statusunu yoxla.
   useEffect(() => {
@@ -421,10 +446,11 @@ export default function ListingDetailPage() {
               <span className="text-2xl sm:text-3xl font-bold text-orange-500">{listing.price}</span>
               <span className="text-muted text-sm">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
             </div>
-            {(listing.forRent || listing.barter) && (
-              <div className="flex items-center gap-2 mb-3">
+            {(listing.forRent || listing.barter || listing.bookable) && (
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
                 {listing.forRent && <span className="px-2.5 py-1 bg-indigo-500/10 text-indigo-500 rounded-lg text-xs font-semibold">🔑 İcarəyə verilir</span>}
                 {listing.barter && <span className="px-2.5 py-1 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-semibold">🔄 Barter (dəyiş-düş) qəbul olunur</span>}
+                {listing.bookable && <span className="px-2.5 py-1 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-semibold">📅 {listing.bookingType === "STAY" ? "Gecələmə bronu" : "Rezervasiya"}</span>}
               </div>
             )}
             <div className="flex items-center gap-2 text-muted text-sm mb-4">
@@ -457,6 +483,15 @@ export default function ListingDetailPage() {
                   {t("delete") || "Sil"}
                 </button>
               </div>
+            )}
+
+            {/* Bron / rezervasiya — sahib olmayanlar üçün */}
+            {listing.bookable && user?.id !== listing.user.id && (
+              <button onClick={() => { if (!isLoggedIn) { router.push("/"); return; } setBk((p) => ({ ...p, contactPhone: p.contactPhone || (user?.phone || "") })); setBookingOpen(true); }}
+                className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20 mb-3">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                {listing.bookingType === "STAY" ? "Otağı bron et" : "Bron et / Rezervasiya"}
+              </button>
             )}
 
             {/* Stock Status & Add to Cart */}
@@ -613,6 +648,82 @@ export default function ListingDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* ── Bron modalı ── */}
+      {bookingOpen && listing.bookable && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setBookingOpen(false)}>
+          <div className="bg-card border border-card-border w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg">📅 {listing.bookingType === "STAY" ? "Gecələmə bronu" : "Rezervasiya"}</h3>
+              <button onClick={() => setBookingOpen(false)} className="text-muted hover:text-foreground text-2xl leading-none">×</button>
+            </div>
+            <p className="text-xs text-muted mb-4 truncate">{listing.title}{listing.openTime && listing.bookingType === "RESERVATION" ? ` · ${listing.openTime}–${listing.closeTime || ""}` : ""}</p>
+
+            <div className="space-y-3">
+              {listing.bookingType === "STAY" ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Giriş tarixi</label>
+                      <input type="date" value={bk.checkIn} onChange={(e) => setBk({ ...bk, checkIn: e.target.value })} className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Çıxış tarixi</label>
+                      <input type="date" value={bk.checkOut} onChange={(e) => setBk({ ...bk, checkOut: e.target.value })} className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Qonaq sayı</label>
+                      <input type="number" min={1} value={bk.guests} onChange={(e) => setBk({ ...bk, guests: e.target.value })} className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Otaq sayı</label>
+                      <input type="number" min={1} value={bk.rooms} onChange={(e) => setBk({ ...bk, rooms: e.target.value })} className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Tarix</label>
+                      <input type="date" value={bk.date} onChange={(e) => setBk({ ...bk, date: e.target.value })} className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Saat</label>
+                      <input type="time" value={bk.time} onChange={(e) => setBk({ ...bk, time: e.target.value })} className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted mb-1">Nəfər sayı</label>
+                    <input type="number" min={1} value={bk.guests} onChange={(e) => setBk({ ...bk, guests: e.target.value })} className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+                  </div>
+                </>
+              )}
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Ad (istəyə bağlı)</label>
+                <input value={bk.contactName} onChange={(e) => setBk({ ...bk, contactName: e.target.value })} placeholder="Adınız" className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Əlaqə nömrəsi *</label>
+                <input value={bk.contactPhone} onChange={(e) => setBk({ ...bk, contactPhone: e.target.value })} placeholder="+994..." className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Qeyd (istəyə bağlı)</label>
+                <textarea value={bk.note} onChange={(e) => setBk({ ...bk, note: e.target.value })} rows={2} placeholder="Əlavə istəklər..." className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm resize-none" />
+              </div>
+
+              <div className="px-3 py-2 bg-input-bg rounded-xl text-[11px] text-muted">ℹ️ Bu, bron sorğusudur — sahib təsdiqlədikdən sonra qüvvəyə minir. Ödəniş yerində olur.</div>
+
+              <button onClick={submitBooking} disabled={bookingBusy}
+                className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold disabled:opacity-50">
+                {bookingBusy ? "..." : "Bron sorğusu göndər"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

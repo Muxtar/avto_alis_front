@@ -13,6 +13,7 @@ export interface MainCategory {
   subs: SubCategory[];
   vehicle?: boolean;
   service?: boolean;
+  bookable?: boolean; // bron/rezervasiya kateqoriyası (restoran, otel, məkan...) — elan yaradanda bron seçimi təklif olunur
 }
 
 const s = (name: string, icon: string): SubCategory => ({ name, icon });
@@ -237,6 +238,18 @@ export const CATEGORIES: MainCategory[] = [
     ],
   },
   {
+    name: "Turizm, istirahət və məkan", icon: "🏖️", bookable: true, subs: [
+      s("Restoran və kafe", "🍽️"),
+      s("Otel və mehmanxana", "🏨"),
+      s("Bağ evi və villa (günlük)", "🏡"),
+      s("Şadlıq sarayı və ziyafət", "🎉"),
+      s("İstirahət mərkəzi", "🏞️"),
+      s("Hovuz və saun", "🏊"),
+      s("Tur və səyahət", "✈️"),
+      s("Konfrans və iş otağı", "🏢"),
+    ],
+  },
+  {
     name: "Digər", icon: "📦", subs: [
       s("Müxtəlif", "📦"),
       s("Pulsuz / Bağışlanır", "🎁"),
@@ -304,6 +317,7 @@ const CATEGORY_FIELDS: Record<string, ListingField[]> = {
   "İş elanları": [],
   "Kənd təsərrüfatı": ["condition", "stock", "unit"],
   "Xidmətlər": [],
+  "Turizm, istirahət və məkan": [],
   "Digər": ["condition", "stock"],
 };
 // Bu əsas kateqoriyada elan formasında hansı sahələr göstərilməlidir?

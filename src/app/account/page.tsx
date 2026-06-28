@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
-import { CATEGORIES, getSubs, buildCat, parseCat, isServiceCat, getListingFields, getCategoryAttrs } from "@/lib/categories";
+import { CATEGORIES, getSubs, buildCat, parseCat, isServiceCat, getListingFields, getCategoryAttrs, getCat } from "@/lib/categories";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
 
@@ -43,6 +43,11 @@ function AccountPageInner() {
   const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
   const [barter, setBarter] = useState(false);   // dəyiş-düş qəbul olunur
   const [forRent, setForRent] = useState(false); // satış yox, icarə/kirayə
+  const [bookable, setBookable] = useState(false); // bron/rezervasiya açıq
+  const [bookingType, setBookingType] = useState<"RESERVATION" | "STAY">("RESERVATION");
+  const [maxGuests, setMaxGuests] = useState("");
+  const [openTime, setOpenTime] = useState("");
+  const [closeTime, setCloseTime] = useState("");
   const [attrs, setAttrs] = useState<Record<string, string>>({}); // kateqoriyaya xüsusi sahələr
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -119,6 +124,7 @@ function AccountPageInner() {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
     setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "" });
     setBarter(false); setForRent(false);
+    setBookable(false); setBookingType("RESERVATION"); setMaxGuests(""); setOpenTime(""); setCloseTime("");
     setAttrs({});
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
     setImages([]);
@@ -188,6 +194,15 @@ function AccountPageInner() {
       fd.append("attributes", JSON.stringify(cleanAttrs));
       fd.append("barter", String(barter));
       fd.append("forRent", String(forRent));
+      fd.append("bookable", String(bookable));
+      if (bookable) {
+        fd.append("bookingType", bookingType);
+        if (maxGuests) fd.append("maxGuests", maxGuests);
+        if (bookingType === "RESERVATION") {
+          if (openTime) fd.append("openTime", openTime);
+          if (closeTime) fd.append("closeTime", closeTime);
+        }
+      }
       fd.append("listingMode", listingMode || "novoen");
       if (selectedObjectId) fd.append("businessObjectId", selectedObjectId);
       images.forEach((file) => fd.append("images", file));
@@ -231,6 +246,10 @@ function AccountPageInner() {
       paymentType: listing.paymentType || "",
     });
     setBarter(!!listing.barter); setForRent(!!listing.forRent);
+    setBookable(!!listing.bookable);
+    setBookingType(listing.bookingType === "STAY" ? "STAY" : "RESERVATION");
+    setMaxGuests(listing.maxGuests != null ? String(listing.maxGuests) : "");
+    setOpenTime(listing.openTime || ""); setCloseTime(listing.closeTime || "");
     // Kateqoriyaya xüsusi sahələri yüklə (string-ə çevir).
     const la = listing.attributes && typeof listing.attributes === "object" ? listing.attributes : {};
     setAttrs(Object.fromEntries(Object.entries(la).map(([k, v]) => [k, String(v ?? "")])));
@@ -592,6 +611,57 @@ function AccountPageInner() {
               </label>
             </div>
             )}
+
+            {/* Bron / rezervasiya seçimi — restoran, otel, məkan və s. */}
+            <div>
+              <label className={`flex items-center gap-3 px-4 py-3 rounded-xl border cursor-pointer transition-all ${bookable ? "border-orange-500/50 bg-orange-500/5" : "border-input-border bg-input-bg hover:border-orange-500/30"}`}>
+                <input type="checkbox" checked={bookable} onChange={(e) => setBookable(e.target.checked)} className="w-4 h-4 accent-orange-500" />
+                <span>
+                  <span className="block text-sm font-medium">📅 Bron edilə bilən</span>
+                  <span className="block text-[11px] text-muted">Restoran, otel, bağ evi, məkan və s. — müştərilər tarix seçib bron edə bilsin</span>
+                </span>
+              </label>
+              {getCat(parseCat(form.category).main)?.bookable && !bookable && (
+                <p className="text-[11px] text-orange-500 mt-1.5 pl-1">💡 Bu kateqoriya bron üçün uyğundur — bron seçimini aktiv edin.</p>
+              )}
+
+              {bookable && (
+                <div className="mt-3 p-4 rounded-xl border border-input-border bg-input-bg/50 space-y-3">
+                  <div>
+                    <label className="block text-xs font-medium text-muted mb-1.5">Bron tipi</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => setBookingType("RESERVATION")}
+                        className={`px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${bookingType === "RESERVATION" ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border bg-input-bg text-foreground"}`}>
+                        🍽️ Rezervasiya<span className="block text-[10px] text-muted font-normal">tarix + saat (restoran/məkan)</span>
+                      </button>
+                      <button type="button" onClick={() => setBookingType("STAY")}
+                        className={`px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${bookingType === "STAY" ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border bg-input-bg text-foreground"}`}>
+                        🏨 Gecələmə<span className="block text-[10px] text-muted font-normal">giriş–çıxış (otel/bağ evi)</span>
+                      </button>
+                    </div>
+                    {bookingType === "STAY" && <p className="text-[11px] text-muted mt-1.5">Qiymət bir gecə üçün nəzərdə tutulur.</p>}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1.5">Maks. qonaq sayı</label>
+                      <input type="number" min={1} value={maxGuests} onChange={(e) => setMaxGuests(e.target.value)} placeholder="məs. 4" className={inputCls} />
+                    </div>
+                    {bookingType === "RESERVATION" && (
+                      <>
+                        <div>
+                          <label className="block text-xs font-medium text-muted mb-1.5">Açılış saatı</label>
+                          <input type="time" value={openTime} onChange={(e) => setOpenTime(e.target.value)} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-muted mb-1.5">Bağlanış saatı</label>
+                          <input type="time" value={closeTime} onChange={(e) => setCloseTime(e.target.value)} className={inputCls} />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {(showField("forVehicle") || showField("year")) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
