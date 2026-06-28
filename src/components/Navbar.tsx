@@ -140,7 +140,7 @@ export default function Navbar() {
             <div ref={catRef} className="relative hidden sm:block shrink-0">
               <button onClick={() => { setCatOpen((v) => !v); setCatHover(null); }} className="flex items-center gap-2 px-4 h-11 rounded-xl text-white font-semibold text-sm hover:opacity-90 transition-opacity" style={{ background: PINK }}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-                Kataloq
+                {t("navCatalog")}
                 <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {catOpen && (
@@ -256,7 +256,7 @@ export default function Navbar() {
                       <button onClick={() => setOutOpen((v) => !v)} className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
                         <span className="flex items-center gap-2">
                           <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 7.5L12 3m0 0L7.5 7.5M12 3v13.5" /></svg>
-                          Məndən gedənlər
+                          {t("navOutgoing")}
                         </span>
                         <span className="flex items-center gap-2">
                           {unreadInquiries > 0 && <span className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">{unreadInquiries}</span>}
@@ -291,7 +291,7 @@ export default function Navbar() {
                       <button onClick={() => setInOpen((v) => !v)} className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
                         <span className="flex items-center gap-2">
                           <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" /></svg>
-                          Məndən gələnlər
+                          {t("navIncoming")}
                         </span>
                         <svg className={`w-4 h-4 text-muted transition-transform ${inOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                       </button>
@@ -311,7 +311,7 @@ export default function Navbar() {
                       {/* Müstəqil: Rəy konsultasiyaları + Biznes */}
                       <Link href="/consultations" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
                         <span className="w-4 h-4 text-muted flex items-center justify-center">🗣️</span>
-                        Rəy konsultasiyaları
+                        {t("navConsultations")}
                       </Link>
                       <Link href="/business" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
                         <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
@@ -319,11 +319,11 @@ export default function Navbar() {
                       </Link>
                       <Link href="/referral" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
                         <span className="w-4 h-4 text-muted flex items-center justify-center">🤝</span>
-                        Referal mağazalar
+                        {t("navReferralStores")}
                       </Link>
                       <Link href="/referral-earnings" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
                         <span className="w-4 h-4 text-muted flex items-center justify-center">💸</span>
-                        Referal qazancım
+                        {t("navReferralEarnings")}
                       </Link>
 
                       {(user?.type === "MECHANIC" || user?.type === "PARTS_SELLER") && !user?.sellerVerified && (

@@ -12,16 +12,34 @@ export default function ReferralEarningsPage() {
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  const load = () => {
+    setLoading(true); setError(false);
+    fetch(`${API}/me/referral-earnings`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+      .then((d) => { if (d?.success === false) throw new Error(); setData(d); })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     if (authLoading) return;
     if (!isLoggedIn) { router.push("/"); return; }
-    fetch(`${API}/me/referral-earnings`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json()).then(setData).catch(() => {}).finally(() => setLoading(false));
+    load();
     // eslint-disable-next-line
   }, [isLoggedIn, authLoading]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;
+
+  if (error) return (
+    <div className="max-w-3xl mx-auto px-3 sm:px-6 py-6">
+      <div className="surface p-8 text-center">
+        <p className="text-sm text-muted mb-3">Qazanc məlumatı yüklənmədi. Yenidən cəhd edin.</p>
+        <button onClick={load} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">Yenidən cəhd et</button>
+      </div>
+    </div>
+  );
 
   const orders = data?.orders || [];
   return (
