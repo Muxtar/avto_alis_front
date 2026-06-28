@@ -224,6 +224,11 @@ export default function OrdersPage() {
                     <div>
                       <p className="text-muted text-xs">{activeTab === "buying" ? t("sellerInfo") : t("courierBuyer")}</p>
                       <p className="font-medium">{counterparty.name} · {counterparty.phone}</p>
+                      {activeTab === "selling" && order.referrer && (
+                        <p className="text-[11px] mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-500/10 text-orange-500 font-medium">
+                          🤝 Referal: {order.referrer.name}{order.referrer.profession ? ` (${order.referrer.profession})` : ""} · komissiya {(order.referralAmount || 0).toFixed(2)} AZN {order.referralVoided ? "(ləğv)" : ""}
+                        </p>
+                      )}
                     </div>
                     {order.address && (
                       <div className="text-right">

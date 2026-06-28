@@ -48,9 +48,9 @@ export default function ReferralEarningsPage() {
             <Link key={o.id} href={`/orders/${o.id}`} className="surface p-3.5 flex items-center justify-between hover:border-orange-500/40 transition-colors">
               <div className="min-w-0">
                 <p className="text-sm font-medium">Sifariş #{o.id} · {o.seller?.name}</p>
-                <p className="text-xs text-muted">{o.total?.toFixed(2)} AZN · {o.referralPercent}% · {STATUS[o.status] || o.status}</p>
+                <p className="text-xs text-muted">{o.total?.toFixed(2)} AZN · {o.referralPercent}% · {o.referralVoided ? "Qaytarıldı (ləğv)" : (STATUS[o.status] || o.status)}</p>
               </div>
-              <span className={`text-sm font-bold ${o.status === "DELIVERED" ? "text-orange-500" : "text-muted"}`}>+{(o.referralAmount || 0).toFixed(2)} AZN</span>
+              <span className={`text-sm font-bold ${o.referralVoided ? "text-muted line-through" : o.status === "DELIVERED" ? "text-orange-500" : "text-muted"}`}>+{(o.referralAmount || 0).toFixed(2)} AZN</span>
             </Link>
           ))}
         </div>
