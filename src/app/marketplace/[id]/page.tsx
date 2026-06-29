@@ -10,6 +10,7 @@ import { API, UPLOADS } from "@/lib/api";
 import { countryLabel } from "@/lib/countries";
 import { getCategoryAttrs, parseCat, getListingFields } from "@/lib/categories";
 import OrderMap from "@/components/OrderMapWrapper";
+import ShareButton from "@/components/ShareButton";
 
 
 export default function ListingDetailPage() {
@@ -441,7 +442,10 @@ export default function ListingDetailPage() {
             }`}>
               {isService ? t("service") : t("product")}
             </div>
-            <h1 className="text-xl sm:text-2xl font-bold mb-2">{listing.title}</h1>
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <h1 className="text-xl sm:text-2xl font-bold">{listing.title}</h1>
+              <ShareButton title={listing.title} text={`${listing.title} — tradixai`} compact className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+            </div>
             <div className="flex items-baseline gap-1 mb-2">
               <span className="text-2xl sm:text-3xl font-bold text-orange-500">{listing.price}</span>
               <span className="text-muted text-sm">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
