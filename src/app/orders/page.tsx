@@ -66,9 +66,27 @@ export default function OrdersPage() {
     }).catch(() => { toast(t('error'), 'error'); }).finally(() => setLoading(false));
   };
 
-  const updateStatus = async (orderId: number, status: string) => {
-    await fetch(`${API}/orders/${orderId}/status`, { method: "PUT", headers, body: JSON.stringify({ status }) });
+  const updateStatus = async (orderId: number, status: string, code?: string): Promise<boolean> => {
+    const r = await fetch(`${API}/orders/${orderId}/status`, {
+      method: "PUT", headers,
+      body: JSON.stringify(code ? { status, code } : { status }),
+    }).then((x) => x.json()).catch(() => null);
+    if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return false; }
     fetchOrders();
+    return true;
+  };
+
+  // Təhvil (DELIVERED) modalı — satıcı alıcının kodunu daxil edir.
+  const [deliverModal, setDeliverModal] = useState<number | null>(null);
+  const [deliverCode, setDeliverCode] = useState("");
+  const [deliverBusy, setDeliverBusy] = useState(false);
+  const confirmDeliver = async () => {
+    if (deliverModal == null) return;
+    if (!deliverCode.trim()) { toast("Təhvil kodunu daxil edin", "error"); return; }
+    setDeliverBusy(true);
+    const ok = await updateStatus(deliverModal, "DELIVERED", deliverCode.trim());
+    setDeliverBusy(false);
+    if (ok) { toast("Təhvil təsdiqləndi ✓", "success"); setDeliverModal(null); setDeliverCode(""); }
   };
 
   // Return actions
@@ -238,7 +256,27 @@ export default function OrdersPage() {
                     )}
                   </div>
                   {order.note && <p className="text-muted text-xs mt-2">{order.note}</p>}
+                  {/* Çatdırılma tipi/metodu */}
+                  <p className="text-[11px] text-muted mt-2">
+                    {order.deliveryType === "PICKUP"
+                      ? "🏪 Mağazadan özü götürmə"
+                      : `🚚 Çatdırılma · ${order.deliveryMethod === "SELF" ? "satıcı özü çatdırır" : "kuryer (Yango)"}`}
+                  </p>
                 </div>
+
+                {/* Təhvil kodu — YALNIZ alıcıya görünür (satıcı/kuryer alıcıdan soruşur). */}
+                {activeTab === "buying" && order.pickupCode && order.status !== "CANCELLED" && (
+                  <div className="p-4 border-t border-card-border">
+                    <div className="flex items-center gap-3 bg-orange-500/5 border border-orange-500/20 rounded-xl p-3">
+                      <span className="text-2xl">🔐</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[11px] text-muted">Təhvil kodu — {order.deliveryType === "PICKUP" ? "mağazadan götürərkən" : "məhsulu alarkən"} bunu satıcıya/kuryerə deyin</p>
+                        <p className="text-lg font-extrabold tracking-[0.2em] text-orange-500">{order.pickupCode}</p>
+                      </div>
+                      {order.status === "DELIVERED" && <span className="text-green-500 text-xs font-semibold shrink-0">✓ təhvil verildi</span>}
+                    </div>
+                  </div>
+                )}
 
                 {/* Return Requests Display */}
                 {order.returnRequests?.length > 0 && (
@@ -403,7 +441,7 @@ export default function OrdersPage() {
                       <button onClick={() => updateStatus(order.id, "SHIPPED")} className="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-medium hover:bg-purple-500/20">{t("orderShipped")}</button>
                     )}
                     {order.status === "SHIPPED" && (
-                      <button onClick={() => updateStatus(order.id, "DELIVERED")} className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">{t("orderDelivered")}</button>
+                      <button onClick={() => { setDeliverCode(""); setDeliverModal(order.id); }} className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">{t("orderDelivered")}</button>
                     )}
                     <button onClick={() => updateStatus(order.id, "CANCELLED")} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">{t("orderCancelled")}</button>
                   </div>
@@ -411,6 +449,27 @@ export default function OrdersPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Təhvil kodu modalı (satıcı) ── */}
+      {deliverModal != null && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setDeliverModal(null)}>
+          <div className="bg-card border border-card-border w-full max-w-sm rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-1">🔐 Təhvil kodunu daxil edin</h3>
+            <p className="text-xs text-muted mb-4">Məhsulu təhvil verərkən alıcıdan kodu soruşun və bura yazın. Yalnız kod düzgün olduqda “çatdırıldı” olur — bu, səhv adama təhvilin qarşısını alır.</p>
+            <input
+              value={deliverCode}
+              onChange={(e) => setDeliverCode(e.target.value.toUpperCase())}
+              placeholder="TX-XXXXXX"
+              autoFocus
+              className="w-full px-4 py-3 bg-input-bg border border-input-border rounded-xl text-center text-lg font-bold tracking-[0.2em] mb-4 outline-none focus:ring-2 focus:ring-orange-500/40"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setDeliverModal(null)} className="flex-1 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium">Ləğv</button>
+              <button onClick={confirmDeliver} disabled={deliverBusy} className="flex-1 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{deliverBusy ? "..." : "Təsdiqlə"}</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
