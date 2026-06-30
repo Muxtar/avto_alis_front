@@ -47,6 +47,19 @@ export default function OrderDetailPage() {
     if (!silent) setLoading(false);
   };
 
+  // Yango canlı izləmə — kuryer aktiv ikən hər 12 saniyədə mövqeyi yenilə.
+  useEffect(() => {
+    if (!order?.yangoClaimId) return;
+    const done = ['delivered', 'delivered_finish', 'cancelled', 'cancelled_by_taxi', 'failed'];
+    if (done.includes(order.yangoStatus)) return;
+    const id = setInterval(async () => {
+      try { await fetch(`${API}/orders/${params.id}/yango/status`, { headers: { Authorization: `Bearer ${token}` } }); } catch { /* yum */ }
+      fetchOrder(true);
+    }, 12000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line
+  }, [order?.yangoClaimId, order?.yangoStatus, params.id]);
+
   const submitRating = async () => {
     if (ratingValue < 1) { toast('Rating seçin', 'error'); return; }
     setSubmittingRating(true);
@@ -137,7 +150,7 @@ export default function OrderDetailPage() {
       {showMap && (sellerLat || order.latitude || order.courierLat) && (
         <div className="bg-card border border-card-border rounded-2xl overflow-hidden">
           <div className="p-4 border-b border-card-border flex items-center justify-between">
-            <h2 className="font-semibold text-sm">📍 {t('liveTracking')}</h2>
+            <h2 className="font-semibold text-sm">📍 {t('liveTracking')}{order.yangoClaimId ? ' · 🛵 Yango' : ''}</h2>
             {order.courierLat && (
               <span className="text-xs text-green-500 flex items-center gap-1">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
