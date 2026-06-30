@@ -89,6 +89,42 @@ export default function OrdersPage() {
     if (ok) { toast("Təhvil təsdiqləndi ✓", "success"); setDeliverModal(null); setDeliverCode(""); }
   };
 
+  // Yango (kuryer) inteqrasiyası
+  const [yangoBusy, setYangoBusy] = useState<number | null>(null);
+  const [yangoInfo, setYangoInfo] = useState<Record<number, any>>({});
+  const dispatchYango = async (orderId: number) => {
+    setYangoBusy(orderId);
+    const r = await fetch(`${API}/orders/${orderId}/yango/dispatch`, { method: "POST", headers }).then((x) => x.json()).catch(() => null);
+    setYangoBusy(null);
+    if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
+    toast("Yango kuryeri çağırıldı ✓", "success");
+    fetchOrders();
+  };
+  const refreshYango = async (orderId: number) => {
+    setYangoBusy(orderId);
+    const r = await fetch(`${API}/orders/${orderId}/yango/status`, { headers }).then((x) => x.json()).catch(() => null);
+    setYangoBusy(null);
+    if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
+    setYangoInfo((p) => ({ ...p, [orderId]: r }));
+    fetchOrders();
+  };
+  const cancelYango = async (orderId: number) => {
+    setYangoBusy(orderId);
+    const r = await fetch(`${API}/orders/${orderId}/yango/cancel`, { method: "POST", headers }).then((x) => x.json()).catch(() => null);
+    setYangoBusy(null);
+    if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
+    toast("Yango çatdırılması ləğv edildi", "success");
+    fetchOrders();
+  };
+  const YANGO_LABEL: Record<string, string> = {
+    new: "yaradıldı", estimating: "hesablanır", ready_for_approval: "təsdiq gözləyir",
+    accepted: "qəbul edildi", performer_search: "kuryer axtarılır", performer_found: "kuryer tapıldı",
+    performer_draft: "kuryer təyin olunur", pickup_arrived: "kuryer mağazada", pickuped: "götürüldü, yolda",
+    delivery_arrived: "ünvanda", delivered: "çatdırıldı", delivered_finish: "çatdırıldı",
+    cancelled: "ləğv edildi", cancelled_by_taxi: "kuryer ləğv etdi", failed: "uğursuz",
+  };
+  const yangoLabel = (s?: string) => (s ? (YANGO_LABEL[s] || s) : "");
+
   // Return actions
   const submitReturn = async (orderId: number) => {
     setReturnLoading(true);
@@ -431,6 +467,22 @@ export default function OrdersPage() {
                   </div>
                 )}
 
+                {/* Yango (kuryer) statusu — hər iki tərəf görür */}
+                {order.yangoClaimId && (
+                  <div className="p-4 border-t border-card-border">
+                    <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium">🛵 Yango: <span className="text-blue-500">{yangoLabel(order.yangoStatus)}</span></p>
+                        <button onClick={() => refreshYango(order.id)} disabled={yangoBusy === order.id} className="text-xs text-blue-500 hover:underline disabled:opacity-50">{yangoBusy === order.id ? "..." : "Yenilə"}</button>
+                      </div>
+                      {order.yangoPrice != null && <p className="text-[11px] text-muted mt-0.5">Çatdırılma haqqı: {order.yangoPrice.toFixed(2)} {order.yangoCurrency || "AZN"}</p>}
+                      {yangoInfo[order.id]?.performer && (
+                        <p className="text-xs text-muted mt-1">Kuryer: <b className="text-foreground">{yangoInfo[order.id].performer.courier_name}</b>{yangoInfo[order.id].performer.car_model ? ` · ${yangoInfo[order.id].performer.car_model} ${yangoInfo[order.id].performer.car_number || ""}` : ""}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Seller actions */}
                 {activeTab === "selling" && order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
                   <div className="p-3 border-t border-card-border flex gap-2 flex-wrap">
@@ -440,10 +492,24 @@ export default function OrdersPage() {
                     {order.status === "CONFIRMED" && (
                       <button onClick={() => updateStatus(order.id, "SHIPPED")} className="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-medium hover:bg-purple-500/20">{t("orderShipped")}</button>
                     )}
+                    {/* Yango ilə göndər — kuryer çatdırılması, hələ göndərilməyibsə */}
+                    {!order.yangoClaimId && order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER" && (order.status === "CONFIRMED" || order.status === "SHIPPED") && (
+                      <button onClick={() => dispatchYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-500/20 disabled:opacity-50">{yangoBusy === order.id ? "..." : "🛵 Yango ilə göndər"}</button>
+                    )}
+                    {order.yangoClaimId && !["delivered", "delivered_finish", "cancelled", "cancelled_by_taxi", "failed"].includes(order.yangoStatus) && (
+                      <button onClick={() => cancelYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-amber-500/10 text-amber-500 rounded-lg text-xs font-medium hover:bg-amber-500/20 disabled:opacity-50">Yango ləğv</button>
+                    )}
                     {order.status === "SHIPPED" && (
                       <button onClick={() => { setDeliverCode(""); setDeliverModal(order.id); }} className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">{t("orderDelivered")}</button>
                     )}
                     <button onClick={() => updateStatus(order.id, "CANCELLED")} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">{t("orderCancelled")}</button>
+                  </div>
+                )}
+
+                {/* Alıcı: Yango izləmə düyməsi */}
+                {activeTab === "buying" && order.yangoClaimId && !["delivered", "delivered_finish", "cancelled"].includes(order.yangoStatus) && (
+                  <div className="p-3 border-t border-card-border">
+                    <button onClick={() => refreshYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-500/20 disabled:opacity-50">{yangoBusy === order.id ? "..." : "🛵 Kuryeri izlə"}</button>
                   </div>
                 )}
               </div>
