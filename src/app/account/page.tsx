@@ -43,7 +43,7 @@ function AccountPageInner() {
   const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
   const [barter, setBarter] = useState(false);   // dəyiş-düş qəbul olunur
   const [forRent, setForRent] = useState(false); // satış yox, icarə/kirayə
-  const [deliveryMethod, setDeliveryMethod] = useState<"COURIER" | "SELF">("COURIER"); // VÖEN elanda çatdırılma: kuryer (Yango) / satıcı özü
+  const [allowSelfDelivery, setAllowSelfDelivery] = useState(false); // satıcı özü də çatdıra bilər (Yango + götürmə həmişə var)
   const [bookable, setBookable] = useState(false); // bron/rezervasiya açıq
   const [bookingType, setBookingType] = useState<"RESERVATION" | "STAY">("RESERVATION");
   const [maxGuests, setMaxGuests] = useState("");
@@ -126,7 +126,7 @@ function AccountPageInner() {
     setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "" });
     setBarter(false); setForRent(false);
     setBookable(false); setBookingType("RESERVATION"); setMaxGuests(""); setOpenTime(""); setCloseTime("");
-    setDeliveryMethod("COURIER");
+    setAllowSelfDelivery(false);
     setAttrs({});
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
     setImages([]);
@@ -206,7 +206,7 @@ function AccountPageInner() {
         }
       }
       fd.append("listingMode", listingMode || "novoen");
-      if (listingMode === "voen") fd.append("deliveryMethod", deliveryMethod);
+      if (listingMode === "voen") fd.append("allowSelfDelivery", String(allowSelfDelivery));
       if (selectedObjectId) fd.append("businessObjectId", selectedObjectId);
       images.forEach((file) => fd.append("images", file));
       if (editingId) {
@@ -262,7 +262,7 @@ function AccountPageInner() {
     setExistingImages(listing.images || []);
     // Redaktədə rejimi mövcud elana görə təyin et (biznes obyekti varsa VÖEN-li).
     setListingMode(listing.businessId ? "voen" : "novoen");
-    setDeliveryMethod(listing.deliveryMethod === "SELF" ? "SELF" : "COURIER");
+    setAllowSelfDelivery(!!listing.allowSelfDelivery);
     setListingKind(listing.type === "SERVICE" ? "service" : "product-form");
     setSelectedObjectId(listing.businessObjectId ? String(listing.businessObjectId) : "");
     setEditingId(listing.id);
@@ -596,21 +596,20 @@ function AccountPageInner() {
             </div>
             )}
 
-            {/* Çatdırılma metodu — yalnız VÖEN (obyektə bağlı) elanlarda */}
+            {/* Çatdırılma seçimləri — yalnız VÖEN (obyektə bağlı) elanlarda */}
             {listingMode === "voen" && form.type !== "SERVICE" && (
               <div>
-                <label className="block text-sm font-medium mb-1.5">Çatdırılma metodu</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button type="button" onClick={() => setDeliveryMethod("COURIER")}
-                    className={`px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${deliveryMethod === "COURIER" ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border bg-input-bg text-foreground"}`}>
-                    🛵 Kuryer (Yango)<span className="block text-[10px] text-muted font-normal">kuryer çatdırır</span>
-                  </button>
-                  <button type="button" onClick={() => setDeliveryMethod("SELF")}
-                    className={`px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${deliveryMethod === "SELF" ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border bg-input-bg text-foreground"}`}>
-                    🚗 Özüm çatdırıram<span className="block text-[10px] text-muted font-normal">satıcı özü çatdırır</span>
-                  </button>
+                <label className="block text-sm font-medium mb-1.5">Çatdırılma</label>
+                <div className="px-4 py-3 rounded-xl border border-input-border bg-input-bg/50 space-y-2 text-sm">
+                  <p className="text-muted text-[12px]">Alıcı checkout-da seçəcək. Standart variantlar: 🛵 <b className="text-foreground">Yango kuryer</b> və 🏪 <b className="text-foreground">mağazadan götürmə</b> həmişə mövcuddur.</p>
+                  <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${allowSelfDelivery ? "border-orange-500/50 bg-orange-500/5" : "border-input-border bg-input-bg"}`}>
+                    <input type="checkbox" checked={allowSelfDelivery} onChange={(e) => setAllowSelfDelivery(e.target.checked)} className="w-4 h-4 accent-orange-500" />
+                    <span>
+                      <span className="block text-sm font-medium">🚗 Mən özüm də çatdıra bilərəm</span>
+                      <span className="block text-[11px] text-muted">Alıcıya əlavə variant: satıcı özü çatdırır</span>
+                    </span>
+                  </label>
                 </div>
-                <p className="text-[11px] text-muted mt-1.5">Alıcı həmçinin məhsulu obyektdən özü götürə bilər (checkout-da seçim olur).</p>
               </div>
             )}
 

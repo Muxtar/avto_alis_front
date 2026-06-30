@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, UPLOADS } from "@/lib/api";
+import LocationPicker from "@/components/LocationPickerWrapper";
 
 export default function CartPage() {
   const { t } = useLanguage();
@@ -28,6 +29,12 @@ export default function CartPage() {
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null);
   const [deliveryType, setDeliveryType] = useState<"DELIVERY" | "PICKUP">("DELIVERY");
+  const [deliveryMethod, setDeliveryMethod] = useState<"COURIER" | "SELF">("COURIER"); // çatdırılmada: Yango / satıcı özü
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+  const [city, setCity] = useState("");
+  const [yangoFee, setYangoFee] = useState<number | null>(null);
+  const [quoting, setQuoting] = useState(false);
   const [scheduledAt, setScheduledAt] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "WALLET">("CASH");
   const [promoCode, setPromoCode] = useState("");
@@ -157,11 +164,30 @@ export default function CartPage() {
   };
 
   const pointsDiscount = usePoints * 0.01;
-  const finalTotal = Math.max(0, total - promoDiscount - pointsDiscount);
+  // Yango çatdırılma haqqı yalnız çatdırılma + kuryer seçimində cəmə əlavə olunur.
+  const deliveryFee = deliveryType === "DELIVERY" && deliveryMethod === "COURIER" && yangoFee ? yangoFee : 0;
+  const finalTotal = Math.max(0, total - promoDiscount - pointsDiscount) + deliveryFee;
+
+  // Yango qiymət təxmini — konum/metod dəyişəndə yenilənir.
+  useEffect(() => {
+    if (deliveryType !== "DELIVERY" || deliveryMethod !== "COURIER" || lat == null || lng == null) { setYangoFee(null); return; }
+    const objId = items.find((i) => i.listing?.businessObjectId)?.listing?.businessObjectId;
+    if (!objId) { setYangoFee(null); return; }
+    let cancelled = false;
+    setQuoting(true);
+    fetch(`${API}/yango/quote`, { method: "POST", headers, body: JSON.stringify({ businessObjectId: objId, latitude: lat, longitude: lng }) })
+      .then((r) => r.json()).then((d) => { if (!cancelled) setYangoFee(d?.available ? d.fee : null); })
+      .catch(() => { if (!cancelled) setYangoFee(null); }).finally(() => { if (!cancelled) setQuoting(false); });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line
+  }, [deliveryType, deliveryMethod, lat, lng, items.length]);
 
   const checkout = async () => {
     if (deliveryType === "DELIVERY" && !address) {
       toast(t('deliveryAddress'), 'error'); return;
+    }
+    if (deliveryType === "DELIVERY" && deliveryMethod === "COURIER" && (lat == null || lng == null)) {
+      toast("Yango çatdırılması üçün xəritədən konum seçin", 'error'); return;
     }
     setPlacing(true);
     try {
@@ -171,6 +197,8 @@ export default function CartPage() {
           address: deliveryType === "DELIVERY" ? address : null,
           phone, note,
           deliveryType,
+          deliveryMethod: deliveryType === "DELIVERY" ? deliveryMethod : null,
+          latitude: lat, longitude: lng,
           scheduledAt: scheduledAt || null,
           paymentMethod,
           promoCode: promoValidated ? promoCode : null,
@@ -299,6 +327,12 @@ export default function CartPage() {
                   <span>−{pointsDiscount.toFixed(2)} AZN</span>
                 </div>
               )}
+              {deliveryFee > 0 && (
+                <div className="flex justify-between text-sm text-muted">
+                  <span>🛵 Yango çatdırılma</span>
+                  <span>+{deliveryFee.toFixed(2)} AZN</span>
+                </div>
+              )}
 
               <div className="flex justify-between pt-3 border-t border-card-border">
                 <span className="font-semibold">{t("cartTotal")}</span>
@@ -339,6 +373,36 @@ export default function CartPage() {
                     <div>
                       <label className="block text-xs text-muted mb-1">{t("deliveryAddress")}</label>
                       <input value={address} onChange={(e) => { setAddress(e.target.value); setSelectedAddressId(null); }} required placeholder={t("address")} className={inputCls} />
+                      {/* Xəritədən konum — telefonda 📍 ilə avtomatik, web-də əl ilə. Yango üçün vacibdir. */}
+                      <div className="mt-2">
+                        <p className="text-[11px] text-muted mb-1">📍 Çatdırılma konumunu seçin (Yango kuryeri üçün vacibdir):</p>
+                        <LocationPicker
+                          city={city}
+                          address={address}
+                          latitude={lat}
+                          longitude={lng}
+                          onChange={(n: any) => { setCity(n.city || city); if (n.address) setAddress(n.address); setLat(n.latitude); setLng(n.longitude); setSelectedAddressId(null); }}
+                          height="220px"
+                        />
+                        {lat != null && lng != null && <p className="text-[11px] text-green-500 mt-1">✓ Konum seçildi</p>}
+                      </div>
+
+                      {/* Çatdırılma metodu seçimi */}
+                      <div className="mt-3">
+                        <label className="block text-xs text-muted mb-1">Çatdırılma üsulu</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <button type="button" onClick={() => setDeliveryMethod("COURIER")}
+                            className={`py-2 px-2 rounded-lg text-xs font-medium border ${deliveryMethod === "COURIER" ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border bg-input-bg"}`}>
+                            🛵 Yango kuryer{deliveryMethod === "COURIER" && (quoting ? <span className="block text-[10px] text-muted">hesablanır...</span> : yangoFee != null ? <span className="block text-[10px] text-muted">{yangoFee.toFixed(2)} AZN</span> : <span className="block text-[10px] text-muted">konum seçin</span>)}
+                          </button>
+                          {items.every((i) => i.listing?.allowSelfDelivery) && (
+                            <button type="button" onClick={() => setDeliveryMethod("SELF")}
+                              className={`py-2 px-2 rounded-lg text-xs font-medium border ${deliveryMethod === "SELF" ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border bg-input-bg"}`}>
+                              🚗 Satıcı özü<span className="block text-[10px] text-muted">satıcı çatdırır</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   )}
 
