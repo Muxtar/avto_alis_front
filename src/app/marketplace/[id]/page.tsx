@@ -450,11 +450,12 @@ export default function ListingDetailPage() {
               <span className="text-2xl sm:text-3xl font-bold text-orange-500">{listing.price}</span>
               <span className="text-muted text-sm">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
             </div>
-            {(listing.forRent || listing.barter || listing.bookable) && (
+            {(listing.forRent || listing.barter || listing.bookable || listing.weightKg) && (
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 {listing.forRent && <span className="px-2.5 py-1 bg-indigo-500/10 text-indigo-500 rounded-lg text-xs font-semibold">🔑 İcarəyə verilir</span>}
                 {listing.barter && <span className="px-2.5 py-1 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-semibold">🔄 Barter (dəyiş-düş) qəbul olunur</span>}
                 {listing.bookable && <span className="px-2.5 py-1 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-semibold">📅 {listing.bookingType === "STAY" ? "Gecələmə bronu" : "Rezervasiya"}</span>}
+                {listing.weightKg ? <span className="px-2.5 py-1 bg-input-bg text-muted rounded-lg text-xs font-semibold">⚖️ {listing.weightKg} kq</span> : null}
               </div>
             )}
             <div className="flex items-center gap-2 text-muted text-sm mb-4">

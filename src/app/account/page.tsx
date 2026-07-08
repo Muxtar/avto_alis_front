@@ -44,6 +44,7 @@ function AccountPageInner() {
   const [barter, setBarter] = useState(false);   // dəyiş-düş qəbul olunur
   const [forRent, setForRent] = useState(false); // satış yox, icarə/kirayə
   const [allowSelfDelivery, setAllowSelfDelivery] = useState(false); // satıcı özü də çatdıra bilər (Yango + götürmə həmişə var)
+  const [weightKg, setWeightKg] = useState(""); // məhsulun çəkisi (kq) — Yango 50 kq limiti üçün
   const [bookable, setBookable] = useState(false); // bron/rezervasiya açıq
   const [bookingType, setBookingType] = useState<"RESERVATION" | "STAY">("RESERVATION");
   const [maxGuests, setMaxGuests] = useState("");
@@ -126,7 +127,7 @@ function AccountPageInner() {
     setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "" });
     setBarter(false); setForRent(false);
     setBookable(false); setBookingType("RESERVATION"); setMaxGuests(""); setOpenTime(""); setCloseTime("");
-    setAllowSelfDelivery(false);
+    setAllowSelfDelivery(false); setWeightKg("");
     setAttrs({});
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
     setImages([]);
@@ -207,6 +208,7 @@ function AccountPageInner() {
       }
       fd.append("listingMode", listingMode || "novoen");
       if (listingMode === "voen") fd.append("allowSelfDelivery", String(allowSelfDelivery));
+      if (weightKg) fd.append("weightKg", weightKg);
       if (selectedObjectId) fd.append("businessObjectId", selectedObjectId);
       images.forEach((file) => fd.append("images", file));
       if (editingId) {
@@ -263,6 +265,7 @@ function AccountPageInner() {
     // Redaktədə rejimi mövcud elana görə təyin et (biznes obyekti varsa VÖEN-li).
     setListingMode(listing.businessId ? "voen" : "novoen");
     setAllowSelfDelivery(!!listing.allowSelfDelivery);
+    setWeightKg(listing.weightKg != null ? String(listing.weightKg) : "");
     setListingKind(listing.type === "SERVICE" ? "service" : "product-form");
     setSelectedObjectId(listing.businessObjectId ? String(listing.businessObjectId) : "");
     setEditingId(listing.id);
@@ -601,6 +604,15 @@ function AccountPageInner() {
               <div>
                 <label className="block text-sm font-medium mb-1.5">Çatdırılma</label>
                 <div className="px-4 py-3 rounded-xl border border-input-border bg-input-bg/50 space-y-2 text-sm">
+                  <div>
+                    <label className="block text-xs font-medium text-muted mb-1">Məhsulun çəkisi (kq) — 1 ədəd</label>
+                    <input type="number" min={0} step="0.1" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="məs. 2.5" className={inputCls} />
+                    <p className="text-[11px] text-muted mt-1">
+                      ⚖️ Yango yük limiti <b>50 kq</b>. {Number(weightKg) > 50
+                        ? <span className="text-red-500">50 kq-dan ağırdır — bu məhsulda Yango bağlanacaq, yalnız götürmə / satıcı çatdırması qalacaq.</span>
+                        : "Bundan ağır məhsullarda Yango avtomatik bağlanır."}
+                    </p>
+                  </div>
                   <p className="text-muted text-[12px]">Alıcı checkout-da seçəcək. Standart variantlar: 🛵 <b className="text-foreground">Yango kuryer</b> və 🏪 <b className="text-foreground">mağazadan götürmə</b> həmişə mövcuddur.</p>
                   <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${allowSelfDelivery ? "border-orange-500/50 bg-orange-500/5" : "border-input-border bg-input-bg"}`}>
                     <input type="checkbox" checked={allowSelfDelivery} onChange={(e) => setAllowSelfDelivery(e.target.checked)} className="w-4 h-4 accent-orange-500" />

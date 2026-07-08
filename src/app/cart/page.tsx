@@ -164,27 +164,40 @@ export default function CartPage() {
   };
 
   const pointsDiscount = usePoints * 0.01;
-  // Yango çatdırılma haqqı yalnız çatdırılma + kuryer seçimində cəmə əlavə olunur.
-  const deliveryFee = deliveryType === "DELIVERY" && deliveryMethod === "COURIER" && yangoFee ? yangoFee : 0;
+  // Sifariş çəkisi (kq) — Yango 50 kq limiti üçün.
+  const cartWeight = items.reduce((s, i) => s + i.quantity * (i.listing?.weightKg || 0), 0);
+  const yangoBlocked = cartWeight > 50; // 50 kq-dan ağır — kuryer mümkün deyil
+  const allSelfAllowed = items.length > 0 && items.every((i) => i.listing?.allowSelfDelivery);
+  // Yango çatdırılma haqqı yalnız çatdırılma + kuryer + limit daxilində cəmə əlavə olunur.
+  const deliveryFee = deliveryType === "DELIVERY" && deliveryMethod === "COURIER" && !yangoBlocked && yangoFee ? yangoFee : 0;
   const finalTotal = Math.max(0, total - promoDiscount - pointsDiscount) + deliveryFee;
 
-  // Yango qiymət təxmini — konum/metod dəyişəndə yenilənir.
+  // Ağır yük olduqda kuryerdən satıcı çatdırmasına keç (icazə varsa).
   useEffect(() => {
-    if (deliveryType !== "DELIVERY" || deliveryMethod !== "COURIER" || lat == null || lng == null) { setYangoFee(null); return; }
+    if (yangoBlocked && deliveryType === "DELIVERY" && deliveryMethod === "COURIER" && allSelfAllowed) setDeliveryMethod("SELF");
+    // eslint-disable-next-line
+  }, [yangoBlocked, deliveryType]);
+
+  // Yango qiymət təxmini — konum/metod dəyişəndə yenilənir (limit daxilində).
+  useEffect(() => {
+    if (deliveryType !== "DELIVERY" || deliveryMethod !== "COURIER" || yangoBlocked || lat == null || lng == null) { setYangoFee(null); return; }
     const objId = items.find((i) => i.listing?.businessObjectId)?.listing?.businessObjectId;
     if (!objId) { setYangoFee(null); return; }
     let cancelled = false;
     setQuoting(true);
-    fetch(`${API}/yango/quote`, { method: "POST", headers, body: JSON.stringify({ businessObjectId: objId, latitude: lat, longitude: lng }) })
+    fetch(`${API}/yango/quote`, { method: "POST", headers, body: JSON.stringify({ businessObjectId: objId, latitude: lat, longitude: lng, weight: cartWeight || 1 }) })
       .then((r) => r.json()).then((d) => { if (!cancelled) setYangoFee(d?.available ? d.fee : null); })
       .catch(() => { if (!cancelled) setYangoFee(null); }).finally(() => { if (!cancelled) setQuoting(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line
-  }, [deliveryType, deliveryMethod, lat, lng, items.length]);
+  }, [deliveryType, deliveryMethod, lat, lng, items.length, yangoBlocked]);
 
   const checkout = async () => {
     if (deliveryType === "DELIVERY" && !address) {
       toast(t('deliveryAddress'), 'error'); return;
+    }
+    if (deliveryType === "DELIVERY" && deliveryMethod === "COURIER" && yangoBlocked) {
+      toast("Sifariş 50 kq-dan ağırdır — Yango mümkün deyil. Götürmə və ya satıcı çatdırması seçin.", 'error'); return;
     }
     if (deliveryType === "DELIVERY" && deliveryMethod === "COURIER" && (lat == null || lng == null)) {
       toast("Yango çatdırılması üçün xəritədən konum seçin", 'error'); return;
@@ -389,19 +402,24 @@ export default function CartPage() {
 
                       {/* Çatdırılma metodu seçimi */}
                       <div className="mt-3">
-                        <label className="block text-xs text-muted mb-1">Çatdırılma üsulu</label>
+                        <label className="block text-xs text-muted mb-1">Çatdırılma üsulu {cartWeight > 0 && <span className="text-muted">· {cartWeight.toFixed(1)} kq</span>}</label>
                         <div className="grid grid-cols-2 gap-2">
-                          <button type="button" onClick={() => setDeliveryMethod("COURIER")}
-                            className={`py-2 px-2 rounded-lg text-xs font-medium border ${deliveryMethod === "COURIER" ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border bg-input-bg"}`}>
-                            🛵 Yango kuryer{deliveryMethod === "COURIER" && (quoting ? <span className="block text-[10px] text-muted">hesablanır...</span> : yangoFee != null ? <span className="block text-[10px] text-muted">{yangoFee.toFixed(2)} AZN</span> : <span className="block text-[10px] text-muted">konum seçin</span>)}
+                          <button type="button" disabled={yangoBlocked} onClick={() => !yangoBlocked && setDeliveryMethod("COURIER")}
+                            className={`py-2 px-2 rounded-lg text-xs font-medium border ${yangoBlocked ? "opacity-40 cursor-not-allowed border-input-border bg-input-bg" : deliveryMethod === "COURIER" ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border bg-input-bg"}`}>
+                            🛵 Yango kuryer{yangoBlocked ? <span className="block text-[10px] text-red-500">50 kq-dan ağır</span> : deliveryMethod === "COURIER" && (quoting ? <span className="block text-[10px] text-muted">hesablanır...</span> : yangoFee != null ? <span className="block text-[10px] text-muted">{yangoFee.toFixed(2)} AZN</span> : <span className="block text-[10px] text-muted">konum seçin</span>)}
                           </button>
-                          {items.every((i) => i.listing?.allowSelfDelivery) && (
+                          {allSelfAllowed && (
                             <button type="button" onClick={() => setDeliveryMethod("SELF")}
                               className={`py-2 px-2 rounded-lg text-xs font-medium border ${deliveryMethod === "SELF" ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border bg-input-bg"}`}>
                               🚗 Satıcı özü<span className="block text-[10px] text-muted">satıcı çatdırır</span>
                             </button>
                           )}
                         </div>
+                        {yangoBlocked && (
+                          <p className="text-[11px] text-red-500 mt-1.5">
+                            ⚖️ Sifariş 50 kq-dan ağırdır — Yango kuryer mümkün deyil. {allSelfAllowed ? "Satıcı çatdırması seçildi." : "Yuxarıdan “🏪 Götürmə”ni seçin (satıcı bu məhsulda özü çatdırma təklif etmir)."}
+                          </p>
+                        )}
                       </div>
                     </div>
                   )}
