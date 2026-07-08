@@ -10,7 +10,7 @@ import { API, UPLOADS } from "@/lib/api";
 import LocationPicker from "@/components/LocationPickerWrapper";
 
 export default function CartPage() {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { toast } = useToast();
   const { user, token, isLoggedIn, authLoading } = useAuth();
   const { refreshCart } = useCart();
@@ -35,6 +35,7 @@ export default function CartPage() {
   const [city, setCity] = useState("");
   const [yangoFee, setYangoFee] = useState<number | null>(null);
   const [quoting, setQuoting] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false); // ödəniş şərtlərini qəbul (bank tələbi)
   const [scheduledAt, setScheduledAt] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "WALLET">("CASH");
   const [promoCode, setPromoCode] = useState("");
@@ -192,7 +193,16 @@ export default function CartPage() {
     // eslint-disable-next-line
   }, [deliveryType, deliveryMethod, lat, lng, items.length, yangoBlocked]);
 
+  // Ödəniş şərtləri qutusunun mətnləri (bank tələbi, çoxdilli).
+  const termsLbl: any = {
+    az: { accept: "Ödəniş şərtləri ilə tanış oldum və qəbul edirəm", terms: "İstifadə şərtləri", privacy: "Məxfilik siyasəti", need: "Davam etmək üçün ödəniş şərtlərini qəbul edin" },
+    en: { accept: "I have read and accept the payment terms", terms: "Terms of Use", privacy: "Privacy Policy", need: "Please accept the payment terms to continue" },
+    ru: { accept: "Я ознакомился и принимаю условия оплаты", terms: "Условия использования", privacy: "Конфиденциальность", need: "Примите условия оплаты, чтобы продолжить" },
+  };
+  const tl = termsLbl[locale] || termsLbl.az;
+
   const checkout = async () => {
+    if (!acceptedTerms) { toast(tl.need, 'error'); return; }
     if (deliveryType === "DELIVERY" && !address) {
       toast(t('deliveryAddress'), 'error'); return;
     }
@@ -482,7 +492,19 @@ export default function CartPage() {
                     <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={inputCls + " resize-none"} />
                   </div>
 
-                  <button onClick={checkout} disabled={placing} className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white text-sm font-semibold disabled:opacity-50">
+                  {/* Ödəniş şərtlərinin qəbulu — bank tələbi */}
+                  <label className="flex items-start gap-2.5 px-1 cursor-pointer">
+                    <input type="checkbox" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} className="w-4 h-4 mt-0.5 accent-orange-500 shrink-0" />
+                    <span className="text-xs text-muted leading-relaxed">
+                      {tl.accept} (
+                      <Link href="/terms" target="_blank" className="text-orange-500 hover:underline">{tl.terms}</Link>
+                      {" · "}
+                      <Link href="/privacy" target="_blank" className="text-orange-500 hover:underline">{tl.privacy}</Link>
+                      )
+                    </span>
+                  </label>
+
+                  <button onClick={checkout} disabled={placing || !acceptedTerms} className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white text-sm font-semibold disabled:opacity-50">
                     {placing ? "..." : `${t("confirmOrder")} • ${finalTotal.toFixed(2)} AZN`}
                   </button>
                   <button onClick={() => setShowCheckout(false)} className="w-full py-2 text-muted text-xs">{t("adminCancel")}</button>
