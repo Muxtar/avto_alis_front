@@ -71,7 +71,7 @@ export default function Footer() {
 
         {/* Bottom */}
         {/* Hüquqi məlumat — bank tələbi (fərdi sahibkar/hüquqi şəxsin adı + VÖEN) */}
-        <p className="text-muted text-[11px] mt-8 sm:mt-10">{COMPANY.legalName} · {pick('voen')}: {COMPANY.voen}</p>
+        <p className="text-muted text-[11px] mt-8 sm:mt-10">{(locale === 'en' ? COMPANY.legalNameEn : COMPANY.legalName)} · {pick('voen')}: {COMPANY.voen}</p>
         <div className="border-t border-card-border mt-3 pt-5 sm:pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-muted text-xs">&copy; {year} {COMPANY.brand}. {t('footerRights')}</p>
           <div className="flex gap-4 flex-wrap justify-center">

@@ -48,6 +48,7 @@ export default function AboutPage() {
   };
   const c = L[locale] || L.az;
   const addr = locale === "en" ? COMPANY.legalAddressEn : COMPANY.legalAddressAz;
+  const name = locale === "en" ? COMPANY.legalNameEn : COMPANY.legalName;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
@@ -64,7 +65,7 @@ export default function AboutPage() {
         <section className="surface p-5">
           <h2 className="text-lg font-semibold mb-3 text-foreground">{c.legal}</h2>
           <dl className="space-y-1.5 text-sm">
-            <div className="flex gap-2"><dt className="text-muted min-w-[130px]">{c.legalName}:</dt><dd className="font-medium">{COMPANY.legalName}</dd></div>
+            <div className="flex gap-2"><dt className="text-muted min-w-[130px]">{c.legalName}:</dt><dd className="font-medium">{name}</dd></div>
             <div className="flex gap-2"><dt className="text-muted min-w-[130px]">{c.voen}:</dt><dd className="font-medium">{COMPANY.voen}</dd></div>
             <div className="flex gap-2"><dt className="text-muted min-w-[130px]">{c.address}:</dt><dd className="font-medium">{addr}</dd></div>
             <div className="flex gap-2"><dt className="text-muted min-w-[130px]">{c.contact}:</dt><dd className="font-medium"><a href={`mailto:${COMPANY.email}`} className="text-orange-500 hover:underline">{COMPANY.email}</a> · {COMPANY.phone}</dd></div>

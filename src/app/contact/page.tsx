@@ -45,6 +45,7 @@ export default function ContactPage() {
   };
   const c = L[locale] || L.az;
   const addr = locale === "en" ? COMPANY.legalAddressEn : COMPANY.legalAddressAz;
+  const name = locale === "en" ? COMPANY.legalNameEn : COMPANY.legalName;
 
   const Row = ({ label, children }: any) => (
     <div className="flex gap-2 py-2 border-b border-card-border last:border-0">
@@ -59,7 +60,7 @@ export default function ContactPage() {
       <p className="text-muted text-sm mb-8">{c.intro}</p>
 
       <div className="surface p-5 text-sm sm:text-base">
-        <Row label={c.legalName}>{COMPANY.legalName}</Row>
+        <Row label={c.legalName}>{name}</Row>
         <Row label={c.voen}>{COMPANY.voen}</Row>
         <Row label={c.phone}><a href={`tel:${COMPANY.phone.replace(/\s/g, "")}`} className="text-orange-500 hover:underline">{COMPANY.phone}</a></Row>
         <Row label={c.email}><a href={`mailto:${COMPANY.email}`} className="text-orange-500 hover:underline">{COMPANY.email}</a></Row>
