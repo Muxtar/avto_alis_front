@@ -62,7 +62,13 @@ export default function ContactPage() {
       <div className="surface p-5 text-sm sm:text-base">
         <Row label={c.legalName}>{name}</Row>
         <Row label={c.voen}>{COMPANY.voen}</Row>
-        <Row label={c.phone}><a href={`tel:${COMPANY.phone.replace(/\s/g, "")}`} className="text-orange-500 hover:underline">{COMPANY.phone}</a></Row>
+        <Row label={c.phone}>
+          <span className="flex flex-wrap gap-x-4 gap-y-1">
+            {COMPANY.phones.map((p) => (
+              <a key={p} href={`tel:${p.replace(/\s/g, "")}`} className="text-orange-500 hover:underline">{p}</a>
+            ))}
+          </span>
+        </Row>
         <Row label={c.email}><a href={`mailto:${COMPANY.email}`} className="text-orange-500 hover:underline">{COMPANY.email}</a></Row>
         <Row label={c.address}>{addr}</Row>
         <Row label={c.hours}>{c.hoursVal}</Row>

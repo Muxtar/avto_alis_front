@@ -68,7 +68,7 @@ export default function AboutPage() {
             <div className="flex gap-2"><dt className="text-muted min-w-[130px]">{c.legalName}:</dt><dd className="font-medium">{name}</dd></div>
             <div className="flex gap-2"><dt className="text-muted min-w-[130px]">{c.voen}:</dt><dd className="font-medium">{COMPANY.voen}</dd></div>
             <div className="flex gap-2"><dt className="text-muted min-w-[130px]">{c.address}:</dt><dd className="font-medium">{addr}</dd></div>
-            <div className="flex gap-2"><dt className="text-muted min-w-[130px]">{c.contact}:</dt><dd className="font-medium"><a href={`mailto:${COMPANY.email}`} className="text-orange-500 hover:underline">{COMPANY.email}</a> · {COMPANY.phone}</dd></div>
+            <div className="flex gap-2"><dt className="text-muted min-w-[130px]">{c.contact}:</dt><dd className="font-medium"><a href={`mailto:${COMPANY.email}`} className="text-orange-500 hover:underline">{COMPANY.email}</a> · {COMPANY.phones.join(", ")}</dd></div>
           </dl>
         </section>
       </div>
