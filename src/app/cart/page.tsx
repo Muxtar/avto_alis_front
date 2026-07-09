@@ -195,9 +195,9 @@ export default function CartPage() {
 
   // Ödəniş şərtləri qutusunun mətnləri (bank tələbi, çoxdilli).
   const termsLbl: any = {
-    az: { accept: "Ödəniş şərtləri ilə tanış oldum və qəbul edirəm", terms: "İstifadə şərtləri", privacy: "Məxfilik siyasəti", need: "Davam etmək üçün ödəniş şərtlərini qəbul edin" },
-    en: { accept: "I have read and accept the payment terms", terms: "Terms of Use", privacy: "Privacy Policy", need: "Please accept the payment terms to continue" },
-    ru: { accept: "Я ознакомился и принимаю условия оплаты", terms: "Условия использования", privacy: "Конфиденциальность", need: "Примите условия оплаты, чтобы продолжить" },
+    az: { accept: "Ödəniş şərtləri ilə tanış oldum və qəbul edirəm", terms: "İstifadə şərtləri", cancel: "Ləğv və ödəmə", privacy: "Məxfilik", need: "Davam etmək üçün ödəniş şərtlərini qəbul edin" },
+    en: { accept: "I have read and accept the payment terms", terms: "Terms of Use", cancel: "Cancellation & Payment", privacy: "Privacy", need: "Please accept the payment terms to continue" },
+    ru: { accept: "Я ознакомился и принимаю условия оплаты", terms: "Условия", cancel: "Отмена и оплата", privacy: "Конфиденциальность", need: "Примите условия оплаты, чтобы продолжить" },
   };
   const tl = termsLbl[locale] || termsLbl.az;
 
@@ -498,6 +498,8 @@ export default function CartPage() {
                     <span className="text-xs text-muted leading-relaxed">
                       {tl.accept} (
                       <Link href="/terms" target="_blank" className="text-orange-500 hover:underline">{tl.terms}</Link>
+                      {" · "}
+                      <Link href="/cancellation" target="_blank" className="text-orange-500 hover:underline">{tl.cancel}</Link>
                       {" · "}
                       <Link href="/privacy" target="_blank" className="text-orange-500 hover:underline">{tl.privacy}</Link>
                       )

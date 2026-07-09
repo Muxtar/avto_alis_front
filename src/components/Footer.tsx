@@ -10,6 +10,8 @@ export default function Footer() {
     about: { az: 'Haqqımızda', en: 'About Us', ru: 'О нас' },
     contact: { az: 'Əlaqə', en: 'Contact', ru: 'Контакты' },
     voen: { az: 'VÖEN', en: 'VÖEN', ru: 'VÖEN' },
+    returns: { az: 'Qaytarılma', en: 'Returns', ru: 'Возврат' },
+    cancellation: { az: 'Ləğv və ödəmə', en: 'Cancellation', ru: 'Отмена' },
   };
   const pick = (k: string) => (lbl[k]?.[locale] || lbl[k]?.az);
 
@@ -79,6 +81,8 @@ export default function Footer() {
             <Link href="/contact" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{pick('contact')}</Link>
             <Link href="/privacy" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{t('footerPrivacy')}</Link>
             <Link href="/terms" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{t('footerTerms')}</Link>
+            <Link href="/returns" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{pick('returns')}</Link>
+            <Link href="/cancellation" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{pick('cancellation')}</Link>
           </div>
         </div>
       </div>
