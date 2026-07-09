@@ -6,9 +6,9 @@ export const COMPANY = {
   legalNameEn: "“FRID AI TRADE” Limited Liability Company",
   // Vergi ödəyicisinin eyniləşdirmə nömrəsi:
   voen: "9900003611",
-  // Hüquqi ünvan (TODO: qeydiyyat sənədindəki dəqiq ünvanı əlavə et):
-  legalAddressAz: "Bakı şəhəri, Azərbaycan",
-  legalAddressEn: "Baku, Azerbaijan",
+  // Hüquqi ünvan:
+  legalAddressAz: "Bakı şəhəri, Sabunçu rayonu, Bakıxanov qəsəbəsi, Sakit Qocayev küçəsi 13A, 13B, 13C",
+  legalAddressEn: "Baku city, Sabunchu district, Bakikhanov settlement, Sakit Gojayev street 13A, 13B, 13C",
   // Əlaqə:
   phone: "+994 12 429 50 86",
   email: "info@tradixai.az",
