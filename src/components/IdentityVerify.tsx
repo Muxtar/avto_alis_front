@@ -32,6 +32,43 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  // ── Veriff (peşəkar KYC) — qoşulubsa əsas variant kimi göstərilir ──
+  const [veriffOn, setVeriffOn] = useState(false);
+  const [veriffBusy, setVeriffBusy] = useState(false);
+  const [veriffStarted, setVeriffStarted] = useState(false);
+  useEffect(() => {
+    if (!token) return;
+    fetch(`${API}/veriff/status`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json()).then((d) => setVeriffOn(!!d.configured)).catch(() => {});
+  }, [token]);
+
+  const startVeriff = async () => {
+    setVeriffBusy(true);
+    try {
+      const r = await fetch(`${API}/me/veriff/session`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      }).then((x) => x.json());
+      if (r.success && r.url) {
+        window.open(r.url, "_blank", "noopener");
+        setVeriffStarted(true);
+        toast("Veriff pəncərəsi açıldı — sənəd və selfieni orada çəkin", "success");
+      } else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta baş verdi", "error"); } finally { setVeriffBusy(false); }
+  };
+
+  const checkVeriff = async () => {
+    setVeriffBusy(true);
+    try {
+      const r = await fetch(`${API}/me/veriff/check`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      }).then((x) => x.json());
+      if (!r.success) { toast(r.message || "Xəta", "error"); return; }
+      if (r.status === "approved") { toast("Kimlik təsdiqləndi ✅", "success"); onDone?.(); }
+      else if (r.status === "declined") { toast("Doğrulama rədd edildi — yenidən cəhd edin", "error"); setVeriffStarted(false); }
+      else toast("Nəticə hələ hazır deyil — bir az sonra yenidən yoxlayın", "success");
+    } catch { toast("Xəta baş verdi", "error"); } finally { setVeriffBusy(false); }
+  };
+
   const stopCamera = () => {
     streamRef.current?.getTracks().forEach((tr) => tr.stop());
     streamRef.current = null;
@@ -165,6 +202,30 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
 
   return (
     <div className="space-y-3">
+      {/* Veriff — peşəkar KYC (qoşulubsa əsas variant) */}
+      {veriffOn && (
+        <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+          <p className="text-sm font-semibold mb-1">🛡️ Veriff ilə sürətli təsdiq (tövsiyə olunur)</p>
+          <p className="text-[11px] text-muted mb-3">
+            Sənəd və video-selfie birbaşa Veriff-in təhlükəsiz pəncərəsində çəkilir — nəticə adətən 1-2 dəqiqəyə hazır olur.
+            Şəkilləriniz bizim serverdə saxlanılmır.
+          </p>
+          <div className="flex gap-2 flex-wrap">
+            <button type="button" onClick={startVeriff} disabled={veriffBusy}
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+              {veriffBusy ? "..." : veriffStarted ? "Yenidən aç" : "Veriff ilə təsdiqlə"}
+            </button>
+            {veriffStarted && (
+              <button type="button" onClick={checkVeriff} disabled={veriffBusy}
+                className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium disabled:opacity-50">
+                Nəticəni yoxla
+              </button>
+            )}
+          </div>
+          <p className="text-[11px] text-muted mt-3 pt-3 border-t border-blue-500/10">Və ya aşağıdakı adi üsulla (şəkil yükləməklə) davam edin:</p>
+        </div>
+      )}
+
       {/* Kimlik vəsiqəsi şəkli */}
       <div>
         <label className="block text-sm font-medium mb-1.5">Şəxsiyyət vəsiqəsi şəkli</label>
