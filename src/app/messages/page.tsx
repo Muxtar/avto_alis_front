@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import ContactsPanel from "@/components/ContactsPanel";
 
 export default function MessagesPage() {
   const { t } = useLanguage();
@@ -20,6 +21,7 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [sideTab, setSideTab] = useState<"chats" | "contacts">("chats"); // sol panel: söhbətlər / kontaktlar
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -144,9 +146,24 @@ export default function MessagesPage() {
       <div className="surface overflow-hidden flex" style={{ height: "calc(100vh - 180px)", minHeight: 400 }}>
         {/* Conversations List */}
         <div className={`${activePartner ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-80 border-r border-card-border shrink-0`}>
-          <div className="p-3 border-b border-card-border">
-            <p className="text-sm font-medium text-muted">{t("messages")}</p>
+          {/* Söhbətlər / Kontaktlar keçidi */}
+          <div className="p-2 border-b border-card-border">
+            <div className="grid grid-cols-2 gap-1 bg-input-bg/60 rounded-xl p-1">
+              <button onClick={() => setSideTab("chats")}
+                className={`py-1.5 rounded-lg text-xs font-semibold transition-colors ${sideTab === "chats" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>
+                💬 {t("messages")}
+              </button>
+              <button onClick={() => setSideTab("contacts")}
+                className={`py-1.5 rounded-lg text-xs font-semibold transition-colors ${sideTab === "contacts" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>
+                👥 Kontaktlar
+              </button>
+            </div>
           </div>
+
+          {/* Kontaktlar paneli */}
+          {sideTab === "contacts" ? (
+            <ContactsPanel onMessage={(u) => { setSideTab("chats"); openConversation({ id: u.id, name: u.name, type: "" }); }} />
+          ) : (
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
@@ -187,6 +204,7 @@ export default function MessagesPage() {
               ))
             )}
           </div>
+          )}
         </div>
 
         {/* Chat Area */}
