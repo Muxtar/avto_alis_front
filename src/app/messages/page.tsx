@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import ContactsPanel from "@/components/ContactsPanel";
+import CallModal from "@/components/CallModal";
 
 export default function MessagesPage() {
   const { t } = useLanguage();
@@ -22,6 +23,7 @@ export default function MessagesPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sideTab, setSideTab] = useState<"chats" | "contacts">("chats"); // sol panel: söhbətlər / kontaktlar
+  const [outgoingCall, setOutgoingCall] = useState<{ partner: any; kind: "audio" | "video"; ts: number } | null>(null); // zəng istəyi
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -219,9 +221,20 @@ export default function MessagesPage() {
                 <div className={`w-9 h-9 bg-gradient-to-br ${typeColor(activePartner.type)} rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0`}>
                   {activePartner.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <Link href={`/seller/${activePartner.id}`} className="font-medium text-sm hover:text-orange-500 transition-colors">{activePartner.name}</Link>
                   <p className="text-muted text-xs">{activePartner.phone}</p>
+                </div>
+                {/* Səsli / görüntülü zəng */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button onClick={() => setOutgoingCall({ partner: activePartner, kind: "audio", ts: Date.now() })} title="Səsli zəng"
+                    className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors">
+                    📞
+                  </button>
+                  <button onClick={() => setOutgoingCall({ partner: activePartner, kind: "video", ts: Date.now() })} title="Görüntülü zəng"
+                    className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors">
+                    🎥
+                  </button>
                 </div>
               </div>
 
@@ -297,6 +310,9 @@ export default function MessagesPage() {
           )}
         </div>
       </div>
+
+      {/* Səsli/görüntülü zəng modalı — gələn zəngləri də bu tutur */}
+      <CallModal outgoing={outgoingCall} onDone={() => setOutgoingCall(null)} />
     </div>
   );
 }
