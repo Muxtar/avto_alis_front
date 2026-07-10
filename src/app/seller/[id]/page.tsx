@@ -159,6 +159,17 @@ export default function SellerProfilePage() {
               <p className="text-sm text-foreground/80 mb-4 whitespace-pre-line max-w-prose">{user.bio}</p>
             )}
 
+            {/* Rəsmi işçilik — yalnız hər iki tərəfin təsdiqlədiyi (ACTIVE) üzvlüklər */}
+            {user.businessMemberships?.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {user.businessMemberships.map((m: any) => (
+                  <span key={m.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded-xl text-xs font-semibold">
+                    🏢 Rəsmi işçi: {m.business.name}{m.object ? ` — ${m.object.name}` : ""}
+                  </span>
+                ))}
+              </div>
+            )}
+
             {/* Rəy konsultasiyası təklifləri (çoxlu) — detallı kartlar */}
             {user.consultationOffers?.length > 0 && (
               <div className="mb-4">

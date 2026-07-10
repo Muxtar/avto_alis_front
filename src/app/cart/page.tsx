@@ -36,6 +36,9 @@ export default function CartPage() {
   const [yangoFee, setYangoFee] = useState<number | null>(null);
   const [quoting, setQuoting] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false); // ödəniş şərtlərini qəbul (bank tələbi)
+  // Biznes adına alış — canBuy səlahiyyətli işçi obyekt seçə bilər.
+  const [buyOptions, setBuyOptions] = useState<{ id: number; label: string }[]>([]);
+  const [buyerObjectId, setBuyerObjectId] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "WALLET">("CASH");
   const [promoCode, setPromoCode] = useState("");
@@ -193,6 +196,24 @@ export default function CartPage() {
     // eslint-disable-next-line
   }, [deliveryType, deliveryMethod, lat, lng, items.length, yangoBlocked]);
 
+  // canBuy səlahiyyətli işçiliklərdən "biznes adına alış" seçimlərini qur.
+  useEffect(() => {
+    if (!isLoggedIn || !token) return;
+    fetch(`${API}/me/employment`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => {
+        const opts: { id: number; label: string }[] = [];
+        (d.memberships || []).filter((m: any) => m.status === "ACTIVE" && m.canBuy).forEach((m: any) => {
+          if (m.object) opts.push({ id: m.object.id, label: `${m.business.name} — ${m.object.name}` });
+          else (m.business.objects || []).forEach((o: any) => opts.push({ id: o.id, label: `${m.business.name} — ${o.name}` }));
+        });
+        // Dublikatları çıxar.
+        setBuyOptions(opts.filter((o, i) => opts.findIndex((x) => x.id === o.id) === i));
+      })
+      .catch(() => {});
+    // eslint-disable-next-line
+  }, [isLoggedIn, token]);
+
   // Ödəniş şərtləri qutusunun mətnləri (bank tələbi, çoxdilli).
   const termsLbl: any = {
     az: { accept: "Ödəniş şərtləri ilə tanış oldum və qəbul edirəm", terms: "İstifadə şərtləri", cancel: "Ləğv və ödəmə", privacy: "Məxfilik", need: "Davam etmək üçün ödəniş şərtlərini qəbul edin" },
@@ -221,6 +242,7 @@ export default function CartPage() {
           phone, note,
           deliveryType,
           deliveryMethod: deliveryType === "DELIVERY" ? deliveryMethod : null,
+          buyerObjectId: buyerObjectId || null,
           latitude: lat, longitude: lng,
           scheduledAt: scheduledAt || null,
           paymentMethod,
@@ -438,6 +460,18 @@ export default function CartPage() {
                     <label className="block text-xs text-muted mb-1">{t("phone")}</label>
                     <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
                   </div>
+
+                  {/* Biznes adına alış — yalnız canBuy səlahiyyətli işçilərə görünür */}
+                  {buyOptions.length > 0 && (
+                    <div>
+                      <label className="block text-xs text-muted mb-1">🏢 Kimin adına alırsınız?</label>
+                      <select value={buyerObjectId} onChange={(e) => setBuyerObjectId(e.target.value)} className={inputCls}>
+                        <option value="">Şəxsi alış (özüm üçün)</option>
+                        {buyOptions.map((o) => <option key={o.id} value={o.id}>Biznes üçün: {o.label}</option>)}
+                      </select>
+                      {buyerObjectId && <p className="text-[11px] text-muted mt-1">Bu sifariş seçilmiş obyektin adına qeyd olunacaq.</p>}
+                    </div>
+                  )}
 
                   {/* Scheduled */}
                   <div>

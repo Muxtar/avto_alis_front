@@ -18,7 +18,7 @@ const ACTIVITY_AREAS = [
 
 interface Bank { id: number; iban: string; title: string | null; isActive: boolean }
 interface BizObject { id: number; name: string; phone: string | null; address: string; city: string | null; activityAreas: string[]; isActive: boolean }
-interface Member { id: number; user: { id: number; name: string; publicId: string | null }; object: { id: number; name: string } | null }
+interface Member { id: number; status?: string; canSell?: boolean; canBuy?: boolean; user: { id: number; name: string; publicId: string | null }; object: { id: number; name: string } | null }
 interface Business {
   id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED"; isActive: boolean; rejectionReason: string | null;
@@ -399,22 +399,63 @@ export default function BusinessPage() {
                 })} inputCls={inputCls} t={t} />
               </div>
 
-              {/* Səlahiyyət vermə */}
+              {/* İşçilər — sorğu/dəvət + səlahiyyətlər */}
               <div className="border-t border-card-border pt-3">
-                <p className="text-xs font-semibold text-muted mb-1.5">{t("bizMembers") || "Səlahiyyət verilmiş şəxslər (ID ilə)"}</p>
-                {b.members.map((m) => (
+                <p className="text-xs font-semibold text-muted mb-1.5">👥 İşçilər</p>
+
+                {/* Gələn işçi sorğuları — sahibin təsdiqini gözləyir */}
+                {b.members.filter((m: any) => m.status === "PENDING_BUSINESS").map((m: any) => (
+                  <div key={m.id} className="p-3 bg-amber-500/5 border border-amber-500/30 rounded-xl text-sm mb-1.5">
+                    <p><b>{m.user.name}</b> <span className="text-muted text-xs">({m.user.publicId})</span> — işçiniz olduğunu bildirir.</p>
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={wrap(() => jsonReq(`${API}/me/businesses/${b.id}/members/${m.id}`, "PUT", { action: "accept" }))} className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-semibold">Qəbul et</button>
+                      <button onClick={wrap(() => jsonReq(`${API}/me/businesses/${b.id}/members/${m.id}`, "PUT", { action: "reject" }))} className="px-3 py-1.5 bg-red-500/10 text-red-500 border border-red-500/30 rounded-lg text-xs font-semibold">Rədd et</button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Göndərilmiş dəvətlər — istifadəçi təsdiqi gözlənilir */}
+                {b.members.filter((m: any) => m.status === "PENDING_USER").map((m: any) => (
                   <div key={m.id} className="flex items-center justify-between gap-2 px-3 py-1.5 bg-input-bg/50 rounded-lg text-sm mb-1">
-                    <span>{m.user.name} <span className="text-muted text-xs">({m.user.publicId})</span> {m.object ? `→ ${m.object.name}` : `→ ${t("bizWholeBusiness") || "bütün biznes"}`}</span>
+                    <span className="text-muted">⏳ {m.user.name} <span className="text-xs">({m.user.publicId})</span> — dəvət göndərilib, təsdiq gözlənilir</span>
                     <button onClick={wrap(() => jsonReq(`${API}/me/members/${m.id}`, "DELETE"))} className="text-red-500 text-xs shrink-0">✕</button>
                   </div>
                 ))}
+
+                {/* Aktiv işçilər — səlahiyyət redaktoru (satış / alış / obyekt) */}
+                {b.members.filter((m: any) => !m.status || m.status === "ACTIVE").map((m: any) => (
+                  <div key={m.id} className="px-3 py-2 bg-input-bg/50 rounded-lg text-sm mb-1.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>✅ <b>{m.user.name}</b> <span className="text-muted text-xs">({m.user.publicId})</span></span>
+                      <button onClick={() => { if (confirm("İşçini çıxarmaq istədiyinizə əminsiniz?")) wrap(() => jsonReq(`${API}/me/members/${m.id}`, "DELETE"))(); }} className="text-red-500 text-xs shrink-0">✕ Çıxar</button>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1.5">
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input type="checkbox" checked={!!m.canSell} onChange={wrap(() => jsonReq(`${API}/me/businesses/${b.id}/members/${m.id}`, "PUT", { canSell: !m.canSell }))} className="w-3.5 h-3.5 accent-orange-500" />
+                        🛒 Məhsul satmaq
+                      </label>
+                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                        <input type="checkbox" checked={!!m.canBuy} onChange={wrap(() => jsonReq(`${API}/me/businesses/${b.id}/members/${m.id}`, "PUT", { canBuy: !m.canBuy }))} className="w-3.5 h-3.5 accent-orange-500" />
+                        📦 Biznes adına almaq
+                      </label>
+                      <select className="px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs" value={m.object?.id || ""}
+                        onChange={(e) => wrap(() => jsonReq(`${API}/me/businesses/${b.id}/members/${m.id}`, "PUT", { objectId: e.target.value || null }))()}>
+                        <option value="">{t("bizWholeBusiness") || "Bütün biznes"}</option>
+                        {b.objects.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Yeni işçi dəvəti — ID ilə (istifadəçi qəbul edəndə aktivləşir) */}
+                <p className="text-[11px] text-muted mt-2 mb-1">İşçi dəvət et — istifadəçi qəbul edəndə rəsmi işçi olur:</p>
                 <div className="flex flex-wrap gap-2 mt-1">
                   <input className={`${inputCls} flex-1`} placeholder={t("bizMemberId") || "İstifadəçi ID (məs. TX-7F3K2Q)"} value={memberInput[b.id]?.publicId || ""} onChange={(e) => setMemberInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { publicId: "", objectId: "" }), publicId: e.target.value } }))} />
                   <select className={inputCls + " w-auto"} value={memberInput[b.id]?.objectId || ""} onChange={(e) => setMemberInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { publicId: "", objectId: "" }), objectId: e.target.value } }))}>
                     <option value="">{t("bizWholeBusiness") || "Bütün biznes"}</option>
                     {b.objects.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
                   </select>
-                  <button onClick={wrap(async () => { const v = memberInput[b.id]; if (!v?.publicId?.trim()) throw new Error("ID"); await jsonReq(`${API}/me/businesses/${b.id}/members`, "POST", { publicId: v.publicId.trim(), objectId: v.objectId || undefined }); setMemberInput((p) => ({ ...p, [b.id]: { publicId: "", objectId: "" } })); })} className="px-3 bg-orange-500/10 text-orange-500 rounded-lg text-xs">+ {t("bizGrant") || "Səlahiyyət ver"}</button>
+                  <button onClick={wrap(async () => { const v = memberInput[b.id]; if (!v?.publicId?.trim()) throw new Error("ID"); await jsonReq(`${API}/me/businesses/${b.id}/members`, "POST", { publicId: v.publicId.trim(), objectId: v.objectId || undefined }); setMemberInput((p) => ({ ...p, [b.id]: { publicId: "", objectId: "" } })); })} className="px-3 bg-orange-500/10 text-orange-500 rounded-lg text-xs">+ Dəvət göndər</button>
                 </div>
               </div>
             </div>

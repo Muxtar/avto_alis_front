@@ -12,6 +12,7 @@ import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
 import IdentityVerify from "@/components/IdentityVerify";
 import ProfessionPicker from "@/components/ProfessionPicker";
+import EmploymentSection from "@/components/EmploymentSection";
 
 export default function ProfilePage() {
   const { t } = useLanguage();
@@ -1037,6 +1038,11 @@ export default function ProfilePage() {
             <span className="text-base leading-none">＋</span> Yeni nömrə əlavə et
           </button>
         )}
+      </div>
+
+      {/* İş yerim — şirkətə işçi kimi bağlanma (sorğu/qəbul axını) */}
+      <div className="mb-5">
+        <EmploymentSection />
       </div>
 
       {/* Rəy konsultasiyası təklifi */}
