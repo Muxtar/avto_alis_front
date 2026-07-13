@@ -194,7 +194,7 @@ export default function Navbar() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Məhsul, xidmət və ya peşəkar axtar"
+                placeholder="Məhsul, xidmət, ad-soyad, şirkət — hər şeyi axtar"
                 className="flex-1 min-w-0 px-4 bg-card text-foreground text-sm focus:outline-none placeholder-muted-foreground"
               />
               <button type="submit" className="px-5 sm:px-7 text-white font-semibold text-sm flex items-center gap-1.5 hover:opacity-90 transition-opacity" style={{ background: PINK }}>
