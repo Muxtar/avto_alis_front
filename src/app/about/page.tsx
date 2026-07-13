@@ -9,7 +9,7 @@ export default function AboutPage() {
     az: {
       title: "Haqqımızda",
       updated: "Son yenilənmə: 2026",
-      intro: `${COMPANY.brand} — Azərbaycanda fəaliyyət göstərən onlayn ticarət platformasıdır. Platforma istifadəçilərə məhsul və xidmətləri yerləşdirmək, satmaq və almaq, biznes obyektlərini idarə etmək və kartla təhlükəsiz ödəniş etmək imkanı verir.`,
+      intro: "Tradixai.io platforması süni intellekt texnologiyaları ilə idarə olunan rəqəmsal ekosistemdir. Platforma istifadəçiləri, mütəxəssisləri, xidmət göstərənləri və alqı-satqı iştirakçılarını bir sistemdə birləşdirir. Platforma məhsul və xidmətlərin alqı-satqısını asanlaşdırır, uyğun mütəxəssisləri tapır və prosesləri sürətli, təhlükəsiz və avtomatik şəkildə idarə edir.",
       activity: "Fəaliyyətimiz",
       activityText: "Biz alıcı və satıcıları bir araya gətirən marketplace xidməti göstəririk: elanların yerləşdirilməsi, sifariş və çatdırılma, biznes profilləri, rəy/konsultasiya və referal satış. Kartla ödənişlər lisenziyalı ödəniş provayderi vasitəsilə emal olunur.",
       legal: "Hüquqi məlumatlar",
@@ -22,7 +22,7 @@ export default function AboutPage() {
     en: {
       title: "About Us",
       updated: "Last updated: 2026",
-      intro: `${COMPANY.brand} is an online marketplace operating in Azerbaijan. The platform lets users list, sell and buy goods and services, manage business locations, and pay securely by card.`,
+      intro: "The Tradixai.io platform is a digital ecosystem powered by artificial intelligence technologies. It brings together users, specialists, service providers and trading participants in a single system. The platform simplifies the buying and selling of goods and services, finds the right specialists, and manages processes quickly, securely and automatically.",
       activity: "Our activity",
       activityText: "We provide a marketplace that connects buyers and sellers: listing of ads, orders and delivery, business profiles, consultations and referral sales. Card payments are processed through a licensed payment provider.",
       legal: "Legal information",
@@ -35,7 +35,7 @@ export default function AboutPage() {
     ru: {
       title: "О нас",
       updated: "Последнее обновление: 2026",
-      intro: `${COMPANY.brand} — онлайн-площадка, работающая в Азербайджане. Платформа позволяет размещать, продавать и покупать товары и услуги, управлять бизнес-объектами и безопасно оплачивать картой.`,
+      intro: "Платформа Tradixai.io — это цифровая экосистема, управляемая технологиями искусственного интеллекта. Она объединяет пользователей, специалистов, поставщиков услуг и участников купли-продажи в единой системе. Платформа упрощает куплю-продажу товаров и услуг, находит подходящих специалистов и управляет процессами быстро, безопасно и автоматически.",
       activity: "Наша деятельность",
       activityText: "Мы предоставляем маркетплейс, соединяющий покупателей и продавцов: размещение объявлений, заказы и доставка, бизнес-профили, консультации и реферальные продажи. Оплата картой обрабатывается лицензированным платёжным провайдером.",
       legal: "Юридическая информация",
