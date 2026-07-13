@@ -25,7 +25,7 @@ export default function BackButton() {
       onClick={goBack}
       aria-label="Geri qayıt"
       title="Geri qayıt"
-      className="fixed left-3 bottom-20 md:bottom-6 z-40 flex items-center gap-1.5 pl-2.5 pr-3.5 py-2.5 rounded-full bg-card/95 backdrop-blur border border-card-border shadow-lg text-sm font-medium text-foreground hover:border-orange-500/50 hover:text-orange-500 transition-all"
+      className="fixed left-3 top-[72px] md:top-[112px] z-40 flex items-center gap-1.5 pl-2.5 pr-3.5 py-2 rounded-full bg-card/95 backdrop-blur border border-card-border shadow-lg text-sm font-medium text-foreground hover:border-orange-500/50 hover:text-orange-500 transition-all"
     >
       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 19l-7-7 7-7" />
