@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import InquiryChatbot from "@/components/InquiryChatbot";
 import Footer from "@/components/Footer";
+import BackButton from "@/components/BackButton";
 
 const geist = Geist({
   variable: "--font-geist-sans",
@@ -36,6 +37,7 @@ export default function RootLayout({
           <Navbar />
           <main className="flex-1 pb-safe-nav md:pb-0">{children}</main>
           <Footer />
+          <BackButton />
           <InquiryChatbot />
           <MobileBottomNav />
         </Providers>
