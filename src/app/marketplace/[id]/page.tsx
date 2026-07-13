@@ -152,6 +152,42 @@ export default function ListingDetailPage() {
     } catch { toast(t('error'), 'error'); } finally { setCommentSending(false); }
   };
 
+  // Rəy sahibinin öz rəyini dəyişməsi/silməsi.
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [commentBusy, setCommentBusy] = useState(false);
+
+  const saveEditedComment = async () => {
+    if (editingCommentId == null || !editingText.trim()) return;
+    setCommentBusy(true);
+    try {
+      const res = await fetch(`${API}/comments/${editingCommentId}`, {
+        method: "PUT",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editingText.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setListing({ ...listing, comments: (listing.comments || []).map((c: any) => (c.id === editingCommentId ? data.comment : c)) });
+        setEditingCommentId(null); setEditingText("");
+        toast("Rəy yeniləndi ✓", "success");
+      } else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setCommentBusy(false); }
+  };
+
+  const deleteComment = async (id: number) => {
+    if (!confirm("Rəyi silmək istədiyinizə əminsiniz?")) return;
+    setCommentBusy(true);
+    try {
+      const res = await fetch(`${API}/comments/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setListing({ ...listing, comments: (listing.comments || []).filter((c: any) => c.id !== id) });
+        toast("Rəy silindi", "success");
+      } else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setCommentBusy(false); }
+  };
+
   const handleSendMessage = async () => {
     if (!msgText.trim() || !listing) return;
     setMsgSending(true);
@@ -201,8 +237,9 @@ export default function ListingDetailPage() {
         {/* Left - Image gallery */}
         <div className="lg:col-span-3">
           <div className="bg-card border border-card-border rounded-2xl overflow-hidden">
-            <div className="aspect-video bg-input-bg flex items-center justify-center">
+            <div className="relative aspect-video bg-input-bg flex items-center justify-center group">
               {listing.images?.length > 0 ? (
+                <>
                 <img
                   src={(() => {
                     const img = listing.images[Math.min(activeImageIdx, listing.images.length - 1)];
@@ -212,6 +249,25 @@ export default function ListingDetailPage() {
                   alt={listing.title}
                   className="w-full h-full object-cover"
                 />
+                {/* Şəkil sayğacı + naviqasiya oxları */}
+                {listing.images.length > 1 && (
+                  <>
+                    <span className="absolute bottom-3 right-3 px-2.5 py-1 bg-black/60 backdrop-blur text-white text-xs font-semibold rounded-lg">
+                      {Math.min(activeImageIdx, listing.images.length - 1) + 1} / {listing.images.length}
+                    </span>
+                    <button type="button" aria-label="Əvvəlki şəkil"
+                      onClick={() => setActiveImageIdx((i) => (i - 1 + listing.images.length) % listing.images.length)}
+                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur text-white flex items-center justify-center transition-all sm:opacity-0 sm:group-hover:opacity-100">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                    </button>
+                    <button type="button" aria-label="Növbəti şəkil"
+                      onClick={() => setActiveImageIdx((i) => (i + 1) % listing.images.length)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur text-white flex items-center justify-center transition-all sm:opacity-0 sm:group-hover:opacity-100">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                    </button>
+                  </>
+                )}
+                </>
               ) : (
                 <div className="text-center">
                   <svg className="w-20 h-20 text-muted-foreground/20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -344,26 +400,10 @@ export default function ListingDetailPage() {
           {/* Description */}
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 mt-4">
             <h3 className="font-semibold mb-3">{t("description")}</h3>
-            <p className="text-muted text-sm leading-relaxed whitespace-pre-wrap">{listing.description}</p>
+            <p className="text-foreground/80 text-sm sm:text-[15px] leading-relaxed whitespace-pre-wrap">{listing.description}</p>
           </div>
 
-          {/* Stats Bar */}
-          <div className="flex items-center gap-4 mt-4 p-4 bg-card border border-card-border rounded-2xl text-sm">
-            <div className="flex items-center gap-1.5 text-muted">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-              <span className="font-medium text-foreground">{listing.viewCount || 0}</span> {t("views")}
-            </div>
-            <div className="flex items-center gap-1.5 text-muted">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-              <span className="font-medium text-foreground">{listing._count?.comments || listing.comments?.length || 0}</span> {t("comments")}
-            </div>
-            <div className="flex items-center gap-1.5 text-muted ml-auto">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              {new Date(listing.createdAt).toLocaleDateString()}
-            </div>
-          </div>
-
-          {/* tap.az üslubu footer — № / paylaşım tarixi / baxış sayı */}
+          {/* Statistika zolağı — №, tarix, baxış, rəy (bir kartda) */}
           {(() => {
             const d = new Date(listing.createdAt);
             const time = d.toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" });
@@ -371,12 +411,20 @@ export default function ListingDetailPage() {
             const yest = new Date(); yest.setDate(today.getDate() - 1);
             const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
             const azMonths = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"];
-            const dateLabel = sameDay(d, today) ? `Bu gün, ${time}` : sameDay(d, yest) ? `Dünən, ${time}` : `${d.getDate()} ${azMonths[d.getMonth()]} ${d.getFullYear()}, ${time}`;
+            const dateLabel = sameDay(d, today) ? `Bu gün, ${time}` : sameDay(d, yest) ? `Dünən, ${time}` : `${d.getDate()} ${azMonths[d.getMonth()]} ${d.getFullYear()}`;
+            const Cell = ({ icon, label, value }: any) => (
+              <div className="flex-1 min-w-[100px] text-center py-1">
+                <p className="text-base leading-none mb-1">{icon}</p>
+                <p className="text-sm font-semibold">{value}</p>
+                <p className="text-[10px] text-muted uppercase tracking-wide">{label}</p>
+              </div>
+            );
             return (
-              <div className="mt-4 p-4 bg-card border border-card-border rounded-2xl text-sm text-muted text-center space-y-1">
-                <p className="font-mono">№ {listing.id}</p>
-                <p>{dateLabel}</p>
-                <p>Baxış sayı: {listing.viewCount || 0}</p>
+              <div className="flex flex-wrap items-center divide-x divide-card-border mt-4 p-3 bg-card border border-card-border rounded-2xl">
+                <Cell icon="🔖" label="Elan №" value={listing.id} />
+                <Cell icon="👁️" label={t("views")} value={listing.viewCount || 0} />
+                <Cell icon="💬" label={t("comments")} value={listing._count?.comments || listing.comments?.length || 0} />
+                <Cell icon="🗓️" label="Tarix" value={dateLabel} />
               </div>
             );
           })()}
@@ -405,23 +453,53 @@ export default function ListingDetailPage() {
             )}
 
             {listing.comments?.length === 0 ? (
-              <p className="text-muted text-sm text-center py-4">{t("noMessages")}</p>
+              <div className="text-center py-8">
+                <span className="text-3xl block mb-2">💬</span>
+                <p className="text-muted text-sm">İlk rəyi siz yazın</p>
+              </div>
             ) : (
-              <div className="space-y-3">
-                {listing.comments?.map((c: any) => (
-                  <div key={c.id} className="flex gap-3 p-3 bg-input-bg/50 rounded-xl">
-                    <div className="w-9 h-9 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0">
-                      {c.user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Link href={`/seller/${c.user.id}`} className="font-medium text-sm hover:text-orange-500 transition-colors">{c.user.name}</Link>
-                        <span className="text-muted text-[10px]">{new Date(c.createdAt).toLocaleDateString()}</span>
+              <div className="space-y-2.5">
+                {listing.comments?.map((c: any) => {
+                  const isMine = isLoggedIn && user?.id === c.user.id;
+                  const isEditing = editingCommentId === c.id;
+                  return (
+                    <div key={c.id} className={`flex gap-3 p-3.5 rounded-2xl border transition-colors ${isMine ? "bg-orange-500/[0.04] border-orange-500/15" : "bg-input-bg/50 border-transparent"}`}>
+                      <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
+                        {c.user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                       </div>
-                      <p className="text-muted text-sm">{c.content}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <Link href={`/seller/${c.user.id}`} className="font-semibold text-sm hover:text-orange-500 transition-colors truncate">{c.user.name}</Link>
+                          {isMine && <span className="px-1.5 py-0.5 bg-orange-500/10 text-orange-500 rounded text-[9px] font-bold shrink-0">SİZ</span>}
+                          <span className="text-muted text-[11px] shrink-0 ml-auto">{new Date(c.createdAt).toLocaleDateString("az-AZ", { day: "numeric", month: "short" })}</span>
+                        </div>
+                        {isEditing ? (
+                          <div className="mt-1.5 space-y-2">
+                            <textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} rows={2} autoFocus
+                              className="w-full px-3 py-2 bg-card border border-orange-500/40 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/40" />
+                            <div className="flex gap-2">
+                              <button onClick={saveEditedComment} disabled={commentBusy || !editingText.trim()}
+                                className="px-3.5 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold disabled:opacity-50">{commentBusy ? "..." : "Yadda saxla"}</button>
+                              <button onClick={() => { setEditingCommentId(null); setEditingText(""); }}
+                                className="px-3.5 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs">İmtina</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-foreground/85 text-sm leading-relaxed break-words">{c.content}</p>
+                        )}
+                        {/* Öz rəyində: dəyiş / sil */}
+                        {isMine && !isEditing && (
+                          <div className="flex gap-3 mt-1.5">
+                            <button onClick={() => { setEditingCommentId(c.id); setEditingText(c.content); }}
+                              className="text-[11px] text-muted hover:text-orange-500 font-medium transition-colors">✎ Dəyiş</button>
+                            <button onClick={() => deleteComment(c.id)} disabled={commentBusy}
+                              className="text-[11px] text-muted hover:text-red-500 font-medium transition-colors disabled:opacity-50">✕ Sil</button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -440,9 +518,11 @@ export default function ListingDetailPage() {
               <h1 className="text-xl sm:text-2xl font-bold">{listing.title}</h1>
               <ShareButton title={listing.title} text={`${listing.title} — tradixai`} compact className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
             </div>
-            <div className="flex items-baseline gap-1 mb-2">
-              <span className="text-2xl sm:text-3xl font-bold text-orange-500">{listing.price}</span>
-              <span className="text-muted text-sm">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
+            <div className="flex items-baseline gap-1.5 mb-3">
+              <span className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
+                {listing.price}
+              </span>
+              <span className="text-foreground/70 text-base font-semibold">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
             </div>
             {(listing.forRent || listing.barter || listing.bookable || listing.weightKg) && (
               <div className="flex items-center gap-2 mb-3 flex-wrap">
