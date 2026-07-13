@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 
 interface Biz {
   id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
@@ -120,9 +120,9 @@ export default function AdminBusinessesPage() {
                   const img = (b as any)[key] as string | null;
                   if (!img) return null;
                   return (
-                    <a key={key} href={`${UPLOADS}/${img}`} target="_blank" rel="noreferrer" className="block">
+                    <a key={key} href={`${imgUrl(img)}`} target="_blank" rel="noreferrer" className="block">
                       <span className="text-[10px] text-muted block">{label}</span>
-                      <img src={`${UPLOADS}/${img}`} alt={label} className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+                      <img src={`${imgUrl(img)}`} alt={label} className="w-20 h-20 object-cover rounded-lg border border-input-border" />
                     </a>
                   );
                 })}

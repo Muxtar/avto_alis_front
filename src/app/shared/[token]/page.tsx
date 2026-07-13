@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 
 export default function SharedCartPage() {
   const params = useParams();
@@ -74,7 +74,7 @@ export default function SharedCartPage() {
                 <Link href={`/marketplace/${it.id}`} className="w-16 h-16 bg-input-bg rounded-xl shrink-0 overflow-hidden flex items-center justify-center">
                   {it.images?.[0] ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={it.images[0].startsWith("http") ? it.images[0] : `${UPLOADS}/${it.images[0]}`} alt={it.title} className="w-full h-full object-cover" />
+                    <img src={it.images[0].startsWith("http") ? it.images[0] : `${imgUrl(it.images[0])}`} alt={it.title} className="w-full h-full object-cover" />
                   ) : null}
                 </Link>
                 <div className="flex-1 min-w-0">

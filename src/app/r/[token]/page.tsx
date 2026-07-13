@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 
 export default function ReferralLinkPage() {
   const { token, isLoggedIn, authLoading } = useAuth();
@@ -58,7 +58,7 @@ export default function ReferralLinkPage() {
             <div className="w-14 h-14 rounded-xl bg-input-bg overflow-hidden shrink-0 flex items-center justify-center">
               {i.image ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${UPLOADS}/${i.image}`} alt={i.title} className="w-full h-full object-cover" />
+                <img src={`${imgUrl(i.image)}`} alt={i.title} className="w-full h-full object-cover" />
               ) : <span className="text-muted">📦</span>}
             </div>
             <div className="flex-1 min-w-0">

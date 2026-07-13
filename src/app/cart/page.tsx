@@ -6,7 +6,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import LocationPicker from "@/components/LocationPickerWrapper";
 
 export default function CartPage() {
@@ -327,7 +327,7 @@ export default function CartPage() {
                         <Link href={`/marketplace/${item.listing.id}`} className="w-16 h-16 sm:w-20 sm:h-20 bg-input-bg rounded-xl shrink-0 flex items-center justify-center overflow-hidden">
                           {item.listing.images?.[0] ? (
                             // eslint-disable-next-line @next/next/no-img-element
-                            <img src={item.listing.images[0].startsWith('http') ? item.listing.images[0] : `${UPLOADS}/${item.listing.images[0]}`} alt={item.listing.title} loading="lazy" className="w-full h-full object-cover" />
+                            <img src={item.listing.images[0].startsWith('http') ? item.listing.images[0] : `${imgUrl(item.listing.images[0])}`} alt={item.listing.title} loading="lazy" className="w-full h-full object-cover" />
                           ) : null}
                         </Link>
                         <div className="flex-1 min-w-0">

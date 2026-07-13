@@ -6,7 +6,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { countryLabel } from "@/lib/countries";
 import { getCategoryAttrs, parseCat, getListingFields } from "@/lib/categories";
 import OrderMap from "@/components/OrderMapWrapper";
@@ -243,7 +243,7 @@ export default function ListingDetailPage() {
                 <img
                   src={(() => {
                     const img = listing.images[Math.min(activeImageIdx, listing.images.length - 1)];
-                    return img.startsWith('http') ? img : `${UPLOADS}/${img}`;
+                    return img.startsWith('http') ? img : `${imgUrl(img)}`;
                   })()}
                   loading="lazy"
                   alt={listing.title}
@@ -283,7 +283,7 @@ export default function ListingDetailPage() {
             {listing.images?.length > 1 && (
               <div className="flex gap-2 p-3 overflow-x-auto">
                 {listing.images.map((img: string, idx: number) => {
-                  const src = img.startsWith('http') ? img : `${UPLOADS}/${img}`;
+                  const src = img.startsWith('http') ? img : `${imgUrl(img)}`;
                   const isActive = idx === Math.min(activeImageIdx, listing.images.length - 1);
                   return (
                     <button
@@ -691,7 +691,7 @@ export default function ListingDetailPage() {
             <Link href={`/seller/${listing.user.id}`} className="flex items-center gap-3 mb-4 group">
               {listing.user.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${UPLOADS}/${listing.user.avatar}`} alt={listing.user.name} className="w-12 h-12 rounded-xl object-cover shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all" />
+                <img src={`${imgUrl(listing.user.avatar)}`} alt={listing.user.name} className="w-12 h-12 rounded-xl object-cover shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all" />
               ) : (
                 <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all">
                   {listing.user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}

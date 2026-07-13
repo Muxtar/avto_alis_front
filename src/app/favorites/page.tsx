@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useAuth } from '@/lib/AuthContext';
 import { useToast } from '@/components/Toast';
-import { API, UPLOADS } from '@/lib/api';
+import { API, imgUrl } from '@/lib/api';
 import Link from 'next/link';
 
 export default function FavoritesPage() {
@@ -63,7 +63,7 @@ export default function FavoritesPage() {
               <Link href={`/marketplace/${fav.listingId}`}>
                 <div className="aspect-[4/3] bg-input-bg overflow-hidden">
                   {fav.listing.images?.[0] ? (
-                    <img src={fav.listing.images[0].startsWith('http') ? fav.listing.images[0] : `${UPLOADS}/${fav.listing.images[0]}`} alt={fav.listing.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    <img src={fav.listing.images[0].startsWith('http') ? fav.listing.images[0] : `${imgUrl(fav.listing.images[0])}`} alt={fav.listing.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                   ) : null}
                 </div>
                 <div className="p-3">

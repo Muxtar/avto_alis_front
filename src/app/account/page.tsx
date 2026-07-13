@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { CATEGORIES, getSubs, buildCat, parseCat, isServiceCat, getListingFields, getCategoryAttrs, getCat } from "@/lib/categories";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
@@ -796,7 +796,7 @@ function AccountPageInner() {
                     {existingImages.map((img, idx) => (
                       <div key={`exist-${idx}`} className="relative aspect-square bg-input-bg border border-input-border rounded-xl overflow-hidden group">
                         <img
-                          src={img.startsWith('http') ? img : `${UPLOADS}/${img}`}
+                          src={img.startsWith('http') ? img : `${imgUrl(img)}`}
                           alt={`existing ${idx + 1}`}
                           className="w-full h-full object-cover"
                         />
@@ -892,7 +892,7 @@ function AccountPageInner() {
               <div className="w-full sm:w-24 h-32 sm:h-24 shrink-0 bg-input-bg border border-input-border rounded-lg overflow-hidden flex items-center justify-center">
                 {listing.images && listing.images.length > 0 ? (
                   <img
-                    src={listing.images[0].startsWith('http') ? listing.images[0] : `${UPLOADS}/${listing.images[0]}`}
+                    src={listing.images[0].startsWith('http') ? listing.images[0] : `${imgUrl(listing.images[0])}`}
                     alt={listing.title}
                     loading="lazy"
                     className="w-full h-full object-cover"

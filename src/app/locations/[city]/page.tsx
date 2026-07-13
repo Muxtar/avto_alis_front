@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { useLanguage } from "@/lib/LanguageContext";
 
 interface Seller {
@@ -154,7 +154,7 @@ export default function CityDetailPage() {
               <div className="aspect-[4/3] bg-input-bg overflow-hidden relative">
                 {l.images && l.images.length > 0 ? (
                   <img
-                    src={l.images[0].startsWith("http") ? l.images[0] : `${UPLOADS}/${l.images[0]}`}
+                    src={l.images[0].startsWith("http") ? l.images[0] : `${imgUrl(l.images[0])}`}
                     alt={l.title}
                     loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-110"

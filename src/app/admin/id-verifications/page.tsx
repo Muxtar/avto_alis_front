@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/Toast";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 
 interface IdUser {
   id: number;
@@ -118,9 +118,9 @@ export default function AdminIdVerificationsPage() {
                     <div key={key}>
                       <p className="text-[11px] text-muted mb-1">{label}</p>
                       {img ? (
-                        <a href={`${UPLOADS}/${img}`} target="_blank" rel="noreferrer">
+                        <a href={`${imgUrl(img)}`} target="_blank" rel="noreferrer">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={`${UPLOADS}/${img}`} alt={label} className="w-full h-44 object-cover rounded-lg border border-input-border hover:opacity-90" />
+                          <img src={`${imgUrl(img)}`} alt={label} className="w-full h-44 object-cover rounded-lg border border-input-border hover:opacity-90" />
                         </a>
                       ) : <div className="w-full h-44 rounded-lg border border-dashed border-input-border flex items-center justify-center text-xs text-muted">yoxdur</div>}
                     </div>

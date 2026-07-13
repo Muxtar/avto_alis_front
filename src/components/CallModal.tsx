@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
-import { UPLOADS } from "@/lib/api";
+import { imgUrl } from "@/lib/api";
 import { getCallSocket } from "@/lib/callSocket";
 
 // Səsli/görüntülü zəng (WebRTC P2P + socket.io signaling).
@@ -220,7 +220,7 @@ export default function CallModal({
           <div className="p-8 text-center">
             {peer?.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={`${UPLOADS}/${peer.avatar}`} alt={peer?.name} className="w-20 h-20 rounded-2xl object-cover mx-auto mb-3" />
+              <img src={`${imgUrl(peer.avatar)}`} alt={peer?.name} className="w-20 h-20 rounded-2xl object-cover mx-auto mb-3" />
             ) : (
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 text-white flex items-center justify-center text-2xl font-bold mx-auto mb-3">
                 {(peer?.name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2)}

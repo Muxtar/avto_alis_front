@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/lib/LanguageContext";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 
 interface Application {
   id: number;
@@ -164,18 +164,18 @@ export default function AdminSellerApplicationsPage() {
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <button
                   type="button"
-                  onClick={() => setPreviewImg(`${UPLOADS}/${a.idImageFront}`)}
+                  onClick={() => setPreviewImg(`${imgUrl(a.idImageFront)}`)}
                   className="aspect-video bg-input-bg border border-input-border rounded-lg overflow-hidden hover:border-orange-500 transition-all"
                 >
-                  <img src={`${UPLOADS}/${a.idImageFront}`} alt="ID front" className="w-full h-full object-cover" />
+                  <img src={`${imgUrl(a.idImageFront)}`} alt="ID front" className="w-full h-full object-cover" />
                 </button>
                 {a.idImageBack && (
                   <button
                     type="button"
-                    onClick={() => setPreviewImg(`${UPLOADS}/${a.idImageBack}`)}
+                    onClick={() => setPreviewImg(`${imgUrl(a.idImageBack)}`)}
                     className="aspect-video bg-input-bg border border-input-border rounded-lg overflow-hidden hover:border-orange-500 transition-all"
                   >
-                    <img src={`${UPLOADS}/${a.idImageBack}`} alt="ID back" className="w-full h-full object-cover" />
+                    <img src={`${imgUrl(a.idImageBack)}`} alt="ID back" className="w-full h-full object-cover" />
                   </button>
                 )}
               </div>

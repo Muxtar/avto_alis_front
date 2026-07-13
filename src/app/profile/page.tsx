@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { rotateImageFile } from "@/lib/rotateImage";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import { SOCIAL_META } from "@/lib/social";
@@ -744,7 +744,7 @@ export default function ProfilePage() {
           <div className="relative w-36 h-36 sm:w-40 sm:h-40 shrink-0">
             {profile.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={`${UPLOADS}/${profile.avatar}`} alt={profile.name} className="w-full h-full object-cover rounded-full shadow-xl ring-4 ring-card" />
+              <img src={`${imgUrl(profile.avatar)}`} alt={profile.name} className="w-full h-full object-cover rounded-full shadow-xl ring-4 ring-card" />
             ) : (
               <div className={`w-full h-full bg-gradient-to-br ${typeColor(profile.type)} rounded-full flex items-center justify-center text-white font-bold text-4xl sm:text-5xl shadow-xl ring-4 ring-card`}>
                 {profile.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
@@ -906,23 +906,23 @@ export default function ProfilePage() {
             <div className="flex gap-3 flex-wrap">
               {profile.idCardImage && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${UPLOADS}/${profile.idCardImage}`} alt="vəsiqə ön" title="Vəsiqə (ön)" className="w-28 h-20 object-cover rounded-lg border border-input-border" />
+                <img src={`${imgUrl(profile.idCardImage)}`} alt="vəsiqə ön" title="Vəsiqə (ön)" className="w-28 h-20 object-cover rounded-lg border border-input-border" />
               )}
               {profile.idCardBackImage && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${UPLOADS}/${profile.idCardBackImage}`} alt="vəsiqə arxa" title="Vəsiqə (arxa)" className="w-28 h-20 object-cover rounded-lg border border-input-border" />
+                <img src={`${imgUrl(profile.idCardBackImage)}`} alt="vəsiqə arxa" title="Vəsiqə (arxa)" className="w-28 h-20 object-cover rounded-lg border border-input-border" />
               )}
               {profile.selfieImage && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${UPLOADS}/${profile.selfieImage}`} alt="selfie ön" title="Üz (ön)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+                <img src={`${imgUrl(profile.selfieImage)}`} alt="selfie ön" title="Üz (ön)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
               )}
               {profile.selfieRightImage && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${UPLOADS}/${profile.selfieRightImage}`} alt="selfie sağ" title="Üz (sağ)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+                <img src={`${imgUrl(profile.selfieRightImage)}`} alt="selfie sağ" title="Üz (sağ)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
               )}
               {profile.selfieLeftImage && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${UPLOADS}/${profile.selfieLeftImage}`} alt="selfie sol" title="Üz (sol)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+                <img src={`${imgUrl(profile.selfieLeftImage)}`} alt="selfie sol" title="Üz (sol)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
               )}
             </div>
           </div>
@@ -1115,7 +1115,7 @@ export default function ProfilePage() {
         <p className="text-xs text-muted mb-3">CV-nizi PDF və ya şəkil kimi əlavə edin. İstədiyiniz vaxt dəyişə və ya silə bilərsiniz.</p>
         {profile.cvFile ? (
           <div className="flex items-center gap-3 flex-wrap">
-            <a href={`${UPLOADS}/${profile.cvFile}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:bg-orange-500/10">
+            <a href={`${imgUrl(profile.cvFile)}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:bg-orange-500/10">
               📎 CV-yə bax
             </a>
             <label className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold cursor-pointer hover:bg-orange-500/20">
@@ -1155,7 +1155,7 @@ export default function ProfilePage() {
               return (
                 <div key={d.id} className="flex gap-3 items-start bg-input-bg border border-input-border rounded-xl p-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`${UPLOADS}/${d.image}`} alt={d.title} className="w-16 h-16 object-cover rounded-lg border border-input-border shrink-0" />
+                  <img src={`${imgUrl(d.image)}`} alt={d.title} className="w-16 h-16 object-cover rounded-lg border border-input-border shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-semibold truncate">{d.title}</p>
@@ -1304,7 +1304,7 @@ export default function ProfilePage() {
                     const pending = side === "front" ? pendingFront : pendingBack;
                     const uploadedFilename = side === "front" ? vehicleForm.passportImageFront : vehicleForm.passportImageBack;
                     const previewSrc = pending?.preview
-                      || (uploadedFilename ? `${UPLOADS}/${uploadedFilename}` : null);
+                      || (uploadedFilename ? `${imgUrl(uploadedFilename)}` : null);
                     const sideLabel = side === "front" ? "Ön hissə" : "Arxa hissə";
                     const pendingSlot = side === "front" ? pendingFront : pendingBack;
                     return (
@@ -1686,7 +1686,7 @@ export default function ProfilePage() {
                 <div className="aspect-[4/3] bg-input-bg overflow-hidden relative">
                   {l.images && l.images.length > 0 ? (
                     <img
-                      src={l.images[0].startsWith("http") ? l.images[0] : `${UPLOADS}/${l.images[0]}`}
+                      src={l.images[0].startsWith("http") ? l.images[0] : `${imgUrl(l.images[0])}`}
                       alt={l.title}
                       loading="lazy"
                       className={`w-full h-full object-cover transition-transform duration-500 ease-out ${expired ? "opacity-50 grayscale" : "group-hover:scale-110"}`}

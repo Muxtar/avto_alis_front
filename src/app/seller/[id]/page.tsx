@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import ComplaintButton from "@/components/ComplaintButton";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { groupSelectedParts } from "@/lib/sellerCategories";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
@@ -93,7 +93,7 @@ export default function SellerProfilePage() {
           {/* Avatar */}
           {user.avatar ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={`${UPLOADS}/${user.avatar}`} alt={user.name} className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-full shrink-0 shadow-lg ring-4 ring-card" />
+            <img src={`${imgUrl(user.avatar)}`} alt={user.name} className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-full shrink-0 shadow-lg ring-4 ring-card" />
           ) : (
             <div className={`w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br ${typeColor} rounded-full flex items-center justify-center text-white font-bold text-2xl sm:text-3xl shrink-0 shadow-lg ring-4 ring-card`}>
               {user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
@@ -297,14 +297,14 @@ export default function SellerProfilePage() {
           <h2 className="text-base font-semibold mb-3">Sənədlər və ixtisas</h2>
           <div className="flex flex-wrap gap-2.5">
             {user.cvFile && (
-              <a href={`${UPLOADS}/${user.cvFile}`} target="_blank" rel="noreferrer"
+              <a href={`${imgUrl(user.cvFile)}`} target="_blank" rel="noreferrer"
                  className="flex items-center gap-2 px-3.5 py-2 bg-input-bg border border-input-border rounded-xl text-sm hover:border-orange-500/50 transition-colors">
                 <span>📄 CV-yə bax</span>
                 <span className="px-1.5 py-0.5 bg-green-500/10 text-green-500 rounded text-[11px] font-bold">YES</span>
               </a>
             )}
             {user.professionDocuments?.map((d: any) => (
-              <a key={d.id} href={`${UPLOADS}/${d.image}`} target="_blank" rel="noreferrer"
+              <a key={d.id} href={`${imgUrl(d.image)}`} target="_blank" rel="noreferrer"
                  className="flex items-center gap-2 px-3.5 py-2 bg-input-bg border border-input-border rounded-xl text-sm hover:border-orange-500/50 transition-colors">
                 <span className="font-medium">{d.title}</span>
                 {d.documentType && <span className="text-[11px] text-muted">· {d.documentType}</span>}

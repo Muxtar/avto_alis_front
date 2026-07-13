@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   PENDING: { label: "Gözləyir", cls: "bg-amber-500/10 text-amber-500" },
@@ -99,7 +99,7 @@ export default function BookingsPage() {
                   <Link href={`/marketplace/${b.listing?.id}`} className="w-14 h-14 rounded-xl bg-input-bg overflow-hidden shrink-0 flex items-center justify-center">
                     {img ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={`${UPLOADS}/${img}`} alt={b.listing?.title} className="w-full h-full object-cover" />
+                      <img src={`${imgUrl(img)}`} alt={b.listing?.title} className="w-full h-full object-cover" />
                     ) : <span className="text-xl">{isStay ? "🏨" : "🍽️"}</span>}
                   </Link>
                   <div className="flex-1 min-w-0">

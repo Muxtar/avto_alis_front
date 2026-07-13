@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { COUNTRY_BY_CODE } from "@/lib/countries";
 
 interface Listing {
@@ -134,7 +134,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </button>
           )}
           {listing.images.length > 0 ? (
-            <img src={listing.images[0].startsWith('http') ? listing.images[0] : `${UPLOADS}/${listing.images[0]}`} alt={listing.title} loading="lazy"
+            <img src={listing.images[0].startsWith('http') ? listing.images[0] : `${imgUrl(listing.images[0])}`} alt={listing.title} loading="lazy"
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">

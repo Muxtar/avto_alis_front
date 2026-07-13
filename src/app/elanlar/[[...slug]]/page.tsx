@@ -8,7 +8,7 @@ import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import AddListingMenu from "@/components/AddListingMenu";
 import CategoryIcon from "@/components/CategoryIcon";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { CATEGORIES, getSubs, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
 import { IXTISAS_SECTORS } from "@/lib/ixtisas";
@@ -587,7 +587,7 @@ function MarketplacePage() {
                           <div className="w-[72px] h-[72px] rounded-2xl bg-input-bg overflow-hidden ring-4 ring-card shadow-md flex items-center justify-center text-3xl">
                             {p.avatar ? (
                               // eslint-disable-next-line @next/next/no-img-element
-                              <img src={`${UPLOADS}/${p.avatar}`} alt={p.name} className="w-full h-full object-cover" />
+                              <img src={`${imgUrl(p.avatar)}`} alt={p.name} className="w-full h-full object-cover" />
                             ) : "👤"}
                           </div>
                           <div className="mt-2.5 flex items-center gap-1.5">

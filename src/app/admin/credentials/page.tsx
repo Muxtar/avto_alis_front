@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/Toast";
-import { API, UPLOADS } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 
 interface CredDoc {
   id: number;
@@ -83,9 +83,9 @@ export default function AdminCredentialsPage() {
               </div>
 
               <div className="flex gap-4 flex-wrap">
-                <a href={`${UPLOADS}/${d.image}`} target="_blank" rel="noreferrer" className="shrink-0">
+                <a href={`${imgUrl(d.image)}`} target="_blank" rel="noreferrer" className="shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`${UPLOADS}/${d.image}`} alt={d.title} className="w-40 h-28 object-cover rounded-lg border border-input-border hover:opacity-90" />
+                  <img src={`${imgUrl(d.image)}`} alt={d.title} className="w-40 h-28 object-cover rounded-lg border border-input-border hover:opacity-90" />
                 </a>
                 <div className="flex-1 min-w-[200px]">
                   <div className="p-3 bg-input-bg border border-input-border rounded-lg">
