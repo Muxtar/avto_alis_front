@@ -428,7 +428,7 @@ function AccountPageInner() {
       {/* Add/Edit Form */}
       {showForm && (editingId || listingKind === "service" || listingKind === "product-form") && (
         <div className="surface p-5 sm:p-6 mb-6">
-          <h2 className="font-semibold mb-4">{editingId ? t("editListing") : (listingMode === "voen" ? "Yeni elan — VÖEN ilə" : "Yeni elan — VÖEN-siz")}</h2>
+          <h2 className="font-semibold mb-4">{editingId ? t("editListing") : (listingMode === "voen" ? "Elan məlumatları — VÖEN ilə" : "Elan məlumatları — VÖEN-siz")}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
