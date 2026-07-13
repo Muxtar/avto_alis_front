@@ -79,10 +79,7 @@ export default function ObjectPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-      <Link href="/locations" className="inline-flex items-center gap-1.5 text-sm text-orange-500 hover:text-orange-400 mb-4 transition-colors">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
-        Xəritəyə qayıt
-      </Link>
+      {/* Geri qayıtma qlobal BackButton ilə edilir (layout) */}
 
       {/* Obyekt başlığı */}
       <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-7 mb-6">
