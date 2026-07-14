@@ -36,6 +36,8 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
   const [veriffOn, setVeriffOn] = useState(false);
   const [veriffBusy, setVeriffBusy] = useState(false);
   const [veriffStarted, setVeriffStarted] = useState(false);
+  // Veriff əsas üsuldur; köhnə şəkil-yükləmə axını yalnız istifadəçi istəsə (ehtiyat) açılır.
+  const [showManual, setShowManual] = useState(false);
   useEffect(() => {
     if (!token) return;
     fetch(`${API}/veriff/status`, { headers: { Authorization: `Bearer ${token}` } })
@@ -222,10 +224,20 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
               </button>
             )}
           </div>
-          <p className="text-[11px] text-muted mt-3 pt-3 border-t border-blue-500/10">Və ya aşağıdakı adi üsulla (şəkil yükləməklə) davam edin:</p>
+          {!showManual && (
+            <button type="button" onClick={() => setShowManual(true)}
+              className="text-[11px] text-muted mt-3 pt-3 border-t border-blue-500/10 w-full text-left hover:text-foreground transition-colors">
+              Veriff işləmir? Şəkil yükləməklə təsdiq üçün buraya toxunun ›
+            </button>
+          )}
         </div>
       )}
 
+      {(!veriffOn || showManual) && (
+      <>
+      {veriffOn && showManual && (
+        <p className="text-xs text-muted font-medium">Ehtiyat üsul — şəkil yükləməklə:</p>
+      )}
       {/* Kimlik vəsiqəsi şəkli */}
       <div>
         <label className="block text-sm font-medium mb-1.5">Şəxsiyyət vəsiqəsi şəkli</label>
@@ -327,6 +339,8 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
       <button onClick={submit} disabled={submitting || !idCardFile || !selfieBlobs.front || !selfieBlobs.right || !selfieBlobs.left} className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white disabled:opacity-50">
         {submitting ? "Yadda saxlanılır…" : "💾 Profili təsdiqə göndər"}
       </button>
+      </>
+      )}
     </div>
   );
 }
