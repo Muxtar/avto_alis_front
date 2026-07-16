@@ -19,3 +19,6 @@ export function getCallSocket(token: string): Socket {
   socketToken = token;
   return socket;
 }
+
+// Eyni socket çat üçün də istifadə olunur (real-time mesaj, "yazır...", oxundu).
+export const getSocket = getCallSocket;

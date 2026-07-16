@@ -6,8 +6,11 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { getSocket } from "@/lib/callSocket";
 import ContactsPanel from "@/components/ContactsPanel";
 import CallModal from "@/components/CallModal";
+
+const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
 export default function MessagesPage() {
   const { t } = useLanguage();
@@ -24,9 +27,25 @@ export default function MessagesPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [sideTab, setSideTab] = useState<"chats" | "contacts">("chats"); // sol panel: söhbətlər / kontaktlar
   const [outgoingCall, setOutgoingCall] = useState<{ partner: any; kind: "audio" | "video"; ts: number } | null>(null); // zəng istəyi
+  // WhatsApp-vari əməliyyatlar
+  const [replyTo, setReplyTo] = useState<any>(null); // cavab verilən mesaj
+  const [editingMsg, setEditingMsg] = useState<any>(null); // redaktə olunan mesaj
+  const [selectedMsg, setSelectedMsg] = useState<any>(null); // əməliyyat menyusu açıq olan mesaj
+  const [partnerTyping, setPartnerTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  // Stale-closure olmadan socket handler-lərinin cari dəyərləri oxuması üçün ref-lər
+  const activePartnerRef = useRef<any>(null);
+  const userIdRef = useRef<number | undefined>(undefined);
+  const typingSentRef = useRef(false);
+  const typingClearRef = useRef<any>(null);
 
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  useEffect(() => { activePartnerRef.current = activePartner; }, [activePartner]);
+  useEffect(() => { userIdRef.current = user?.id; }, [user?.id]);
+
+  const scrollToEnd = (smooth = true) => setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" }), 60);
 
   useEffect(() => {
     if (authLoading) return;
@@ -34,7 +53,55 @@ export default function MessagesPage() {
     fetchConversations();
   }, [isLoggedIn, authLoading]);
 
-  // Conversation listəsini hər 8 saniyədə bir yenilə (yeni söhbət üçün)
+  // ── Real-time socket: mesaj çatdırılması, "yazır...", oxundu, redaktə/sil/reaksiya ──
+  useEffect(() => {
+    if (!isLoggedIn || !token) return;
+    const socket = getSocket(token);
+
+    const belongsToActive = (m: any) => {
+      const ap = activePartnerRef.current; const me = userIdRef.current;
+      if (!ap) return false;
+      return (m.senderId === ap.id && m.receiverId === me) || (m.senderId === me && m.receiverId === ap.id);
+    };
+    const upsert = (m: any) => setMessages((prev) => {
+      const i = prev.findIndex((x) => x.id === m.id);
+      if (i >= 0) { const cp = [...prev]; cp[i] = { ...cp[i], ...m }; return cp; }
+      return [...prev, m];
+    });
+
+    const onMessage = (m: any) => {
+      if (belongsToActive(m)) { upsert(m); scrollToEnd(); }
+      fetchConversations();
+    };
+    const onUpdated = (m: any) => { if (belongsToActive(m)) upsert(m); };
+    const onDeleted = (p: { id: number; deletedAt: string }) => setMessages((prev) => prev.map((x) => x.id === p.id ? { ...x, deletedAt: p.deletedAt, content: "", reactions: [] } : x));
+    const onReaction = (p: { id: number; reactions: any[] }) => setMessages((prev) => prev.map((x) => x.id === p.id ? { ...x, reactions: p.reactions } : x));
+    const onRead = (p: { by: number }) => { const ap = activePartnerRef.current; if (ap && p.by === ap.id) setMessages((prev) => prev.map((x) => x.senderId === userIdRef.current ? { ...x, read: true } : x)); };
+    const onDelivered = (p: { ids: number[] }) => setMessages((prev) => prev.map((x) => p.ids.includes(x.id) ? { ...x, deliveredAt: x.deliveredAt || new Date().toISOString() } : x));
+    const onTyping = (p: { from: number }) => { const ap = activePartnerRef.current; if (ap && p.from === ap.id) { setPartnerTyping(true); clearTimeout(typingClearRef.current); typingClearRef.current = setTimeout(() => setPartnerTyping(false), 4000); } };
+    const onStopTyping = (p: { from: number }) => { const ap = activePartnerRef.current; if (ap && p.from === ap.id) setPartnerTyping(false); };
+
+    socket.on("chat:message", onMessage);
+    socket.on("chat:updated", onUpdated);
+    socket.on("chat:deleted", onDeleted);
+    socket.on("chat:reaction", onReaction);
+    socket.on("chat:read", onRead);
+    socket.on("chat:delivered", onDelivered);
+    socket.on("chat:typing", onTyping);
+    socket.on("chat:stopTyping", onStopTyping);
+    return () => {
+      socket.off("chat:message", onMessage);
+      socket.off("chat:updated", onUpdated);
+      socket.off("chat:deleted", onDeleted);
+      socket.off("chat:reaction", onReaction);
+      socket.off("chat:read", onRead);
+      socket.off("chat:delivered", onDelivered);
+      socket.off("chat:typing", onTyping);
+      socket.off("chat:stopTyping", onStopTyping);
+    };
+  }, [isLoggedIn, token]);
+
+  // Söhbət siyahısını hər 15 saniyədə bir yenilə (socket əsas, bu ehtiyat)
   useEffect(() => {
     if (!isLoggedIn) return;
     const interval = setInterval(() => {
@@ -42,56 +109,28 @@ export default function MessagesPage() {
         .then((r) => r.json())
         .then((d) => setConversations(d.conversations || []))
         .catch(() => {});
-    }, 8000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [isLoggedIn, token]);
 
-  // Aktiv söhbətdəki mesajları hər 3 saniyədə bir yenilə (real-time hissi)
-  useEffect(() => {
-    if (!activePartner || !isLoggedIn) return;
-    const interval = setInterval(() => {
-      fetch(`${API}/messages/${activePartner.id}?limit=50`, { headers })
-        .then((r) => r.json())
-        .then((d) => {
-          const incoming = d.messages || [];
-          setMessages((prev) => {
-            // Yalnız yeni mesaj varsa state-i yenilə (re-render minimum)
-            if (prev.length !== incoming.length) {
-              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-              return incoming;
-            }
-            const lastNew = incoming[incoming.length - 1];
-            const lastPrev = prev[prev.length - 1];
-            if (lastNew?.id !== lastPrev?.id) {
-              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
-              return incoming;
-            }
-            return prev;
-          });
-        })
-        .catch(() => {});
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [activePartner, isLoggedIn, token]);
-
   const fetchConversations = () => {
-    setLoading(true);
     fetch(`${API}/messages/conversations`, { headers })
       .then((r) => r.json())
       .then((d) => setConversations(d.conversations || []))
-      .catch(() => { toast(t('error'), 'error'); })
+      .catch(() => {})
       .finally(() => setLoading(false));
   };
 
   const openConversation = (partner: any) => {
     setActivePartner(partner);
     setHasMore(false);
+    setReplyTo(null); setEditingMsg(null); setSelectedMsg(null); setPartnerTyping(false);
     fetch(`${API}/messages/${partner.id}?limit=50`, { headers })
       .then((r) => r.json())
       .then((d) => {
         setMessages(d.messages || []);
         setHasMore(d.hasMore || false);
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+        scrollToEnd(false);
         setConversations((prev) =>
           prev.map((c) => c.partner.id === partner.id ? { ...c, unreadCount: 0 } : c)
         );
@@ -107,32 +146,70 @@ export default function MessagesPage() {
       .then((r) => r.json())
       .then((d) => {
         const older = d.messages || [];
-        if (older.length > 0) {
-          setMessages((prev) => [...older, ...prev]);
-        }
+        if (older.length > 0) setMessages((prev) => [...older, ...prev]);
         if (older.length < 50) setHasMore(false);
       })
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoadingMore(false));
   };
 
+  // "yazır..." siqnalı göndər (throttle)
+  const emitTyping = () => {
+    const socket = token ? getSocket(token) : null;
+    if (!socket || !activePartner) return;
+    if (!typingSentRef.current) { socket.emit("chat:typing", { to: activePartner.id }); typingSentRef.current = true; }
+    clearTimeout(typingClearRef.current);
+    typingClearRef.current = setTimeout(() => { socket.emit("chat:stopTyping", { to: activePartner.id }); typingSentRef.current = false; }, 2500);
+  };
+
   const handleSend = async () => {
     if (!newMsg.trim() || !activePartner) return;
     setSending(true);
     try {
-      const res = await fetch(`${API}/messages`, {
-        method: "POST", headers,
-        body: JSON.stringify({ receiverId: activePartner.id, content: newMsg }),
-      });
-      if (res.ok) {
-        setNewMsg("");
-        // Re-fetch messages
-        const d = await fetch(`${API}/messages/${activePartner.id}`, { headers }).then((r) => r.json());
-        setMessages(d.messages || []);
-        fetchConversations();
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+      if (editingMsg) {
+        // Redaktə
+        const res = await fetch(`${API}/messages/${editingMsg.id}`, { method: "PATCH", headers, body: JSON.stringify({ content: newMsg }) });
+        const d = await res.json();
+        if (res.ok && d.success) { setMessages((prev) => prev.map((x) => x.id === editingMsg.id ? d.message : x)); setEditingMsg(null); setNewMsg(""); }
+        else toast(d.message || t('error'), 'error');
+      } else {
+        const res = await fetch(`${API}/messages`, {
+          method: "POST", headers,
+          body: JSON.stringify({ receiverId: activePartner.id, content: newMsg, replyToId: replyTo?.id }),
+        });
+        const d = await res.json();
+        if (res.ok && d.success) {
+          setNewMsg(""); setReplyTo(null);
+          setMessages((prev) => prev.some((x) => x.id === d.message.id) ? prev : [...prev, d.message]);
+          scrollToEnd();
+          fetchConversations();
+        } else toast(d.message || t('error'), 'error');
       }
+      const socket = token ? getSocket(token) : null;
+      socket?.emit("chat:stopTyping", { to: activePartner.id }); typingSentRef.current = false;
     } catch { toast(t('error'), 'error'); } finally { setSending(false); }
+  };
+
+  const startEdit = (msg: any) => { setEditingMsg(msg); setReplyTo(null); setNewMsg(msg.content); setSelectedMsg(null); setTimeout(() => inputRef.current?.focus(), 50); };
+  const startReply = (msg: any) => { setReplyTo(msg); setEditingMsg(null); setSelectedMsg(null); setTimeout(() => inputRef.current?.focus(), 50); };
+
+  const deleteMessage = async (msg: any) => {
+    setSelectedMsg(null);
+    if (!confirm("Bu mesajı hamı üçün silmək istəyirsiniz?")) return;
+    try {
+      const res = await fetch(`${API}/messages/${msg.id}`, { method: "DELETE", headers });
+      if (res.ok) setMessages((prev) => prev.map((x) => x.id === msg.id ? { ...x, deletedAt: new Date().toISOString(), content: "", reactions: [] } : x));
+      else toast(t('error'), 'error');
+    } catch { toast(t('error'), 'error'); }
+  };
+
+  const reactToMessage = async (msg: any, emoji: string) => {
+    setSelectedMsg(null);
+    try {
+      const res = await fetch(`${API}/messages/${msg.id}/react`, { method: "POST", headers, body: JSON.stringify({ emoji }) });
+      const d = await res.json();
+      if (res.ok && d.success) setMessages((prev) => prev.map((x) => x.id === msg.id ? { ...x, reactions: d.reactions } : x));
+    } catch { toast(t('error'), 'error'); }
   };
 
   if (authLoading || !isLoggedIn) {
@@ -140,6 +217,30 @@ export default function MessagesPage() {
   }
 
   const typeColor = (type: string) => type === "MECHANIC" ? "from-green-500 to-emerald-600" : type === "PARTS_SELLER" ? "from-purple-500 to-violet-600" : "from-blue-500 to-blue-600";
+
+  // Mesajın oxunub-çatıb statusu (yalnız mənim mesajlarımda): ✓ göndərildi, ✓✓ çatdı, mavi ✓✓ oxundu
+  const ticks = (msg: any) => {
+    if (msg.read) return <span className="text-sky-300" title="Oxundu">✓✓</span>;
+    if (msg.deliveredAt) return <span className="opacity-70" title="Çatdırıldı">✓✓</span>;
+    return <span className="opacity-70" title="Göndərildi">✓</span>;
+  };
+
+  const reactionChips = (msg: any) => {
+    if (!msg.reactions?.length) return null;
+    const counts: Record<string, number> = {};
+    let mine = "";
+    for (const r of msg.reactions) { counts[r.emoji] = (counts[r.emoji] || 0) + 1; if (r.userId === user?.id) mine = r.emoji; }
+    return (
+      <div className="flex gap-1 mt-1 flex-wrap">
+        {Object.entries(counts).map(([emoji, n]) => (
+          <button key={emoji} onClick={() => reactToMessage(msg, emoji)}
+            className={`text-[11px] px-1.5 py-0.5 rounded-full border ${mine === emoji ? "bg-orange-500/20 border-orange-500/40" : "bg-input-bg border-input-border"}`}>
+            {emoji}{n > 1 ? ` ${n}` : ""}
+          </button>
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
@@ -199,7 +300,7 @@ export default function MessagesPage() {
                       )}
                     </div>
                     <p className="text-muted text-xs truncate">
-                      {conv.lastMessage?.content?.slice(0, 40)}
+                      {conv.lastMessage?.deletedAt ? "🚫 silinmiş mesaj" : conv.lastMessage?.content?.slice(0, 40)}
                     </p>
                   </div>
                 </button>
@@ -223,7 +324,7 @@ export default function MessagesPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <Link href={`/seller/${activePartner.id}`} className="font-medium text-sm hover:text-orange-500 transition-colors">{activePartner.name}</Link>
-                  <p className="text-muted text-xs">{activePartner.phone}</p>
+                  <p className="text-muted text-xs h-4">{partnerTyping ? <span className="text-orange-500">yazır...</span> : activePartner.phone}</p>
                 </div>
                 {/* Səsli / görüntülü zəng */}
                 <div className="flex items-center gap-1.5 shrink-0">
@@ -254,27 +355,43 @@ export default function MessagesPage() {
                 )}
                 {messages.map((msg) => {
                   const isMine = msg.senderId === user?.id;
+                  const deleted = !!msg.deletedAt;
                   return (
                     <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                      <div className={`max-w-[75%] px-3.5 py-2.5 rounded-2xl text-sm break-words ${
-                        isMine
-                          ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-br-md"
-                          : "bg-input-bg border border-input-border text-foreground rounded-bl-md"
-                      }`}>
-                        {msg.listing && (
-                          <Link href={`/marketplace/${msg.listing.id}`} className={`block text-[10px] mb-1 ${isMine ? 'text-white/70' : 'text-orange-500'} hover:underline`}>
-                            {t("messageAbout")}: {msg.listing.title}
-                          </Link>
-                        )}
-                        {msg.consultationId && (
-                          <Link href={`/consultations/${msg.consultationId}`} className={`block text-[10px] mb-1 ${isMine ? 'text-white/70' : 'text-orange-500'} hover:underline`}>
-                            🗣️ Rəy konsultasiyası — aç
-                          </Link>
-                        )}
-                        <p>{msg.content}</p>
-                        <p className={`text-[10px] mt-1 ${isMine ? 'text-white/50' : 'text-muted'}`}>
-                          {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
+                      <div className="max-w-[75%]">
+                        <div
+                          onClick={() => !deleted && setSelectedMsg(selectedMsg?.id === msg.id ? null : msg)}
+                          className={`px-3.5 py-2.5 rounded-2xl text-sm break-words cursor-pointer ${
+                            deleted
+                              ? "bg-input-bg/50 border border-input-border text-muted italic"
+                              : isMine
+                              ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-br-md"
+                              : "bg-input-bg border border-input-border text-foreground rounded-bl-md"
+                          }`}>
+                          {/* Cavab verilən mesajın önizləməsi */}
+                          {msg.replyTo && !deleted && (
+                            <div className={`text-[11px] mb-1 px-2 py-1 rounded-lg border-l-2 ${isMine ? "bg-white/15 border-white/50" : "bg-orange-500/10 border-orange-500/50"}`}>
+                              {msg.replyTo.deletedAt ? "🚫 silinmiş mesaj" : (msg.replyTo.content?.slice(0, 60) || "")}
+                            </div>
+                          )}
+                          {msg.listing && !deleted && (
+                            <Link href={`/marketplace/${msg.listing.id}`} onClick={(e) => e.stopPropagation()} className={`block text-[10px] mb-1 ${isMine ? 'text-white/70' : 'text-orange-500'} hover:underline`}>
+                              {t("messageAbout")}: {msg.listing.title}
+                            </Link>
+                          )}
+                          {msg.consultationId && !deleted && (
+                            <Link href={`/consultations/${msg.consultationId}`} onClick={(e) => e.stopPropagation()} className={`block text-[10px] mb-1 ${isMine ? 'text-white/70' : 'text-orange-500'} hover:underline`}>
+                              🗣️ Rəy konsultasiyası — aç
+                            </Link>
+                          )}
+                          <p>{deleted ? "🚫 Bu mesaj silindi" : msg.content}</p>
+                          <p className={`text-[10px] mt-1 flex items-center gap-1 ${isMine ? 'text-white/50 justify-end' : 'text-muted'}`}>
+                            {msg.editedAt && !deleted && <span title="Redaktə edilib">redaktə</span>}
+                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {isMine && !deleted && ticks(msg)}
+                          </p>
+                        </div>
+                        {reactionChips(msg)}
                       </div>
                     </div>
                   );
@@ -282,11 +399,23 @@ export default function MessagesPage() {
                 <div ref={messagesEndRef} />
               </div>
 
+              {/* Cavab / redaktə banneri */}
+              {(replyTo || editingMsg) && (
+                <div className="px-3 pt-2 flex items-center gap-2 border-t border-card-border">
+                  <div className="flex-1 min-w-0 text-xs px-2 py-1.5 rounded-lg bg-input-bg border-l-2 border-orange-500">
+                    <span className="text-orange-500 font-semibold">{editingMsg ? "✏️ Redaktə edilir" : "↩︎ Cavab"}</span>
+                    <span className="text-muted truncate block">{(editingMsg || replyTo)?.content?.slice(0, 60)}</span>
+                  </div>
+                  <button onClick={() => { setReplyTo(null); setEditingMsg(null); setNewMsg(""); }} className="text-muted hover:text-foreground text-lg px-1">✕</button>
+                </div>
+              )}
+
               {/* Input */}
               <div className="p-3 border-t border-card-border flex gap-2">
                 <input
+                  ref={inputRef}
                   value={newMsg}
-                  onChange={(e) => setNewMsg(e.target.value)}
+                  onChange={(e) => { setNewMsg(e.target.value); emitTyping(); }}
                   onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                   placeholder={t("messagePlaceholder")}
                   className="flex-1 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground"
@@ -310,6 +439,29 @@ export default function MessagesPage() {
           )}
         </div>
       </div>
+
+      {/* Mesaj əməliyyat menyusu (reaksiya + cavabla / redaktə / sil) */}
+      {selectedMsg && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setSelectedMsg(null)}>
+          <div className="bg-card border border-card-border rounded-t-2xl sm:rounded-2xl w-full sm:w-80 p-3 space-y-2" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-around py-1">
+              {QUICK_REACTIONS.map((emoji) => (
+                <button key={emoji} onClick={() => reactToMessage(selectedMsg, emoji)} className="text-2xl hover:scale-125 transition-transform">{emoji}</button>
+              ))}
+            </div>
+            <div className="border-t border-card-border pt-2 space-y-1">
+              <button onClick={() => startReply(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg text-sm flex items-center gap-2">↩︎ Cavabla</button>
+              {selectedMsg.senderId === user?.id && (
+                <button onClick={() => startEdit(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg text-sm flex items-center gap-2">✏️ Redaktə et</button>
+              )}
+              {selectedMsg.senderId === user?.id && (
+                <button onClick={() => deleteMessage(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-red-500 text-sm flex items-center gap-2">🗑 Hamı üçün sil</button>
+              )}
+              <button onClick={() => setSelectedMsg(null)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg text-sm text-muted flex items-center gap-2">✕ Bağla</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Səsli/görüntülü zəng modalı — gələn zəngləri də bu tutur */}
       <CallModal outgoing={outgoingCall} onDone={() => setOutgoingCall(null)} />
