@@ -43,7 +43,7 @@ export default function BusinessPage() {
   // create form
   const [kind, setKind] = useState("PHYSICAL");
   const [proofType, setProofType] = useState("TAX_DOC");
-  const [f, setF] = useState({ name: "", voen: "", ownerName: "", founderName: "", phone: "" });
+  const [f, setF] = useState({ name: "", voen: "", ownerName: "", founderName: "", phone: "", website: "", instagram: "", facebook: "", tiktok: "", youtube: "", linkedin: "" });
   const [files, setFiles] = useState<Record<string, File | null>>(blankFiles);
   const [banks, setBanks] = useState<{ iban: string; title: string }[]>([{ iban: "", title: "" }]);
   const [bizInfoReading, setBizInfoReading] = useState(false); // AI vergi sənədindən şirkət məlumatı oxuyur
@@ -166,7 +166,7 @@ export default function BusinessPage() {
           : (t("bizCreated") || "Biznes göndərildi — admin təsdiqini gözləyir")) + ibanMsg,
         "success",
       );
-      setShowForm(false); setKind("PHYSICAL"); setProofType("TAX_DOC"); setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "" }); setFiles(blankFiles); setBanks([{ iban: "", title: "" }]); setBankDocs([]); setPrimaryBankIdx(0); setBizInfoFilled(false); setOwnerCheck(null);
+      setShowForm(false); setKind("PHYSICAL"); setProofType("TAX_DOC"); setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "", website: "", instagram: "", facebook: "", tiktok: "", youtube: "", linkedin: "" }); setFiles(blankFiles); setBanks([{ iban: "", title: "" }]); setBankDocs([]); setPrimaryBankIdx(0); setBizInfoFilled(false); setOwnerCheck(null);
       load();
     } catch { toast(t("error"), "error"); } finally { setBusy(false); }
   };
@@ -309,6 +309,18 @@ export default function BusinessPage() {
               <input className={inputCls} placeholder={t("phone") || "Telefon (əl ilə)"} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
               <input className={`${inputCls} opacity-70 cursor-not-allowed`} placeholder={t("bizOwner") || "Şirkətin sahibi (sənəddən)"} value={f.ownerName} readOnly disabled />
               <input className={`${inputCls} opacity-70 cursor-not-allowed`} placeholder={t("bizFounder") || "Şirkətin təsisçisi (sənəddən)"} value={f.founderName} readOnly disabled />
+            </div>
+          </div>
+          {/* Opsional: veb-sayt və sosial şəbəkələr */}
+          <div>
+            <p className="text-xs font-semibold text-muted mb-1">🌐 Veb-sayt və sosial şəbəkələr <span className="font-normal text-muted-foreground">(opsional)</span></p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input className={inputCls} placeholder="Veb-sayt (məs. https://sirket.az)" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} />
+              <input className={inputCls} placeholder="Instagram" value={f.instagram} onChange={(e) => setF({ ...f, instagram: e.target.value })} />
+              <input className={inputCls} placeholder="Facebook" value={f.facebook} onChange={(e) => setF({ ...f, facebook: e.target.value })} />
+              <input className={inputCls} placeholder="TikTok" value={f.tiktok} onChange={(e) => setF({ ...f, tiktok: e.target.value })} />
+              <input className={inputCls} placeholder="YouTube" value={f.youtube} onChange={(e) => setF({ ...f, youtube: e.target.value })} />
+              <input className={inputCls} placeholder="LinkedIn" value={f.linkedin} onChange={(e) => setF({ ...f, linkedin: e.target.value })} />
             </div>
           </div>
           {/* Bank hesabları — yalnız bank sənədindən AI ilə oxunur (əl ilə girilmir) */}

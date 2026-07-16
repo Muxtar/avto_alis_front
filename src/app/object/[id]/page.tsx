@@ -110,6 +110,22 @@ export default function ObjectPage() {
                 <a href={mapHref} target="_blank" rel="noreferrer" className="text-orange-500 hover:text-orange-400">Xəritədə aç →</a>
               )}
             </div>
+            {/* Opsional veb-sayt / sosial şəbəkələr */}
+            {object.business && [object.business.website, object.business.instagram, object.business.facebook, object.business.tiktok, object.business.youtube, object.business.linkedin].some(Boolean) && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {[
+                  { k: "website", label: "🌐 Sayt", v: object.business.website },
+                  { k: "instagram", label: "📸 Instagram", v: object.business.instagram },
+                  { k: "facebook", label: "👍 Facebook", v: object.business.facebook },
+                  { k: "tiktok", label: "🎵 TikTok", v: object.business.tiktok },
+                  { k: "youtube", label: "▶️ YouTube", v: object.business.youtube },
+                  { k: "linkedin", label: "💼 LinkedIn", v: object.business.linkedin },
+                ].filter((x) => x.v).map((x) => (
+                  <a key={x.k} href={/^https?:\/\//.test(x.v) ? x.v : `https://${x.v}`} target="_blank" rel="noreferrer"
+                    className="text-xs px-2.5 py-1 rounded-lg bg-input-bg border border-input-border hover:border-orange-500/50 hover:text-orange-500 transition-colors">{x.label}</a>
+                ))}
+              </div>
+            )}
             {object.activityAreas?.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-3">
                 {object.activityAreas.map((a: string) => (
