@@ -177,10 +177,10 @@ export const translations = {
     logout: "Çıxış",
     loginRequired: "Daxil olun",
     // Messages
-    messages: "Mesajlar",
+    messages: "Chat",
     homeNav: "Əsas",
     aiChatNav: "AI Söhbət",
-    myMessages: "Mesajlarım",
+    myMessages: "Chatlarım",
     addSingleListing: "Fərdi elan",
     excelAddListing: "Excel ilə elan əlavə et",
     excelImportTitle: "Excel ilə toplu elan əlavə et",

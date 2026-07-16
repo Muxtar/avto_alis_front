@@ -37,6 +37,7 @@ export default function CallModal({
   const peerRef = useRef<Peer | null>(null);
   const kindRef = useRef<"audio" | "video">("audio");
   const ringTimeoutRef = useRef<any>(null);
+  const facingRef = useRef<"user" | "environment">("user"); // ön / arxa kamera
   phaseRef.current = phase; peerRef.current = peer; kindRef.current = kind;
 
   const socket = token ? getCallSocket(token) : null;
@@ -49,6 +50,7 @@ export default function CallModal({
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     pendingCandidatesRef.current = [];
+    facingRef.current = "user";
     setPhase(null); setPeer(null); setMuted(false); setCamOff(false); setSeconds(0);
     onDone?.();
     // eslint-disable-next-line
@@ -199,6 +201,25 @@ export default function CallModal({
     const off = !camOff; setCamOff(off);
     localStreamRef.current?.getVideoTracks().forEach((t) => (t.enabled = !off));
   };
+  // Ön ↔ arxa kamera dəyişimi (satıcının məhsulu arxa kamera ilə göstərməsi üçün).
+  const switchCamera = async () => {
+    const pc = pcRef.current; const cur = localStreamRef.current;
+    if (!pc || !cur) return;
+    const next = facingRef.current === "user" ? "environment" : "user";
+    try {
+      const ns = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: next } }, audio: false });
+      const newTrack = ns.getVideoTracks()[0];
+      if (!newTrack) return;
+      const sender = pc.getSenders().find((s) => s.track?.kind === "video");
+      if (sender) await sender.replaceTrack(newTrack);
+      const oldTrack = cur.getVideoTracks()[0];
+      if (oldTrack) { cur.removeTrack(oldTrack); oldTrack.stop(); }
+      cur.addTrack(newTrack);
+      newTrack.enabled = !camOff;
+      if (localVideoRef.current) localVideoRef.current.srcObject = cur;
+      facingRef.current = next;
+    } catch { toast("Kamera dəyişdirilə bilmədi", "error"); }
+  };
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
   if (!phase) return null;
@@ -260,6 +281,12 @@ export default function CallModal({
                 <button onClick={toggleCam} title={camOff ? "Kameranı aç" : "Kameranı bağla"}
                   className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg ${camOff ? "bg-red-500/20 text-red-500" : "bg-input-bg border border-input-border"}`}>
                   {camOff ? "🚫" : "📷"}
+                </button>
+              )}
+              {kind === "video" && (phase === "active" || phase === "connecting") && (
+                <button onClick={switchCamera} title="Kameranı çevir (ön/arxa)"
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center text-lg bg-input-bg border border-input-border">
+                  🔄
                 </button>
               )}
               <button onClick={endCall} className="px-6 py-3 bg-red-500 text-white rounded-2xl font-semibold hover:bg-red-600">
