@@ -57,6 +57,7 @@ export default function BusinessPage() {
 
   // per-business inline inputs
   const [bankInput, setBankInput] = useState<Record<number, { iban: string; title: string }>>({});
+  const [showAddBank, setShowAddBank] = useState<Record<number, boolean>>({}); // əl ilə bank əlavə (opsional)
   const [objInput, setObjInput] = useState<Record<number, { name: string; phone: string; address: string; city: string; activityAreas: string[]; latitude: number | null; longitude: number | null }>>({});
   const [memberInput, setMemberInput] = useState<Record<number, { publicId: string; objectId: string }>>({});
 
@@ -383,10 +384,15 @@ export default function BusinessPage() {
                     </div>
                   </div>
                 ))}
-                <div className="flex gap-2 mt-1">
-                  <input className={inputCls} placeholder="IBAN" value={bankInput[b.id]?.iban || ""} onChange={(e) => setBankInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { iban: "", title: "" }), iban: e.target.value } }))} />
-                  <button onClick={wrap(async () => { const v = bankInput[b.id]; if (!v?.iban?.trim()) throw new Error("IBAN"); await jsonReq(`${API}/me/businesses/${b.id}/banks`, "POST", v); setBankInput((p) => ({ ...p, [b.id]: { iban: "", title: "" } })); })} className="px-3 bg-orange-500/10 text-orange-500 rounded-lg text-xs whitespace-nowrap">+ {t("bizAddBank") || "Bank"}</button>
-                </div>
+                {/* Banklar sənəddən AI ilə oxundu — əl ilə əlavə OPSIONALDIR (təkrar istənilmir). */}
+                {(showAddBank[b.id] || b.banks.length === 0) ? (
+                  <div className="flex gap-2 mt-1">
+                    <input className={inputCls} placeholder="IBAN (əl ilə, opsional)" value={bankInput[b.id]?.iban || ""} onChange={(e) => setBankInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { iban: "", title: "" }), iban: e.target.value } }))} />
+                    <button onClick={wrap(async () => { const v = bankInput[b.id]; if (!v?.iban?.trim()) throw new Error("IBAN"); await jsonReq(`${API}/me/businesses/${b.id}/banks`, "POST", v); setBankInput((p) => ({ ...p, [b.id]: { iban: "", title: "" } })); setShowAddBank((p) => ({ ...p, [b.id]: false })); })} className="px-3 bg-orange-500/10 text-orange-500 rounded-lg text-xs whitespace-nowrap">+ {t("bizAddBank") || "Bank"}</button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setShowAddBank((p) => ({ ...p, [b.id]: true }))} className="text-xs text-orange-500 mt-1 hover:text-orange-400">+ Başqa bank əlavə et</button>
+                )}
               </div>
 
               {/* Obyektlər */}
