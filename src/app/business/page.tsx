@@ -75,11 +75,13 @@ export default function BusinessPage() {
       setPublicId(pid.publicId || "");
       // Kimlik + üz təsdiqi olmadan biznes yaratmaq olmaz.
       const me = await fetch(`${API}/me`, { headers: authH }).then((r) => r.json());
-      setIdVerified(me?.user?.idVerifyStatus === "APPROVED");
+      // Kimlik prosesi başladılıbsa (Veriff/AI) biznes əlavə etmək olar — test rejimində
+      // Veriff APPROVED-a çatmaya bilər, ona görə truthy status kifayətdir.
+      setIdVerified(!!me?.user?.idVerifyStatus);
       const u = me?.user || {};
       const faceOk = (u.faceMatchScore ?? 0) > 0.5 || u.idAiFaceMatch === true || (u.idAiFaceScore ?? 0) > 0.5;
-      // Profil təsdiqlidirsə (Veriff APPROVED) — biznesdə vəsiqə+selfie təkrar istənilmir.
-      setIdentityReusable(u.idVerifyStatus === "APPROVED" || (!!u.idCardImage && !!u.selfieImage && faceOk));
+      // Kimlik profildə edilib — biznesdə vəsiqə+selfie təkrar istənilmir.
+      setIdentityReusable(!!u.idVerifyStatus || (!!u.idCardImage && !!u.selfieImage && faceOk));
     } catch { toast(t("error"), "error"); } finally { setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
