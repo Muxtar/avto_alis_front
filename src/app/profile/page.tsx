@@ -150,7 +150,12 @@ export default function ProfilePage() {
 
   const refreshProfile = async () => {
     const res = await fetch(`${API}/me`, { headers }).then((r) => r.json());
-    if (res.user) setProfile(res.user);
+    if (res.user) {
+      const u = res.user;
+      setProfile(u);
+      // Veriff təsdiqindən sonra ad/FIN/doğum/cins serverdə yenilənir — input sahələrini də doldur.
+      setEditData({ name: u.name || "", profession: u.profession || "", bio: u.bio || "", idNumber: u.idNumber || "", birthDate: u.birthDate ? String(u.birthDate).slice(0, 10) : "", gender: u.gender || "" });
+    }
   };
 
   // ---- Telefon nömrələri (çoxlu, biri əsas) ----
