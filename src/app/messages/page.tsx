@@ -8,7 +8,7 @@ import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import { getSocket } from "@/lib/callSocket";
 import ContactsPanel from "@/components/ContactsPanel";
-import CallModal from "@/components/CallModal";
+import { useCall } from "@/lib/CallContext";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
@@ -28,7 +28,7 @@ export default function MessagesPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sideTab, setSideTab] = useState<"chats" | "contacts">("chats");
-  const [outgoingCall, setOutgoingCall] = useState<{ partner: any; kind: "audio" | "video"; ts: number } | null>(null);
+  const { startCall } = useCall();
   const [replyTo, setReplyTo] = useState<any>(null);
   const [editingMsg, setEditingMsg] = useState<any>(null);
   const [selectedMsg, setSelectedMsg] = useState<any>(null);
@@ -457,7 +457,7 @@ export default function MessagesPage() {
           <div className="flex items-center gap-2"><span className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-lg">👤</span>
             <div className="min-w-0"><p className="font-semibold truncate">{msg.mediaName}</p><p className="text-[11px] opacity-80">{msg.contactPhone}</p></div></div>
           <div className="flex gap-2 mt-0.5">
-            {msg.contactUserId ? <button onClick={(e) => { e.stopPropagation(); openChat({ type: "direct", id: msg.contactUserId, name: msg.mediaName }); }} className="text-[11px] underline">💬 Mesaj yaz</button>
+            {msg.contactUserId ? <button onClick={(e) => { e.stopPropagation(); openChat({ type: "direct", id: msg.contactUserId, name: msg.mediaName }); }} className="text-[11px] underline">💬 Chat</button>
               : <a href={`tel:${msg.contactPhone}`} onClick={(e) => e.stopPropagation()} className="text-[11px] underline">📞 Zəng et</a>}
           </div>
         </div>
@@ -540,8 +540,8 @@ export default function MessagesPage() {
                 </div>
                 {active.type === "direct" && (
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => setOutgoingCall({ partner: { id: active.id, name: active.name }, kind: "audio", ts: Date.now() })} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors">📞</button>
-                    <button onClick={() => setOutgoingCall({ partner: { id: active.id, name: active.name }, kind: "video", ts: Date.now() })} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors">🎥</button>
+                    <button onClick={() => startCall({ id: active.id, name: active.name }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors">📞</button>
+                    <button onClick={() => startCall({ id: active.id, name: active.name }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors">🎥</button>
                   </div>
                 )}
               </div>
@@ -747,8 +747,6 @@ export default function MessagesPage() {
           </div>
         </div>
       )}
-
-      <CallModal outgoing={outgoingCall} onDone={() => setOutgoingCall(null)} />
     </div>
   );
 }

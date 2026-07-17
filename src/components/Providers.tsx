@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/lib/ThemeContext";
 import { AuthProvider } from "@/lib/AuthContext";
 import { CartProvider } from "@/lib/CartContext";
 import { ToastProvider } from "@/components/Toast";
+import { CallProvider } from "@/lib/CallContext";
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
@@ -12,7 +13,9 @@ export default function Providers({ children }: { children: ReactNode }) {
       <LanguageProvider>
         <AuthProvider>
           <CartProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              <CallProvider>{children}</CallProvider>
+            </ToastProvider>
           </CartProvider>
         </AuthProvider>
       </LanguageProvider>

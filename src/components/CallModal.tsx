@@ -25,9 +25,11 @@ export default function CallModal({
   const [muted, setMuted] = useState(false);
   const [camOff, setCamOff] = useState(false);
   const [seconds, setSeconds] = useState(0);
+  const [minimized, setMinimized] = useState(false); // kiçildilmiş rejim — digər səhifələr işlək qalır
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -50,8 +52,9 @@ export default function CallModal({
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     pendingCandidatesRef.current = [];
+    remoteStreamRef.current = null;
     facingRef.current = "user";
-    setPhase(null); setPeer(null); setMuted(false); setCamOff(false); setSeconds(0);
+    setPhase(null); setPeer(null); setMuted(false); setCamOff(false); setSeconds(0); setMinimized(false);
     onDone?.();
     // eslint-disable-next-line
   }, []);
@@ -72,6 +75,7 @@ export default function CallModal({
 
       pc.ontrack = (e) => {
         const remote = e.streams[0];
+        remoteStreamRef.current = remote;
         if (callKind === "video" && remoteVideoRef.current) remoteVideoRef.current.srcObject = remote;
         if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remote;
         setPhase("active");
@@ -182,6 +186,13 @@ export default function CallModal({
     return () => clearInterval(id);
   }, [phase]);
 
+  // Kiçilt/böyüt keçidində video/audio elementlərini axınlara yenidən bağla.
+  useEffect(() => {
+    if (remoteVideoRef.current && remoteStreamRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
+    if (remoteAudioRef.current && remoteStreamRef.current) remoteAudioRef.current.srcObject = remoteStreamRef.current;
+    if (localVideoRef.current && localStreamRef.current) localVideoRef.current.srcObject = localStreamRef.current;
+  }, [minimized, phase]);
+
   // Komponent sökülərkən təmizlə.
   useEffect(() => () => { try { pcRef.current?.close(); } catch { /* boş */ } localStreamRef.current?.getTracks().forEach((t) => t.stop()); }, []);
 
@@ -224,10 +235,42 @@ export default function CallModal({
 
   if (!phase) return null;
 
+  const peerInitials = (peer?.name || "?").split(" ").map((n) => n[0]).join("").slice(0, 2);
+
+  // Kiçildilmiş rejim — kiçik üzən pəncərə, altdakı səhifə tam işlək qalır.
+  if (minimized) {
+    return (
+      <>
+        <audio ref={remoteAudioRef} autoPlay />
+        <div className="fixed bottom-24 right-3 z-[70] w-44 bg-card border border-card-border rounded-2xl shadow-xl overflow-hidden">
+          {kind === "video" && (phase === "active" || phase === "connecting") ? (
+            <div className="relative bg-black aspect-[3/4]"><video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" /></div>
+          ) : (
+            <div className="p-3 text-center">
+              <div className="w-12 h-12 mx-auto rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white flex items-center justify-center font-bold">{peerInitials}</div>
+              <p className="text-xs font-semibold truncate mt-1">{peer?.name}</p>
+            </div>
+          )}
+          <div className="flex items-center justify-between px-2 py-1.5 gap-1">
+            <span className="text-[11px] text-muted">{phase === "active" ? `🟢 ${fmt(seconds)}` : "…"}</span>
+            <div className="flex gap-1">
+              <button onClick={() => setMinimized(false)} title="Böyüt" className="w-7 h-7 rounded-lg bg-input-bg border border-input-border flex items-center justify-center text-xs">⤢</button>
+              <button onClick={endCall} title="Bitir" className="w-7 h-7 rounded-lg bg-red-500 text-white flex items-center justify-center text-xs">📵</button>
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
       <audio ref={remoteAudioRef} autoPlay />
-      <div className="bg-card border border-card-border rounded-2xl w-full max-w-lg overflow-hidden">
+      <div className="relative bg-card border border-card-border rounded-2xl w-full max-w-lg overflow-hidden">
+        {/* Kiçilt düyməsi — gələn zəngdən başqa */}
+        {phase !== "incoming" && (
+          <button onClick={() => setMinimized(true)} title="Kiçilt" className="absolute top-2 left-2 z-10 w-8 h-8 rounded-lg bg-black/40 text-white flex items-center justify-center text-sm">🗕</button>
+        )}
         {/* Video sahəsi */}
         {kind === "video" && (phase === "active" || phase === "connecting") ? (
           <div className="relative bg-black aspect-video">

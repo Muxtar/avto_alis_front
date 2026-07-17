@@ -81,6 +81,8 @@ function MarketplacePage() {
   };
   const [listings, setListings] = useState<any[]>([]);
   const [professionals, setProfessionals] = useState<any[]>([]);
+  // Üst axtarışdan ixtisas/ad üzrə tapılan mütəxəssislər (məhsul/xidmət rejimində də göstərilir)
+  const [matchedPros, setMatchedPros] = useState<any[]>([]);
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -211,6 +213,11 @@ function MarketplacePage() {
         })
         .catch(() => { toast(t('error'), 'error'); })
         .finally(() => setLoading(false));
+      // Axtarış varsa — ixtisas/ad üzrə mütəxəssisləri də tap (növ seçmədən).
+      if (searchQuery.trim()) {
+        const pp = new URLSearchParams(); pp.set("q", searchQuery.trim()); if (cityFilter) pp.set("city", cityFilter);
+        fetch(`${API}/professionals?${pp.toString()}`).then((r) => r.json()).then((d) => setMatchedPros(d.professionals || [])).catch(() => {});
+      } else setMatchedPros([]);
     }, 300);
 
     return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
@@ -548,6 +555,30 @@ function MarketplacePage() {
                 </Link>
               </div>
             </div>
+
+            {/* Üst axtarışdan tapılan mütəxəssislər (məhsul/xidmət nəticələrinin üstündə) */}
+            {searchQuery && activeType !== "PROFESSION" && matchedPros.length > 0 && (
+              <div className="mb-5">
+                <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">👤 İxtisas üzrə tapılanlar</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {matchedPros.slice(0, 8).map((p) => (
+                    <Link key={p.id} href={`/seller/${p.id}?from=ixtisas`} className="surface p-3 flex items-center gap-2.5 hover:border-orange-500/50 transition-all">
+                      <div className="w-11 h-11 rounded-xl bg-input-bg overflow-hidden flex items-center justify-center text-xl shrink-0">
+                        {p.avatar
+                          // eslint-disable-next-line @next/next/no-img-element
+                          ? <img src={imgUrl(p.avatar)} alt={p.name} className="w-full h-full object-cover" />
+                          : "👤"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-sm truncate">{p.name || "İstifadəçi"}</p>
+                        {p.profession && <p className="text-[11px] text-orange-500 font-medium truncate">{p.profession}</p>}
+                        {p.city && <p className="text-[10px] text-muted truncate">📍 {p.city}</p>}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {loading ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
