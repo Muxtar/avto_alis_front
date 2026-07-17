@@ -48,6 +48,13 @@ const placeIcon = L.divIcon({
   popupAnchor: [0, -32],
 });
 
+// İstifadəçinin canlı yeri — mavi nöqtə (pulsing).
+const myLocIcon = L.divIcon({
+  className: 'map-explorer-pin',
+  html: `<div style="width:20px;height:20px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 0 0 6px rgba(37,99,235,0.25);"></div>`,
+  iconSize: [20, 20], iconAnchor: [10, 10],
+});
+
 const AZ_CENTER: [number, number] = [40.3, 47.7];
 const AZ_ZOOM = 7;
 
@@ -114,7 +121,20 @@ export default function MapExplorer({ height = '70vh' }: { height?: string }) {
   const [searchingPlaces, setSearchingPlaces] = useState(false);
   const [selected, setSelected] = useState<SelectedPlace | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [myLoc, setMyLoc] = useState<[number, number] | null>(null);
+  const [locating, setLocating] = useState(false);
   const geocodeTimer = useRef<any>(null);
+
+  // Canlı yer — GPS ilə istifadəçinin cari konumunu tap və xəritədə göstər.
+  const useMyLocation = () => {
+    if (!navigator.geolocation) { alert('Cihaz konumu dəstəkləmir'); return; }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => { const p: [number, number] = [pos.coords.latitude, pos.coords.longitude]; setMyLoc(p); setCenter(p); setZoom(15); setLocating(false); },
+      () => { setLocating(false); alert('Yerinizi tapmaq mümkün olmadı — brauzerdə konum icazəsini yoxlayın.'); },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  };
 
   useEffect(() => {
     fetch(`${API}/map/points`)
@@ -303,6 +323,12 @@ export default function MapExplorer({ height = '70vh' }: { height?: string }) {
         <div className="flex items-center gap-1.5"><span>📍</span> Axtarılan yer</div>
       </div>
 
+      {/* Mənim yerim (canlı GPS konum) */}
+      <button onClick={useMyLocation} disabled={locating} title="Mənim yerim"
+        className="absolute bottom-3 right-3 z-[1000] bg-card border border-input-border rounded-xl px-3 py-2 shadow-lg text-xs font-semibold hover:bg-orange-500/10 disabled:opacity-50 flex items-center gap-1.5">
+        📍 {locating ? '...' : 'Mənim yerim'}
+      </button>
+
       {loading && (
         <div className="absolute inset-0 z-[1001] flex items-center justify-center bg-card/40">
           <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
@@ -314,6 +340,13 @@ export default function MapExplorer({ height = '70vh' }: { height?: string }) {
           <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <Recenter center={center} zoom={zoom} />
           <FitBounds bounds={selected ? selected.bounds : null} />
+
+          {/* İstifadəçinin canlı yeri */}
+          {myLoc && (
+            <Marker position={myLoc} icon={myLocIcon}>
+              <Popup>📍 Siz buradasınız</Popup>
+            </Marker>
+          )}
 
           {/* Axtarılan yerin nişanı */}
           {selected && (
