@@ -75,6 +75,10 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
   const { t } = useLanguage();
   const [geoLoading, setGeoLoading] = useState(false);
   const [reverseLoading, setReverseLoading] = useState(false);
+  // Ünvan/yer axtarışı (irəli geocoding) — Google Maps kimi yazıb xəritədə tap.
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [results, setResults] = useState<any[]>([]);
 
   // Decide where to center the map: pin position > city center > Bakı.
   const initialCenter: [number, number] = latitude && longitude
@@ -142,8 +146,56 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
     }
   };
 
+  // İrəli geocoding — yer/ünvan adı yazıb xəritədə tapır (Nominatim, yalnız Azərbaycan).
+  const doSearch = async () => {
+    const q = searchQuery.trim();
+    if (!q) return;
+    setSearching(true);
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&countrycodes=az&accept-language=az&limit=6&q=${encodeURIComponent(q)}`,
+        { headers: { 'User-Agent': 'avto-buy-sell/1.0' } }
+      );
+      const data = await res.json();
+      setResults(Array.isArray(data) ? data : []);
+      if (Array.isArray(data) && data.length === 1) pickResult(data[0]);
+    } catch { /* səssiz — istifadəçi xəritəyə klik edə bilər */ } finally { setSearching(false); }
+  };
+  const pickResult = (r: any) => {
+    const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    onChange({ city, address: r.display_name || address, latitude: lat, longitude: lng });
+    setCenter([lat, lng]); setZoom(16); setResults([]); setSearchQuery(r.display_name?.split(',')[0] || searchQuery);
+  };
+
   return (
     <div className="space-y-3">
+      {/* Ünvan/yer axtarışı — yaz, xəritədə işarələsin */}
+      <div className="relative">
+        <div className="flex gap-2">
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } }}
+            placeholder="🔍 Ünvan və ya yer adı yaz (məs. 28 May metrosu, Nizami küç.)"
+            className="flex-1 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm"
+          />
+          <button type="button" onClick={doSearch} disabled={searching || !searchQuery.trim()}
+            className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium disabled:opacity-50 whitespace-nowrap">
+            {searching ? '…' : 'Axtar'}
+          </button>
+        </div>
+        {results.length > 0 && (
+          <div className="absolute z-[500] left-0 right-0 mt-1 bg-card border border-card-border rounded-xl shadow-lg max-h-52 overflow-y-auto">
+            {results.map((r, i) => (
+              <button key={i} type="button" onClick={() => pickResult(r)} className="w-full text-left px-3 py-2 text-xs hover:bg-input-bg border-b border-card-border/40 last:border-0">
+                📍 {r.display_name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <label className="block text-xs font-medium text-muted mb-1">{t('cityLabel')}</label>

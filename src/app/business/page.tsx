@@ -16,7 +16,7 @@ const ACTIVITY_AREAS = [
   "İş elanları", "Xidmətlər", "Kənd təsərrüfatı", "Digər",
 ];
 
-interface Bank { id: number; iban: string; title: string | null; isActive: boolean }
+interface Bank { id: number; iban: string; title: string | null; isActive: boolean; isPrimary: boolean }
 interface BizObject { id: number; name: string; phone: string | null; address: string; city: string | null; activityAreas: string[]; isActive: boolean }
 interface Member { id: number; status?: string; canSell?: boolean; canBuy?: boolean; user: { id: number; name: string; publicId: string | null }; object: { id: number; name: string } | null }
 interface Business {
@@ -376,11 +376,17 @@ export default function BusinessPage() {
               <div className="border-t border-card-border pt-3 mb-3">
                 <p className="text-xs font-semibold text-muted mb-1.5">{t("bizBank") || "Bank hesabları"}</p>
                 {b.banks.map((bk) => (
-                  <div key={bk.id} className="flex items-center justify-between gap-2 px-3 py-1.5 bg-input-bg/50 rounded-lg text-sm mb-1">
-                    <span className={bk.isActive ? "" : "line-through text-muted"}>{bk.iban}{bk.title ? ` · ${bk.title}` : ""}</span>
+                  <div key={bk.id} className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-sm mb-1 ${bk.isPrimary ? "bg-green-500/10 border border-green-500/30" : "bg-input-bg/50"}`}>
+                    <span className="min-w-0 truncate">
+                      <span className={bk.isActive ? "" : "line-through text-muted"}>{bk.iban}{bk.title ? ` · ${bk.title}` : ""}</span>
+                      {bk.isPrimary && <span className="ml-1.5 text-[10px] text-green-600 font-semibold">💳 Ödəniş</span>}
+                    </span>
                     <div className="flex items-center gap-2 shrink-0">
+                      {!bk.isPrimary && (
+                        <button onClick={wrap(() => jsonReq(`${API}/me/banks/${bk.id}/primary`, "PATCH"))} className="text-[11px] text-orange-500 hover:text-orange-400" title="Ödəniş bu IBAN-a gedəcək">Ödəniş seç</button>
+                      )}
                       <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={bk.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/banks/${bk.id}/active`, "PATCH", { isActive: e.target.checked }))()} />{t("bizActive") || "Aktiv"}</label>
-                      <button onClick={wrap(() => jsonReq(`${API}/me/banks/${bk.id}`, "DELETE"))} className="text-red-500 text-xs">✕</button>
+                      <button onClick={wrap(() => jsonReq(`${API}/me/banks/${bk.id}`, "DELETE"))} className="text-red-500 text-xs" title="Sil">✕</button>
                     </div>
                   </div>
                 ))}
