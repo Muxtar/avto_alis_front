@@ -144,6 +144,14 @@ export default function BusinessPage() {
     setPrimaryBankIdx((pi) => (idx === pi ? 0 : idx < pi ? pi - 1 : pi));
   };
 
+  // Forma vəziyyətini tam sıfırla — hər açılışda təmiz başlanğıc (çoxlu biznes üçün).
+  const resetForm = () => {
+    setKind("PHYSICAL"); setProofType("TAX_DOC");
+    setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "", website: "", instagram: "", facebook: "", tiktok: "", youtube: "", linkedin: "" });
+    setFiles({ ...blankFiles }); setBanks([{ iban: "", title: "" }]); setBankDocs([]); setPrimaryBankIdx(0); setBizInfoFilled(false); setOwnerCheck(null);
+  };
+  const openForm = () => { if (!showForm) { resetForm(); window.scrollTo({ top: 0, behavior: "smooth" }); } setShowForm(!showForm); };
+
   const createBusiness = async () => {
     if (!f.name || !f.voen || !f.ownerName) { toast("Şirkət sənədi oxunmadı — sənədi yenidən yükləyin", "error"); return; }
     if (ownerBlocked) { toast(ownerCheck?.message || "Kimliyiniz şirkətin rəhbəri ilə uyğun deyil", "error"); return; }
@@ -170,7 +178,7 @@ export default function BusinessPage() {
           : (t("bizCreated") || "Biznes göndərildi — admin təsdiqini gözləyir")) + ibanMsg,
         "success",
       );
-      setShowForm(false); setKind("PHYSICAL"); setProofType("TAX_DOC"); setF({ name: "", voen: "", ownerName: "", founderName: "", phone: "", website: "", instagram: "", facebook: "", tiktok: "", youtube: "", linkedin: "" }); setFiles(blankFiles); setBanks([{ iban: "", title: "" }]); setBankDocs([]); setPrimaryBankIdx(0); setBizInfoFilled(false); setOwnerCheck(null);
+      setShowForm(false); resetForm();
       load();
     } catch { toast(t("error"), "error"); } finally { setBusy(false); }
   };
@@ -216,7 +224,7 @@ export default function BusinessPage() {
           {idVerified === false ? (
             <a href="/complete-profile" className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">Profili tamamlayın</a>
           ) : (
-            <button onClick={() => setShowForm(!showForm)} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">{showForm ? (t("adminCancel") || "Bağla") : `+ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
+            <button onClick={openForm} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">{showForm ? (t("adminCancel") || "Bağla") : `+ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
           )}
         </div>
       </div>
