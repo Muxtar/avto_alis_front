@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -51,8 +51,30 @@ export default function CartPage() {
   const [payUrl, setPayUrl] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  // Məhsul seçimi (checkbox) — seçilənləri al və ya faktura göndər
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const prevIdsRef = useRef<Set<number>>(new Set());
 
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  // Yeni məhsul əlavə olunanda avtomatik seçili; mövcud məhsulun seçimi qorunur; silinən atılır.
+  useEffect(() => {
+    setSelected((prev) => {
+      const next = new Set<number>();
+      for (const it of items) {
+        if (!prevIdsRef.current.has(it.id)) next.add(it.id);
+        else if (prev.has(it.id)) next.add(it.id);
+      }
+      return next;
+    });
+    prevIdsRef.current = new Set(items.map((i) => i.id));
+  }, [items]);
+
+  const toggleSel = (id: number) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const allSelected = items.length > 0 && items.every((i) => selected.has(i.id));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(items.map((i) => i.id)));
+  const selItems = items.filter((i) => selected.has(i.id));
+  const selTotal = selItems.reduce((s, i) => s + (i.listing?.price || 0) * i.quantity, 0);
 
   // Səbəti link kimi paylaş — linki açan şəxs məhsulları öz adından alır.
   const shareCart = async () => {
@@ -152,7 +174,7 @@ export default function CartPage() {
     try {
       const res = await fetch(`${API}/promo/validate`, {
         method: "POST", headers,
-        body: JSON.stringify({ code: promoCode.trim(), orderAmount: total }),
+        body: JSON.stringify({ code: promoCode.trim(), orderAmount: selTotal }),
       });
       const data = await res.json();
       if (data.success) {
@@ -168,13 +190,13 @@ export default function CartPage() {
   };
 
   const pointsDiscount = usePoints * 0.01;
-  // Sifariş çəkisi (kq) — Yango 50 kq limiti üçün.
-  const cartWeight = items.reduce((s, i) => s + i.quantity * (i.listing?.weightKg || 0), 0);
+  // Sifariş çəkisi (kq) — yalnız SEÇİLMİŞ məhsullar üzrə (Yango 50 kq limiti üçün).
+  const cartWeight = selItems.reduce((s, i) => s + i.quantity * (i.listing?.weightKg || 0), 0);
   const yangoBlocked = cartWeight > 50; // 50 kq-dan ağır — kuryer mümkün deyil
-  const allSelfAllowed = items.length > 0 && items.every((i) => i.listing?.allowSelfDelivery);
+  const allSelfAllowed = selItems.length > 0 && selItems.every((i) => i.listing?.allowSelfDelivery);
   // Yango çatdırılma haqqı yalnız çatdırılma + kuryer + limit daxilində cəmə əlavə olunur.
   const deliveryFee = deliveryType === "DELIVERY" && deliveryMethod === "COURIER" && !yangoBlocked && yangoFee ? yangoFee : 0;
-  const finalTotal = Math.max(0, total - promoDiscount - pointsDiscount) + deliveryFee;
+  const finalTotal = Math.max(0, selTotal - promoDiscount - pointsDiscount) + deliveryFee;
 
   // Ağır yük olduqda kuryerdən satıcı çatdırmasına keç (icazə varsa).
   useEffect(() => {
@@ -248,6 +270,7 @@ export default function CartPage() {
           paymentMethod,
           promoCode: promoValidated ? promoCode : null,
           usePoints,
+          itemIds: [...selected], // yalnız seçilmiş məhsullar alınır
         }),
       });
       const data = await res.json();
@@ -307,6 +330,14 @@ export default function CartPage() {
               )}
             </div>
 
+            {/* Hamısını seç / ləğv et */}
+            {items.length > 0 && (
+              <label className="surface px-3 py-2 flex items-center gap-2 cursor-pointer text-sm">
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-4 h-4 accent-orange-500" />
+                <span>Hamısını seç <span className="text-muted">({selItems.length}/{items.length})</span></span>
+              </label>
+            )}
+
             {/* Mağazaya görə qruplar — eyni mağaza birlikdə çatdırılır */}
             {(() => {
               const groups = new Map<number, { name: string; items: any[] }>();
@@ -323,7 +354,8 @@ export default function CartPage() {
                   </div>
                   <div className="space-y-3">
                     {g.items.map((item) => (
-                      <div key={item.id} className="flex gap-3 sm:gap-4">
+                      <div key={item.id} className="flex gap-3 sm:gap-4 items-start">
+                        <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSel(item.id)} className="w-4 h-4 accent-orange-500 mt-1 shrink-0" />
                         <Link href={`/marketplace/${item.listing.id}`} className="w-16 h-16 sm:w-20 sm:h-20 bg-input-bg rounded-xl shrink-0 flex items-center justify-center overflow-hidden">
                           {item.listing.images?.[0] ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -355,8 +387,8 @@ export default function CartPage() {
               <h3 className="font-semibold">{t("cartTotal")}</h3>
 
               <div className="flex justify-between text-sm">
-                <span className="text-muted">{items.length} {t("items")}</span>
-                <span>{total.toFixed(2)} AZN</span>
+                <span className="text-muted">{selItems.length} {t("items")}</span>
+                <span>{selTotal.toFixed(2)} AZN</span>
               </div>
 
               {promoDiscount > 0 && (
@@ -385,8 +417,9 @@ export default function CartPage() {
               </div>
 
               {!showCheckout ? (
-                <button onClick={() => setShowCheckout(true)} className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-semibold">
-                  {t("checkout")}
+                <button onClick={() => setShowCheckout(true)} disabled={selItems.length === 0}
+                  className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-semibold disabled:opacity-50">
+                  {selItems.length === 0 ? "Məhsul seçin" : `${t("checkout")} (${selItems.length})`}
                 </button>
               ) : (
                 <div className="space-y-3 pt-2">
