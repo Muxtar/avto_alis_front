@@ -225,7 +225,7 @@ export default function ProfilePage() {
   };
 
   const removeIdentity = async () => {
-    if (!confirm("Kimliyi qaldırsanız profiliniz təsdiqlənməmiş olacaq və ad, FIN, doğum tarixi, cins yenidən əl ilə dəyişdirilə biləcək. Davam edək?")) return;
+    if (!confirm("Təsdiqi silsəniz profiliniz təsdiqlənməmiş olacaq və kimliyinizi yenidən Veriff ilə doğrulamalısınız. Davam edək?")) return;
     try {
       const r = await fetch(`${API}/me/identity`, { method: "DELETE", headers }).then((x) => x.json());
       if (r.success) { toast("Kimlik qaldırıldı — məlumatlar yenidən redaktə oluna bilər", "success"); await refreshProfile(); }
@@ -966,11 +966,11 @@ export default function ProfilePage() {
         ) : (
           <div className="flex gap-2 flex-wrap">
             <button onClick={() => setShowIdentity(true)} className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold hover:bg-orange-500/20 transition-colors">
-              {profile.idCardImage ? "Kimliyi yenidən təsdiqlə" : "Profilini təsdiqlə"}
+              {(profile.idCardImage || profile.idVerifyStatus) ? "Kimliyi yenidən təsdiqlə" : "Profilini təsdiqlə"}
             </button>
-            {profile.idCardImage && (
+            {(profile.idCardImage || profile.idVerifyStatus === "APPROVED") && (
               <button onClick={removeIdentity} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500/20 transition-colors">
-                Kimliyi qaldır
+                Təsdiqi sil (yenidən doğrula)
               </button>
             )}
           </div>
