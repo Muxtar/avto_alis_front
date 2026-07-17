@@ -70,13 +70,12 @@ export default function IdentityVerify({ token, onDone }: { token: string | null
             className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
             {veriffBusy ? "..." : veriffStarted ? "Yenidən aç" : "Veriff ilə təsdiqlə"}
           </button>
-          {veriffStarted && (
-            <button type="button" onClick={checkVeriff} disabled={veriffBusy}
-              className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium disabled:opacity-50">
-              Nəticəni yoxla
-            </button>
-          )}
+          <button type="button" onClick={checkVeriff} disabled={veriffBusy}
+            className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium disabled:opacity-50">
+            Nəticəni yoxla
+          </button>
         </div>
+        <p className="text-[11px] text-muted mt-2">Veriff-də doğrulamanı bitirəndən sonra bura qayıdıb «Nəticəni yoxla» basın.</p>
       </div>
     </div>
   );

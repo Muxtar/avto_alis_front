@@ -901,9 +901,9 @@ export default function ProfilePage() {
             return <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${cls}`}>{label}</span>;
           })()}
         </div>
-        <p className="text-xs text-muted mb-3">Şəxsiyyət vəsiqəsi + 3 üz şəkli (ön, sağ, sol). <b>AI vəsiqədəki ad-soyad, FIN, doğum tarixi, cinsi oxuyur və üzü selfie ilə yoxlayır</b>, admin son təsdiqi verir.</p>
-        {!profile.idCardImage && !showIdentity && (
-          <p className="text-[11px] text-amber-500 mb-3">ⓘ Profiliniz təsdiqlənməyib. Məlumatlarınız (ad, FIN, doğum tarixi, cins) əl ilə girilib. Təsdiq üçün «Profilini təsdiqlə» düyməsinə basın.</p>
+        <p className="text-xs text-muted mb-3">Kimlik <b>Veriff</b> ilə təsdiqlənir — şəxsiyyət vəsiqəsi, sürücülük vəsiqəsi və ya pasport + video-selfie. Təsdiqdən sonra ad, FIN, doğum tarixi və cins avtomatik doldurulur.</p>
+        {profile.idVerifyStatus !== "APPROVED" && !showIdentity && (
+          <p className="text-[11px] text-amber-500 mb-3">ⓘ Profiliniz təsdiqlənməyib. Təsdiq üçün «Profilini təsdiqlə» düyməsinə basın və Veriff ilə kimliyinizi doğrulayın.</p>
         )}
         {(profile.idCardImage || profile.selfieImage) && !showIdentity && (
           <div className="mb-3">
