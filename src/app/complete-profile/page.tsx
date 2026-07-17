@@ -145,7 +145,7 @@ export default function CompleteProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firstName.trim() || !lastName.trim()) { toast(t("nameRequired") || "Ad və soyad tələb olunur", "error"); return; }
-    if (!idCardFile || !selfieBlob) { toast("Şəxsiyyət vəsiqəsi şəkli və selfie tələb olunur", "error"); return; }
+    // Kimlik doğrulama Veriff ilə profil səhifəsində edilir — burada şəkil tələb olunmur.
     setLoading(true);
     try {
       const fd = new FormData();
@@ -159,8 +159,8 @@ export default function CompleteProfilePage() {
       if (location.latitude != null) fd.append("latitude", String(location.latitude));
       if (location.longitude != null) fd.append("longitude", String(location.longitude));
       if (faceResult?.ok) fd.append("faceMatchScore", String(faceResult.score));
-      fd.append("idCardImage", idCardFile);
-      fd.append("selfieImage", new File([selfieBlob], "selfie.jpg", { type: "image/jpeg" }));
+      if (idCardFile) fd.append("idCardImage", idCardFile);
+      if (selfieBlob) fd.append("selfieImage", new File([selfieBlob], "selfie.jpg", { type: "image/jpeg" }));
       const res = await fetch(`${API}/register/complete-id`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
@@ -258,61 +258,19 @@ export default function CompleteProfilePage() {
             />
           </div>
 
-          {/* Kimlik vəsiqəsi şəkli */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Şəxsiyyət vəsiqəsi şəkli</label>
-            {idCardUrl ? (
-              <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={idCardUrl} alt="kimlik" className="w-full h-40 object-cover rounded-xl border border-input-border" />
-                <label className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded-lg cursor-pointer">
-                  Dəyiş
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => onPickIdCard(e.target.files?.[0] || null)} />
-                </label>
-              </div>
-            ) : (
-              <label className={`${inputClass} flex items-center justify-center gap-2 cursor-pointer text-muted`}>
-                <span>📷 Vəsiqənin şəklini yüklə</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => onPickIdCard(e.target.files?.[0] || null)} />
-              </label>
-            )}
-            <p className="text-[11px] text-muted mt-1">Üz aydın görünməlidir. Məlumatlarınız təhlükəsiz saxlanılır.</p>
+          {/* Kimlik doğrulama — Veriff ilə (profil səhifəsində) */}
+          <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+            <p className="text-sm font-semibold mb-1">🛡️ Kimlik doğrulama Veriff ilə</p>
+            <p className="text-[11px] text-muted">
+              Məlumatları yadda saxladıqdan sonra profil səhifənizdən şəxsiyyət vəsiqəsi, sürücülük vəsiqəsi
+              və ya pasport ilə kimliyinizi Veriff üzərindən təsdiqləyə bilərsiniz.
+            </p>
           </div>
-
-          {/* Selfie (canlı kamera) */}
-          <div>
-            <label className="block text-sm font-medium mb-1.5">Selfie (üz təsdiqi)</label>
-            {cameraOn ? (
-              <div className="space-y-2">
-                <video ref={videoRef} playsInline muted className="w-full h-48 object-cover rounded-xl border border-input-border bg-black" />
-                <div className="flex gap-2">
-                  <button type="button" onClick={captureSelfie} className="flex-1 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold">Çək</button>
-                  <button type="button" onClick={stopCamera} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv et</button>
-                </div>
-              </div>
-            ) : selfieUrl ? (
-              <div className="relative">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={selfieUrl} alt="selfie" className="w-full h-48 object-cover rounded-xl border border-input-border" />
-                <button type="button" onClick={startCamera} className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded-lg">Yenidən çək</button>
-              </div>
-            ) : (
-              <button type="button" onClick={startCamera} className={`${inputClass} flex items-center justify-center gap-2 text-muted`}>
-                🤳 Kameranı aç və selfie çək
-              </button>
-            )}
-            <canvas ref={canvasRef} className="hidden" />
-          </div>
-
-          {/* Üz uyğunluğu nəticəsi */}
-          {(checking || faceResult) && (
-            <div className="text-sm text-center font-medium py-2 rounded-xl bg-input-bg">{faceBadge()}</div>
-          )}
 
           <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50">
             {loading ? t("submitting") : (t("save") || "Yadda saxla")}
           </button>
-          <p className="text-[11px] text-muted text-center">Kimliyiniz admin tərəfindən yoxlanılacaq.</p>
+          <p className="text-[11px] text-muted text-center">Kimliyiniz Veriff ilə profil səhifəsində təsdiqlənir.</p>
         </form>
       </div>
     </div>
