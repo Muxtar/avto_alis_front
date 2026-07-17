@@ -51,6 +51,10 @@ export default function CartPage() {
   const [payUrl, setPayUrl] = useState<string | null>(null);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  // Səbəti göndərmə: çatdırılma alıcıya (RECIPIENT) yoxsa mənə (SENDER) — göndərən seçir.
+  const [shareMode, setShareMode] = useState<"RECIPIENT" | "SENDER">("RECIPIENT");
+  const [shareLoc, setShareLoc] = useState<{ city: string; address: string; latitude: number | null; longitude: number | null }>({ city: "", address: "", latitude: null, longitude: null });
+  const [sharePhone, setSharePhone] = useState("");
   // Məhsul seçimi (checkbox) — seçilənləri al və ya faktura göndər
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const prevIdsRef = useRef<Set<number>>(new Set());
@@ -78,9 +82,12 @@ export default function CartPage() {
 
   // Səbəti link kimi paylaş — linki açan şəxs məhsulları öz adından alır.
   const shareCart = async () => {
+    if (shareMode === "SENDER" && !shareLoc.address.trim()) { toast("Öz çatdırılma ünvanınızı seçin", "error"); return; }
     setSharing(true);
     try {
-      const res = await fetch(`${API}/cart/share`, { method: "POST", headers });
+      const body: any = { itemIds: [...selected], deliveryMode: shareMode };
+      if (shareMode === "SENDER") { body.address = shareLoc.address; body.city = shareLoc.city; body.latitude = shareLoc.latitude; body.longitude = shareLoc.longitude; body.phone = sharePhone; }
+      const res = await fetch(`${API}/cart/share`, { method: "POST", headers, body: JSON.stringify(body) });
       const data = await res.json();
       if (res.ok && data.success) {
         const link = `${window.location.origin}/shared/${data.token}`;
@@ -318,10 +325,23 @@ export default function CartPage() {
             {/* Səbəti paylaş */}
             <div className="surface p-3 sm:p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-sm font-medium">🔗 Səbəti başqasına göndər</p>
-                <button onClick={shareCart} disabled={sharing} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10 disabled:opacity-50">{sharing ? "..." : "Paylaş"}</button>
+                <p className="text-sm font-medium">🔗 Seçilmiş məhsulları başqasına göndər</p>
+                <button onClick={shareCart} disabled={sharing || selItems.length === 0} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10 disabled:opacity-50">{sharing ? "..." : `Paylaş (${selItems.length})`}</button>
               </div>
-              <p className="text-[11px] text-muted mt-1">Linki göndərdiyiniz şəxs məhsulları öz səbətinə əlavə edib özü sifariş verə bilər.</p>
+              {/* Çatdırılma kimə? — göndərən seçir */}
+              <div className="grid grid-cols-2 gap-1 bg-input-bg/60 rounded-xl p-1 mt-2">
+                <button onClick={() => setShareMode("RECIPIENT")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "RECIPIENT" ? "bg-orange-500 text-white" : "text-muted"}`}>👤 Alıcı öz ünvanına alsın</button>
+                <button onClick={() => setShareMode("SENDER")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "SENDER" ? "bg-orange-500 text-white" : "text-muted"}`}>🏠 Mənə gəlsin (o ödəsin)</button>
+              </div>
+              {shareMode === "SENDER" ? (
+                <div className="mt-2 space-y-2">
+                  <p className="text-[11px] text-muted">Məhsullar <b>sizin</b> ünvanınıza gələcək — qarşı tərəf yalnız ödəyəcək. Çatdırılma yerinizi seçin:</p>
+                  <input value={sharePhone} onChange={(e) => setSharePhone(e.target.value)} placeholder="Telefonunuz" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" />
+                  <LocationPicker city={shareLoc.city} address={shareLoc.address} latitude={shareLoc.latitude} longitude={shareLoc.longitude} onChange={(n: any) => setShareLoc(n)} height="200px" />
+                </div>
+              ) : (
+                <p className="text-[11px] text-muted mt-1">Linki alan şəxs məhsulları alıb <b>öz ünvanına</b> sifariş verəcək.</p>
+              )}
               {shareLink && (
                 <div className="flex gap-2 mt-2">
                   <input readOnly value={shareLink} className="flex-1 px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" onFocus={(e) => e.currentTarget.select()} />

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import LocationPicker from "@/components/LocationPickerWrapper";
 
 export default function SharedCartPage() {
   const params = useParams();
@@ -16,6 +17,10 @@ export default function SharedCartPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
   const [importing, setImporting] = useState(false);
+  const [checking, setChecking] = useState(false);
+  // Alıcının öz ünvanı (RECIPIENT rejimində)
+  const [recLoc, setRecLoc] = useState<{ city: string; address: string; latitude: number | null; longitude: number | null }>({ city: "", address: "", latitude: null, longitude: null });
+  const [recPhone, setRecPhone] = useState("");
 
   useEffect(() => {
     fetch(`${API}/shared-cart/${shareToken}`)
@@ -25,24 +30,35 @@ export default function SharedCartPage() {
       .finally(() => setLoading(false));
   }, [shareToken]);
 
+  const requireLogin = () => {
+    if (!isLoggedIn || !token) { toast("Əvvəlcə daxil olun", "info"); router.push(`/?next=/shared/${shareToken}`); return false; }
+    return true;
+  };
+
   const importToCart = async () => {
-    if (!isLoggedIn || !token) {
-      toast("Əvvəlcə daxil olun", "info");
-      router.push(`/?next=/shared/${shareToken}`);
-      return;
-    }
+    if (!requireLogin()) return;
     setImporting(true);
     try {
-      const res = await fetch(`${API}/cart/import/${shareToken}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(`${API}/cart/import/${shareToken}`, { method: "POST", headers: { Authorization: `Bearer ${token}` } });
       const d = await res.json();
-      if (res.ok && d.success) {
-        toast(`${d.added} məhsul səbətə əlavə olundu`, "success");
-        router.push("/cart");
-      } else toast(d.message || "Xəta", "error");
+      if (res.ok && d.success) { toast(`${d.added} məhsul səbətə əlavə olundu`, "success"); router.push("/cart"); }
+      else toast(d.message || "Xəta", "error");
     } catch { toast("Xəta", "error"); } finally { setImporting(false); }
+  };
+
+  const isSender = data?.deliveryMode === "SENDER";
+
+  const checkout = async () => {
+    if (!requireLogin()) return;
+    if (!isSender && !recLoc.address.trim()) { toast("Çatdırılma ünvanınızı seçin", "error"); return; }
+    setChecking(true);
+    try {
+      const body: any = isSender ? {} : { address: recLoc.address, city: recLoc.city, latitude: recLoc.latitude, longitude: recLoc.longitude, phone: recPhone };
+      const res = await fetch(`${API}/shared-cart/${shareToken}/checkout`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const d = await res.json();
+      if (res.ok && d.success) { toast("Sifariş verildi ✓ (nağd ödəniş)", "success"); router.push("/orders?tab=buying"); }
+      else toast(d.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); } finally { setChecking(false); }
   };
 
   if (loading) {
@@ -57,12 +73,14 @@ export default function SharedCartPage() {
     );
   }
 
+  const addr = data.deliveryAddress;
+
   return (
     <div className="max-w-2xl mx-auto px-3 sm:px-6 py-6">
       <h1 className="text-xl sm:text-2xl font-bold mb-1">🛒 Paylaşılan səbət</h1>
       <p className="text-sm text-muted mb-4">
         {data.by?.name ? <><b>{data.by.name}</b> sizin üçün bu məhsulları seçib. </> : ""}
-        Səbətinizə əlavə edib özünüz sifariş verə bilərsiniz.
+        {isSender ? "Ödədikdən sonra məhsullar göndərənin ünvanına çatdırılacaq." : "Ödəyib öz ünvanınıza sifariş verə bilərsiniz."}
       </p>
       {data.title && <p className="text-sm font-medium mb-3">“{data.title}”</p>}
 
@@ -89,9 +107,31 @@ export default function SharedCartPage() {
             <span className="font-semibold">Cəmi</span>
             <span className="text-orange-500 font-bold text-lg">{Number(data.total || 0).toFixed(2)} AZN</span>
           </div>
-          <button onClick={importToCart} disabled={importing} className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold disabled:opacity-50">
-            {importing ? "Əlavə olunur…" : "Səbətimə əlavə et və al"}
+
+          {isSender ? (
+            /* Göndərənin ünvanına çatdırılır — alıcı yalnız ödəyir */
+            <div className="surface p-4 mb-3">
+              <p className="text-sm font-semibold mb-1">🏠 Çatdırılma ünvanı (göndərənin)</p>
+              <p className="text-sm text-muted">{[addr?.city, addr?.address].filter(Boolean).join(", ") || "—"}{addr?.phone ? ` · 📞 ${addr.phone}` : ""}</p>
+              <p className="text-[11px] text-muted mt-1">Siz yalnız ödəyirsiniz — məhsullar bu ünvana göndərilir.</p>
+            </div>
+          ) : (
+            /* Alıcı öz ünvanını seçir */
+            <div className="surface p-4 mb-3 space-y-2">
+              <p className="text-sm font-semibold">📍 Çatdırılma ünvanınız</p>
+              <input value={recPhone} onChange={(e) => setRecPhone(e.target.value)} placeholder="Telefonunuz" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-lg text-sm" />
+              <LocationPicker city={recLoc.city} address={recLoc.address} latitude={recLoc.latitude} longitude={recLoc.longitude} onChange={(n: any) => setRecLoc(n)} height="220px" />
+            </div>
+          )}
+
+          <button onClick={checkout} disabled={checking} className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold disabled:opacity-50">
+            {checking ? "Göndərilir…" : isSender ? "💳 Ödə və göndər (nağd)" : "💳 Ödə və sifariş ver (nağd)"}
           </button>
+          {!isSender && (
+            <button onClick={importToCart} disabled={importing} className="w-full py-2.5 mt-2 bg-input-bg border border-input-border rounded-xl text-sm font-medium disabled:opacity-50">
+              {importing ? "Əlavə olunur…" : "və ya səbətimə əlavə et"}
+            </button>
+          )}
         </>
       ) : (
         <p className="text-muted text-center py-10">Bu səbətdə aktiv məhsul qalmayıb.</p>
