@@ -356,14 +356,21 @@ export default function BusinessPage() {
           {businesses.map((b) => (
             <div key={b.id} className={`bg-card border border-card-border rounded-xl p-4 sm:p-5 ${!b.isActive ? "opacity-60" : ""}`}>
               <div className="flex items-start justify-between gap-2 mb-3">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h2 className="font-bold">{b.name}</h2>
-                    <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border ${statusBadge(b.status)}`}>{statusText(b.status)}</span>
-                    <span className="px-2 py-0.5 rounded-lg text-[10px] bg-input-bg border border-input-border">{b.kind === "LEGAL" ? (t("bizLegal") || "Hüquqi") : (t("bizPhysical") || "Fiziki")}</span>
+                <div className="flex items-start gap-3 min-w-0">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 flex items-center justify-center text-xl shrink-0">🏢</div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="font-bold text-base truncate">{b.name}</h2>
+                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border ${statusBadge(b.status)}`}>{statusText(b.status)}</span>
+                      <span className="px-2 py-0.5 rounded-lg text-[10px] bg-input-bg border border-input-border">{b.kind === "LEGAL" ? (t("bizLegal") || "Hüquqi") : (t("bizPhysical") || "Fiziki")}</span>
+                    </div>
+                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted mt-1">
+                      <span>🆔 VÖEN: <b className="text-foreground">{b.voen}</b></span>
+                      <span>👤 {b.ownerName}</span>
+                      {b.phone && <span>📞 {b.phone}</span>}
+                    </div>
+                    {b.status === "REJECTED" && b.rejectionReason && <p className="text-xs text-red-500 mt-1">⚠ {b.rejectionReason}</p>}
                   </div>
-                  <p className="text-xs text-muted mt-1">VÖEN: {b.voen} · {b.ownerName}{b.phone ? ` · ${b.phone}` : ""}</p>
-                  {b.status === "REJECTED" && b.rejectionReason && <p className="text-xs text-red-500 mt-1">{b.rejectionReason}</p>}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <label className="flex items-center gap-1 text-xs cursor-pointer">
@@ -376,7 +383,7 @@ export default function BusinessPage() {
 
               {/* Banklar */}
               <div className="border-t border-card-border pt-3 mb-3">
-                <p className="text-xs font-semibold text-muted mb-1.5">{t("bizBank") || "Bank hesabları"}</p>
+                <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">🏦 {t("bizBank") || "Bank hesabları"} <span className="text-[10px] text-muted font-normal">({b.banks.length})</span></p>
                 {b.banks.map((bk) => (
                   <div key={bk.id} className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-sm mb-1 ${bk.isPrimary ? "bg-green-500/10 border border-green-500/30" : "bg-input-bg/50"}`}>
                     <span className="min-w-0 truncate">
@@ -405,9 +412,12 @@ export default function BusinessPage() {
 
               {/* Obyektlər */}
               <div className="border-t border-card-border pt-3 mb-3">
-                <p className="text-xs font-semibold text-muted mb-1.5">{t("bizObjects") || "Obyektlər"}</p>
+                <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">🏪 {t("bizObjects") || "Obyektlər"} <span className="text-[10px] text-muted font-normal">({b.objects.length})</span></p>
+                {b.objects.length === 0 && editingObjId === null && (
+                  <p className="text-xs text-muted text-center py-2 bg-input-bg/30 rounded-lg mb-2">Hələ obyekt yoxdur — aşağıdan mağaza/filial əlavə edin.</p>
+                )}
                 {b.objects.map((o) => (
-                  <div key={o.id} className={`px-3 py-2 bg-input-bg/50 rounded-lg text-sm mb-1.5 ${!o.isActive ? "opacity-50" : ""}`}>
+                  <div key={o.id} className={`rounded-xl mb-2 ${editingObjId === o.id ? "bg-input-bg/50 p-3" : `bg-input-bg/40 border border-card-border/60 p-3 ${!o.isActive ? "opacity-50" : ""}`}`}>
                     {editingObjId === o.id ? (
                       <ObjectAdder bizId={b.id} input={objEditInput} setInput={setObjEditInput} inputCls={inputCls} t={t}
                         saveLabel="💾 Yadda saxla" onCancel={() => { setEditingObjId(null); setObjEditInput(null); }}
@@ -417,22 +427,34 @@ export default function BusinessPage() {
                           setEditingObjId(null); setObjEditInput(null);
                         })} />
                     ) : (
-                      <>
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium">{o.name}{o.phone ? ` · ${o.phone}` : ""}</span>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <button onClick={() => { setEditingObjId(o.id); setObjEditInput({ name: o.name, phone: o.phone || "", address: o.address, city: o.city || "", activityAreas: o.activityAreas || [], latitude: o.latitude ?? null, longitude: o.longitude ?? null }); }} className="text-orange-500 text-xs" title="Redaktə et">✎</button>
-                            <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={o.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/objects/${o.id}/active`, "PATCH", { isActive: e.target.checked }))()} />{t("bizActive") || "Aktiv"}</label>
-                            <button onClick={wrap(() => jsonReq(`${API}/me/objects/${o.id}`, "DELETE"))} className="text-red-500 text-xs" title="Sil">✕</button>
+                      <div className="flex items-start gap-2.5">
+                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-500/20 to-cyan-600/10 flex items-center justify-center text-base shrink-0">🏪</div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="font-semibold truncate">{o.name} <span className="text-[10px] text-muted font-normal">№{o.id}</span></p>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <button onClick={() => { setEditingObjId(o.id); setObjEditInput({ name: o.name, phone: o.phone || "", address: o.address, city: o.city || "", activityAreas: o.activityAreas || [], latitude: o.latitude ?? null, longitude: o.longitude ?? null }); }} className="text-orange-500 text-sm" title="Redaktə et">✎</button>
+                              <label className="text-[11px] flex items-center gap-1"><input type="checkbox" checked={o.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/objects/${o.id}/active`, "PATCH", { isActive: e.target.checked }))()} />{t("bizActive") || "Aktiv"}</label>
+                              <button onClick={wrap(() => jsonReq(`${API}/me/objects/${o.id}`, "DELETE"))} className="text-red-500 text-sm" title="Sil">✕</button>
+                            </div>
                           </div>
+                          <div className="flex flex-col gap-0.5 mt-1 text-[11px] text-muted">
+                            <span className="flex items-start gap-1"><span>📍</span><span>{[o.city, o.address].filter(Boolean).join(", ") || "—"}</span></span>
+                            {o.phone && <span className="flex items-center gap-1">📞 {o.phone}</span>}
+                          </div>
+                          {o.activityAreas?.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              {o.activityAreas.map((a) => <span key={a} className="text-[10px] px-1.5 py-0.5 rounded-md bg-input-bg border border-input-border">{a}</span>)}
+                            </div>
+                          )}
+                          <ObjectReferral objectId={o.id} inputCls={inputCls} />
                         </div>
-                        <p className="text-muted text-xs">{o.city ? o.city + ", " : ""}{o.address}{o.activityAreas?.length ? ` · ${o.activityAreas.join(", ")}` : ""}</p>
-                        <ObjectReferral objectId={o.id} inputCls={inputCls} />
-                      </>
+                      </div>
                     )}
                   </div>
                 ))}
                 {/* Yeni obyekt */}
+                <p className="text-[11px] font-semibold text-orange-500 mt-2 mb-0.5">＋ Yeni obyekt (mağaza / filial)</p>
                 <ObjectAdder bizId={b.id} input={objInput[b.id]} setInput={(v: any) => setObjInput((p) => ({ ...p, [b.id]: v }))} onAdd={wrap(async () => {
                   const v = objInput[b.id]; if (!v?.name?.trim() || !v?.address?.trim()) throw new Error(t("bizObjRequired") || "Ad və ünvan");
                   await jsonReq(`${API}/me/businesses/${b.id}/objects`, "POST", v); setObjInput((p) => ({ ...p, [b.id]: { name: "", phone: "", address: "", city: "", activityAreas: [], latitude: null, longitude: null } }));
@@ -441,7 +463,7 @@ export default function BusinessPage() {
 
               {/* İşçilər — sorğu/dəvət + səlahiyyətlər */}
               <div className="border-t border-card-border pt-3">
-                <p className="text-xs font-semibold text-muted mb-1.5">👥 İşçilər</p>
+                <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">👥 İşçilər</p>
 
                 {/* Gələn işçi sorğuları — sahibin təsdiqini gözləyir */}
                 {b.members.filter((m: any) => m.status === "PENDING_BUSINESS").map((m: any) => (
