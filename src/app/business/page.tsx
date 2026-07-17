@@ -17,7 +17,7 @@ const ACTIVITY_AREAS = [
 ];
 
 interface Bank { id: number; iban: string; title: string | null; isActive: boolean; isPrimary: boolean }
-interface BizObject { id: number; name: string; phone: string | null; address: string; city: string | null; activityAreas: string[]; isActive: boolean }
+interface BizObject { id: number; name: string; phone: string | null; address: string; city: string | null; activityAreas: string[]; isActive: boolean; latitude: number | null; longitude: number | null }
 interface Member { id: number; status?: string; canSell?: boolean; canBuy?: boolean; user: { id: number; name: string; publicId: string | null }; object: { id: number; name: string } | null }
 interface Business {
   id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
@@ -59,6 +59,8 @@ export default function BusinessPage() {
   const [bankInput, setBankInput] = useState<Record<number, { iban: string; title: string }>>({});
   const [showAddBank, setShowAddBank] = useState<Record<number, boolean>>({}); // əl ilə bank əlavə (opsional)
   const [objInput, setObjInput] = useState<Record<number, { name: string; phone: string; address: string; city: string; activityAreas: string[]; latitude: number | null; longitude: number | null }>>({});
+  const [editingObjId, setEditingObjId] = useState<number | null>(null); // redaktə olunan obyekt
+  const [objEditInput, setObjEditInput] = useState<any>(null);
   const [memberInput, setMemberInput] = useState<Record<number, { publicId: string; objectId: string }>>({});
 
   const authH: any = { Authorization: `Bearer ${token}` };
@@ -406,15 +408,28 @@ export default function BusinessPage() {
                 <p className="text-xs font-semibold text-muted mb-1.5">{t("bizObjects") || "Obyektlər"}</p>
                 {b.objects.map((o) => (
                   <div key={o.id} className={`px-3 py-2 bg-input-bg/50 rounded-lg text-sm mb-1.5 ${!o.isActive ? "opacity-50" : ""}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">{o.name}{o.phone ? ` · ${o.phone}` : ""}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={o.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/objects/${o.id}/active`, "PATCH", { isActive: e.target.checked }))()} />{t("bizActive") || "Aktiv"}</label>
-                        <button onClick={wrap(() => jsonReq(`${API}/me/objects/${o.id}`, "DELETE"))} className="text-red-500 text-xs">✕</button>
-                      </div>
-                    </div>
-                    <p className="text-muted text-xs">{o.city ? o.city + ", " : ""}{o.address}{o.activityAreas?.length ? ` · ${o.activityAreas.join(", ")}` : ""}</p>
-                    <ObjectReferral objectId={o.id} inputCls={inputCls} />
+                    {editingObjId === o.id ? (
+                      <ObjectAdder bizId={b.id} input={objEditInput} setInput={setObjEditInput} inputCls={inputCls} t={t}
+                        saveLabel="💾 Yadda saxla" onCancel={() => { setEditingObjId(null); setObjEditInput(null); }}
+                        onAdd={wrap(async () => {
+                          const v = objEditInput; if (!v?.name?.trim() || !v?.address?.trim()) throw new Error(t("bizObjRequired") || "Ad və ünvan");
+                          await jsonReq(`${API}/me/objects/${o.id}`, "PUT", v);
+                          setEditingObjId(null); setObjEditInput(null);
+                        })} />
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-medium">{o.name}{o.phone ? ` · ${o.phone}` : ""}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={() => { setEditingObjId(o.id); setObjEditInput({ name: o.name, phone: o.phone || "", address: o.address, city: o.city || "", activityAreas: o.activityAreas || [], latitude: o.latitude ?? null, longitude: o.longitude ?? null }); }} className="text-orange-500 text-xs" title="Redaktə et">✎</button>
+                            <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={o.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/objects/${o.id}/active`, "PATCH", { isActive: e.target.checked }))()} />{t("bizActive") || "Aktiv"}</label>
+                            <button onClick={wrap(() => jsonReq(`${API}/me/objects/${o.id}`, "DELETE"))} className="text-red-500 text-xs" title="Sil">✕</button>
+                          </div>
+                        </div>
+                        <p className="text-muted text-xs">{o.city ? o.city + ", " : ""}{o.address}{o.activityAreas?.length ? ` · ${o.activityAreas.join(", ")}` : ""}</p>
+                        <ObjectReferral objectId={o.id} inputCls={inputCls} />
+                      </>
+                    )}
                   </div>
                 ))}
                 {/* Yeni obyekt */}
@@ -491,7 +506,7 @@ export default function BusinessPage() {
   );
 }
 
-function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t }: any) {
+function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t, saveLabel, onCancel }: any) {
   const v = input || { name: "", phone: "", address: "", city: "", activityAreas: [], latitude: null, longitude: null };
   const toggle = (a: string) => setInput({ ...v, activityAreas: v.activityAreas.includes(a) ? v.activityAreas.filter((x: string) => x !== a) : [...v.activityAreas, a] });
   return (
@@ -518,7 +533,10 @@ function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t }: any) {
           ))}
         </div>
       </div>
-      <button onClick={onAdd} className="text-sm text-orange-500 font-medium">+ {t("bizAddObject") || "Obyekt əlavə et"}</button>
+      <div className="flex gap-3 items-center">
+        <button onClick={onAdd} className="text-sm text-orange-500 font-medium">{saveLabel || `+ ${t("bizAddObject") || "Obyekt əlavə et"}`}</button>
+        {onCancel && <button type="button" onClick={onCancel} className="text-sm text-muted hover:text-foreground">Ləğv</button>}
+      </div>
     </div>
   );
 }
