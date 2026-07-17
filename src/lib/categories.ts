@@ -250,6 +250,19 @@ export const CATEGORIES: MainCategory[] = [
     ],
   },
   {
+    name: "Ərzaq və qida məhsulları", icon: "🥦", subs: [
+      s("Meyvə və tərəvəz", "🍎"),
+      s("Ət, quş və balıq", "🍖"),
+      s("Süd məhsulları və yumurta", "🥛"),
+      s("Çörək və şirniyyat", "🍞"),
+      s("Bal, mürəbbə və konserv", "🍯"),
+      s("İçkilər", "🧃"),
+      s("Bakkal (un, düyü, yağ)", "🌾"),
+      s("Ədviyyat və souslar", "🧂"),
+      s("Kənd (bio) məhsulları", "🧺"),
+    ],
+  },
+  {
     name: "Digər", icon: "📦", subs: [
       s("Müxtəlif", "📦"),
       s("Pulsuz / Bağışlanır", "🎁"),
@@ -257,6 +270,11 @@ export const CATEGORIES: MainCategory[] = [
     ],
   },
 ];
+
+// Hər kateqoriyada "Digər" alt-seçimi olsun (istifadəçi tələbi) — uyğun alt yoxdursa seçilir.
+for (const c of CATEGORIES) {
+  if (!c.subs.some((x) => x.name === "Digər")) c.subs.push(s("Digər", "➕"));
+}
 
 export const SEP = " › ";
 export const CATEGORY_NAMES = CATEGORIES.map((c) => c.name);
@@ -318,6 +336,7 @@ const CATEGORY_FIELDS: Record<string, ListingField[]> = {
   "Kənd təsərrüfatı": ["condition", "stock", "unit"],
   "Xidmətlər": [],
   "Turizm, istirahət və məkan": [],
+  "Ərzaq və qida məhsulları": ["stock", "unit"],
   "Digər": ["condition", "stock"],
 };
 // Bu əsas kateqoriyada elan formasında hansı sahələr göstərilməlidir?
