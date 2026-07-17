@@ -373,6 +373,15 @@ export default function MessagesPage() {
       else toast(d.message || t('error'), 'error');
     } catch { toast(t('error'), 'error'); }
   };
+  const setMemberRole = async (uid: number, role: "ADMIN" | "MEMBER") => {
+    if (!groupInfo) return;
+    try {
+      const res = await fetch(`${API}/groups/${groupInfo.id}/members/${uid}`, { method: "PATCH", headers, body: JSON.stringify({ role }) });
+      const d = await res.json();
+      if (res.ok && d.success) { setGroupInfo(d.group); fetchGroups(); }
+      else toast(d.message || t('error'), 'error');
+    } catch { toast(t('error'), 'error'); }
+  };
   const leaveGroup = async () => {
     if (!groupInfo || !user) return;
     if (!confirm("Qrupdan çıxmaq istəyirsiniz?")) return;
@@ -717,8 +726,15 @@ export default function MessagesPage() {
               {groupInfo.members.map((m: any) => (
                 <div key={m.userId} className="flex items-center gap-2 p-2 rounded-lg hover:bg-input-bg">
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">{initials(m.user?.name || "?")}</div>
-                  <div className="flex-1 min-w-0"><p className="text-sm truncate">{m.user?.name || "İstifadəçi"} {m.userId === user?.id && "(siz)"}</p><p className="text-[10px] text-muted">{m.role === "ADMIN" ? "Admin" : "Üzv"}</p></div>
-                  {amIAdmin() && m.userId !== user?.id && <button onClick={() => removeMember(m.userId)} className="text-red-500 text-xs">çıxar</button>}
+                  <div className="flex-1 min-w-0"><p className="text-sm truncate">{m.user?.name || "İstifadəçi"} {m.userId === user?.id && "(siz)"}</p><p className="text-[10px] text-muted">{m.role === "ADMIN" ? "👑 Admin" : "Üzv"}</p></div>
+                  {amIAdmin() && m.userId !== user?.id && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      {m.role === "ADMIN"
+                        ? <button onClick={() => setMemberRole(m.userId, "MEMBER")} className="text-amber-500 text-xs">Adminliyi al</button>
+                        : <button onClick={() => setMemberRole(m.userId, "ADMIN")} className="text-orange-500 text-xs">Admin et</button>}
+                      <button onClick={() => removeMember(m.userId)} className="text-red-500 text-xs">çıxar</button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
