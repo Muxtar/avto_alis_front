@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import ComplaintButton from "@/components/ComplaintButton";
+import ReviewsSection from "@/components/ReviewsSection";
 import { API, imgUrl } from "@/lib/api";
 import { groupSelectedParts } from "@/lib/sellerCategories";
 import { SOCIAL_META } from "@/lib/social";
@@ -357,6 +358,9 @@ export default function SellerProfilePage() {
           )}
         </>
       )}
+
+      {/* İxtisas / rəy profili rəyləri — yalnız peşəkardan rəy/konsultasiya alan yaza bilər */}
+      {user?.profession && <ReviewsSection base={`/professionals/${params.id}`} title="İxtisas / rəy rəyləri" />}
     </div>
   );
 }

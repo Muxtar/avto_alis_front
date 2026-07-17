@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import ShareButton from "@/components/ShareButton";
+import ReviewsSection from "@/components/ReviewsSection";
 import { API } from "@/lib/api";
 
 export default function ObjectPage() {
@@ -201,6 +202,9 @@ export default function ObjectPage() {
           ))}
         </div>
       )}
+
+      {/* Obyekt rəyləri — yalnız bu obyektdən alış edən yaza bilər */}
+      <ReviewsSection base={`/objects/${object.id}`} title="Obyekt rəyləri" />
     </div>
   );
 }
