@@ -26,6 +26,7 @@ export default function ListingDetailPage() {
   const [msgSent, setMsgSent] = useState(false);
   const [msgSending, setMsgSending] = useState(false);
   const [commentText, setCommentText] = useState("");
+  const [commentRating, setCommentRating] = useState(0); // 5 ulduzlu rəy
   const [commentSending, setCommentSending] = useState(false);
   const [cartQty, setCartQty] = useState(1);
   const [cartAdding, setCartAdding] = useState(false);
@@ -139,12 +140,12 @@ export default function ListingDetailPage() {
       const res = await fetch(`${API}/listings/${params.id}/comments`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ content: commentText }),
+        body: JSON.stringify({ content: commentText, rating: commentRating || undefined }),
       });
       if (res.ok) {
         const data = await res.json();
         setListing({ ...listing, comments: [data.comment, ...(listing.comments || [])] });
-        setCommentText("");
+        setCommentText(""); setCommentRating(0);
       } else {
         const err = await res.json().catch(() => ({}));
         toast(err.message || t('error'), 'error');
@@ -431,29 +432,42 @@ export default function ListingDetailPage() {
 
           {/* Comments */}
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 mt-4">
-            <h3 className="font-semibold mb-4 flex items-center gap-2">
+            <h3 className="font-semibold mb-4 flex items-center gap-2 flex-wrap">
               <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
               {t("comments")} ({listing.comments?.length || 0})
+              {(() => {
+                const rs = (listing.comments || []).map((c: any) => c.rating).filter((r: number) => r >= 1 && r <= 5);
+                if (!rs.length) return null;
+                const pct = Math.round(rs.reduce((a: number, b: number) => a + b, 0) / rs.length / 5 * 100);
+                return <span className="text-xs px-2 py-0.5 rounded-lg bg-green-500/10 text-green-600 font-semibold">👍 {pct}% məmnun ({rs.length})</span>;
+              })()}
             </h3>
 
-            {!listing.businessId && !listing.businessObject ? (
-              // Fərdi (VÖEN-siz) elanlara şərh yazmaq olmaz — yalnız VÖEN-li bizneslərə.
-              <div className="mb-4 text-center py-3 bg-input-bg border border-input-border rounded-xl text-muted text-sm">
-                Fərdi (VÖEN-siz) elanlara şərh yazmaq mümkün deyil
-              </div>
-            ) : isLoggedIn ? (
-              <div className="mb-4 flex gap-2">
-                <input type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)}
-                  placeholder={t("commentPlaceholder")}
-                  className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
-                <button onClick={handleAddComment} disabled={!commentText.trim() || commentSending}
-                  className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50">
-                  {t("addComment")}
-                </button>
-              </div>
-            ) : (
+            {!isLoggedIn ? (
               <div className="mb-4 text-center py-3 bg-input-bg border border-input-border rounded-xl text-muted text-sm">
                 <Link href="/" className="text-orange-500 hover:text-orange-400">{t("loginToComment")}</Link>
+              </div>
+            ) : (listing.comments || []).some((c: any) => c.user?.id === user?.id) ? (
+              <div className="mb-4 text-center py-2.5 bg-input-bg border border-input-border rounded-xl text-muted text-xs">Bu məhsula rəyinizi yazmısınız — aşağıdan dəyişə/silə bilərsiniz</div>
+            ) : (
+              <div className="mb-4 space-y-2">
+                <div className="flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button key={n} type="button" onClick={() => setCommentRating(n)} className="text-2xl leading-none">
+                      <span className={n <= commentRating ? "text-orange-500" : "text-muted/40"}>★</span>
+                    </button>
+                  ))}
+                  <span className="text-xs text-muted ml-1">{commentRating ? `${commentRating}/5` : "reytinq (istəyə bağlı)"}</span>
+                </div>
+                <div className="flex gap-2">
+                  <input type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)}
+                    placeholder={t("commentPlaceholder")}
+                    className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
+                  <button onClick={handleAddComment} disabled={!commentText.trim() || commentSending}
+                    className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50">
+                    {t("addComment")}
+                  </button>
+                </div>
               </div>
             )}
 
