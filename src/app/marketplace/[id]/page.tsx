@@ -436,7 +436,12 @@ export default function ListingDetailPage() {
               {t("comments")} ({listing.comments?.length || 0})
             </h3>
 
-            {isLoggedIn ? (
+            {!listing.businessId && !listing.businessObject ? (
+              // Fərdi (VÖEN-siz) elanlara şərh yazmaq olmaz — yalnız VÖEN-li bizneslərə.
+              <div className="mb-4 text-center py-3 bg-input-bg border border-input-border rounded-xl text-muted text-sm">
+                Fərdi (VÖEN-siz) elanlara şərh yazmaq mümkün deyil
+              </div>
+            ) : isLoggedIn ? (
               <div className="mb-4 flex gap-2">
                 <input type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)}
                   placeholder={t("commentPlaceholder")}
