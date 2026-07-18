@@ -17,7 +17,7 @@ const ACTIVITY_AREAS = [
 ];
 
 interface Bank { id: number; iban: string; title: string | null; isActive: boolean; isPrimary: boolean }
-interface BizObject { id: number; name: string; phone: string | null; address: string; city: string | null; activityAreas: string[]; isActive: boolean; latitude: number | null; longitude: number | null }
+interface BizObject { id: number; name: string; phone: string | null; address: string; city: string | null; activityAreas: string[]; isActive: boolean; latitude: number | null; longitude: number | null; _count?: { listings: number } }
 interface Member { id: number; status?: string; canSell?: boolean; canBuy?: boolean; user: { id: number; name: string; publicId: string | null }; object: { id: number; name: string } | null }
 interface Business {
   id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
@@ -457,6 +457,11 @@ export default function BusinessPage() {
                               {o.activityAreas.map((a) => <span key={a} className="text-[10px] px-1.5 py-0.5 rounded-md bg-input-bg border border-input-border">{a}</span>)}
                             </div>
                           )}
+                          {/* Obyektə görə idarəetmə — məhsullar və sifarişlər */}
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            <a href={`/object/${o.id}`} className="px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-[11px] font-medium hover:border-orange-500/50 hover:text-orange-500 transition-colors">📦 Məhsullar{typeof o._count?.listings === "number" ? ` (${o._count.listings})` : ""}</a>
+                            <a href={`/business/sales?objectId=${o.id}`} className="px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-[11px] font-medium hover:border-orange-500/50 hover:text-orange-500 transition-colors">🛒 Sifarişlər</a>
+                          </div>
                           <ObjectReferral objectId={o.id} inputCls={inputCls} />
                         </div>
                       </div>

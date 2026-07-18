@@ -38,7 +38,12 @@ export default function BusinessSalesPage() {
         list.push({ businessId: m.business.id, objectId: m.object?.id ?? null, label: `${m.business.name}${m.object ? " → " + m.object.name : " — " + (t("bizAll") || "hamısı")} (${t("bizManaged") || "həvalə"})`, owned: false });
       });
       setScopes(list);
-      if (list.length > 0 && !active) setActive(list[0]);
+      // ?objectId= ilə birbaşa o obyektin sifarişlərinə keç (biznes səhifəsindən klik).
+      const preObjId = new URLSearchParams(window.location.search).get("objectId");
+      if (list.length > 0 && !active) {
+        const pre = preObjId ? list.find((s) => String(s.objectId) === preObjId) : null;
+        setActive(pre || list[0]);
+      }
     } catch { toast(t("error"), "error"); } finally { setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
