@@ -129,11 +129,11 @@ export default function MapExplorer({ height = '70vh' }: { height?: string }) {
   const useMyLocation = () => {
     if (!navigator.geolocation) { alert('Cihaz konumu dəstəkləmir'); return; }
     setLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => { const p: [number, number] = [pos.coords.latitude, pos.coords.longitude]; setMyLoc(p); setCenter(p); setZoom(15); setLocating(false); },
-      () => { setLocating(false); alert('Yerinizi tapmaq mümkün olmadı — brauzerdə konum icazəsini yoxlayın.'); },
-      { enableHighAccuracy: true, timeout: 10000 },
-    );
+    const onOk = (pos: GeolocationPosition) => { const p: [number, number] = [pos.coords.latitude, pos.coords.longitude]; setMyLoc(p); setCenter(p); setZoom(15); setLocating(false); };
+    const onErrLow = (err: GeolocationPositionError) => { setLocating(false); alert(err?.code === 1 ? 'Konum icazəsi bloklanıb — brauzer/telefon tənzimindən icazə verin.' : 'Yerinizi tapmaq mümkün olmadı.'); };
+    // Mobil: yüksək dəqiqlik alınmasa aşağı dəqiqliyə keç (daha etibarlı).
+    const onErrHigh = () => navigator.geolocation.getCurrentPosition(onOk, onErrLow, { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 });
+    navigator.geolocation.getCurrentPosition(onOk, onErrHigh, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
   };
 
   useEffect(() => {

@@ -214,11 +214,14 @@ export default function CartPage() {
   // Yango qiymət təxmini — konum/metod dəyişəndə yenilənir (limit daxilində).
   useEffect(() => {
     if (deliveryType !== "DELIVERY" || deliveryMethod !== "COURIER" || yangoBlocked || lat == null || lng == null) { setYangoFee(null); return; }
-    const objId = items.find((i) => i.listing?.businessObjectId)?.listing?.businessObjectId;
-    if (!objId) { setYangoFee(null); return; }
+    const base = selItems.length ? selItems : items;
+    const objId = base.find((i) => i.listing?.businessObjectId)?.listing?.businessObjectId;
+    // Obyekt yoxdursa (fərdi satıcı) — götürmə yeri kimi satıcının konumu istifadə olunur.
+    const sellerId = base[0]?.listing?.user?.id;
+    if (!objId && !sellerId) { setYangoFee(null); return; }
     let cancelled = false;
     setQuoting(true);
-    fetch(`${API}/yango/quote`, { method: "POST", headers, body: JSON.stringify({ businessObjectId: objId, latitude: lat, longitude: lng, weight: cartWeight || 1 }) })
+    fetch(`${API}/yango/quote`, { method: "POST", headers, body: JSON.stringify({ businessObjectId: objId || undefined, sellerId: objId ? undefined : sellerId, latitude: lat, longitude: lng, weight: cartWeight || 1 }) })
       .then((r) => r.json()).then((d) => { if (!cancelled) setYangoFee(d?.available ? d.fee : null); })
       .catch(() => { if (!cancelled) setYangoFee(null); }).finally(() => { if (!cancelled) setQuoting(false); });
     return () => { cancelled = true; };

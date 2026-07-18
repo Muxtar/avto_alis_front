@@ -107,20 +107,22 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
       return;
     }
     setGeoLoading(true);
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        onChange({ city, address, latitude: lat, longitude: lng });
-        setCenter([lat, lng]);
-        setZoom(16);
-        setGeoLoading(false);
-      },
-      (err) => {
-        setGeoLoading(false);
-        alert(t('geolocationFailed') + ': ' + err.message);
-      },
-      { enableHighAccuracy: true, timeout: 10000 }
-    );
+    const onOk = (pos: GeolocationPosition) => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      onChange({ city, address, latitude: lat, longitude: lng });
+      setCenter([lat, lng]);
+      setZoom(16);
+      setGeoLoading(false);
+    };
+    // Mobil: əvvəl yüksək dəqiqlik (qısa), alınmasa aşağı dəqiqliyə keç (uzun, cache).
+    const onErrLow = (err: GeolocationPositionError) => {
+      setGeoLoading(false);
+      alert(t('geolocationFailed') + (err?.code === 1 ? ' — brauzer/telefon konum icazəsini bloklayıb' : ': ' + err.message));
+    };
+    const onErrHigh = () => {
+      navigator.geolocation.getCurrentPosition(onOk, onErrLow, { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 });
+    };
+    navigator.geolocation.getCurrentPosition(onOk, onErrHigh, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
   };
 
   // Reverse geocode using free Nominatim — fills the address field when the

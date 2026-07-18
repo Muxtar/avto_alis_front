@@ -209,7 +209,8 @@ function AccountPageInner() {
       fd.append("listingMode", listingMode || "novoen");
       if (listingMode === "voen") fd.append("allowSelfDelivery", String(allowSelfDelivery));
       if (weightKg) fd.append("weightKg", weightKg);
-      if (selectedObjectId) fd.append("businessObjectId", selectedObjectId);
+      // Biznes obyekti YALNIZ VÖEN-li elanda göndərilir — VÖEN-siz (fərdi) elan biznesə bağlanmır.
+      if (listingMode === "voen" && selectedObjectId) fd.append("businessObjectId", selectedObjectId);
       images.forEach((file) => fd.append("images", file));
       if (editingId) {
         fd.append("existingImages", JSON.stringify(existingImages));
@@ -337,7 +338,7 @@ function AccountPageInner() {
                 <p className="font-semibold text-sm">VÖEN ilə (biznes)</p>
                 <p className="text-xs text-muted mt-1">Kartla ödəniş, saytdan sifariş. Biznes və ona bağlı obyekt tələb olunur.</p>
               </button>
-              <button type="button" onClick={() => setListingMode("novoen")} className={cardCls}>
+              <button type="button" onClick={() => { setListingMode("novoen"); setSelectedObjectId(""); }} className={cardCls}>
                 <div className="text-2xl mb-2">👤</div>
                 <p className="font-semibold text-sm">VÖEN-siz (fərdi)</p>
                 <p className="text-xs text-muted mt-1">Sayt üzərindən ödəniş yox — alıcı ilə birbaşa əlaqə.</p>
