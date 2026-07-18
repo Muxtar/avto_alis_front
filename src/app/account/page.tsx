@@ -622,12 +622,27 @@ function AccountPageInner() {
                   <div>
                     <label className="block text-xs font-medium text-muted mb-1">Məhsulun çəkisi (kq) — 1 ədəd</label>
                     <input type="number" min={0} step="0.1" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="məs. 2.5" className={inputCls} />
-                    <p className="text-[11px] text-muted mt-1">
-                      ⚖️ Yango yük limiti <b>50 kq</b>. {Number(weightKg) > 50
-                        ? <span className="text-red-500">50 kq-dan ağırdır — bu məhsulda Yango bağlanacaq, yalnız götürmə / satıcı çatdırması qalacaq.</span>
-                        : "Bundan ağır məhsullarda Yango avtomatik bağlanır."}
-                    </p>
+                    <p className="text-[11px] text-muted mt-1">⚖️ Yango yük limiti <b>50 kq</b>. Bundan ağır məhsullarda Yango avtomatik bağlanır.</p>
                   </div>
+                  {Number(weightKg) > 50 && (
+                    <div className="px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/30 text-[12px] text-red-600">
+                      ⚠️ Çəki <b>50 kq-dan çoxdur</b> — bu məhsulda <b>Yango kuryer işləməyəcək</b>. Alıcı yalnız «🏪 mağazadan götürmə» və ya «🚗 satıcı özü çatdırır» seçə biləcək.
+                    </div>
+                  )}
+                  {/* Yango ilə daşına bilməyən məhsullar */}
+                  <details className="text-[12px] rounded-lg bg-amber-500/5 border border-amber-500/20 px-3 py-2">
+                    <summary className="cursor-pointer text-amber-600 font-medium select-none">🚫 Yango ilə daşına bilməyən məhsullar</summary>
+                    <ul className="list-disc ml-5 mt-1.5 text-[11px] text-muted space-y-0.5">
+                      <li>50 kq-dan yuxarı yük (piyada və ekspres tarifləri üçün)</li>
+                      <li>Resepsiz (resept tələb olunmayan) dərmanlar</li>
+                      <li>Kimyəvi maddələr</li>
+                      <li>Nağd pul</li>
+                      <li>Zibil (tullantı)</li>
+                      <li>Xüsusi yanaşma/baxım tələb edən tibbi avadanlıqlar</li>
+                      <li>Azərbaycanda daşınması qadağan olunmuş bütün məhsullar</li>
+                    </ul>
+                    <p className="text-[10px] text-muted mt-1.5">Məhsulunuz bunlardan biridirsə, Yango kuryeri seçməyin — «mağazadan götürmə» və ya «satıcı özü çatdırır» istifadə edin.</p>
+                  </details>
                   <p className="text-muted text-[12px]">Alıcı checkout-da seçəcək. Standart variantlar: 🛵 <b className="text-foreground">Yango kuryer</b> və 🏪 <b className="text-foreground">mağazadan götürmə</b> həmişə mövcuddur.</p>
                   <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${allowSelfDelivery ? "border-orange-500/50 bg-orange-500/5" : "border-input-border bg-input-bg"}`}>
                     <input type="checkbox" checked={allowSelfDelivery} onChange={(e) => setAllowSelfDelivery(e.target.checked)} className="w-4 h-4 accent-orange-500" />
