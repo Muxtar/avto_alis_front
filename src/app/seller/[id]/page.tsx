@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import ComplaintButton from "@/components/ComplaintButton";
 import ReviewsSection from "@/components/ReviewsSection";
+import ShareButton from "@/components/ShareButton";
 import { API, imgUrl } from "@/lib/api";
 import { groupSelectedParts } from "@/lib/sellerCategories";
 import { SOCIAL_META } from "@/lib/social";
@@ -23,9 +24,10 @@ export default function SellerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [reqBusy, setReqBusy] = useState<number | null>(null);
-  // İxtisas bölməsindən gəlibsə (?from=ixtisas) → məhsul satışı gizlədilir, Rəy yönümlü kompakt profil.
-  const [ixtisasMode, setIxtisasMode] = useState(false);
-  useEffect(() => { setIxtisasMode(new URLSearchParams(window.location.search).get("from") === "ixtisas"); }, []);
+  // İxtisas bölməsindən gəlibsə (?from=ixtisas) VƏ YA şəxs rəy (konsultasiya) təklif edirsə →
+  // məhsul satışı və telefon gizlədilir; rəy yönümlü kompakt profil (platformadan kənar əlaqə olmasın).
+  const [fromIxtisas, setFromIxtisas] = useState(false);
+  useEffect(() => { setFromIxtisas(new URLSearchParams(window.location.search).get("from") === "ixtisas"); }, []);
 
   const requestConsultation = async (offerId: number) => {
     if (!isLoggedIn) { router.push("/"); return; }
@@ -68,6 +70,8 @@ export default function SellerProfilePage() {
   }
 
   const { user, listings, stats } = data;
+  // Rəy təklif edən şəxs → profili həmişə rəy rejimində (telefon + məhsullar gizli, ayrı kimlik).
+  const ixtisasMode = fromIxtisas || (user?.consultationOffers?.length > 0);
   const typeLabel = user.type === "MECHANIC" ? t("tabMechanic") : user.type === "PARTS_SELLER" ? t("tabPartsSeller") : t("tabCarOwner");
   const typeColor = user.type === "MECHANIC" ? "from-green-500 to-emerald-600" : user.type === "PARTS_SELLER" ? "from-purple-500 to-violet-600" : "from-blue-500 to-blue-600";
   const memberDate = new Date(user.createdAt).toLocaleDateString("az-AZ", { year: "numeric", month: "long", day: "numeric" });
@@ -113,6 +117,7 @@ export default function SellerProfilePage() {
               {user.idVerifyStatus === "APPROVED" && (
                 <span className="px-2.5 py-1 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium">✓ Təsdiqlənmiş</span>
               )}
+              <ShareButton title={user.name} text={`${user.name}${user.profession ? ` — ${user.profession}` : ""} · tradixai`} compact className="ml-auto shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
             </div>
 
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted mb-4">

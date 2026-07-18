@@ -57,6 +57,7 @@ function AccountPageInner() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null); // kamera ilə anında çəkmək üçün
   // User's saved default location — auto-fills city/location in new listings.
   const [myLocation, setMyLocation] = useState<{ city: string; address: string }>({ city: "", address: "" });
   // Təsdiqlənmiş biznes obyektləri — elan kartla satıla bilsin deyə seçilir.
@@ -860,27 +861,23 @@ function AccountPageInner() {
                       </div>
                     ))}
                     {totalCount < MAX_IMAGES && (
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="aspect-square border-2 border-dashed border-input-border rounded-xl flex flex-col items-center justify-center gap-1 text-muted hover:border-orange-500/60 hover:text-orange-500 hover:bg-orange-500/5 transition-all"
-                      >
-                        <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span className="text-[11px] font-medium">Şəkil əlavə et</span>
-                      </button>
+                      <>
+                        <button type="button" onClick={() => fileInputRef.current?.click()}
+                          className="aspect-square border-2 border-dashed border-input-border rounded-xl flex flex-col items-center justify-center gap-1 text-muted hover:border-orange-500/60 hover:text-orange-500 hover:bg-orange-500/5 transition-all">
+                          <span className="text-2xl">🖼️</span>
+                          <span className="text-[11px] font-medium">Qalereya</span>
+                        </button>
+                        <button type="button" onClick={() => cameraInputRef.current?.click()}
+                          className="aspect-square border-2 border-dashed border-input-border rounded-xl flex flex-col items-center justify-center gap-1 text-muted hover:border-orange-500/60 hover:text-orange-500 hover:bg-orange-500/5 transition-all">
+                          <span className="text-2xl">📷</span>
+                          <span className="text-[11px] font-medium">Kamera ilə çək</span>
+                        </button>
+                      </>
                     )}
                   </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    multiple
-                    onChange={handleImagePick}
-                    className="hidden"
-                  />
-                  <p className="text-xs text-muted mt-1.5">jpg, png, webp formatlarında, hər biri ən çox 5 MB</p>
+                  <input ref={fileInputRef} type="file" accept="image/jpeg,image/jpg,image/png,image/webp" multiple onChange={handleImagePick} className="hidden" />
+                  <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" onChange={handleImagePick} className="hidden" />
+                  <p className="text-xs text-muted mt-1.5">🖼️ qalereyadan seçin və ya 📷 kamera ilə anında çəkin · hər biri ən çox 5 MB</p>
                 </div>
               );
             })()}
