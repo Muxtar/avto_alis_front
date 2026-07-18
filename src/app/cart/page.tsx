@@ -508,6 +508,20 @@ export default function CartPage() {
                             ⚖️ Sifariş 50 kq-dan ağırdır — Yango kuryer mümkün deyil. {allSelfAllowed ? "Satıcı çatdırması seçildi." : "Yuxarıdan “🏪 Götürmə”ni seçin (satıcı bu məhsulda özü çatdırma təklif etmir)."}
                           </p>
                         )}
+                        {/* Satıcının öz çatdırma qeydi/qiyməti */}
+                        {deliveryMethod === "SELF" && (() => {
+                          const notes = Array.from(new Map(selItems.filter((i) => i.listing?.selfDeliveryNote).map((i) => [`${i.listing.user?.id}|${i.listing.selfDeliveryNote}`, { seller: i.listing.user?.name, note: i.listing.selfDeliveryNote }])).values());
+                          if (!notes.length) return null;
+                          return (
+                            <div className="mt-2 space-y-1">
+                              {notes.map((n: any, i: number) => (
+                                <div key={i} className="px-3 py-2 rounded-lg bg-orange-500/5 border border-orange-500/20 text-[11px]">
+                                  🚗 <b>{n.seller}</b> çatdırma qeydi: <span className="text-muted">{n.note}</span>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   )}

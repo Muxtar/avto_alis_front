@@ -44,6 +44,7 @@ function AccountPageInner() {
   const [barter, setBarter] = useState(false);   // dəyiş-düş qəbul olunur
   const [forRent, setForRent] = useState(false); // satış yox, icarə/kirayə
   const [allowSelfDelivery, setAllowSelfDelivery] = useState(false); // satıcı özü də çatdıra bilər (Yango + götürmə həmişə var)
+  const [selfDeliveryNote, setSelfDeliveryNote] = useState(""); // satıcı çatdırma qeydi/qiyməti
   const [weightKg, setWeightKg] = useState(""); // məhsulun çəkisi (kq) — Yango 50 kq limiti üçün
   const [bookable, setBookable] = useState(false); // bron/rezervasiya açıq
   const [bookingType, setBookingType] = useState<"RESERVATION" | "STAY">("RESERVATION");
@@ -207,7 +208,7 @@ function AccountPageInner() {
         }
       }
       fd.append("listingMode", listingMode || "novoen");
-      if (listingMode === "voen") fd.append("allowSelfDelivery", String(allowSelfDelivery));
+      if (listingMode === "voen") { fd.append("allowSelfDelivery", String(allowSelfDelivery)); if (allowSelfDelivery) fd.append("selfDeliveryNote", selfDeliveryNote); }
       if (weightKg) fd.append("weightKg", weightKg);
       // Biznes obyekti YALNIZ VÖEN-li elanda göndərilir — VÖEN-siz (fərdi) elan biznesə bağlanmır.
       if (listingMode === "voen" && selectedObjectId) fd.append("businessObjectId", selectedObjectId);
@@ -266,6 +267,7 @@ function AccountPageInner() {
     // Redaktədə rejimi mövcud elana görə təyin et (biznes obyekti varsa VÖEN-li).
     setListingMode(listing.businessId ? "voen" : "novoen");
     setAllowSelfDelivery(!!listing.allowSelfDelivery);
+    setSelfDeliveryNote(listing.selfDeliveryNote || "");
     setWeightKg(listing.weightKg != null ? String(listing.weightKg) : "");
     setListingKind(listing.type === "SERVICE" ? "service" : "product-form");
     setSelectedObjectId(listing.businessObjectId ? String(listing.businessObjectId) : "");
@@ -651,6 +653,14 @@ function AccountPageInner() {
                       <span className="block text-[11px] text-muted">Alıcıya əlavə variant: satıcı özü çatdırır</span>
                     </span>
                   </label>
+                  {allowSelfDelivery && (
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Öz çatdırılmanız üçün qeyd / qiymət</label>
+                      <textarea value={selfDeliveryNote} onChange={(e) => setSelfDeliveryNote(e.target.value)} rows={2}
+                        placeholder="məs. Şəhər içi 10 AZN, şəhərdən kənar 20 AZN. 1-2 gün ərzində çatdırıram." className={`${inputCls} resize-none`} />
+                      <p className="text-[10px] text-muted mt-1">Alıcı «satıcı özü çatdırır» seçəndə bu qeyd ona göstərilir.</p>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
