@@ -5,6 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { API, imgUrl } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 import { COUNTRY_BY_CODE } from "@/lib/countries";
 
 interface Listing {
@@ -112,6 +113,17 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       setTimeout(() => setAdded(false), 2000);
     }
     setAdding(false);
+  };
+
+  // İndi al — səbətə əlavə edib birbaşa səbətə/ödənişə keç.
+  const buyNow = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isLoggedIn) { window.location.href = "/"; return; }
+    setAdding(true);
+    const result = await addToCart(listing.id, 1);
+    setAdding(false);
+    if (result.success) window.location.href = "/cart";
   };
 
   return (
@@ -244,7 +256,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           {/* Price + Meta */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-baseline gap-0.5">
-              <span className="brand-text font-bold text-lg leading-none">{listing.price}</span>
+              <span className="brand-text font-bold text-lg leading-none">{formatPrice(listing.price)}</span>
               <span className="text-muted-foreground text-[11px] font-medium ml-0.5">{t("azn")}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground text-[10px]">
@@ -274,20 +286,29 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               )}
             </span>
             {canBuy && (
-              <button
-                onClick={handleAddToCart}
-                disabled={adding}
-                title={t("addToCart")}
-                className={`shrink-0 p-2 rounded-lg transition-all active:scale-95 ${
-                  added ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25' : 'bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white hover:shadow-md hover:shadow-orange-500/25'
-                } disabled:opacity-50`}
-              >
-                {added ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
-                )}
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={buyNow}
+                  disabled={adding}
+                  className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 whitespace-nowrap"
+                >
+                  ⚡ İndi al
+                </button>
+                <button
+                  onClick={handleAddToCart}
+                  disabled={adding}
+                  title={t("addToCart")}
+                  className={`p-2 rounded-lg transition-all active:scale-95 ${
+                    added ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25' : 'bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white hover:shadow-md hover:shadow-orange-500/25'
+                  } disabled:opacity-50`}
+                >
+                  {added ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
+                  )}
+                </button>
+              </div>
             )}
           </div>
         </div>

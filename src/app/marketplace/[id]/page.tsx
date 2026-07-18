@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 import { countryLabel } from "@/lib/countries";
 import { getCategoryAttrs, parseCat, getListingFields } from "@/lib/categories";
 import OrderMap from "@/components/OrderMapWrapper";
@@ -539,7 +540,7 @@ export default function ListingDetailPage() {
             </div>
             <div className="flex items-baseline gap-1.5 mb-3">
               <span className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
-                {listing.price}
+                {formatPrice(listing.price)}
               </span>
               <span className="text-foreground/70 text-base font-semibold">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
             </div>
