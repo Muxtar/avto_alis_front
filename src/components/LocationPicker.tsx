@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMap, useMapEvents, AttributionControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { AZ_CITIES } from '@/lib/cities';
@@ -262,7 +262,8 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
       </p>
 
       <div style={{ height, borderRadius: 12, overflow: 'hidden' }} className="border border-input-border">
-        <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }}>
+        <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }} attributionControl={false}>
+          <AttributionControl prefix={false} />
           <TileLayer
             attribution='&copy; OpenStreetMap contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"

@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, AttributionControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import Link from 'next/link';
@@ -336,7 +336,8 @@ export default function MapExplorer({ height = '70vh' }: { height?: string }) {
       )}
 
       <div style={{ height: '100%', borderRadius: 12, overflow: 'hidden' }} className="border border-input-border">
-        <MapContainer center={AZ_CENTER} zoom={AZ_ZOOM} style={{ height: '100%', width: '100%' }} scrollWheelZoom>
+        <MapContainer center={AZ_CENTER} zoom={AZ_ZOOM} style={{ height: '100%', width: '100%' }} scrollWheelZoom attributionControl={false}>
+          <AttributionControl prefix={false} />
           <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <Recenter center={center} zoom={zoom} />
           <FitBounds bounds={selected ? selected.bounds : null} />

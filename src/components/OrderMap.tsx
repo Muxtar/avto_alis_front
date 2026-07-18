@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, AttributionControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -83,7 +83,8 @@ export default function OrderMap({
 
   return (
     <div style={{ height, borderRadius: 12, overflow: 'hidden' }}>
-      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }}>
+      <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }} attributionControl={false}>
+        <AttributionControl prefix={false} />
         <TileLayer
           attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
