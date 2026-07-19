@@ -76,8 +76,16 @@ export default function CallModal({
       pc.ontrack = (e) => {
         const remote = e.streams[0];
         remoteStreamRef.current = remote;
-        if (callKind === "video" && remoteVideoRef.current) remoteVideoRef.current.srcObject = remote;
-        if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remote;
+        if (callKind === "video") {
+          // Video zəngdə səs <video> elementindən gəlir (audio elementə bağlama — əks-səda olmasın).
+          if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remote;
+        } else if (remoteAudioRef.current) {
+          // Səsli zəngdə səs YALNIZ bu <audio> elementindən gəlir — açıq şəkildə play()
+          // çağır (autoPlay bəzən bloklanır), əks halda səsli zəng səssiz qalır.
+          remoteAudioRef.current.srcObject = remote;
+          remoteAudioRef.current.muted = false;
+          remoteAudioRef.current.play?.().catch(() => {});
+        }
         setPhase("active");
       };
       pc.onicecandidate = (e) => {
@@ -188,10 +196,16 @@ export default function CallModal({
 
   // Kiçilt/böyüt keçidində video/audio elementlərini axınlara yenidən bağla.
   useEffect(() => {
-    if (remoteVideoRef.current && remoteStreamRef.current) remoteVideoRef.current.srcObject = remoteStreamRef.current;
-    if (remoteAudioRef.current && remoteStreamRef.current) remoteAudioRef.current.srcObject = remoteStreamRef.current;
+    const remote = remoteStreamRef.current;
+    if (kind === "video") {
+      if (remoteVideoRef.current && remote) remoteVideoRef.current.srcObject = remote;
+    } else if (remoteAudioRef.current && remote) {
+      remoteAudioRef.current.srcObject = remote;
+      remoteAudioRef.current.muted = false;
+      remoteAudioRef.current.play?.().catch(() => {});
+    }
     if (localVideoRef.current && localStreamRef.current) localVideoRef.current.srcObject = localStreamRef.current;
-  }, [minimized, phase]);
+  }, [minimized, phase, kind]);
 
   // Komponent sökülərkən təmizlə.
   useEffect(() => () => { try { pcRef.current?.close(); } catch { /* boş */ } localStreamRef.current?.getTracks().forEach((t) => t.stop()); }, []);
