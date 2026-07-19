@@ -517,12 +517,18 @@ export default function MessagesPage() {
         <img src={url} alt="şəkil" onClick={(e) => { e.stopPropagation(); window.open(url, "_blank"); }} className="rounded-xl max-h-64 max-w-full cursor-pointer" />
         {msg.content && <p className="mt-1">{msg.content}</p>}
       </>);
-      case "VIDEO": return <video src={url} controls playsInline onClick={(e) => e.stopPropagation()} className="rounded-xl max-h-64 max-w-full" />;
-      case "AUDIO": return <audio src={url} controls onClick={(e) => e.stopPropagation()} className="max-w-[230px]" />;
+      case "VIDEO": return (<>
+        <video src={url} controls playsInline onClick={(e) => e.stopPropagation()} className="rounded-xl max-h-64 max-w-full" />
+        {msg.content && <p className="mt-1">{msg.content}</p>}
+      </>);
+      case "AUDIO": return (<>
+        <audio src={url} controls onClick={(e) => e.stopPropagation()} className="max-w-[230px]" />
+        {msg.content && <p className="mt-1">{msg.content}</p>}
+      </>);
       case "FILE": return (
         <a href={url} target="_blank" rel="noreferrer" download={msg.mediaName} onClick={(e) => e.stopPropagation()} className="flex items-center gap-2 hover:underline">
           <span className="text-xl">📄</span>
-          <span className="min-w-0"><span className="block truncate max-w-[180px]">{msg.mediaName || "Fayl"}</span>{msg.mediaSize ? <span className="text-[10px] opacity-70">{(msg.mediaSize / 1024).toFixed(0)} KB</span> : null}</span>
+          <span className="min-w-0"><span className="block truncate max-w-[180px]">{msg.mediaName || "Fayl"}</span>{msg.mediaSize ? <span className="text-[10px] opacity-70">{(msg.mediaSize / 1024).toFixed(0)} KB</span> : null}{msg.content ? <span className="block mt-0.5">{msg.content}</span> : null}</span>
         </a>
       );
       case "CONTACT": return (
@@ -554,7 +560,8 @@ export default function MessagesPage() {
     }
   };
 
-  const canEdit = (m: any) => m?.senderId === user?.id && (!m.type || m.type === "TEXT") && !m.deletedAt;
+  // Mətn + media (şəkil/video/səs/fayl) redaktə oluna bilər — media üçün başlıq (caption) dəyişir.
+  const canEdit = (m: any) => m?.senderId === user?.id && !m.deletedAt && (!m.type || ["TEXT", "IMAGE", "VIDEO", "AUDIO", "FILE"].includes(m.type));
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
@@ -642,8 +649,12 @@ export default function MessagesPage() {
                   const isMine = msg.senderId === user?.id;
                   const deleted = !!msg.deletedAt;
                   return (
-                    <div key={msg.id} className={`flex ${isMine ? "justify-end" : "justify-start"}`}>
-                      <div className="max-w-[75%]">
+                    <div key={msg.id} className={`group flex items-center gap-1 ${isMine ? "justify-end" : "justify-start"}`}>
+                      {/* Əməliyyat menyusu düyməsi — media mesajlarında da əlçatan olsun (sil/redaktə/cavab) */}
+                      {isMine && !deleted && (
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedMsg(msg); }} title="Seçimlər" className="order-1 shrink-0 w-7 h-7 rounded-full text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">⋮</button>
+                      )}
+                      <div className={`max-w-[75%] ${isMine ? "order-2" : ""}`}>
                         {active.type === "group" && !isMine && !deleted && (
                           <p className="text-[10px] text-muted ml-1 mb-0.5">{msg.sender?.name?.split(" ")[0]}</p>
                         )}
@@ -667,6 +678,9 @@ export default function MessagesPage() {
                         </div>
                         {reactionChips(msg)}
                       </div>
+                      {!isMine && !deleted && (
+                        <button onClick={(e) => { e.stopPropagation(); setSelectedMsg(msg); }} title="Seçimlər" className="shrink-0 w-7 h-7 rounded-full text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">⋮</button>
+                      )}
                     </div>
                   );
                 })}
