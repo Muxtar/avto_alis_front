@@ -76,7 +76,6 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
-  const [boxH, setBoxH] = useState<number | null>(null); // klaviaturaya uyğun dinamik hündürlük
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -120,28 +119,20 @@ export default function MessagesPage() {
     return () => { b.style.overflow = pb; h.style.overflow = ph; (b.style as any).overscrollBehavior = pob; };
   }, []);
 
-  // Klaviaturaya uyğun hündürlük — mobil klaviatura açılanda göndərmə footeri gizlənməsin.
+  // Görünən viewport-u CSS dəyişənlərinə köçür (--vvh/--vvt). Mobil aktiv chat bu
+  // dəyərlərlə tam ekran overlay kimi yerləşir — bütün telefonlarda eyni davranış,
+  // klaviatura/brauzer paneli fərqi olmadan (getBoundingClientRect ölçmə fəndi yoxdur).
   useEffect(() => {
-    const box = boxRef.current;
-    if (!box) return;
     const vv = (typeof window !== "undefined" ? window.visualViewport : null) as VisualViewport | null;
+    const root = document.documentElement;
     let raf = 0;
     const apply = () => {
       cancelAnimationFrame(raf);
       raf = requestAnimationFrame(() => {
-        const el = boxRef.current;
-        if (!el) return;
-        const top = el.getBoundingClientRect().top;
-        const winH = window.innerHeight;
-        const vh = vv ? vv.height : winH;
+        const vh = vv ? vv.height : window.innerHeight;
         const offsetTop = vv ? vv.offsetTop : 0;
-        // Mobil alt naviqasiya paneli (.bottom-nav) footeri örtür — hündürlüyünü çıx.
-        // Klaviatura açıq olanda panel klaviaturanın altında qalır, o zaman çıxma.
-        const keyboardOpen = winH - vh > 120;
-        const nav = document.querySelector(".bottom-nav") as HTMLElement | null;
-        const navVisible = !!nav && getComputedStyle(nav).display !== "none";
-        const navH = (!keyboardOpen && navVisible) ? nav!.getBoundingClientRect().height : 0;
-        setBoxH(Math.max(280, Math.round(vh - (top - offsetTop) - navH - 8)));
+        root.style.setProperty("--vvh", `${Math.round(vh)}px`);
+        root.style.setProperty("--vvt", `${Math.round(offsetTop)}px`);
       });
     };
     apply();
@@ -155,6 +146,8 @@ export default function MessagesPage() {
       vv?.removeEventListener("scroll", apply);
       window.removeEventListener("resize", apply);
       window.removeEventListener("orientationchange", apply);
+      root.style.removeProperty("--vvh");
+      root.style.removeProperty("--vvt");
     };
   }, []);
 
@@ -624,7 +617,7 @@ export default function MessagesPage() {
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
       <h1 className="text-xl sm:text-2xl font-bold mb-4">{t("messages")}</h1>
 
-      <div ref={boxRef} className="surface overflow-hidden flex" style={{ height: boxH ? `${boxH}px` : "calc(100dvh - 180px)", minHeight: 320 }}>
+      <div ref={boxRef} className={`surface overflow-hidden flex chat-shell ${active ? "chat-active-mobile" : ""}`}>
         {/* Sol panel */}
         <div className={`${active ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-80 border-r border-card-border shrink-0`}>
           <div className="p-2 border-b border-card-border">

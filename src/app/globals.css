@@ -380,6 +380,33 @@ a:focus-visible {
   line-height: 1.2;
 }
 
+/* ── Chat qutusu — responsiv, bütün telefonlarda sabit ── */
+/* Desktop / tablet + mobil siyahı görünüşü: adi axında sabit hündürlük. */
+.chat-shell {
+  height: calc(100dvh - 180px);
+  min-height: 320px;
+}
+/* Mobil aktiv chat: görünən viewport-a (--vvh) tam oturan overlay.
+   Klaviatura açılanda --vvh kiçilir → footer həmişə üstdə görünür.
+   z-70 ilə navbar (50) və bottom-nav (40) üstündədir; öz "geri" düyməsi var. */
+@media (max-width: 639px) {
+  .chat-active-mobile {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--vvh, 100dvh);
+    min-height: 0;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    z-index: 70;
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+}
+
 /* Mobile bottom-nav bar — only visible on small screens */
 .bottom-nav {
   position: fixed;

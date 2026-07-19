@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
@@ -16,6 +16,13 @@ const geist = Geist({
 export const metadata: Metadata = {
   title: "tradixai — Onlayn Bazar",
   description: "Hər şeyin alınıb-satıldığı onlayn bazar platforması",
+};
+
+// Klaviatura açılanda layout-un resize olması üçün (mobil chat üçün vacib).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({
