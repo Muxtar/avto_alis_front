@@ -8,6 +8,7 @@ import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import LocationPicker from "@/components/LocationPickerWrapper";
+import ShareButton from "@/components/ShareButton";
 
 export default function CartPage() {
   const { t, locale } = useLanguage();
@@ -362,9 +363,11 @@ export default function CartPage() {
                 <p className="text-[11px] text-muted mt-1">Linki alan şəxs məhsulları alıb <b>öz ünvanına</b> sifariş verəcək.</p>
               )}
               {shareLink && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 mt-2 items-stretch">
                   <input readOnly value={shareLink} className="flex-1 px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" onFocus={(e) => e.currentTarget.select()} />
                   <button onClick={() => { navigator.clipboard?.writeText(shareLink); toast("Kopyalandı ✓", "success"); }} className="px-3 py-2 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-semibold">Kopyala</button>
+                  {/* Tətbiqdə (kontakt/chat) və ya xaricdə paylaş */}
+                  <ShareButton title="Səbətdəki məhsullar" text="Səbətimə bax — tradixai" path={shareLink.replace(typeof window !== "undefined" ? window.location.origin : "", "")} compact className="px-3 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center" />
                 </div>
               )}
             </div>

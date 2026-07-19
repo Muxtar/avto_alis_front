@@ -296,6 +296,7 @@ export default function MessagesPage() {
 
   const handleSend = async () => {
     if (!newMsg.trim() || !active) return;
+    setEmojiOpen(false); setAttachOpen(false); // göndərəndən sonra popover-lar bağlansın
     setSending(true);
     try {
       if (editingMsg) {
@@ -827,8 +828,10 @@ export default function MessagesPage() {
                   </div>
                 ) : (
                   <div className="flex gap-2 items-center relative min-w-0">
-                    <button onClick={() => setAttachOpen((v) => !v)} title="Əlavə et" className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center text-lg shrink-0">📎</button>
-                    {attachOpen && (
+                    <button onClick={() => { setAttachOpen((v) => !v); setEmojiOpen(false); }} title="Əlavə et" className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center text-lg shrink-0">📎</button>
+                    {attachOpen && (<>
+                      {/* Xaricə klik — menyu bağlansın */}
+                      <div className="fixed inset-0 z-[15]" onClick={() => setAttachOpen(false)} />
                       <div className="absolute bottom-12 left-0 bg-card border border-card-border rounded-xl p-1.5 space-y-0.5 z-20 shadow-lg">
                         <button onClick={() => imageInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">🖼️ Şəkil</button>
                         <button onClick={openVideoRec} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">🎥 Video mesaj</button>
@@ -836,18 +839,19 @@ export default function MessagesPage() {
                         <button onClick={sendLocation} disabled={sendingLocation} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap disabled:opacity-50">📍 {sendingLocation ? "Konum alınır…" : "Konum"}</button>
                         <button onClick={openContactPicker} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">👤 Kontakt</button>
                       </div>
-                    )}
+                    </>)}
                     {/* Emoji seçici */}
-                    <button onClick={() => setEmojiOpen((v) => !v)} title="Emoji" className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center shrink-0 text-muted hover:text-orange-500 transition-colors">
+                    <button onClick={() => { setEmojiOpen((v) => !v); setAttachOpen(false); }} title="Emoji" className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center shrink-0 text-muted hover:text-orange-500 transition-colors">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15.182 15.182a4.5 4.5 0 01-6.364 0M9 9.75h.008v.008H9V9.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm5.625 0h.008v.008H15V9.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </button>
-                    {emojiOpen && (
+                    {emojiOpen && (<>
+                      <div className="fixed inset-0 z-[15]" onClick={() => setEmojiOpen(false)} />
                       <div className="absolute bottom-12 right-2 bg-card border border-card-border rounded-xl p-2 z-20 shadow-lg grid grid-cols-8 gap-0.5 w-[280px] max-w-[calc(100vw-2rem)] max-h-52 overflow-y-auto">
                         {CHAT_EMOJIS.map((e) => (
                           <button key={e} onClick={() => addEmoji(e)} className="w-8 h-8 rounded-lg hover:bg-input-bg text-xl flex items-center justify-center">{e}</button>
                         ))}
                       </div>
-                    )}
+                    </>)}
                     <input ref={inputRef} value={newMsg} onChange={(e) => { setNewMsg(e.target.value); emitTyping(); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder={t("messagePlaceholder")} className="flex-1 min-w-0 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
                     {newMsg.trim() || editingMsg ? (
                       <button onClick={handleSend} disabled={sending} className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center shrink-0 disabled:opacity-50">
