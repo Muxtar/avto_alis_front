@@ -11,6 +11,7 @@ import ContactsPanel from "@/components/ContactsPanel";
 import { useCall } from "@/lib/CallContext";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
+const CHAT_EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🥳","😉","🙂","😇","🤗","🤔","😴","😭","😡","😱","😳","🥰","😜","🤪","😏","🙄","😤","😢","😅","😬","🤯","🤒","🤕","👍","👎","👌","🙏","👏","🙌","💪","🤝","👋","✌️","🤟","🫶","❤️","🧡","💛","💚","💙","💜","🖤","🔥","✨","🎉","🎊","💯","⭐","🌟","💥","💐","🌹","☀️","🌙","⚡","☕","🍰","🍕","🎁","💰","✅","❌","❗","❓","💬","📍","🚗","⚽"];
 const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
 // Brauzerin dəstəklədiyi ilk yazma formatını seç (Safari/iOS webm dəstəkləmir → mp4).
@@ -54,6 +55,8 @@ export default function MessagesPage() {
   const [partnerTyping, setPartnerTyping] = useState(false);
   const [attachOpen, setAttachOpen] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [sendingLocation, setSendingLocation] = useState(false);
+  const [emojiOpen, setEmojiOpen] = useState(false);
   const [contactPickerOpen, setContactPickerOpen] = useState(false);
   const [pickerContacts, setPickerContacts] = useState<any[]>([]);
   const [recording, setRecording] = useState(false);
@@ -260,6 +263,30 @@ export default function MessagesPage() {
   const onPickImage = (f: File | null) => { if (f) sendMedia(f, "IMAGE"); };
   const onPickFile = (f: File | null) => { if (f) sendMedia(f, "FILE"); };
 
+  // Konum paylaş — cari GPS mövqeyini mesaj kimi göndər.
+  const sendLocation = () => {
+    setAttachOpen(false);
+    if (!active) { toast("Söhbət seçilməyib", "error"); return; }
+    if (typeof navigator === "undefined" || !navigator.geolocation) { toast("Cihaz konumu dəstəkləmir", "error"); return; }
+    setSendingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const body: any = { ...sendTarget(), latitude: pos.coords.latitude, longitude: pos.coords.longitude, replyToId: replyTo?.id };
+          const res = await fetch(`${API}/messages/location`, { method: "POST", headers, body: JSON.stringify(body) });
+          const d = await res.json().catch(() => ({}));
+          if (res.ok && d.success) { setMessages((prev) => prev.some((x) => x.id === d.message.id) ? prev : [...prev, d.message]); setReplyTo(null); scrollToEnd(); fetchAll(); }
+          else toast(d.message || `Göndərilmədi (${res.status})`, "error");
+        } catch { toast("Konum göndərilmədi", "error"); } finally { setSendingLocation(false); }
+      },
+      () => { setSendingLocation(false); toast("Konum icazəsi verilmədi", "error"); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  // Emoji seçimi — mesaj mətninə əlavə edir.
+  const addEmoji = (e: string) => { setNewMsg((m) => m + e); inputRef.current?.focus(); };
+
   const openContactPicker = () => {
     setAttachOpen(false);
     fetch(`${API}/me/contacts`, { headers }).then((r) => r.json())
@@ -461,6 +488,7 @@ export default function MessagesPage() {
       case "AUDIO": return "🎤 Səs mesajı";
       case "FILE": return `📄 ${m.mediaName || "Fayl"}`;
       case "CONTACT": return `👤 ${m.mediaName || "Kontakt"}`;
+      case "LOCATION": return "📍 Konum";
       default: return m.content?.slice(0, 40) || "";
     }
   };
@@ -507,6 +535,21 @@ export default function MessagesPage() {
           </div>
         </div>
       );
+      case "LOCATION": {
+        const lat = msg.latitude, lng = msg.longitude;
+        const mapsHref = `https://www.google.com/maps?q=${lat},${lng}`;
+        return (
+          <a href={mapsHref} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="flex items-center gap-3 w-[230px] max-w-full">
+            <span className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center text-2xl shrink-0">📍</span>
+            <span className="min-w-0">
+              <span className="block font-semibold">Paylaşılan konum</span>
+              <span className="block text-[11px] opacity-80 underline">Xəritədə aç</span>
+              {msg.content ? <span className="block text-[11px] opacity-80 truncate">{msg.content}</span>
+                : <span className="block text-[10px] opacity-70">{Number(lat).toFixed(5)}, {Number(lng).toFixed(5)}</span>}
+            </span>
+          </a>
+        );
+      }
       default: return <p>{msg.content}</p>;
     }
   };
@@ -657,7 +700,19 @@ export default function MessagesPage() {
                         <button onClick={() => imageInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">🖼️ Şəkil</button>
                         <button onClick={openVideoRec} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">🎥 Video mesaj</button>
                         <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">📄 Sənəd / Fayl</button>
+                        <button onClick={sendLocation} disabled={sendingLocation} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap disabled:opacity-50">📍 {sendingLocation ? "Konum alınır…" : "Konum"}</button>
                         <button onClick={openContactPicker} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">👤 Kontakt</button>
+                      </div>
+                    )}
+                    {/* Emoji seçici */}
+                    <button onClick={() => setEmojiOpen((v) => !v)} title="Emoji" className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center shrink-0 text-muted hover:text-orange-500 transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15.182 15.182a4.5 4.5 0 01-6.364 0M9 9.75h.008v.008H9V9.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm5.625 0h.008v.008H15V9.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </button>
+                    {emojiOpen && (
+                      <div className="absolute bottom-12 right-12 bg-card border border-card-border rounded-xl p-2 z-20 shadow-lg grid grid-cols-8 gap-0.5 w-[280px] max-h-52 overflow-y-auto">
+                        {CHAT_EMOJIS.map((e) => (
+                          <button key={e} onClick={() => addEmoji(e)} className="w-8 h-8 rounded-lg hover:bg-input-bg text-xl flex items-center justify-center">{e}</button>
+                        ))}
                       </div>
                     )}
                     <input ref={inputRef} value={newMsg} onChange={(e) => { setNewMsg(e.target.value); emitTyping(); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder={t("messagePlaceholder")} className="flex-1 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
@@ -666,7 +721,9 @@ export default function MessagesPage() {
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
                       </button>
                     ) : (
-                      <button onClick={startVoice} title="Səs mesajı" className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center text-lg shrink-0">🎤</button>
+                      <button onClick={startVoice} title="Səs mesajı" className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center shrink-0" aria-label="Səs mesajı">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 15a3.5 3.5 0 003.5-3.5v-5a3.5 3.5 0 10-7 0v5A3.5 3.5 0 0012 15z" /><path fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M19 11.5a7 7 0 01-14 0M12 18.5V22M8.5 22h7" /></svg>
+                      </button>
                     )}
                     <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { onPickImage(e.target.files?.[0] || null); e.target.value = ""; }} />
                     <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => { onPickFile(e.target.files?.[0] || null); e.target.value = ""; }} />
