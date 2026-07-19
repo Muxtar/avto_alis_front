@@ -14,6 +14,7 @@ import { useCall } from "@/lib/CallContext";
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const CHAT_EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🥳","😉","🙂","😇","🤗","🤔","😴","😭","😡","😱","😳","🥰","😜","🤪","😏","🙄","😤","😢","😅","😬","🤯","🤒","🤕","👍","👎","👌","🙏","👏","🙌","💪","🤝","👋","✌️","🤟","🫶","❤️","🧡","💛","💚","💙","💜","🖤","🔥","✨","🎉","🎊","💯","⭐","🌟","💥","💐","🌹","☀️","🌙","⚡","☕","🍰","🍕","🎁","💰","✅","❌","❗","❓","💬","📍","🚗","⚽"];
 const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+const onlyDigits = (s?: string) => (s || "").replace(/\D/g, "");
 
 // Modalları birbaşa <body>-yə render et — mobil tam-ekran chat overlay-inin (fixed, z-70)
 // altında qalmasınlar. Bu, stacking-context problemini birdəfəlik həll edir.
@@ -79,6 +80,7 @@ export default function MessagesPage() {
   const [groupName, setGroupName] = useState("");
   const [groupSelected, setGroupSelected] = useState<number[]>([]);
   const [groupContacts, setGroupContacts] = useState<any[]>([]);
+  const [contactDigits, setContactDigits] = useState<Set<string>>(new Set()); // öz kontaktlarımın nömrələri (rəqəmlər)
   const [infoOpen, setInfoOpen] = useState(false);
   const [groupInfo, setGroupInfo] = useState<any>(null);
   const [addMemberMode, setAddMemberMode] = useState(false);
@@ -165,6 +167,11 @@ export default function MessagesPage() {
     if (authLoading) return;
     if (!isLoggedIn) { router.push("/"); return; }
     fetchAll();
+    // Öz kontaktlarımın nömrələrini yüklə — chat-də "kontakta əlavə et" düyməsini
+    // yalnız kontaktda OLMAYAN şəxsdə göstərmək üçün.
+    fetch(`${API}/me/contacts`, { headers }).then((r) => r.json())
+      .then((d) => { const list = d.contacts || (Array.isArray(d) ? d : []); setContactDigits(new Set(list.map((c: any) => onlyDigits(c.phone)).filter(Boolean))); })
+      .catch(() => {});
   }, [isLoggedIn, authLoading]);
 
   // ── Real-time socket ──
@@ -465,6 +472,18 @@ export default function MessagesPage() {
       } else toast(t('error'), 'error');
     } catch { toast(t('error'), 'error'); }
   };
+  // Söhbətdəki şəxsi kontaktlarıma əlavə et (kontaktda deyilsə).
+  const saveContact = async () => {
+    if (!active || active.type !== "direct" || !active.phone) return;
+    try {
+      const res = await fetch(`${API}/me/contacts`, { method: "POST", headers, body: JSON.stringify({ name: active.name, phone: active.phone }) });
+      const d = await res.json();
+      if (res.ok && d.success) {
+        setContactDigits((s) => new Set(s).add(onlyDigits(active.phone)));
+        toast("Kontaktlara əlavə edildi ✓", "success");
+      } else toast(d.message || t('error'), 'error');
+    } catch { toast(t('error'), 'error'); }
+  };
   const reactToMessage = async (msg: any, emoji: string) => {
     setSelectedMsg(null);
     try {
@@ -720,6 +739,11 @@ export default function MessagesPage() {
                 </div>
                 {active.type === "direct" && (
                   <div className="flex items-center gap-1.5 shrink-0">
+                    {active.phone && onlyDigits(active.phone).length >= 7 && !contactDigits.has(onlyDigits(active.phone)) && (
+                      <button onClick={saveContact} title="Kontaktlara əlavə et" className="w-9 h-9 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center hover:bg-orange-500/20 transition-colors">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7.5v5m2.5-2.5h-5M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.5a7.5 7.5 0 0115 0v.75H4.5v-.75z" /></svg>
+                      </button>
+                    )}
                     <button onClick={() => startCall({ id: active.id, name: active.name }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors">📞</button>
                     <button onClick={() => startCall({ id: active.id, name: active.name }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors">🎥</button>
                   </div>
