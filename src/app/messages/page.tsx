@@ -74,6 +74,7 @@ export default function MessagesPage() {
   const [addMemberMode, setAddMemberMode] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -103,7 +104,11 @@ export default function MessagesPage() {
     videoStreamRef.current?.getTracks().forEach((t) => t.stop());
   }, []);
 
-  const scrollToEnd = (smooth = true) => setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: smooth ? "smooth" : "auto" }), 60);
+  // Yalnız mesaj siyahısını aşağı sürüşdür — bütün səhifəni yox (əks halda ekran aşağı tullanır).
+  const scrollToEnd = (smooth = true) => setTimeout(() => {
+    const el = listRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
+  }, 60);
 
   useEffect(() => {
     if (authLoading) return;
@@ -567,7 +572,7 @@ export default function MessagesPage() {
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
       <h1 className="text-xl sm:text-2xl font-bold mb-4">{t("messages")}</h1>
 
-      <div className="surface overflow-hidden flex" style={{ height: "calc(100vh - 180px)", minHeight: 400 }}>
+      <div className="surface overflow-hidden flex" style={{ height: "calc(100dvh - 180px)", minHeight: 400 }}>
         {/* Sol panel */}
         <div className={`${active ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-80 border-r border-card-border shrink-0`}>
           <div className="p-2 border-b border-card-border">
@@ -615,7 +620,7 @@ export default function MessagesPage() {
         </div>
 
         {/* Chat sahəsi */}
-        <div className={`${active ? 'flex' : 'hidden sm:flex'} flex-col flex-1`}>
+        <div className={`${active ? 'flex' : 'hidden sm:flex'} flex-col flex-1 min-w-0 min-h-0`}>
           {active ? (
             <>
               <div className="flex items-center gap-3 p-3 border-b border-card-border">
@@ -641,7 +646,7 @@ export default function MessagesPage() {
                 )}
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
                 {hasMore && (
                   <div className="text-center py-2"><button onClick={loadOlderMessages} disabled={loadingMore} className="text-xs text-orange-500 hover:text-orange-400 disabled:opacity-50">{loadingMore ? "..." : "Daha köhnə mesajları yüklə"}</button></div>
                 )}
@@ -707,7 +712,7 @@ export default function MessagesPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex gap-2 items-center relative">
+                  <div className="flex gap-2 items-center relative min-w-0">
                     <button onClick={() => setAttachOpen((v) => !v)} title="Əlavə et" className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center text-lg shrink-0">📎</button>
                     {attachOpen && (
                       <div className="absolute bottom-12 left-0 bg-card border border-card-border rounded-xl p-1.5 space-y-0.5 z-20 shadow-lg">
@@ -723,13 +728,13 @@ export default function MessagesPage() {
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15.182 15.182a4.5 4.5 0 01-6.364 0M9 9.75h.008v.008H9V9.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm5.625 0h.008v.008H15V9.75zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zM21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </button>
                     {emojiOpen && (
-                      <div className="absolute bottom-12 right-12 bg-card border border-card-border rounded-xl p-2 z-20 shadow-lg grid grid-cols-8 gap-0.5 w-[280px] max-h-52 overflow-y-auto">
+                      <div className="absolute bottom-12 right-2 bg-card border border-card-border rounded-xl p-2 z-20 shadow-lg grid grid-cols-8 gap-0.5 w-[280px] max-w-[calc(100vw-2rem)] max-h-52 overflow-y-auto">
                         {CHAT_EMOJIS.map((e) => (
                           <button key={e} onClick={() => addEmoji(e)} className="w-8 h-8 rounded-lg hover:bg-input-bg text-xl flex items-center justify-center">{e}</button>
                         ))}
                       </div>
                     )}
-                    <input ref={inputRef} value={newMsg} onChange={(e) => { setNewMsg(e.target.value); emitTyping(); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder={t("messagePlaceholder")} className="flex-1 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
+                    <input ref={inputRef} value={newMsg} onChange={(e) => { setNewMsg(e.target.value); emitTyping(); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder={t("messagePlaceholder")} className="flex-1 min-w-0 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
                     {newMsg.trim() || editingMsg ? (
                       <button onClick={handleSend} disabled={sending} className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center shrink-0 disabled:opacity-50">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
