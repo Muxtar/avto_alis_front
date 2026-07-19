@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import ShareButton from "@/components/ShareButton";
+import QRShare from "@/components/QRShare";
 import ReviewsSection from "@/components/ReviewsSection";
 import { API } from "@/lib/api";
 
@@ -89,7 +90,10 @@ export default function ObjectPage() {
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2 mb-1">
               <h1 className="text-xl sm:text-2xl font-bold">{object.name}</h1>
-              <ShareButton title={object.name} text={`${object.name} — tradixai`} compact className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+              <div className="flex items-center gap-2 shrink-0">
+                <ShareButton title={object.name} text={`${object.name} — tradixai`} compact className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+                <QRShare path={`/object/${params.id}`} title={object.name} subtitle={`Obyekt №${object.id}`} compact className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+              </div>
             </div>
             {object.business?.name && (
               <p className="text-sm text-muted mb-2">Biznes: <span className="font-medium text-foreground">{object.business.name}</span></p>

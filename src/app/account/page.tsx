@@ -9,6 +9,7 @@ import { CATEGORIES, getSubs, buildCat, parseCat, isServiceCat, getListingFields
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
 import LocationPicker from "@/components/LocationPickerWrapper";
+import QRShare from "@/components/QRShare";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -327,9 +328,14 @@ function AccountPageInner() {
     <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold">{t("myListings")}</h1>
-          <p className="text-muted text-sm">{user?.name} - {user?.phone}</p>
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold">{t("myListings")}</h1>
+            <p className="text-muted text-sm truncate">{user?.name} - {user?.phone}</p>
+          </div>
+          {user?.id && (
+            <QRShare path={`/seller/${user.id}`} title={user.name} subtitle="Profil" compact className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+          )}
         </div>
         {!showForm && canAddListing && (
           <button onClick={() => { resetForm(); setShowForm(true); }}

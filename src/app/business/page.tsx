@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import ProfessionPicker from "@/components/ProfessionPicker";
+import QRShare from "@/components/QRShare";
 
 // Obyektin fəaliyyət sahələri — 16 əsas kateqoriya.
 const ACTIVITY_AREAS = [
@@ -383,6 +384,9 @@ export default function BusinessPage() {
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
+                  {b.status === "APPROVED" && b.isActive && (
+                    <QRShare path={`/business/${b.id}`} title={b.name} subtitle={`Biznes №${b.id}`} buttonLabel="QR" className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-input-bg border border-input-border text-xs font-medium hover:border-orange-500/50 transition-all" />
+                  )}
                   <label className="flex items-center gap-1 text-xs cursor-pointer">
                     <input type="checkbox" checked={b.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/businesses/${b.id}/active`, "PATCH", { isActive: e.target.checked }))()} />
                     {t("bizActive") || "Aktiv"}
@@ -443,6 +447,7 @@ export default function BusinessPage() {
                           <div className="flex items-center justify-between gap-2">
                             <p className="font-semibold truncate">{o.name} <span className="text-[10px] text-muted font-normal">№{o.id}</span></p>
                             <div className="flex items-center gap-2 shrink-0">
+                              <QRShare path={`/object/${o.id}`} title={o.name} subtitle={`Obyekt №${o.id}`} compact className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted hover:text-orange-500 transition-colors" />
                               <button onClick={() => { setEditingObjId(o.id); setObjEditInput({ name: o.name, phone: o.phone || "", address: o.address, city: o.city || "", activityAreas: o.activityAreas || [], latitude: o.latitude ?? null, longitude: o.longitude ?? null }); }} className="text-orange-500 text-sm" title="Redaktə et">✎</button>
                               <label className="text-[11px] flex items-center gap-1"><input type="checkbox" checked={o.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/objects/${o.id}/active`, "PATCH", { isActive: e.target.checked }))()} />{t("bizActive") || "Aktiv"}</label>
                               <button onClick={wrap(() => jsonReq(`${API}/me/objects/${o.id}`, "DELETE"))} className="text-red-500 text-sm" title="Sil">✕</button>
