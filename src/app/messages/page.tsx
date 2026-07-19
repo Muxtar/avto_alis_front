@@ -432,6 +432,29 @@ export default function MessagesPage() {
       else toast(t('error'), 'error');
     } catch { toast(t('error'), 'error'); }
   };
+  // Yalnız məndə sil — mesaj yalnız bu istifadəçidən itir (qarşı tərəfdə qalır).
+  const hideMessage = async (msg: any) => {
+    setSelectedMsg(null);
+    try {
+      const res = await fetch(`${API}/messages/${msg.id}/hide`, { method: "POST", headers });
+      if (res.ok) setMessages((prev) => prev.filter((x) => x.id !== msg.id));
+      else toast(t('error'), 'error');
+    } catch { toast(t('error'), 'error'); }
+  };
+  // Söhbəti sil (məndə) — şəxs/qrup siyahıdan çıxır, bütün mesajlar məndə gizlənir.
+  const deleteThread = async (chat: any) => {
+    if (!confirm(`"${chat.name}" ilə söhbət sizdə silinsin? (Qarşı tərəfdə qalacaq)`)) return;
+    try {
+      const url = chat.type === "group" ? `${API}/messages/group/${chat.id}` : `${API}/messages/thread/${chat.id}`;
+      const res = await fetch(url, { method: "DELETE", headers });
+      if (res.ok) {
+        if (chat.type === "group") setGroups((prev) => prev.filter((g) => g.id !== chat.id));
+        else setDirectConvs((prev) => prev.filter((c) => c.partner.id !== chat.id));
+        if (active && active.type === chat.type && active.id === chat.id) { setActive(null); setMessages([]); }
+        toast("Söhbət silindi", "success");
+      } else toast(t('error'), 'error');
+    } catch { toast(t('error'), 'error'); }
+  };
   const reactToMessage = async (msg: any, emoji: string) => {
     setSelectedMsg(null);
     try {
@@ -640,8 +663,8 @@ export default function MessagesPage() {
               <div className="text-center py-10 px-4"><p className="text-muted text-sm">{t("noMessages")}</p></div>
             ) : (
               chatList.map((chat) => (
-                <button key={`${chat.type}-${chat.id}`} onClick={() => openChat(chat)}
-                  className={`w-full flex items-center gap-3 p-3 hover:bg-input-bg/50 transition-colors text-left border-b border-card-border/30 ${active?.type === chat.type && active?.id === chat.id ? "bg-input-bg" : ""}`}>
+                <div key={`${chat.type}-${chat.id}`} role="button" tabIndex={0} onClick={() => openChat(chat)}
+                  className={`group w-full flex items-center gap-3 p-3 hover:bg-input-bg/50 transition-colors text-left border-b border-card-border/30 cursor-pointer ${active?.type === chat.type && active?.id === chat.id ? "bg-input-bg" : ""}`}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 ${chat.type === "group" ? "bg-gradient-to-br from-teal-500 to-cyan-600" : `bg-gradient-to-br ${typeColor(chat.partnerType)}`}`}>
                     {chat.type === "group" ? "👥" : initials(chat.name)}
                   </div>
@@ -657,7 +680,9 @@ export default function MessagesPage() {
                       {chat.type === "group" && chat.lastMessage?.sender ? `${chat.lastMessage.sender.name?.split(" ")[0]}: ` : ""}{previewText(chat.lastMessage) || (chat.type === "group" ? `${chat.memberCount} üzv` : "")}
                     </p>
                   </div>
-                </button>
+                  {/* Söhbəti sil (məndə) */}
+                  <button onClick={(e) => { e.stopPropagation(); deleteThread(chat); }} title="Söhbəti sil" className="shrink-0 w-8 h-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">🗑</button>
+                </div>
               ))
             )}
           </div>
@@ -804,13 +829,14 @@ export default function MessagesPage() {
 
       {/* Mesaj əməliyyat menyusu */}
       {selectedMsg && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setSelectedMsg(null)}>
+        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40" onClick={() => setSelectedMsg(null)}>
           <div className="bg-card border border-card-border rounded-t-2xl sm:rounded-2xl w-full sm:w-80 p-3 space-y-2" onClick={(e) => e.stopPropagation()}>
             <div className="flex justify-around py-1">{QUICK_REACTIONS.map((emoji) => (<button key={emoji} onClick={() => reactToMessage(selectedMsg, emoji)} className="text-2xl hover:scale-125 transition-transform">{emoji}</button>))}</div>
             <div className="border-t border-card-border pt-2 space-y-1">
               <button onClick={() => startReply(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg text-sm">↩︎ Cavabla</button>
               {canEdit(selectedMsg) && <button onClick={() => startEdit(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg text-sm">✏️ Redaktə et</button>}
-              {selectedMsg.senderId === user?.id && <button onClick={() => deleteMessage(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-red-500 text-sm">🗑 Hamı üçün sil</button>}
+              <button onClick={() => hideMessage(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-red-500 text-sm">🗑 Məndə sil</button>
+              {selectedMsg.senderId === user?.id && !selectedMsg.deletedAt && <button onClick={() => deleteMessage(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-red-500 text-sm">🗑 Hamı üçün sil</button>}
               <button onClick={() => setSelectedMsg(null)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg text-sm text-muted">✕ Bağla</button>
             </div>
           </div>
@@ -819,7 +845,7 @@ export default function MessagesPage() {
 
       {/* Kontakt seçici */}
       {contactPickerOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setContactPickerOpen(false)}>
+        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40" onClick={() => setContactPickerOpen(false)}>
           <div className="bg-card border border-card-border rounded-t-2xl sm:rounded-2xl w-full sm:w-96 max-h-[70vh] overflow-y-auto p-3" onClick={(e) => e.stopPropagation()}>
             <p className="font-semibold mb-2">Kontakt paylaş</p>
             {pickerContacts.length === 0 ? <p className="text-muted text-sm py-6 text-center">Kontakt yoxdur</p> : pickerContacts.map((c) => (
@@ -834,7 +860,7 @@ export default function MessagesPage() {
 
       {/* Yeni qrup */}
       {groupModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setGroupModalOpen(false)}>
+        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40" onClick={() => setGroupModalOpen(false)}>
           <div className="bg-card border border-card-border rounded-t-2xl sm:rounded-2xl w-full sm:w-96 max-h-[80vh] overflow-y-auto p-4" onClick={(e) => e.stopPropagation()}>
             <p className="font-semibold mb-3">➕ Yeni qrup</p>
             <input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Qrup adı" className="w-full px-3 py-2 mb-3 bg-input-bg border border-input-border rounded-xl text-sm" />
@@ -858,7 +884,7 @@ export default function MessagesPage() {
 
       {/* Qrup məlumatı */}
       {infoOpen && groupInfo && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40" onClick={() => setInfoOpen(false)}>
+        <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40" onClick={() => setInfoOpen(false)}>
           <div className="bg-card border border-card-border rounded-t-2xl sm:rounded-2xl w-full sm:w-96 max-h-[80vh] overflow-y-auto p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-3">
               <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center text-lg shrink-0">👥</div>
@@ -907,7 +933,7 @@ export default function MessagesPage() {
 
       {/* Video mesaj yazıcı */}
       {videoRecOpen && (
-        <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[90] bg-black/80 flex items-center justify-center p-4">
           <div className="bg-card border border-card-border rounded-2xl w-full max-w-sm overflow-hidden">
             <div className="relative bg-black aspect-video">
               <video ref={videoPreviewRef} autoPlay playsInline muted className="w-full h-full object-cover" />
