@@ -201,6 +201,9 @@ export default function CartPage() {
   const cartWeight = selItems.reduce((s, i) => s + i.quantity * (i.listing?.weightKg || 0), 0);
   const yangoBlocked = cartWeight > 50; // 50 kq-dan ağır — kuryer mümkün deyil
   const allSelfAllowed = selItems.length > 0 && selItems.every((i) => i.listing?.allowSelfDelivery);
+  // Seçilmişlərdən biri "yalnız götürmə" isə çatdırılma mümkün deyil — alıcı özü götürməlidir.
+  const anyPickupOnly = selItems.some((i) => (i.listing as any)?.pickupOnly);
+  const pickupOnlyTitle = selItems.find((i) => (i.listing as any)?.pickupOnly)?.listing?.title;
   // Yango çatdırılma haqqı yalnız çatdırılma + kuryer + limit daxilində cəmə əlavə olunur.
   const deliveryFee = deliveryType === "DELIVERY" && deliveryMethod === "COURIER" && !yangoBlocked && yangoFee ? yangoFee : 0;
   const finalTotal = Math.max(0, selTotal - promoDiscount - pointsDiscount) + deliveryFee;
@@ -210,6 +213,12 @@ export default function CartPage() {
     if (yangoBlocked && deliveryType === "DELIVERY" && deliveryMethod === "COURIER" && allSelfAllowed) setDeliveryMethod("SELF");
     // eslint-disable-next-line
   }, [yangoBlocked, deliveryType]);
+
+  // "Yalnız götürmə" məhsulu seçiləndə çatdırılmanı bağla — məcburi götürmə.
+  useEffect(() => {
+    if (anyPickupOnly && deliveryType === "DELIVERY") setDeliveryType("PICKUP");
+    // eslint-disable-next-line
+  }, [anyPickupOnly]);
 
   // Yango qiymət təxmini — konum/metod dəyişəndə yenilənir (limit daxilində).
   useEffect(() => {
@@ -450,13 +459,16 @@ export default function CartPage() {
                   <div>
                     <label className="block text-xs text-muted mb-1">{t("deliveryType")}</label>
                     <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => setDeliveryType("DELIVERY")} className={`py-2 rounded-lg text-xs font-medium ${deliveryType === "DELIVERY" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>
+                      <button disabled={anyPickupOnly} onClick={() => setDeliveryType("DELIVERY")} className={`py-2 rounded-lg text-xs font-medium ${deliveryType === "DELIVERY" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'} ${anyPickupOnly ? 'opacity-40 cursor-not-allowed' : ''}`}>
                         🚚 {t("delivery")}
                       </button>
                       <button onClick={() => setDeliveryType("PICKUP")} className={`py-2 rounded-lg text-xs font-medium ${deliveryType === "PICKUP" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>
                         🏪 {t("pickup")}
                       </button>
                     </div>
+                    {anyPickupOnly && (
+                      <p className="text-[11px] text-orange-500 mt-1.5">🏠 «{pickupOnlyTitle}» yalnız götürmə ilə satılır — çatdırılma mümkün deyil, alıcı özü götürməlidir.</p>
+                    )}
                   </div>
 
                   {/* Saved Addresses */}

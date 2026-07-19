@@ -45,6 +45,7 @@ function AccountPageInner() {
   const [forRent, setForRent] = useState(false); // satış yox, icarə/kirayə
   const [allowSelfDelivery, setAllowSelfDelivery] = useState(false); // satıcı özü də çatdıra bilər (Yango + götürmə həmişə var)
   const [selfDeliveryNote, setSelfDeliveryNote] = useState(""); // satıcı çatdırma qeydi/qiyməti
+  const [pickupOnly, setPickupOnly] = useState(false); // yalnız alıcı gəlib götürsün (Yango + satıcı çatdırması bağlı)
   const [weightKg, setWeightKg] = useState(""); // məhsulun çəkisi (kq) — Yango 50 kq limiti üçün
   const [bookable, setBookable] = useState(false); // bron/rezervasiya açıq
   const [bookingType, setBookingType] = useState<"RESERVATION" | "STAY">("RESERVATION");
@@ -209,7 +210,7 @@ function AccountPageInner() {
         }
       }
       fd.append("listingMode", listingMode || "novoen");
-      if (listingMode === "voen") { fd.append("allowSelfDelivery", String(allowSelfDelivery)); if (allowSelfDelivery) fd.append("selfDeliveryNote", selfDeliveryNote); }
+      if (listingMode === "voen") { fd.append("pickupOnly", String(pickupOnly)); fd.append("allowSelfDelivery", String(!pickupOnly && allowSelfDelivery)); if (!pickupOnly && allowSelfDelivery) fd.append("selfDeliveryNote", selfDeliveryNote); }
       if (weightKg) fd.append("weightKg", weightKg);
       // Biznes obyekti YALNIZ VÖEN-li elanda göndərilir — VÖEN-siz (fərdi) elan biznesə bağlanmır.
       if (listingMode === "voen" && selectedObjectId) fd.append("businessObjectId", selectedObjectId);
@@ -269,6 +270,7 @@ function AccountPageInner() {
     setListingMode(listing.businessId ? "voen" : "novoen");
     setAllowSelfDelivery(!!listing.allowSelfDelivery);
     setSelfDeliveryNote(listing.selfDeliveryNote || "");
+    setPickupOnly(!!listing.pickupOnly);
     setWeightKg(listing.weightKg != null ? String(listing.weightKg) : "");
     setListingKind(listing.type === "SERVICE" ? "service" : "product-form");
     setSelectedObjectId(listing.businessObjectId ? String(listing.businessObjectId) : "");
@@ -622,6 +624,18 @@ function AccountPageInner() {
               <div>
                 <label className="block text-sm font-medium mb-1.5">Çatdırılma</label>
                 <div className="px-4 py-3 rounded-xl border border-input-border bg-input-bg/50 space-y-2 text-sm">
+                  {/* Yalnız götürmə — Yango + satıcı çatdırması bağlanır (məs. avtomobil) */}
+                  <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${pickupOnly ? "border-orange-500/50 bg-orange-500/5" : "border-input-border bg-input-bg"}`}>
+                    <input type="checkbox" checked={pickupOnly} onChange={(e) => setPickupOnly(e.target.checked)} className="w-4 h-4 accent-orange-500" />
+                    <span>
+                      <span className="block text-sm font-medium">🏠 Yalnız alıcı gəlib götürsün</span>
+                      <span className="block text-[11px] text-muted">Yango kuryer və satıcı çatdırması bağlanır — məhsulu yalnız alıcı özü götürür (məs. avtomobil, iri əşya)</span>
+                    </span>
+                  </label>
+                  {pickupOnly ? (
+                    <p className="text-[11px] text-muted px-1">🏠 Bu məhsul yalnız <b>götürmə</b> ilə satılır. Alıcı sizinlə razılaşıb məhsulu özü götürür — heç bir kuryer yoxdur.</p>
+                  ) : (
+                  <>
                   <div>
                     <label className="block text-xs font-medium text-muted mb-1">Məhsulun çəkisi (kq) — 1 ədəd</label>
                     <input type="number" min={0} step="0.1" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="məs. 2.5" className={inputCls} />
@@ -661,6 +675,8 @@ function AccountPageInner() {
                         placeholder="məs. Şəhər içi 10 AZN, şəhərdən kənar 20 AZN. 1-2 gün ərzində çatdırıram." className={`${inputCls} resize-none`} />
                       <p className="text-[10px] text-muted mt-1">Alıcı «satıcı özü çatdırır» seçəndə bu qeyd ona göstərilir.</p>
                     </div>
+                  )}
+                  </>
                   )}
                 </div>
               </div>
