@@ -15,6 +15,16 @@ const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const CHAT_EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🥳","😉","🙂","😇","🤗","🤔","😴","😭","😡","😱","😳","🥰","😜","🤪","😏","🙄","😤","😢","😅","😬","🤯","🤒","🤕","👍","👎","👌","🙏","👏","🙌","💪","🤝","👋","✌️","🤟","🫶","❤️","🧡","💛","💚","💙","💜","🖤","🔥","✨","🎉","🎊","💯","⭐","🌟","💥","💐","🌹","☀️","🌙","⚡","☕","🍰","🍕","🎁","💰","✅","❌","❗","❓","💬","📍","🚗","⚽"];
 const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const onlyDigits = (s?: string) => (s || "").replace(/\D/g, "");
+// Mətndəki linkləri klikləyilə bilən et — paylaşılan məhsul/profil linkləri açılsın.
+function linkify(text: string): React.ReactNode {
+  if (!text) return text;
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return text.split(/(https?:\/\/[^\s]+)/g).map((p, i) => {
+    if (!/^https?:\/\//.test(p)) return <span key={i}>{p}</span>;
+    const internal = origin && p.startsWith(origin);
+    return <a key={i} href={p} onClick={(e) => e.stopPropagation()} {...(internal ? {} : { target: "_blank", rel: "noreferrer" })} className="underline break-all font-medium">{p}</a>;
+  });
+}
 
 // Modalları birbaşa <body>-yə render et — mobil tam-ekran chat overlay-inin (fixed, z-70)
 // altında qalmasınlar. Bu, stacking-context problemini birdəfəlik həll edir.
@@ -658,7 +668,7 @@ export default function MessagesPage() {
           </a>
         );
       }
-      default: return <p>{msg.content}</p>;
+      default: return <p className="whitespace-pre-wrap break-words">{linkify(msg.content)}</p>;
     }
   };
 

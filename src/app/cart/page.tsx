@@ -164,15 +164,22 @@ export default function CartPage() {
 
   const updateQty = async (id: number, qty: number) => {
     if (qty < 1) return;
-    await fetch(`${API}/cart/item/${id}`, { method: "PUT", headers, body: JSON.stringify({ quantity: qty }) });
-    fetchCart();
-    refreshCart();
+    // Optimistik yeniləmə — səhifə yenilənmədən (spinner göstərmədən) dərhal dəyişir.
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, quantity: qty } : it)));
+    try {
+      await fetch(`${API}/cart/item/${id}`, { method: "PUT", headers, body: JSON.stringify({ quantity: qty }) });
+      refreshCart();
+    } catch { toast(t('error'), 'error'); fetchCart(); }
   };
 
   const removeItem = async (id: number) => {
-    await fetch(`${API}/cart/item/${id}`, { method: "DELETE", headers });
-    fetchCart();
-    refreshCart();
+    // Optimistik silmə — dərhal yox olur, tam yenilənmə yoxdur.
+    setItems((prev) => prev.filter((it) => it.id !== id));
+    setSelected((prev) => { const n = new Set(prev); n.delete(id); return n; });
+    try {
+      await fetch(`${API}/cart/item/${id}`, { method: "DELETE", headers });
+      refreshCart();
+    } catch { toast(t('error'), 'error'); fetchCart(); }
   };
 
   const validatePromo = async () => {

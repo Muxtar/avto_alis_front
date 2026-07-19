@@ -536,7 +536,7 @@ export default function ListingDetailPage() {
             </div>
             <div className="flex items-start justify-between gap-2 mb-2">
               <h1 className="text-xl sm:text-2xl font-bold">{listing.title}</h1>
-              <ShareButton title={listing.title} text={`${listing.title} — tradixai`} compact className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+              <ShareButton title={listing.title} text={`${listing.title} — tradixai`} path={`/marketplace/${listing.id}`} listingId={listing.id} compact className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
             </div>
             <div className="flex items-baseline gap-1.5 mb-3">
               <span className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
