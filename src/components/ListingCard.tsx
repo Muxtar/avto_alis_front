@@ -33,6 +33,7 @@ interface Listing {
   barter?: boolean;
   forRent?: boolean;
   user: { id?: number; name: string; avgRating?: number | null; ratingCount?: number };
+  businessObject?: { id: number; name: string } | null;
   _count?: { comments: number; favorites?: number };
 }
 
@@ -272,19 +273,31 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
           {/* Seller + Add to cart */}
           <div className="flex items-center justify-between gap-2">
-            <span
-              onClick={(e) => { if (listing.user.id) { e.preventDefault(); e.stopPropagation(); window.location.href = `/seller/${listing.user.id}`; } }}
-              className="text-muted-foreground text-xs flex items-center gap-1 hover:text-orange-500 transition-colors cursor-pointer truncate"
-            >
-              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-              <span className="truncate">{listing.user.name}</span>
-              {listing.user.avgRating && (
-                <span className="flex items-center gap-0.5 text-amber-400 shrink-0 ml-1">
-                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.3L5.8 21l1.6-7L2 9.2l7.2-.6L12 2l2.8 6.6 7.2.6-5.4 4.8 1.6 7z" /></svg>
-                  <span className="text-[10px]">{listing.user.avgRating.toFixed(1)}</span>
-                </span>
-              )}
-            </span>
+            {listing.businessObject ? (
+              /* VÖEN elan — məhsul obyektin adına satılır: şəxs yox, obyekt göstərilir */
+              <span
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/object/${listing.businessObject!.id}`; }}
+                className="text-muted-foreground text-xs flex items-center gap-1 hover:text-orange-500 transition-colors cursor-pointer truncate"
+              >
+                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5" /></svg>
+                <span className="truncate">{listing.businessObject.name}</span>
+                <span className="text-[10px] text-muted-foreground/70 shrink-0">№{listing.businessObject.id}</span>
+              </span>
+            ) : (
+              <span
+                onClick={(e) => { if (listing.user.id) { e.preventDefault(); e.stopPropagation(); window.location.href = `/seller/${listing.user.id}`; } }}
+                className="text-muted-foreground text-xs flex items-center gap-1 hover:text-orange-500 transition-colors cursor-pointer truncate"
+              >
+                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                <span className="truncate">{listing.user.name}</span>
+                {listing.user.avgRating && (
+                  <span className="flex items-center gap-0.5 text-amber-400 shrink-0 ml-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.3L5.8 21l1.6-7L2 9.2l7.2-.6L12 2l2.8 6.6 7.2.6-5.4 4.8 1.6 7z" /></svg>
+                    <span className="text-[10px]">{listing.user.avgRating.toFixed(1)}</span>
+                  </span>
+                )}
+              </span>
+            )}
             {canBuy && (
               <div className="flex items-center gap-1.5 shrink-0">
                 <button

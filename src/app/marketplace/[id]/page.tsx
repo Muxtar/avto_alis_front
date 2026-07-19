@@ -754,11 +754,11 @@ export default function ListingDetailPage() {
             {/* Mini-map: shows where the seller is located. Uses listing's own
                 lat/lng if set (e.g. workplace branch), otherwise falls back to
                 the seller's profile pin. */}
-            {(listing.user.latitude && listing.user.longitude) && (
+            {((listing.latitude && listing.longitude) || (listing.user.latitude && listing.user.longitude)) && (
               <div className="mb-4">
                 <OrderMap
-                  sellerLat={listing.user.latitude}
-                  sellerLng={listing.user.longitude}
+                  sellerLat={listing.latitude || listing.user.latitude}
+                  sellerLng={listing.longitude || listing.user.longitude}
                   sellerLabel={listing.user.name}
                   height="180px"
                 />

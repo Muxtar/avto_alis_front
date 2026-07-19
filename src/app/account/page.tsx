@@ -8,6 +8,7 @@ import { API, imgUrl } from "@/lib/api";
 import { CATEGORIES, getSubs, buildCat, parseCat, isServiceCat, getListingFields, getCategoryAttrs, getCat } from "@/lib/categories";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
+import LocationPicker from "@/components/LocationPickerWrapper";
 
 const MAX_IMAGES = 5;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -46,6 +47,9 @@ function AccountPageInner() {
   const [allowSelfDelivery, setAllowSelfDelivery] = useState(false); // satıcı özü də çatdıra bilər (Yango + götürmə həmişə var)
   const [selfDeliveryNote, setSelfDeliveryNote] = useState(""); // satıcı çatdırma qeydi/qiyməti
   const [pickupOnly, setPickupOnly] = useState(false); // yalnız alıcı gəlib götürsün (Yango + satıcı çatdırması bağlı)
+  // Elana özəl konum (VÖEN-siz elanlar üçün — hər elanın öz xəritə nöqtəsi ola bilər).
+  const [listingLat, setListingLat] = useState<number | null>(null);
+  const [listingLng, setListingLng] = useState<number | null>(null);
   const [weightKg, setWeightKg] = useState(""); // məhsulun çəkisi (kq) — Yango 50 kq limiti üçün
   const [bookable, setBookable] = useState(false); // bron/rezervasiya açıq
   const [bookingType, setBookingType] = useState<"RESERVATION" | "STAY">("RESERVATION");
@@ -131,6 +135,7 @@ function AccountPageInner() {
     setBarter(false); setForRent(false);
     setBookable(false); setBookingType("RESERVATION"); setMaxGuests(""); setOpenTime(""); setCloseTime("");
     setAllowSelfDelivery(false); setWeightKg("");
+    setPickupOnly(false); setListingLat(null); setListingLng(null);
     setAttrs({});
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
     setImages([]);
@@ -214,6 +219,11 @@ function AccountPageInner() {
       if (weightKg) fd.append("weightKg", weightKg);
       // Biznes obyekti YALNIZ VÖEN-li elanda göndərilir — VÖEN-siz (fərdi) elan biznesə bağlanmır.
       if (listingMode === "voen" && selectedObjectId) fd.append("businessObjectId", selectedObjectId);
+      // VÖEN-siz elanlarda elana özəl konum göndərilir (seçilibsə). VÖEN elanlarda konum obyektdən gəlir.
+      if (listingMode !== "voen") {
+        fd.append("latitude", listingLat != null ? String(listingLat) : "");
+        fd.append("longitude", listingLng != null ? String(listingLng) : "");
+      }
       images.forEach((file) => fd.append("images", file));
       if (editingId) {
         fd.append("existingImages", JSON.stringify(existingImages));
@@ -271,6 +281,8 @@ function AccountPageInner() {
     setAllowSelfDelivery(!!listing.allowSelfDelivery);
     setSelfDeliveryNote(listing.selfDeliveryNote || "");
     setPickupOnly(!!listing.pickupOnly);
+    setListingLat(listing.latitude != null ? Number(listing.latitude) : null);
+    setListingLng(listing.longitude != null ? Number(listing.longitude) : null);
     setWeightKg(listing.weightKg != null ? String(listing.weightKg) : "");
     setListingKind(listing.type === "SERVICE" ? "service" : "product-form");
     setSelectedObjectId(listing.businessObjectId ? String(listing.businessObjectId) : "");
@@ -530,6 +542,25 @@ function AccountPageInner() {
                 )}
               </div>
             </div>
+            {/* VÖEN-siz elanlar üçün elana özəl xəritə konumu — hər elanın öz yeri ola bilər (məs. ayrı-ayrı mənzil/ev) */}
+            {listingMode !== "voen" && (
+              <div>
+                <label className="block text-sm font-medium mb-1.5">📍 Bu elanın yeri (xəritədən)</label>
+                <p className="text-[11px] text-muted mb-1.5">Hər elan üçün ayrıca konum seçə bilərsiniz — məs. fərqli mənzil/ev satırsınızsa.</p>
+                <LocationPicker
+                  city={form.city}
+                  address={form.location}
+                  latitude={listingLat}
+                  longitude={listingLng}
+                  onChange={(n: any) => {
+                    setForm((f) => ({ ...f, city: n.city || f.city, location: n.address || f.location }));
+                    setListingLat(n.latitude ?? null);
+                    setListingLng(n.longitude ?? null);
+                  }}
+                  height="220px"
+                />
+              </div>
+            )}
             {(showField("condition") || showField("stock")) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {showField("condition") && (
