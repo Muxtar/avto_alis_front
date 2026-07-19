@@ -14,6 +14,7 @@ import IdentityVerify from "@/components/IdentityVerify";
 import ProfessionPicker from "@/components/ProfessionPicker";
 import EmploymentSection from "@/components/EmploymentSection";
 import ConnectedDevices from "@/components/ConnectedDevices";
+import QRShare from "@/components/QRShare";
 
 export default function ProfilePage() {
   const { t } = useLanguage();
@@ -868,10 +869,15 @@ export default function ProfilePage() {
                 {profile.bio && (
                   <p className="text-sm text-foreground/80 mb-3 whitespace-pre-line max-w-prose text-center sm:text-left">{profile.bio}</p>
                 )}
-                <button onClick={() => { setEditData({ name: profile.name, profession: profile.profession || "", bio: profile.bio || "", idNumber: profile.idNumber || "", birthDate: profile.birthDate ? String(profile.birthDate).slice(0, 10) : "", gender: profile.gender || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 mx-auto sm:mx-0 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                  {t("editProfile")}
-                </button>
+                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                  <button onClick={() => { setEditData({ name: profile.name, profession: profile.profession || "", bio: profile.bio || "", idNumber: profile.idNumber || "", birthDate: profile.birthDate ? String(profile.birthDate).slice(0, 10) : "", gender: profile.gender || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    {t("editProfile")}
+                  </button>
+                  {profile.id && (
+                    <QRShare path={`/seller/${profile.id}`} title={profile.name} subtitle="Profil" buttonLabel="📱 QR kod" className="flex items-center gap-1.5 px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:border-orange-500/50 transition-colors" />
+                  )}
+                </div>
               </>
             )}
           </div>
