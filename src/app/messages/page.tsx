@@ -69,7 +69,7 @@ export default function MessagesPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sideTab, setSideTab] = useState<"chats" | "contacts">("chats");
-  const { startCall } = useCall();
+  const { startCall, startGroupCall } = useCall();
   const [replyTo, setReplyTo] = useState<any>(null);
   const [editingMsg, setEditingMsg] = useState<any>(null);
   const [selectedMsg, setSelectedMsg] = useState<any>(null);
@@ -757,6 +757,12 @@ export default function MessagesPage() {
                     )}
                     <button onClick={() => startCall({ id: active.id, name: active.name }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors">📞</button>
                     <button onClick={() => startCall({ id: active.id, name: active.name }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors">🎥</button>
+                  </div>
+                )}
+                {active.type === "group" && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => startGroupCall(active.id, active.name, "audio")} title="Qrup səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors">📞</button>
+                    <button onClick={() => startGroupCall(active.id, active.name, "video")} title="Qrup görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors">🎥</button>
                   </div>
                 )}
               </div>
