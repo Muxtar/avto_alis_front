@@ -75,6 +75,8 @@ export default function MessagesPage() {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const [boxH, setBoxH] = useState<number | null>(null); // klaviaturaya uyğun dinamik hündürlük
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -109,6 +111,45 @@ export default function MessagesPage() {
     const el = listRef.current;
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: smooth ? "smooth" : "auto" });
   }, 60);
+
+  // Chat açıqkən səhifə sürüşməsini kilidlə — mesaj sahəsi sabit qalsın, oynamasın.
+  useEffect(() => {
+    const b = document.body, h = document.documentElement;
+    const pb = b.style.overflow, ph = h.style.overflow, pob = (b.style as any).overscrollBehavior;
+    b.style.overflow = "hidden"; h.style.overflow = "hidden"; (b.style as any).overscrollBehavior = "none";
+    return () => { b.style.overflow = pb; h.style.overflow = ph; (b.style as any).overscrollBehavior = pob; };
+  }, []);
+
+  // Klaviaturaya uyğun hündürlük — mobil klaviatura açılanda göndərmə footeri gizlənməsin.
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    const vv = (typeof window !== "undefined" ? window.visualViewport : null) as VisualViewport | null;
+    let raf = 0;
+    const apply = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = boxRef.current;
+        if (!el) return;
+        const top = el.getBoundingClientRect().top;
+        const vh = vv ? vv.height : window.innerHeight;
+        const offsetTop = vv ? vv.offsetTop : 0;
+        setBoxH(Math.max(320, Math.round(vh - (top - offsetTop) - 8)));
+      });
+    };
+    apply();
+    vv?.addEventListener("resize", apply);
+    vv?.addEventListener("scroll", apply);
+    window.addEventListener("resize", apply);
+    window.addEventListener("orientationchange", apply);
+    return () => {
+      cancelAnimationFrame(raf);
+      vv?.removeEventListener("resize", apply);
+      vv?.removeEventListener("scroll", apply);
+      window.removeEventListener("resize", apply);
+      window.removeEventListener("orientationchange", apply);
+    };
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
@@ -572,7 +613,7 @@ export default function MessagesPage() {
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
       <h1 className="text-xl sm:text-2xl font-bold mb-4">{t("messages")}</h1>
 
-      <div className="surface overflow-hidden flex" style={{ height: "calc(100dvh - 180px)", minHeight: 400 }}>
+      <div ref={boxRef} className="surface overflow-hidden flex" style={{ height: boxH ? `${boxH}px` : "calc(100dvh - 180px)", minHeight: 320 }}>
         {/* Sol panel */}
         <div className={`${active ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-80 border-r border-card-border shrink-0`}>
           <div className="p-2 border-b border-card-border">
@@ -646,7 +687,7 @@ export default function MessagesPage() {
                 )}
               </div>
 
-              <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
+              <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3">
                 {hasMore && (
                   <div className="text-center py-2"><button onClick={loadOlderMessages} disabled={loadingMore} className="text-xs text-orange-500 hover:text-orange-400 disabled:opacity-50">{loadingMore ? "..." : "Daha köhnə mesajları yüklə"}</button></div>
                 )}
