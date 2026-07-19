@@ -69,6 +69,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    // Cari cihaz sessiyasını serverdə bağla (fire-and-forget, token silinməzdən əvvəl).
+    const t = token || (typeof localStorage !== "undefined" ? localStorage.getItem("userToken") : null);
+    if (t) {
+      try {
+        fetch(`${API}/me/logout`, { method: "POST", headers: { Authorization: `Bearer ${t}` }, keepalive: true }).catch(() => {});
+      } catch { /* yox */ }
+    }
     setToken(null);
     setUser(null);
     localStorage.removeItem("userToken");
