@@ -81,9 +81,10 @@ export default function CartPage() {
   const selItems = items.filter((i) => selected.has(i.id));
   const selTotal = selItems.reduce((s, i) => s + (i.listing?.price || 0) * i.quantity, 0);
 
-  // Səbəti link kimi paylaş — linki açan şəxs məhsulları öz adından alır.
-  const shareCart = async () => {
-    if (shareMode === "SENDER" && !shareLoc.address.trim()) { toast("Öz çatdırılma ünvanınızı seçin", "error"); return; }
+  // Səbəti link kimi paylaş — linki yaradır və path qaytarır (paylaşım menyusu üçün).
+  const shareCart = async (): Promise<string | null> => {
+    if (selItems.length === 0) { toast("Ən azı bir məhsul seçin", "error"); return null; }
+    if (shareMode === "SENDER" && !shareLoc.address.trim()) { toast("Öz çatdırılma ünvanınızı seçin", "error"); return null; }
     setSharing(true);
     try {
       const body: any = { itemIds: [...selected], deliveryMode: shareMode };
@@ -91,11 +92,13 @@ export default function CartPage() {
       const res = await fetch(`${API}/cart/share`, { method: "POST", headers, body: JSON.stringify(body) });
       const data = await res.json();
       if (res.ok && data.success) {
-        const link = `${window.location.origin}/shared/${data.token}`;
-        setShareLink(link);
-        try { await navigator.clipboard.writeText(link); toast("Link kopyalandı ✓", "success"); } catch { /* clipboard bloklana bilər */ }
-      } else toast(data.message || t("error"), "error");
-    } catch { toast(t("error"), "error"); } finally { setSharing(false); }
+        const path = `/shared/${data.token}`;
+        setShareLink(`${window.location.origin}${path}`);
+        return path;
+      }
+      toast(data.message || t("error"), "error");
+      return null;
+    } catch { toast(t("error"), "error"); return null; } finally { setSharing(false); }
   };
 
   // Bankın iframe-i ödənişdən sonra /payment/return-dən postMessage göndərir.
@@ -345,8 +348,9 @@ export default function CartPage() {
             {/* Səbəti paylaş */}
             <div className="surface p-3 sm:p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-sm font-medium">🔗 Seçilmiş məhsulları başqasına göndər</p>
-                <button onClick={shareCart} disabled={sharing || selItems.length === 0} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10 disabled:opacity-50">{sharing ? "..." : `Paylaş (${selItems.length})`}</button>
+                <p className="text-sm font-medium">🔗 Seçilmiş məhsulları başqasına göndər ({selItems.length})</p>
+                {/* Tək paylaş ikonu — kliklədikdə linki yaradır və tətbiqdə/xaricdə seçimi açır */}
+                <ShareButton title="Səbətdəki məhsullar" text="Səbətimə bax — tradixai" beforeShare={shareCart} disabled={sharing || selItems.length === 0} compact className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center text-orange-500 hover:bg-orange-500/10 transition-colors" />
               </div>
               {/* Çatdırılma kimə? — göndərən seçir */}
               <div className="grid grid-cols-2 gap-1 bg-input-bg/60 rounded-xl p-1 mt-2">
@@ -366,8 +370,6 @@ export default function CartPage() {
                 <div className="flex gap-2 mt-2 items-stretch">
                   <input readOnly value={shareLink} className="flex-1 px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" onFocus={(e) => e.currentTarget.select()} />
                   <button onClick={() => { navigator.clipboard?.writeText(shareLink); toast("Kopyalandı ✓", "success"); }} className="px-3 py-2 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-semibold">Kopyala</button>
-                  {/* Tətbiqdə (kontakt/chat) və ya xaricdə paylaş */}
-                  <ShareButton title="Səbətdəki məhsullar" text="Səbətimə bax — tradixai" path={shareLink.replace(typeof window !== "undefined" ? window.location.origin : "", "")} compact className="px-3 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center" />
                 </div>
               )}
             </div>

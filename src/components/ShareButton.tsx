@@ -23,6 +23,8 @@ export default function ShareButton({
   className,
   compact,
   listingId,
+  beforeShare,
+  disabled,
 }: {
   title?: string;
   text?: string;
@@ -30,6 +32,8 @@ export default function ShareButton({
   className?: string;
   compact?: boolean; // yalnız ikon
   listingId?: number; // məhsul paylaşımında — qarşı tərəf çat-da klikləyə bilən kart görünür
+  beforeShare?: () => Promise<string | null>; // menyu açılmadan əvvəl linki yarat, path qaytar (null=xəta)
+  disabled?: boolean;
 }) {
   const { toast } = useToast();
   const { token, isLoggedIn } = useAuth();
@@ -39,8 +43,25 @@ export default function ShareButton({
   const [loadingR, setLoadingR] = useState(false);
   const [sendingId, setSendingId] = useState<number | null>(null);
   const [q, setQ] = useState("");
+  const [resolvedPath, setResolvedPath] = useState<string | null>(null);
+  const [preparing, setPreparing] = useState(false);
 
-  const url = () => (typeof window === "undefined" ? "" : path ? `${window.location.origin}${path}` : window.location.href);
+  const effPath = resolvedPath ?? path;
+  const url = () => (typeof window === "undefined" ? "" : effPath ? `${window.location.origin}${effPath}` : window.location.href);
+
+  // Əsas düymə — lazımsa əvvəlcə linki yarat, sonra menyunu aç.
+  const onMainClick = async () => {
+    if (menuOpen) { setMenuOpen(false); return; }
+    if (beforeShare) {
+      setPreparing(true);
+      try {
+        const p = await beforeShare();
+        if (!p) return; // xəta beforeShare-də göstərilib
+        setResolvedPath(p);
+      } finally { setPreparing(false); }
+    }
+    setMenuOpen(true);
+  };
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   // XARİCDƏ paylaş — yerli paylaşım pəncərəsi, dəstəklənmirsə kopyala.
@@ -89,10 +110,11 @@ export default function ShareButton({
     <>
       <button
         type="button"
-        onClick={() => setMenuOpen((v) => !v)}
+        onClick={onMainClick}
+        disabled={disabled || preparing}
         title="Paylaş"
         aria-label="Paylaş"
-        className={className || "inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-input-bg border border-input-border text-foreground hover:border-orange-500/50 transition-all text-sm font-medium"}
+        className={`${className || "inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-input-bg border border-input-border text-foreground hover:border-orange-500/50 transition-all text-sm font-medium"} ${(disabled || preparing) ? "opacity-50 pointer-events-none" : ""}`}
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
