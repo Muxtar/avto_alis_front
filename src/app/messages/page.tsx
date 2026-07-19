@@ -13,6 +13,25 @@ import { useCall } from "@/lib/CallContext";
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 
+// Brauzerin dəstəklədiyi ilk yazma formatını seç (Safari/iOS webm dəstəkləmir → mp4).
+// Yanlış formatda yazma səs/video göndərməni sındırır.
+const AUDIO_MIME_CANDIDATES = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/mpeg", "audio/ogg;codecs=opus", "audio/ogg"];
+const VIDEO_MIME_CANDIDATES = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"];
+function extForMime(m: string): string {
+  if (/mp4/i.test(m)) return /audio/i.test(m) ? "m4a" : "mp4";
+  if (/mpeg/i.test(m)) return "mp3";
+  if (/ogg/i.test(m)) return "ogg";
+  if (/wav/i.test(m)) return "wav";
+  return "webm";
+}
+function pickRecorderMime(candidates: string[]): string {
+  if (typeof MediaRecorder === "undefined") return "";
+  for (const c of candidates) {
+    try { if (MediaRecorder.isTypeSupported(c)) return c; } catch { /* keç */ }
+  }
+  return ""; // brauzer default seçsin
+}
+
 export default function MessagesPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -260,9 +279,11 @@ export default function MessagesPage() {
   // Səs mesajı
   const startVoice = async () => {
     try {
+      if (typeof MediaRecorder === "undefined") { toast("Bu brauzer səs yazmağı dəstəkləmir", "error"); return; }
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       recordStreamRef.current = stream; chunksRef.current = []; cancelledRef.current = false;
-      const mr = new MediaRecorder(stream);
+      const mime = pickRecorderMime(AUDIO_MIME_CANDIDATES);
+      const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       recorderRef.current = mr;
       mr.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
       mr.onstop = () => {
@@ -271,8 +292,9 @@ export default function MessagesPage() {
         const secs = recordSecondsRef.current;
         setRecording(false); setRecordSeconds(0);
         if (cancelledRef.current || !chunksRef.current.length) return;
-        const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
-        sendMedia(new File([blob], `voice-${Date.now()}.webm`, { type: blob.type }), "AUDIO", secs);
+        const outMime = mr.mimeType || mime || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: outMime });
+        sendMedia(new File([blob], `voice-${Date.now()}.${extForMime(outMime)}`, { type: blob.type }), "AUDIO", secs);
       };
       mr.start();
       setRecording(true); setRecordSeconds(0); recordSecondsRef.current = 0;
@@ -294,16 +316,18 @@ export default function MessagesPage() {
   const startVideoRec = () => {
     const stream = videoStreamRef.current; if (!stream) return;
     videoChunksRef.current = [];
-    const mr = new MediaRecorder(stream);
+    const mime = pickRecorderMime(VIDEO_MIME_CANDIDATES);
+    const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
     videoRecorderRef.current = mr;
     mr.ondataavailable = (e) => { if (e.data.size) videoChunksRef.current.push(e.data); };
     mr.onstop = () => {
       const secs = videoSecondsRef.current;
-      const blob = new Blob(videoChunksRef.current, { type: mr.mimeType || "video/webm" });
+      const outMime = mr.mimeType || mime || "video/webm";
+      const blob = new Blob(videoChunksRef.current, { type: outMime });
       videoStreamRef.current?.getTracks().forEach((t) => t.stop()); videoStreamRef.current = null;
       clearInterval(videoTimerRef.current);
       setVideoRecOpen(false); setVideoRecording(false); setVideoSeconds(0);
-      if (videoChunksRef.current.length) sendMedia(new File([blob], `video-${Date.now()}.webm`, { type: blob.type }), "VIDEO", secs);
+      if (videoChunksRef.current.length) sendMedia(new File([blob], `video-${Date.now()}.${extForMime(outMime)}`, { type: blob.type }), "VIDEO", secs);
     };
     mr.start();
     setVideoRecording(true); setVideoSeconds(0); videoSecondsRef.current = 0;

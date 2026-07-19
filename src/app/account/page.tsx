@@ -385,6 +385,14 @@ function AccountPageInner() {
                     <p className="font-semibold text-sm">{o.label}</p>
                   </button>
                 ))}
+                {/* Mövcud biznes olsa belə yeni biznes/obyekt əlavə etmək mümkün olsun */}
+                <a href="/business" className="w-full text-left p-4 rounded-2xl border border-dashed border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all flex items-center gap-3">
+                  <div className="text-xl">➕</div>
+                  <div>
+                    <p className="font-semibold text-sm text-orange-500">Yeni biznes / obyekt əlavə et</p>
+                    <p className="text-xs text-muted mt-0.5">Başqa biznes və ya obyekt yaratmaq üçün Biznes bölməsinə keçin.</p>
+                  </div>
+                </a>
               </div>
             ) : (
               <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
