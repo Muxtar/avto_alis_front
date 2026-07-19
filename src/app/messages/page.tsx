@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -13,6 +14,15 @@ import { useCall } from "@/lib/CallContext";
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const CHAT_EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🥳","😉","🙂","😇","🤗","🤔","😴","😭","😡","😱","😳","🥰","😜","🤪","😏","🙄","😤","😢","😅","😬","🤯","🤒","🤕","👍","👎","👌","🙏","👏","🙌","💪","🤝","👋","✌️","🤟","🫶","❤️","🧡","💛","💚","💙","💜","🖤","🔥","✨","🎉","🎊","💯","⭐","🌟","💥","💐","🌹","☀️","🌙","⚡","☕","🍰","🍕","🎁","💰","✅","❌","❗","❓","💬","📍","🚗","⚽"];
 const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+// Modalları birbaşa <body>-yə render et — mobil tam-ekran chat overlay-inin (fixed, z-70)
+// altında qalmasınlar. Bu, stacking-context problemini birdəfəlik həll edir.
+function Portal({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted || typeof document === "undefined") return null;
+  return createPortal(children, document.body);
+}
 
 // Brauzerin dəstəklədiyi ilk yazma formatını seç (Safari/iOS webm dəstəkləmir → mp4).
 // Yanlış formatda yazma səs/video göndərməni sındırır.
@@ -827,6 +837,7 @@ export default function MessagesPage() {
         </div>
       </div>
 
+      <Portal>
       {/* Mesaj əməliyyat menyusu */}
       {selectedMsg && (
         <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40" onClick={() => setSelectedMsg(null)}>
@@ -951,6 +962,7 @@ export default function MessagesPage() {
           </div>
         </div>
       )}
+      </Portal>
     </div>
   );
 }
