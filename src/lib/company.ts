@@ -5,7 +5,7 @@ export const COMPANY = {
   legalName: "“FRİD Aİ TRADE” MƏHDUD MƏSULİYYƏTLİ CƏMİYYƏTİ",
   legalNameEn: "“FRID AI TRADE” Limited Liability Company",
   // Vergi ödəyicisinin eyniləşdirmə nömrəsi:
-  voen: "9900003611",
+  voen: "1906707811",
   // Hüquqi ünvan:
   legalAddressAz: "Bakı şəhəri, Sabunçu rayonu, Bakıxanov qəsəbəsi, Sakit Qocayev küçəsi 13A, 13B, 13C",
   legalAddressEn: "Baku city, Sabunchu district, Bakikhanov settlement, Sakit Gojayev street 13A, 13B, 13C",
@@ -17,7 +17,7 @@ export const COMPANY = {
     "+994 10 471 32 06",
   ],
   phone: "+994 10 471 32 03", // əsas nömrə (geriyə uyğunluq)
-  email: "info@tradixai.az",
-  supportEmail: "info@tradixai.az",
+  email: "admin@tradixai.io",
+  supportEmail: "admin@tradixai.io",
   websiteUrl: "https://tradixai.io",
 };
