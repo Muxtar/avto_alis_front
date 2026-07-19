@@ -241,7 +241,8 @@ export default function MessagesPage() {
   };
 
   const sendMedia = async (file: File, type: string, duration = 0) => {
-    if (!active) return;
+    if (!active) { toast("Söhbət seçilməyib", "error"); return; }
+    if (!file || !file.size) { toast("Fayl boşdur — göndərilmədi", "error"); return; }
     setAttachOpen(false); setUploadingMedia(true);
     try {
       const fd = new FormData();
@@ -251,10 +252,10 @@ export default function MessagesPage() {
       if (duration) fd.append("duration", String(duration));
       if (replyTo) fd.append("replyToId", String(replyTo.id));
       const res = await fetch(`${API}/messages/media`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
-      const d = await res.json();
+      const d = await res.json().catch(() => ({}));
       if (res.ok && d.success) { setMessages((prev) => prev.some((x) => x.id === d.message.id) ? prev : [...prev, d.message]); setReplyTo(null); scrollToEnd(); fetchAll(); }
-      else toast(d.message || t('error'), 'error');
-    } catch { toast(t('error'), 'error'); } finally { setUploadingMedia(false); }
+      else toast(d.message || `Göndərilmədi (${res.status})`, 'error');
+    } catch { toast("Şəbəkə xətası — media göndərilmədi", 'error'); } finally { setUploadingMedia(false); }
   };
   const onPickImage = (f: File | null) => { if (f) sendMedia(f, "IMAGE"); };
   const onPickFile = (f: File | null) => { if (f) sendMedia(f, "FILE"); };
@@ -285,23 +286,34 @@ export default function MessagesPage() {
       const mime = pickRecorderMime(AUDIO_MIME_CANDIDATES);
       const mr = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       recorderRef.current = mr;
-      mr.ondataavailable = (e) => { if (e.data.size) chunksRef.current.push(e.data); };
+      mr.ondataavailable = (e) => { if (e.data && e.data.size) chunksRef.current.push(e.data); };
       mr.onstop = () => {
         recordStreamRef.current?.getTracks().forEach((t) => t.stop()); recordStreamRef.current = null;
         clearInterval(recordTimerRef.current);
         const secs = recordSecondsRef.current;
         setRecording(false); setRecordSeconds(0);
-        if (cancelledRef.current || !chunksRef.current.length) return;
+        if (cancelledRef.current) return;
+        // Boş yazma — səssiz uğursuzluq əvəzinə istifadəçiyə bildir.
+        if (!chunksRef.current.length) { toast("Səs yazıla bilmədi — yenidən cəhd edin", "error"); return; }
         const outMime = mr.mimeType || mime || "audio/webm";
         const blob = new Blob(chunksRef.current, { type: outMime });
+        if (!blob.size) { toast("Səs yazıla bilmədi — yenidən cəhd edin", "error"); return; }
         sendMedia(new File([blob], `voice-${Date.now()}.${extForMime(outMime)}`, { type: blob.type }), "AUDIO", secs);
       };
-      mr.start();
+      // Timeslice (250ms) — Safari/iOS-da ondataavailable etibarlı işə düşsün deyə.
+      mr.start(250);
       setRecording(true); setRecordSeconds(0); recordSecondsRef.current = 0;
       recordTimerRef.current = setInterval(() => { recordSecondsRef.current += 1; setRecordSeconds((s) => s + 1); }, 1000);
     } catch { toast("Mikrofon icazəsi verilmədi", "error"); }
   };
-  const stopVoiceSend = () => { cancelledRef.current = false; recorderRef.current?.stop(); };
+  const stopVoiceSend = () => {
+    cancelledRef.current = false;
+    const mr = recorderRef.current;
+    if (!mr) return;
+    // Dayanmadan əvvəl qalan datanı flush et (bəzi brauzerlərdə vacibdir).
+    try { if (mr.state === "recording") mr.requestData(); } catch { /* keç */ }
+    try { mr.stop(); } catch { /* keç */ }
+  };
   const cancelVoice = () => { cancelledRef.current = true; recorderRef.current?.stop(); };
 
   // Video mesaj
