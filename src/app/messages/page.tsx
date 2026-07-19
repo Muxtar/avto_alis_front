@@ -132,9 +132,16 @@ export default function MessagesPage() {
         const el = boxRef.current;
         if (!el) return;
         const top = el.getBoundingClientRect().top;
-        const vh = vv ? vv.height : window.innerHeight;
+        const winH = window.innerHeight;
+        const vh = vv ? vv.height : winH;
         const offsetTop = vv ? vv.offsetTop : 0;
-        setBoxH(Math.max(320, Math.round(vh - (top - offsetTop) - 8)));
+        // Mobil alt naviqasiya paneli (.bottom-nav) footeri örtür — hündürlüyünü çıx.
+        // Klaviatura açıq olanda panel klaviaturanın altında qalır, o zaman çıxma.
+        const keyboardOpen = winH - vh > 120;
+        const nav = document.querySelector(".bottom-nav") as HTMLElement | null;
+        const navVisible = !!nav && getComputedStyle(nav).display !== "none";
+        const navH = (!keyboardOpen && navVisible) ? nav!.getBoundingClientRect().height : 0;
+        setBoxH(Math.max(280, Math.round(vh - (top - offsetTop) - navH - 8)));
       });
     };
     apply();
@@ -460,9 +467,13 @@ export default function MessagesPage() {
   };
   const openInfo = () => {
     if (active?.type !== "group") return;
+    // Qrup məlumatı + kontaktları paralel yüklə (üzv əlavə etmək üçün kontakt siyahısı lazımdır).
     fetch(`${API}/groups/${active.id}`, { headers }).then((r) => r.json())
       .then((d) => { if (d.success) { setGroupInfo(d.group); setAddMemberMode(false); setInfoOpen(true); } })
       .catch(() => toast(t('error'), 'error'));
+    fetch(`${API}/me/contacts`, { headers }).then((r) => r.json())
+      .then((d) => { const list = d.contacts || (Array.isArray(d) ? d : []); setGroupContacts(list.filter((c: any) => c.user)); })
+      .catch(() => {});
   };
   const amIAdmin = () => groupInfo?.members?.find((m: any) => m.userId === user?.id)?.role === "ADMIN";
   const removeMember = async (uid: number) => {
@@ -864,16 +875,21 @@ export default function MessagesPage() {
             {amIAdmin() && (
               <button onClick={() => setAddMemberMode((v) => !v)} className="w-full py-2 mb-2 rounded-xl bg-input-bg border border-input-border text-sm">➕ Üzv əlavə et</button>
             )}
-            {addMemberMode && (
-              <div className="max-h-40 overflow-y-auto space-y-1 mb-3 border border-card-border rounded-xl p-1">
-                {groupContacts.filter((c) => !groupInfo.members.some((m: any) => m.userId === c.user.id)).map((c) => (
-                  <button key={c.id} onClick={() => addMember(c.user.id)} className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-input-bg text-left">
-                    <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-[10px] font-bold">{initials(c.name)}</div>
-                    <span className="text-sm flex-1 truncate">{c.name}</span><span className="text-orange-500 text-xs">əlavə et</span>
-                  </button>
-                ))}
-              </div>
-            )}
+            {addMemberMode && (() => {
+              const addable = groupContacts.filter((c) => !groupInfo.members.some((m: any) => m.userId === c.user.id));
+              return (
+                <div className="max-h-40 overflow-y-auto space-y-1 mb-3 border border-card-border rounded-xl p-1">
+                  {addable.length === 0 ? (
+                    <p className="text-xs text-muted text-center py-3">Əlavə ediləcək qeydiyyatlı kontakt yoxdur.</p>
+                  ) : addable.map((c) => (
+                    <button key={c.id} onClick={() => addMember(c.user.id)} className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-input-bg text-left">
+                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-[10px] font-bold">{initials(c.name)}</div>
+                      <span className="text-sm flex-1 truncate">{c.name}</span><span className="text-orange-500 text-xs">əlavə et</span>
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
             <p className="text-xs text-muted mb-1">Üzvlər</p>
             <div className="space-y-1 mb-3">
               {groupInfo.members.map((m: any) => (
