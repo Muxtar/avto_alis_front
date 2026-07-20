@@ -6,6 +6,8 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
+import HomeCarousel from "@/components/HomeCarousel";
+import RecentlyViewed from "@/components/RecentlyViewed";
 import AddListingMenu from "@/components/AddListingMenu";
 import CategoryIcon from "@/components/CategoryIcon";
 import { API, imgUrl } from "@/lib/api";
@@ -462,6 +464,14 @@ function MarketplacePage() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {/* Ana səhifə: karusel + əvvəl baxılanlar (yalnız kateqoriya/axtarış seçilməyəndə) */}
+      {!selectedCategory && !searchQuery.trim() && (
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6">
+          <HomeCarousel />
+          <RecentlyViewed />
         </div>
       )}
 

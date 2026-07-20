@@ -12,6 +12,8 @@ import { countryLabel } from "@/lib/countries";
 import { getCategoryAttrs, parseCat, getListingFields, catToSlugs } from "@/lib/categories";
 import OrderMap from "@/components/OrderMapWrapper";
 import ShareButton from "@/components/ShareButton";
+import ListingCard from "@/components/ListingCard";
+import { recordView } from "@/lib/recentlyViewed";
 
 
 export default function ListingDetailPage() {
@@ -22,6 +24,7 @@ export default function ListingDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [listing, setListing] = useState<any>(null);
+  const [related, setRelated] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [msgText, setMsgText] = useState("");
   const [msgSent, setMsgSent] = useState(false);
@@ -208,7 +211,19 @@ export default function ListingDetailPage() {
   useEffect(() => {
     fetch(`${API}/listings/${params.id}`)
       .then((r) => r.json())
-      .then(setListing)
+      .then((d) => {
+        setListing(d);
+        // Əvvəl baxılanlara yaz (ana səhifədə "Əvvəl baxdıqlarınız" üçün).
+        if (d?.id) recordView({ id: d.id, title: d.title, price: d.price, image: d.images?.[0] || null, type: d.type });
+        // Eyni kateqoriyadan bənzər elanlar.
+        const mainCat = parseCat(d?.category).main;
+        if (mainCat) {
+          fetch(`${API}/listings?category=${encodeURIComponent(mainCat)}&limit=12`)
+            .then((r) => r.json())
+            .then((rd) => setRelated((rd.listings || []).filter((x: any) => x.id !== d.id).slice(0, 10)))
+            .catch(() => {});
+        }
+      })
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoading(false));
   }, [params.id]);
@@ -845,6 +860,16 @@ export default function ListingDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Eyni kateqoriyada digər elanlar */}
+      {related.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-lg font-bold mb-4">Eyni kateqoriyada digər elanlar</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {related.map((l) => <ListingCard key={l.id} listing={l} />)}
+          </div>
+        </section>
+      )}
 
       {/* ── Bron modalı ── */}
       {bookingOpen && listing.bookable && (
