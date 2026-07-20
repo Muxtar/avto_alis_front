@@ -10,7 +10,7 @@ import { Locale } from "@/lib/translations";
 import { API } from "@/lib/api";
 import NotificationBell from "@/components/NotificationBell";
 import { CATEGORIES, slugify } from "@/lib/categories";
-import CategoryIcon from "@/components/CategoryIcon";
+import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
 
 const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "az", label: "AZ", flag: "🇦🇿" },
@@ -179,7 +179,7 @@ export default function Navbar() {
                       {catHover.cat.subs.map((s: any) => (
                         <Link key={s.name} href={`/elanlar/${slugify(catHover.cat.name)}/${slugify(s.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
                           className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors">
-                          <span className="text-base w-5 text-center shrink-0">{s.icon}</span>
+                          <SubCategoryIcon name={s.name} parent={catHover.cat.name} className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
                           <span className="truncate">{s.name}</span>
                         </Link>
                       ))}

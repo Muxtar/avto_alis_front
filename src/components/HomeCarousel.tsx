@@ -31,7 +31,7 @@ export default function HomeCarousel() {
 
   return (
     <div
-      className="relative w-full aspect-[16/9] max-h-[560px] rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/10 bg-black select-none group"
+      className="relative w-full aspect-[16/9] max-h-[560px] overflow-hidden bg-black select-none group"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -46,9 +46,8 @@ export default function HomeCarousel() {
               src={src}
               alt=""
               aria-hidden="true"
-              className={`absolute inset-0 w-full h-full object-cover blur-2xl saturate-150 brightness-[0.55] transition-transform ease-out ${active ? "scale-125 duration-[7000ms]" : "scale-110 duration-700"}`}
+              className={`absolute inset-0 w-full h-full object-cover blur-2xl saturate-125 brightness-[0.72] transition-transform ease-out ${active ? "scale-125 duration-[7000ms]" : "scale-110 duration-700"}`}
             />
-            <div className="absolute inset-0 bg-black/25" />
 
             {/* Əsas şəkil — tam görünür, kəsilmir */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -59,7 +58,7 @@ export default function HomeCarousel() {
             />
 
             {/* Mətn üçün alt qradient */}
-            {b.title && <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/80 via-black/35 to-transparent" />}
+            {b.title && <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />}
 
             {/* Məzmun */}
             {b.title && (
@@ -82,7 +81,7 @@ export default function HomeCarousel() {
           </>
         );
         return (
-          <div key={b.id} className={`absolute inset-0 transition-opacity duration-[900ms] ${active ? "opacity-100 z-[1]" : "opacity-0 z-0 pointer-events-none"}`}>
+          <div key={b.id} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${active ? "opacity-100 z-[1]" : "opacity-0 z-0 pointer-events-none"}`}>
             {b.link ? <a href={b.link} target={b.link.startsWith("http") ? "_blank" : undefined} rel="noreferrer" className="block absolute inset-0">{inner}</a> : inner}
           </div>
         );

@@ -11,7 +11,7 @@ import SideBanners from "@/components/SideBanners";
 import TrustBar from "@/components/TrustBar";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import AddListingMenu from "@/components/AddListingMenu";
-import CategoryIcon from "@/components/CategoryIcon";
+import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
 import { API, imgUrl } from "@/lib/api";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { CATEGORIES, getSubs, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
@@ -379,7 +379,7 @@ function MarketplacePage() {
                           onClick={() => goCat(buildCat(svc.name, s.name))}
                           className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border border-card-border hover:border-orange-500/50 hover:shadow-md transition-all text-center group"
                         >
-                          <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{s.icon}</span>
+                          <SubCategoryIcon name={s.name} parent={svc.name} className="w-7 h-7 sm:w-8 sm:h-8 group-hover:scale-110 transition-transform" />
                           <span className="text-[11px] sm:text-xs font-medium leading-tight">{s.name}</span>
                         </button>
                       ))}
@@ -400,7 +400,7 @@ function MarketplacePage() {
                         onClick={() => goCat(c.name)}
                         className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-card border border-card-border hover:border-orange-500/50 hover:shadow-md transition-all text-center group"
                       >
-                        <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{c.icon}</span>
+                        <CategoryIcon name={c.name} className="w-7 h-7 sm:w-8 sm:h-8 group-hover:scale-110 transition-transform" />
                         <span className="text-[11px] sm:text-xs font-medium leading-tight">{c.name}</span>
                       </button>
                     ))}
@@ -420,12 +420,12 @@ function MarketplacePage() {
                     ← {t("allCategories")}
                   </button>
                   <span className="text-muted">/</span>
-                  <span className="text-xl">{cat.icon}</span>
+                  <CategoryIcon name={cat.name} className="w-5 h-5" />
                   <h2 className="font-bold text-base sm:text-lg">{cat.name}</h2>
                 </div>
                 <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 sm:gap-3">
                   <button onClick={() => goCat(cat.name)} className={`${cardBase} ${!sub ? cardOn : cardOff}`}>
-                    <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{cat.icon}</span>
+                    <CategoryIcon name={cat.name} className="w-7 h-7 sm:w-8 sm:h-8 group-hover:scale-110 transition-transform" />
                     <span className="text-[11px] sm:text-xs font-medium leading-tight">{t("allCategories")}</span>
                   </button>
                   {(showAllCats ? cat.subs : cat.subs.slice(0, COLLAPSED_CATS)).map((s) => (
@@ -434,7 +434,7 @@ function MarketplacePage() {
                       onClick={() => goCat(buildCat(cat.name, s.name))}
                       className={`${cardBase} ${sub === s.name ? cardOn : cardOff}`}
                     >
-                      <span className="text-2xl sm:text-3xl group-hover:scale-110 transition-transform">{s.icon}</span>
+                      <SubCategoryIcon name={s.name} parent={cat.name} className="w-7 h-7 sm:w-8 sm:h-8 group-hover:scale-110 transition-transform" />
                       <span className="text-[11px] sm:text-xs font-medium leading-tight">{s.name}</span>
                     </button>
                   ))}
@@ -509,7 +509,7 @@ function MarketplacePage() {
                   className="z-[60] w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5"
                 >
                   <Link href={`/elanlar/${catToSlugs(hoverCat.cat.name).join("/")}`} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-orange-500 hover:bg-orange-500/10">
-                    <span>{hoverCat.cat.icon}</span> {hoverCat.cat.name} — hamısı
+                    <CategoryIcon name={hoverCat.cat.name} className="w-[18px] h-[18px]" /> {hoverCat.cat.name} — hamısı
                   </Link>
                   <div className="border-t border-card-border my-1" />
                   {hoverCat.cat.subs.map((s: any) => (
@@ -518,7 +518,7 @@ function MarketplacePage() {
                       href={`/elanlar/${catToSlugs(buildCat(hoverCat.cat.name, s.name)).join("/")}`}
                       className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors"
                     >
-                      <span className="text-base w-5 text-center shrink-0">{s.icon}</span>
+                      <SubCategoryIcon name={s.name} parent={hoverCat.cat.name} className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
                       <span className="truncate">{s.name}</span>
                     </Link>
                   ))}
