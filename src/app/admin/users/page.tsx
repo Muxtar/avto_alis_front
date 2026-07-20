@@ -17,6 +17,8 @@ export default function AdminUsersPage() {
   const [detailUser, setDetailUser] = useState<any>(null); // detail panel
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [nu, setNu] = useState<any>({ name: "", phone: "", email: "", type: "CAR_OWNER", role: "USER", verified: true, password: "" });
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -67,6 +69,18 @@ export default function AdminUsersPage() {
     setModal({ id: user.id, name: user.name, phone: user.phone, type: user.type, role: user.role || "USER", verified: user.verified });
   };
 
+  const openCreate = () => { setNu({ name: "", phone: "", email: "", type: "CAR_OWNER", role: "USER", verified: true, password: "" }); setCreateOpen(true); };
+  const handleCreate = async () => {
+    if (!nu.name.trim() || !nu.phone.trim()) { toast("Ad və telefon tələb olunur", "error"); return; }
+    try {
+      const res = await fetch(`${API}/admin/users`, { method: "POST", headers, body: JSON.stringify(nu) });
+      const data = await res.json();
+      if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      setCreateOpen(false); fetchUsers();
+      toast("İstifadəçi əlavə edildi ✓", "success");
+    } catch { toast(t("error"), "error"); }
+  };
+
   const handleSave = async () => {
     if (!modal) return;
     try {
@@ -94,6 +108,10 @@ export default function AdminUsersPage() {
           <p className="text-muted text-xs mt-1">{users.length} istifadəçi</p>
         </div>
         <div className="flex gap-2">
+          <button onClick={openCreate} className="shrink-0 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-semibold hover:from-orange-600 hover:to-red-700 transition-all flex items-center gap-1.5">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
+            <span className="hidden sm:inline">Yeni istifadəçi</span>
+          </button>
           <div className="relative flex-1 sm:w-56">
             <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -264,6 +282,69 @@ export default function AdminUsersPage() {
                 {t("adminSave")}
               </button>
               <button onClick={() => setModal(null)} className="flex-1 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:opacity-80 transition-all">
+                {t("adminCancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Yeni istifadəçi yarat */}
+      {createOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setCreateOpen(false)}>
+          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-lg font-bold mb-5">➕ Yeni istifadəçi</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">{t("adminName")} *</label>
+                <input value={nu.name} onChange={(e) => setNu({ ...nu, name: e.target.value })} placeholder="Ad Soyad"
+                  className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">{t("adminPhone")} *</label>
+                <input value={nu.phone} onChange={(e) => setNu({ ...nu, phone: e.target.value })} placeholder="+994..."
+                  className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">E-mail (opsional)</label>
+                <input value={nu.email} onChange={(e) => setNu({ ...nu, email: e.target.value })} placeholder="mail@nümunə.az"
+                  className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">{t("adminType")}</label>
+                  <select value={nu.type} onChange={(e) => setNu({ ...nu, type: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none">
+                    <option value="CAR_OWNER">Sahib</option>
+                    <option value="MECHANIC">Usta</option>
+                    <option value="PARTS_SELLER">Satıcı</option>
+                    <option value="COURIER">Kuryer</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted mb-1">Rol</label>
+                  <select value={nu.role} onChange={(e) => setNu({ ...nu, role: e.target.value })}
+                    className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none">
+                    <option value="USER">USER</option>
+                    <option value="ADMIN">ADMIN</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-muted mb-1">Şifrə (opsional — giriş üçün)</label>
+                <input type="text" value={nu.password} onChange={(e) => setNu({ ...nu, password: e.target.value })} placeholder="boş buraxıla bilər"
+                  className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+              </div>
+              <button onClick={() => setNu({ ...nu, verified: !nu.verified })}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors w-full ${nu.verified ? 'bg-green-500/10 text-green-500 border border-green-500/20' : 'bg-red-500/10 text-red-500 border border-red-500/20'}`}>
+                {nu.verified ? "Doğrulanıb ✓" : "Doğrulanmayıb ✗"}
+              </button>
+            </div>
+            <div className="flex gap-2 mt-6">
+              <button onClick={handleCreate} className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all">
+                Yarat
+              </button>
+              <button onClick={() => setCreateOpen(false)} className="flex-1 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:opacity-80 transition-all">
                 {t("adminCancel")}
               </button>
             </div>
