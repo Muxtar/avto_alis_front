@@ -580,3 +580,12 @@ a:focus-visible {
 a, button {
   -webkit-tap-highlight-color: transparent;
 }
+
+/* Karusel avtomatik keçid göstəricisi (progress bar) */
+@keyframes carouselProgress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+.carousel-progress {
+  animation: carouselProgress linear forwards;
+}
