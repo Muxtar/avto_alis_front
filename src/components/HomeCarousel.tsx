@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import { API, imgUrl } from "@/lib/api";
 
-type Banner = { id: number; image: string; link: string | null; title: string | null };
+type Banner = { id: number; image: string; link: string | null; title: string | null; position?: string };
 const INTERVAL = 5000;
 
 // Ana səhifə karuseli — sabit 16:9 nisbət (en/hündürlük həmişə eyni proporsiyada).
@@ -15,7 +15,7 @@ export default function HomeCarousel() {
   const timer = useRef<any>(null);
 
   useEffect(() => {
-    fetch(`${API}/banners`).then((r) => r.json()).then((d) => { if (d.success) setBanners(d.banners || []); }).catch(() => {});
+    fetch(`${API}/banners`).then((r) => r.json()).then((d) => { if (d.success) setBanners((d.banners || []).filter((b: Banner) => (b.position || 'MAIN') === 'MAIN')); }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function HomeCarousel() {
             {idx + 1} / {banners.length}
           </div>
 
-          <div className="absolute bottom-3 sm:bottom-4 right-4 sm:right-6 z-20 flex gap-1.5">
+          <div className="absolute bottom-4 sm:bottom-5 left-1/2 -translate-x-1/2 z-20 flex gap-1.5 px-2.5 py-1.5 rounded-full bg-black/30 backdrop-blur-md ring-1 ring-white/15">
             {banners.map((_, i) => (
               <button key={i} onClick={() => go(i)} aria-label={`Slayd ${i + 1}`} className={`h-2 rounded-full transition-all ${i === idx ? "w-7 bg-white" : "w-2 bg-white/45 hover:bg-white/70"}`} />
             ))}

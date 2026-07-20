@@ -10,6 +10,7 @@ export default function AdminBannersPage() {
   const [file, setFile] = useState<File | null>(null);
   const [link, setLink] = useState("");
   const [title, setTitle] = useState("");
+  const [position, setPosition] = useState("MAIN");
   const [uploading, setUploading] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
@@ -29,6 +30,7 @@ export default function AdminBannersPage() {
       fd.append("image", file);
       if (link.trim()) fd.append("link", link.trim());
       if (title.trim()) fd.append("title", title.trim());
+      fd.append("position", position);
       fd.append("sortOrder", String(banners.length));
       const r = await fetch(`${API}/admin/banners`, { method: "POST", headers: authHeaders, body: fd }).then((x) => x.json());
       if (r.success) { toast("Banner əlavə edildi ✓", "success"); setFile(null); setLink(""); setTitle(""); load(); }
@@ -66,7 +68,14 @@ export default function AdminBannersPage() {
             <label className="block text-xs font-medium text-muted mb-1">Keçid linki (opsional)</label>
             <input value={link} onChange={(e) => setLink(e.target.value)} placeholder="/elanlar/... və ya https://..." className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
           </div>
-          <div className="sm:col-span-2">
+          <div>
+            <label className="block text-xs font-medium text-muted mb-1">Yerləşmə</label>
+            <select value={position} onChange={(e) => setPosition(e.target.value)} className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none">
+              <option value="MAIN">Əsas karusel (mərkəz)</option>
+              <option value="SIDE">Yan banner (sağ sütun, maks 3)</option>
+            </select>
+          </div>
+          <div>
             <label className="block text-xs font-medium text-muted mb-1">Başlıq / alt yazı (opsional)</label>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Məs: Böyük endirim! %50-yə qədər" className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
           </div>
@@ -89,9 +98,16 @@ export default function AdminBannersPage() {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={imgUrl(b.image)} alt="" className="w-full sm:w-48 h-24 object-cover rounded-lg bg-input-bg shrink-0" />
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">{b.title || "(başlıqsız)"}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-medium text-sm truncate">{b.title || "(başlıqsız)"}</p>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-semibold ${b.position === "SIDE" ? "bg-purple-500/10 text-purple-500" : "bg-orange-500/10 text-orange-500"}`}>{b.position === "SIDE" ? "Yan banner" : "Əsas karusel"}</span>
+                </div>
                 {b.link && <p className="text-xs text-muted truncate">🔗 {b.link}</p>}
                 <div className="flex items-center gap-2 mt-2">
+                  <select value={b.position || "MAIN"} onChange={(e) => patch(b.id, { position: e.target.value })} className="px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs">
+                    <option value="MAIN">Əsas karusel</option>
+                    <option value="SIDE">Yan banner</option>
+                  </select>
                   <label className="text-xs flex items-center gap-1.5">Sıra:
                     <input type="number" defaultValue={b.sortOrder} onBlur={(e) => patch(b.id, { sortOrder: parseInt(e.target.value) || 0 })} className="w-16 px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs" />
                   </label>

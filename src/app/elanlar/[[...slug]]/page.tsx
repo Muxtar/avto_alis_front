@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import HomeCarousel from "@/components/HomeCarousel";
+import SideBanners from "@/components/SideBanners";
+import TrustBar from "@/components/TrustBar";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import AddListingMenu from "@/components/AddListingMenu";
 import CategoryIcon from "@/components/CategoryIcon";
@@ -527,13 +529,18 @@ function MarketplacePage() {
 
           {/* Center column - listings */}
           <div className="min-w-0">
-            {/* Ana səhifə: mərkəzi karusel (kateqoriyalar solda) + əvvəl baxılanlar */}
+            {/* Ana səhifə hero: mərkəzdə karusel + sağda promo bannerlər (kateqoriyalar solda) */}
             {!selectedCategory && !searchQuery.trim() && (
-              <div className="mb-6">
-                <HomeCarousel />
-              </div>
+              <>
+                <div className="grid lg:grid-cols-[1fr_300px] gap-3 sm:gap-4 mb-5 sm:mb-6">
+                  <HomeCarousel />
+                  <SideBanners />
+                </div>
+                <TrustBar />
+              </>
             )}
-            {/* Hero banner */}
+            {/* Hero banner — yalnız kateqoriya/axtarış görünüşündə (ana səhifədə karusel var) */}
+            {(selectedCategory || searchQuery.trim()) && (
             <div className="grid sm:grid-cols-3 gap-3.5 mb-6">
               <Link href="/elanlar" className="sm:col-span-2 group relative overflow-hidden rounded-3xl p-7 sm:p-9 flex flex-col justify-center text-white min-h-[190px] shadow-xl shadow-blue-500/20" style={{ background: "linear-gradient(135deg,#5e8bff 0%,#2f6bff 55%,#2056e6 100%)" }}>
                 <div className="absolute -top-14 -right-12 w-52 h-52 rounded-full bg-white/10 blur-2xl pointer-events-none" />
@@ -563,6 +570,8 @@ function MarketplacePage() {
                 </Link>
               </div>
             </div>
+
+            )}
 
             {/* Ana səhifə: əvvəl baxdıqlarınız */}
             {!selectedCategory && !searchQuery.trim() && <RecentlyViewed />}
