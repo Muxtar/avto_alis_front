@@ -4,12 +4,31 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { API } from "@/lib/api";
+import AdminHeader from "@/components/AdminHeader";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { t } = useLanguage();
   const router = useRouter();
   const pathname = usePathname();
   const [ready, setReady] = useState(false);
+  const [overview, setOverview] = useState<any | null>(null);
+  const [adminName, setAdminName] = useState("Admin");
+
+  const loadOverview = () => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+    if (!token) return;
+    fetch(`${API}/admin/overview`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json()).then((d) => { if (d.success) setOverview(d); }).catch(() => {});
+  };
+
+  // Gözləyən iş sayları + statistikanı yüklə (login-dən sonra) və 30 saniyədə bir yenilə.
+  useEffect(() => {
+    if (!ready || pathname === "/admin/login") return;
+    setAdminName(localStorage.getItem("adminName") || "Admin");
+    loadOverview();
+    const id = setInterval(loadOverview, 30000);
+    return () => clearInterval(id);
+  }, [ready, pathname]);
 
   useEffect(() => {
     if (pathname === "/admin/login") {
@@ -93,8 +112,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     window.location.reload();
   };
 
+  // Sidebar linkinə uyğun gözləyən iş sayı (badge üçün).
+  const pendingByHref: Record<string, string> = {
+    "/admin/businesses": "businesses",
+    "/admin/seller-applications": "sellerApps",
+    "/admin/id-verifications": "idVerifications",
+    "/admin/credentials": "credentials",
+    "/admin/social-links": "socialLinks",
+    "/admin/complaints": "complaints",
+    "/admin/returns": "returns",
+  };
+  const pendingFor = (href: string): number => {
+    const k = pendingByHref[href];
+    return k && overview?.pending ? overview.pending[k] || 0 : 0;
+  };
+
   return (
-    <div className="flex min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)]">
+    <div className="flex flex-col min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)]">
+      <AdminHeader overview={overview} adminName={adminName} onRefresh={loadOverview} onLogout={handleLogout} />
+      <div className="flex flex-1 min-h-0">
       {/* Sidebar */}
       <aside className="w-16 sm:w-56 bg-card border-r border-card-border flex flex-col shrink-0 transition-colors">
         <div className="p-3 sm:p-4 border-b border-card-border">
@@ -110,13 +146,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <nav className="flex-1 p-2 sm:p-3 space-y-1">
           {links.map((link) => {
             const isActive = pathname === link.href;
+            const badge = pendingFor(link.href);
             return (
               <Link key={link.href} href={link.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive ? "bg-orange-500/10 text-orange-500" : "text-muted hover:text-foreground hover:bg-input-bg"
                 }`}>
-                {link.icon}
-                <span className="hidden sm:inline">{link.label}</span>
+                <span className="relative shrink-0">
+                  {link.icon}
+                  {badge > 0 && <span className="sm:hidden absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{badge}</span>}
+                </span>
+                <span className="hidden sm:inline flex-1">{link.label}</span>
+                {badge > 0 && <span className="hidden sm:flex min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full items-center justify-center">{badge}</span>}
               </Link>
             );
           })}
@@ -134,6 +175,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-3 sm:p-6">
         {children}
+      </div>
       </div>
     </div>
   );
