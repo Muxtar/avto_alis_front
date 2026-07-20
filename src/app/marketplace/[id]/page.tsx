@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import { formatPrice } from "@/lib/format";
 import { countryLabel } from "@/lib/countries";
-import { getCategoryAttrs, parseCat, getListingFields } from "@/lib/categories";
+import { getCategoryAttrs, parseCat, getListingFields, catToSlugs } from "@/lib/categories";
 import OrderMap from "@/components/OrderMapWrapper";
 import ShareButton from "@/components/ShareButton";
 
@@ -233,7 +233,20 @@ export default function ListingDetailPage() {
 
   return (
     <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
-      {/* Geri qayıtma qlobal BackButton ilə edilir (layout) */}
+      {/* Breadcrumb — kateqoriya yolu (birmarket üslubu) */}
+      {(() => {
+        const { main, sub } = parseCat(listing.category);
+        const slugs = catToSlugs(listing.category);
+        if (!main) return null;
+        return (
+          <nav className="flex items-center gap-1.5 text-xs text-muted mb-3 flex-wrap">
+            <Link href="/elanlar" className="hover:text-orange-500 transition-colors">Ana səhifə</Link>
+            <span className="text-muted-foreground/50">›</span>
+            <Link href={`/elanlar/${slugs[0]}`} className="hover:text-orange-500 transition-colors">{main}</Link>
+            {sub && (<><span className="text-muted-foreground/50">›</span><Link href={`/elanlar/${slugs[0]}/${slugs[1]}`} className="hover:text-orange-500 transition-colors">{sub}</Link></>)}
+          </nav>
+        );
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
         {/* Left - Image gallery */}
@@ -432,7 +445,7 @@ export default function ListingDetailPage() {
           })()}
 
           {/* Comments */}
-          <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 mt-4">
+          <div id="reviews" className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 mt-4 scroll-mt-20">
             <h3 className="font-semibold mb-4 flex items-center gap-2 flex-wrap">
               <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
               {t("comments")} ({listing.comments?.length || 0})
@@ -525,8 +538,8 @@ export default function ListingDetailPage() {
           </div>
         </div>
 
-        {/* Right - Info */}
-        <div className="lg:col-span-2 space-y-4">
+        {/* Right - Info (birmarket üslubu: alış qutusu scroll-da yapışıq qalır) */}
+        <div className="lg:col-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
           {/* Price Card */}
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
             <div className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium mb-3 ${
@@ -537,6 +550,25 @@ export default function ListingDetailPage() {
             <div className="flex items-start justify-between gap-2 mb-2">
               <h1 className="text-xl sm:text-2xl font-bold">{listing.title}</h1>
               <ShareButton title={listing.title} text={`${listing.title} — tradixai`} path={`/marketplace/${listing.id}`} listingId={listing.id} compact className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+            </div>
+            {/* Reytinq + məhsulun kodu (birmarket üslubu) */}
+            <div className="flex items-center gap-3 mb-3 flex-wrap">
+              {(() => {
+                const rs = (listing.comments || []).map((c: any) => c.rating).filter((r: number) => r >= 1 && r <= 5);
+                if (!rs.length) return null;
+                const avg = rs.reduce((a: number, b: number) => a + b, 0) / rs.length;
+                return (
+                  <a href="#reviews" className="flex items-center gap-1">
+                    <span className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((i) => (
+                        <svg key={i} className={`w-4 h-4 ${i <= Math.round(avg) ? "text-amber-400" : "text-muted-foreground/25"}`} fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.3L5.8 21l1.6-7L2 9.2l7.2-.6L12 2l2.8 6.6 7.2.6-5.4 4.8 1.6 7z" /></svg>
+                      ))}
+                    </span>
+                    <span className="text-xs text-muted font-medium">{avg.toFixed(1)} · {rs.length} rəy</span>
+                  </a>
+                );
+              })()}
+              <span className="text-xs text-muted-foreground">Kod: №{listing.id}</span>
             </div>
             <div className="flex items-baseline gap-1.5 mb-3">
               <span className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
