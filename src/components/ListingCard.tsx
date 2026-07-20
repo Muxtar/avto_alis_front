@@ -233,6 +233,18 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
           <h3 className="font-semibold text-sm sm:text-[15px] mb-1 line-clamp-1 group-hover:text-orange-500 transition-colors">{listing.title}</h3>
 
+          {/* Reytinq ulduzları — məhsul kartına canlılıq verir (birmarket üslubu) */}
+          {listing.user.avgRating ? (
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <div className="flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <svg key={i} className={`w-3.5 h-3.5 ${i <= Math.round(listing.user.avgRating!) ? "text-amber-400" : "text-muted-foreground/25"}`} fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.3L5.8 21l1.6-7L2 9.2l7.2-.6L12 2l2.8 6.6 7.2.6-5.4 4.8 1.6 7z" /></svg>
+                ))}
+              </div>
+              <span className="text-[11px] text-muted-foreground font-medium">{listing.user.avgRating.toFixed(1)}{listing.user.ratingCount ? ` · ${listing.user.ratingCount} rəy` : ""}</span>
+            </div>
+          ) : null}
+
           {/* Vehicle + Unit info */}
           {(listing.forVehicle || (listing.unit && listing.unitValue)) && (
             <div className="flex flex-wrap gap-1.5 mb-1.5">
@@ -254,8 +266,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           {/* Price + Meta */}
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-baseline gap-0.5">
-              <span className="brand-text font-bold text-lg leading-none">{formatPrice(listing.price)}</span>
-              <span className="text-muted-foreground text-[11px] font-medium ml-0.5">{t("azn")}</span>
+              <span className="brand-text font-extrabold text-xl sm:text-[22px] leading-none">{formatPrice(listing.price)}</span>
+              <span className="text-muted-foreground text-xs font-semibold ml-0.5">{t("azn")}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground text-[10px]">
               {listing._count && listing._count.comments > 0 && (
@@ -287,12 +299,6 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               >
                 <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                 <span className="truncate">{listing.user.name}</span>
-                {listing.user.avgRating && (
-                  <span className="flex items-center gap-0.5 text-amber-400 shrink-0 ml-1">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M12 17.3L5.8 21l1.6-7L2 9.2l7.2-.6L12 2l2.8 6.6 7.2.6-5.4 4.8 1.6 7z" /></svg>
-                    <span className="text-[10px]">{listing.user.avgRating.toFixed(1)}</span>
-                  </span>
-                )}
               </span>
             )}
             {canBuy && (

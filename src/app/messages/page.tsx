@@ -721,7 +721,9 @@ export default function MessagesPage() {
                     </p>
                   </div>
                   {/* Söhbəti sil (məndə) */}
-                  <button onClick={(e) => { e.stopPropagation(); deleteThread(chat); }} title="Söhbəti sil" className="shrink-0 w-8 h-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">🗑</button>
+                  <button onClick={(e) => { e.stopPropagation(); deleteThread(chat); }} title="Söhbəti sil" className="shrink-0 w-8 h-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                  </button>
                 </div>
               ))
             )}
@@ -755,14 +757,14 @@ export default function MessagesPage() {
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7.5v5m2.5-2.5h-5M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.5a7.5 7.5 0 0115 0v.75H4.5v-.75z" /></svg>
                       </button>
                     )}
-                    <button onClick={() => startCall({ id: active.id, name: active.name }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors">📞</button>
-                    <button onClick={() => startCall({ id: active.id, name: active.name }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors">🎥</button>
+                    <button onClick={() => startCall({ id: active.id, name: active.name }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></button>
+                    <button onClick={() => startCall({ id: active.id, name: active.name }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg></button>
                   </div>
                 )}
                 {active.type === "group" && (
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => startGroupCall(active.id, active.name, "audio")} title="Qrup səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors">📞</button>
-                    <button onClick={() => startGroupCall(active.id, active.name, "video")} title="Qrup görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors">🎥</button>
+                    <button onClick={() => startGroupCall(active.id, active.name, "audio")} title="Qrup səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></button>
+                    <button onClick={() => startGroupCall(active.id, active.name, "video")} title="Qrup görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg></button>
                   </div>
                 )}
               </div>
@@ -834,7 +836,9 @@ export default function MessagesPage() {
                   </div>
                 ) : (
                   <div className="flex gap-2 items-center relative min-w-0">
-                    <button onClick={() => { setAttachOpen((v) => !v); setEmojiOpen(false); }} title="Əlavə et" className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center text-lg shrink-0">📎</button>
+                    <button onClick={() => { setAttachOpen((v) => !v); setEmojiOpen(false); }} title="Əlavə et" className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center shrink-0 text-muted hover:text-orange-500 transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" /></svg>
+                    </button>
                     {attachOpen && (<>
                       {/* Xaricə klik — menyu bağlansın */}
                       <div className="fixed inset-0 z-[15]" onClick={() => setAttachOpen(false)} />
