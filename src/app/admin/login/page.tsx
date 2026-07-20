@@ -61,12 +61,12 @@ export default function AdminLoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1.5">{t("adminUsername")}</label>
-              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="admin"
+              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="admin" autoComplete="username"
                 className="w-full px-4 py-3 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm" />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5">{t("adminPassword")}</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••"
+              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••" autoComplete="current-password"
                 className="w-full px-4 py-3 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm" />
             </div>
             {error && <p className="text-red-500 text-sm text-center">{error}</p>}
