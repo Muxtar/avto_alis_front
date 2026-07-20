@@ -467,14 +467,6 @@ function MarketplacePage() {
         </div>
       )}
 
-      {/* Ana səhifə: karusel + əvvəl baxılanlar (yalnız kateqoriya/axtarış seçilməyəndə) */}
-      {!selectedCategory && !searchQuery.trim() && (
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6">
-          <HomeCarousel />
-          <RecentlyViewed />
-        </div>
-      )}
-
       {/* Listings Grid with side ads */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
         <div className="lg:grid lg:grid-cols-[230px_1fr] lg:gap-6">
@@ -535,6 +527,12 @@ function MarketplacePage() {
 
           {/* Center column - listings */}
           <div className="min-w-0">
+            {/* Ana səhifə: mərkəzi karusel (kateqoriyalar solda) + əvvəl baxılanlar */}
+            {!selectedCategory && !searchQuery.trim() && (
+              <div className="mb-6">
+                <HomeCarousel />
+              </div>
+            )}
             {/* Hero banner */}
             <div className="grid sm:grid-cols-3 gap-3.5 mb-6">
               <Link href="/elanlar" className="sm:col-span-2 group relative overflow-hidden rounded-3xl p-7 sm:p-9 flex flex-col justify-center text-white min-h-[190px] shadow-xl shadow-blue-500/20" style={{ background: "linear-gradient(135deg,#5e8bff 0%,#2f6bff 55%,#2056e6 100%)" }}>
@@ -565,6 +563,9 @@ function MarketplacePage() {
                 </Link>
               </div>
             </div>
+
+            {/* Ana səhifə: əvvəl baxdıqlarınız */}
+            {!selectedCategory && !searchQuery.trim() && <RecentlyViewed />}
 
             {/* Üst axtarışdan tapılan mütəxəssislər (məhsul/xidmət nəticələrinin üstündə) */}
             {searchQuery && activeType !== "PROFESSION" && matchedPros.length > 0 && (
