@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatPriceShort } from "@/lib/format";
 import { countryLabel } from "@/lib/countries";
 import { getCategoryAttrs, parseCat, getListingFields, catToSlugs } from "@/lib/categories";
 import OrderMap from "@/components/OrderMapWrapper";
@@ -585,9 +585,10 @@ export default function ListingDetailPage() {
               })()}
               <span className="text-xs text-muted-foreground">Kod: №{listing.id}</span>
             </div>
-            <div className="flex items-baseline gap-1.5 mb-3">
-              <span className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent">
-                {formatPrice(listing.price)}
+            {/* Çox böyük qiymətlər qutudan daşmasın: qısa format + tam dəyər title-da */}
+            <div className="flex items-baseline flex-wrap gap-x-1.5 mb-3 min-w-0" title={`${formatPrice(listing.price)} ${t("azn")}`}>
+              <span className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent break-words min-w-0">
+                {formatPriceShort(listing.price)}
               </span>
               <span className="text-foreground/70 text-base font-semibold">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
             </div>

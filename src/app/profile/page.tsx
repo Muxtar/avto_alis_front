@@ -1724,11 +1724,28 @@ export default function ProfilePage() {
                         {t("expiredBadge")}
                       </span>
                     )}
+                    {/* Moderasiya vəziyyəti — yalnız sahibi görür */}
+                    {l.status === "PENDING" && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/95 text-white backdrop-blur-md shadow-sm">
+                        ⏳ Gözləmədə
+                      </span>
+                    )}
+                    {l.status === "REJECTED" && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-600/95 text-white backdrop-blur-md shadow-sm">
+                        Rədd edildi
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div className="p-3 flex-1 flex flex-col">
                   <span className="px-1.5 py-0.5 bg-input-bg border border-input-border rounded text-[10px] w-fit mb-1.5 truncate max-w-full">{l.category}</span>
                   <h3 className="font-medium text-sm truncate">{l.title}</h3>
+                  {l.status === "PENDING" && (
+                    <p className="mt-1 text-[11px] text-amber-500">Admin təsdiqi gözlənilir — saytda hələ görünmür.</p>
+                  )}
+                  {l.status === "REJECTED" && (
+                    <p className="mt-1 text-[11px] text-red-500">Rədd edildi{l.rejectReason ? `: ${l.rejectReason}` : ""}</p>
+                  )}
                   <div className="flex items-center justify-between mt-1.5 mb-2">
                     <span className="text-orange-500 font-bold text-sm">{l.price} AZN</span>
                     <div className="flex items-center gap-2 text-muted text-[10px]">

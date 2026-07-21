@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { API, imgUrl } from "@/lib/api";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatPriceShort } from "@/lib/format";
 import { COUNTRY_BY_CODE } from "@/lib/countries";
 
 interface Listing {
@@ -264,12 +264,12 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           <p className="text-muted text-xs mb-2 line-clamp-2 flex-1">{listing.description}</p>
 
           {/* Price + Meta */}
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-baseline gap-0.5">
-              <span className="brand-text font-extrabold text-xl sm:text-[22px] leading-none">{formatPrice(listing.price)}</span>
-              <span className="text-muted-foreground text-xs font-semibold ml-0.5">{t("azn")}</span>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-baseline gap-0.5 min-w-0" title={`${formatPrice(listing.price)} ${t("azn")}`}>
+              <span className="brand-text font-extrabold text-xl sm:text-[22px] leading-none truncate">{formatPriceShort(listing.price)}</span>
+              <span className="text-muted-foreground text-xs font-semibold ml-0.5 shrink-0">{t("azn")}</span>
             </div>
-            <div className="flex items-center gap-2 text-muted-foreground text-[10px]">
+            <div className="flex items-center gap-2 text-muted-foreground text-[10px] shrink-0">
               {listing._count && listing._count.comments > 0 && (
                 <span className="flex items-center gap-0.5">
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>

@@ -241,6 +241,8 @@ function AccountPageInner() {
         toast(err.message || t('error'), 'error');
         return;
       }
+      // Yeni elan admin təsdiqini gözləyir — istifadəçi bunu bilməlidir.
+      if (!editingId) toast("Elan göndərildi. Admin təsdiqindən sonra saytda görünəcək (gözləmədə).", "success");
       resetForm();
       fetchListings();
     } catch {

@@ -12,6 +12,8 @@ export default function AdminListingsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [catFilter, setCatFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("PENDING"); // moderasiya növbəsi ilə başla
+  const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<any>(null);
   const [page, setPage] = useState(1);
@@ -26,16 +28,17 @@ export default function AdminListingsPage() {
     if (search) params.set("search", search);
     if (typeFilter !== "all") params.set("type", typeFilter);
     if (catFilter) params.set("category", catFilter);
+    if (statusFilter !== "all") params.set("status", statusFilter);
     params.set("page", String(page));
     params.set("limit", "20");
     fetch(`${API}/admin/listings?${params}`, { headers })
       .then((r) => r.json())
-      .then((d) => { setListings(d.listings || []); setTotalPages(d.totalPages || 1); })
+      .then((d) => { setListings(d.listings || []); setTotalPages(d.totalPages || 1); setPendingCount(d.pendingCount || 0); })
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchListings(); }, [typeFilter, catFilter, page]);
+  useEffect(() => { fetchListings(); }, [typeFilter, catFilter, statusFilter, page]);
   useEffect(() => { setPage(1); const tm = setTimeout(fetchListings, 300); return () => clearTimeout(tm); }, [search]);
 
   const handleDelete = async (id: number) => {
@@ -46,6 +49,24 @@ export default function AdminListingsPage() {
       if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
       setListings(listings.filter((l) => l.id !== id));
       toast(t("adminDeleted") || "Silindi", "success");
+    } catch { toast(t("error"), "error"); }
+  };
+
+  // Moderasiya — təsdiqlə / rədd et / yenidən gözləməyə qaytar.
+  const setStatus = async (id: number, status: "APPROVED" | "REJECTED" | "PENDING") => {
+    let rejectReason: string | null = null;
+    if (status === "REJECTED") {
+      rejectReason = prompt("Rədd səbəbi (elan sahibi görəcək):", "") ?? null;
+      if (rejectReason === null) return; // ləğv edildi
+    }
+    try {
+      const res = await fetch(`${API}/admin/listings/${id}/status`, {
+        method: "PATCH", headers, body: JSON.stringify({ status, rejectReason }),
+      });
+      const r = await res.json();
+      if (!res.ok || !r.success) { toast(r.message || t("error"), "error"); return; }
+      toast(status === "APPROVED" ? "Elan təsdiqləndi" : status === "REJECTED" ? "Elan rədd edildi" : "Gözləməyə qaytarıldı", "success");
+      fetchListings();
     } catch { toast(t("error"), "error"); }
   };
 
@@ -99,6 +120,22 @@ export default function AdminListingsPage() {
           </div>
         </div>
 
+        {/* Moderasiya vəziyyəti */}
+        <div className="flex gap-1.5 flex-wrap">
+          {[
+            { v: "PENDING", l: "Gözləmədə", badge: pendingCount },
+            { v: "APPROVED", l: "Təsdiqlənib", badge: 0 },
+            { v: "REJECTED", l: "Rədd edilib", badge: 0 },
+            { v: "all", l: "Hamısı", badge: 0 },
+          ].map((o) => (
+            <button key={o.v} onClick={() => { setStatusFilter(o.v); setPage(1); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${statusFilter === o.v ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border text-muted hover:text-foreground'}`}>
+              {o.l}
+              {o.badge > 0 && <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] ${statusFilter === o.v ? 'bg-white/25' : 'bg-amber-500 text-white'}`}>{o.badge}</span>}
+            </button>
+          ))}
+        </div>
+
         {/* Category chips */}
         <div className="flex gap-1.5 flex-wrap">
           <button onClick={() => setCatFilter("")}
@@ -140,6 +177,9 @@ export default function AdminListingsPage() {
                       {listing.type === 'SERVICE' ? t("service") : t("product")}
                     </span>
                     <span className="px-1.5 py-0.5 bg-input-bg border border-input-border rounded text-[10px]">{listing.category}</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${listing.status === 'APPROVED' ? 'bg-green-500/10 text-green-500' : listing.status === 'REJECTED' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                      {listing.status === 'APPROVED' ? 'Təsdiqlənib' : listing.status === 'REJECTED' ? 'Rədd edilib' : 'Gözləmədə'}
+                    </span>
                   </div>
                   <p className="text-muted text-xs mt-0.5 truncate break-all">{listing.user?.name} · ID: {listing.id} · {listing.description?.slice(0, 60)}...</p>
                 </div>
@@ -149,6 +189,16 @@ export default function AdminListingsPage() {
 
                 {/* Actions */}
                 <div className="flex gap-1.5 shrink-0">
+                  {listing.status !== 'APPROVED' && (
+                    <button onClick={() => setStatus(listing.id, 'APPROVED')} className="px-2.5 py-2 bg-green-500/10 text-green-500 rounded-lg text-xs font-semibold hover:bg-green-500/20 transition-colors" title="Təsdiqlə">
+                      ✓ Təsdiqlə
+                    </button>
+                  )}
+                  {listing.status !== 'REJECTED' && (
+                    <button onClick={() => setStatus(listing.id, 'REJECTED')} className="px-2.5 py-2 bg-red-500/10 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-500/20 transition-colors" title="Rədd et">
+                      ✕ Rədd et
+                    </button>
+                  )}
                   <button onClick={() => openEdit(listing)} className="p-2 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-colors" title={t("adminEdit")}>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                   </button>
