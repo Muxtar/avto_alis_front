@@ -37,6 +37,11 @@ export default function Navbar() {
   const [search, setSearch] = useState("");
   const [imgBusy, setImgBusy] = useState(false);
   const imgInputRef = useRef<HTMLInputElement>(null);
+  // İnternet (Claude web search) nəticələri — axtarış sahəsinin altındakı pencere
+  const [webOpen, setWebOpen] = useState(false);
+  const [webLoading, setWebLoading] = useState(false);
+  const [webQuery, setWebQuery] = useState("");
+  const [webData, setWebData] = useState<{ summary: string; results: { title: string; url: string; snippet: string }[] } | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const langRef = useRef<HTMLDivElement>(null);
@@ -70,10 +75,43 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const submitSearch = (e?: React.FormEvent) => {
+  // Axtarış: əvvəlcə sayt daxili. Saytda heç nə tapılmasa, Claude-un internet
+  // axtarışı işə düşür və nəticələr axtarış sahəsinin altında açılır.
+  const submitSearch = async (e?: React.FormEvent) => {
     e?.preventDefault();
     const q = search.trim();
+    setWebOpen(false);
+    setWebData(null);
     router.push(`/elanlar${q ? `?search=${encodeURIComponent(q)}` : ""}`);
+    if (!q) return;
+
+    try {
+      const r = await fetch(`${API}/listings?search=${encodeURIComponent(q)}&limit=1`);
+      const d = await r.json();
+      const found = (d?.listings?.length ?? 0) > 0 || (d?.total ?? 0) > 0;
+      if (found) return;
+    } catch {
+      return; // sayt axtarışı alınmadısa internetə keçmirik
+    }
+
+    if (!isLoggedIn || !token) return; // internet axtarışı yalnız daxil olanlar üçün
+    setWebOpen(true);
+    setWebLoading(true);
+    setWebQuery(q);
+    try {
+      const res = await fetch(`${API}/search/web`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ query: q }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) setWebData({ summary: data.message || "İnternetdə də nəticə tapılmadı.", results: [] });
+      else setWebData({ summary: data.summary || "", results: data.results || [] });
+    } catch {
+      setWebData({ summary: "İnternet axtarışı alınmadı.", results: [] });
+    } finally {
+      setWebLoading(false);
+    }
   };
 
   // Şəkillə axtarış — şəkil serverə göndərilir, AI məhsulu tanıyır və
@@ -226,7 +264,8 @@ export default function Navbar() {
             </div>
 
             {/* Axtarış */}
-            <form onSubmit={submitSearch} className="flex-1 min-w-[160px] flex items-stretch h-13 overflow-hidden border-2 transition-colors" style={{ borderColor: PINK }}>
+            <div className="relative flex-1 min-w-[160px]">
+            <form onSubmit={submitSearch} className="w-full flex items-stretch h-13 overflow-hidden border-2 transition-colors" style={{ borderColor: PINK }}>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -257,6 +296,60 @@ export default function Navbar() {
                 <span className="hidden sm:inline">Axtar</span>
               </button>
             </form>
+
+            {/* Saytda tapılmadı → internet nəticələri (Claude web search) */}
+            {webOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setWebOpen(false)} />
+                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card border border-card-border shadow-2xl max-h-[70vh] overflow-y-auto">
+                  <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-card-border">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold">İnternet nəticələri</p>
+                      <p className="text-xs text-muted mt-0.5 truncate">
+                        «{webQuery}» saytda tapılmadı — internetdən axtarıldı
+                      </p>
+                    </div>
+                    <button onClick={() => setWebOpen(false)} aria-label="Bağla" className="shrink-0 p-1 text-muted hover:text-foreground transition-colors">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+
+                  {webLoading ? (
+                    <div className="flex items-center gap-3 px-4 py-6 text-sm text-muted">
+                      <svg className="w-5 h-5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" /></svg>
+                      İnternetdə axtarılır...
+                    </div>
+                  ) : (
+                    <>
+                      {webData?.summary && (
+                        <p className="px-4 py-3 text-sm text-foreground/90 border-b border-card-border">{webData.summary}</p>
+                      )}
+                      {(webData?.results?.length ?? 0) === 0 ? (
+                        <p className="px-4 py-6 text-sm text-muted">Nəticə tapılmadı.</p>
+                      ) : (
+                        <ul className="divide-y divide-card-border">
+                          {webData!.results.map((r) => {
+                            let host = r.url;
+                            try { host = new URL(r.url).hostname.replace(/^www\./, ""); } catch { /* keç */ }
+                            return (
+                              <li key={r.url}>
+                                <a href={r.url} target="_blank" rel="noopener noreferrer"
+                                  className="block px-4 py-3 hover:bg-input-bg transition-colors">
+                                  <p className="text-sm font-semibold text-primary line-clamp-2">{r.title}</p>
+                                  <p className="text-[11px] text-muted mt-0.5 truncate">{host}</p>
+                                  {r.snippet && <p className="text-xs text-muted mt-1 line-clamp-2">{r.snippet}</p>}
+                                </a>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+            </div>
 
             {/* Sağ: bildiriş / seçilmişlər / səbət / istifadəçi */}
             <div className="flex items-center gap-1 sm:gap-3 shrink-0">
