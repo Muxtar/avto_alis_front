@@ -69,6 +69,8 @@ function AccountPageInner() {
   // Təsdiqlənmiş biznes obyektləri — elan kartla satıla bilsin deyə seçilir.
   const [bizObjects, setBizObjects] = useState<{ id: number; label: string }[]>([]);
   const [selectedObjectId, setSelectedObjectId] = useState<string>("");
+  // ?new=1 sorğusunun təkrar emalının qarşısını alır (bax: aşağıdakı effekt).
+  const handledNewRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
@@ -117,18 +119,26 @@ function AccountPageInner() {
   // Auto-open the form when arriving with ?new=1 (e.g. from the mobile
   // bottom-nav "+" — there's no inline header button on mobile).
   useEffect(() => {
-    if (newParam === "1" && !showForm && !authLoading && isLoggedIn) {
-      resetForm();
-      setShowForm(true);
-      // Menyudan VÖEN/VÖEN-siz seçilibsə birbaşa o rejimə keç (seçim ekranını ötür).
-      if (modeParam === "voen" || modeParam === "novoen") setListingMode(modeParam);
-      const url = new URL(window.location.href);
-      url.searchParams.delete("new");
-      url.searchParams.delete("mode");
-      window.history.replaceState({}, "", url.toString());
-    }
+    if (newParam !== "1" || authLoading || !isLoggedIn) return;
+    // Eyni sorğunu iki dəfə emal etməyək (replaceState searchParams-ı
+    // yeniləmədiyi üçün effekt təkrar işləyə bilər).
+    const token = `${newParam}:${modeParam || ""}`;
+    if (handledNewRef.current === token) return;
+    handledNewRef.current = token;
+
+    // ƏVVƏL "!showForm" şərti vardı: forma artıq açıqsa menyudan başqa
+    // rejim seçmək (VÖEN → VÖEN-siz) işləmirdi, istifadəçi ana səhifəyə
+    // qayıtmalı olurdu. İndi rejim dəyişikliyi həmişə tətbiq olunur.
+    resetForm();
+    setShowForm(true);
+    // Menyudan VÖEN/VÖEN-siz seçilibsə birbaşa o rejimə keç (seçim ekranını ötür).
+    if (modeParam === "voen" || modeParam === "novoen") setListingMode(modeParam);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("new");
+    url.searchParams.delete("mode");
+    window.history.replaceState({}, "", url.toString());
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [newParam, authLoading, isLoggedIn]);
+  }, [newParam, modeParam, authLoading, isLoggedIn]);
 
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";

@@ -6,11 +6,18 @@ import { usePathname, useRouter } from "next/navigation";
 // Yalnız üst səviyyə səhifələrdə gizlədilir.
 const HIDDEN_PATHS = new Set(["/", "/elanlar", "/verify"]);
 
+// Səhifənin ÖZ geri naviqasiyası olan yerlərdə qlobal düymə göstərilmir —
+// əks halda ekranda iki "Geri" olurdu:
+//  • /elanlar/... — sol filtr panelində "‹ Bütün kateqoriyalar" var
+//  • /account     — yeni elan sihirbazında kartın içində "← Geri" var
+const HIDDEN_PREFIXES = ["/elanlar/", "/account"];
+
 export default function BackButton() {
   const pathname = usePathname();
   const router = useRouter();
 
   if (!pathname || HIDDEN_PATHS.has(pathname)) return null;
+  if (HIDDEN_PREFIXES.some((p) => pathname.startsWith(p))) return null;
   // Admin panelinin öz naviqasiyası var.
   if (pathname.startsWith("/admin")) return null;
 
