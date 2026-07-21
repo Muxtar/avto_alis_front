@@ -105,7 +105,7 @@ export default function Navbar() {
         body: JSON.stringify({ query: q }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) setWebData({ summary: data.message || "İnternetdə də nəticə tapılmadı.", results: [] });
+      if (!res.ok || !data.success) setWebData({ summary: data.message || "Azərbaycanda uyğun nəticə tapılmadı.", results: [] });
       else setWebData({ summary: data.summary || "", results: data.results || [] });
     } catch {
       setWebData({ summary: "İnternet axtarışı alınmadı.", results: [] });
@@ -306,7 +306,7 @@ export default function Navbar() {
                     <div className="min-w-0">
                       <p className="text-sm font-bold">İnternet nəticələri</p>
                       <p className="text-xs text-muted mt-0.5 truncate">
-                        «{webQuery}» saytda tapılmadı — internetdən axtarıldı
+                        «{webQuery}» saytda tapılmadı — Azərbaycan üzrə internetdən axtarıldı
                       </p>
                     </div>
                     <button onClick={() => setWebOpen(false)} aria-label="Bağla" className="shrink-0 p-1 text-muted hover:text-foreground transition-colors">
@@ -325,7 +325,7 @@ export default function Navbar() {
                         <p className="px-4 py-3 text-sm text-foreground/90 border-b border-card-border">{webData.summary}</p>
                       )}
                       {(webData?.results?.length ?? 0) === 0 ? (
-                        <p className="px-4 py-6 text-sm text-muted">Nəticə tapılmadı.</p>
+                        <p className="px-4 py-6 text-sm text-muted">Azərbaycanda uyğun nəticə tapılmadı.</p>
                       ) : (
                         <ul className="divide-y divide-card-border">
                           {webData!.results.map((r) => {
