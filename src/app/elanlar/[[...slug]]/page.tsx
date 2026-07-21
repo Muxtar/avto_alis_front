@@ -277,42 +277,10 @@ function MarketplacePage() {
     <div className="min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)]">
       {/* Hero / Search Section */}
       <div className="hero-bg border-b border-card-border">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-7">
-          <div className="mb-3 sm:mb-5 flex items-start justify-between gap-3">
-            <div>
-              <h1 className="section-title">{t("marketplace")}</h1>
-              <p className="text-muted text-xs sm:text-sm mt-0.5">{t("footerDesc")}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Link
-                href="/locations"
-                className="inline-flex shrink-0 items-center gap-1.5 px-3 sm:px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-xs sm:text-sm font-semibold hover:bg-orange-500/10 hover:border-orange-500/30 hover:text-orange-500 transition-all whitespace-nowrap"
-                title={t("locationsTitle")}
-              >
-                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-                </svg>
-                <span className="hidden xs:inline">{t("browseByLocation")}</span>
-              </Link>
-              <AddListingMenu />
-            </div>
-          </div>
-
-          {/* Filtr sətri (axtarış başlıqdadır — burada təkrar input yoxdur) */}
-          <div className="flex flex-col sm:flex-row flex-wrap gap-2.5 sm:gap-3">
-            <div className="flex-1 min-w-0 hidden sm:block" />
-            <button
-              type="button"
-              onClick={openCheapModal}
-              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 sm:py-3 bg-orange-500/10 text-orange-500 border border-orange-500/30 rounded-xl text-xs sm:text-sm font-semibold hover:bg-orange-500/20 transition-all whitespace-nowrap"
-              title={t("cheaperSearchTitle")}
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              {t("cheaperSearch")}
-            </button>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5">
+          {/* Tək sətirli yığcam alət paneli — başlıq legv edildi ki, karusel
+              headerə mümkün qədər yaxın olsun. */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
             <div className="segmented shrink-0">
               {typeButtons.map((btn) => (
                 <button
@@ -324,10 +292,37 @@ function MarketplacePage() {
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={openCheapModal}
+              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-orange-500/10 text-orange-500 border border-orange-500/30 rounded-xl text-xs sm:text-sm font-semibold hover:bg-orange-500/20 transition-all whitespace-nowrap"
+              title={t("cheaperSearchTitle")}
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+              </svg>
+              {t("cheaperSearch")}
+            </button>
+
+            <div className="flex-1 min-w-0 hidden sm:block" />
+
+            <Link
+              href="/locations"
+              className="inline-flex shrink-0 items-center gap-1.5 px-3 sm:px-4 py-2 bg-input-bg border border-input-border rounded-xl text-xs sm:text-sm font-semibold hover:bg-orange-500/10 hover:border-orange-500/30 hover:text-orange-500 transition-all whitespace-nowrap"
+              title={t("locationsTitle")}
+            >
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+              </svg>
+              <span className="hidden xs:inline">{t("browseByLocation")}</span>
+            </Link>
+            <AddListingMenu />
+
             {(selectedCategory || searchQuery.trim()) ? (
               <div className="relative shrink-0">
                 <button type="button" onClick={() => setSortOpen((v) => !v)}
-                  className="inline-flex items-center gap-2 px-4 py-3 input-base text-sm font-medium hover:border-primary transition-colors">
+                  className="inline-flex items-center gap-2 px-4 py-2 input-base text-sm font-medium hover:border-primary transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 7h18M6 12h12M10 17h4" /></svg>
                   Sıralama
                 </button>
@@ -489,7 +484,7 @@ function MarketplacePage() {
       )}
 
       {/* Listings Grid with side ads */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
         <div className="lg:grid lg:grid-cols-[230px_1fr] lg:gap-6">
           {/* Sol kateqoriya paneli (umico üslubu) — sabit hündürlük + scroll, hover-da sağda alt-kateqoriyalar */}
           <aside className="hidden lg:block">
