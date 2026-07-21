@@ -41,7 +41,7 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
-  const [webData, setWebData] = useState<{ summary: string; results: { title: string; url: string; snippet: string }[] } | null>(null);
+  const [webData, setWebData] = useState<{ summary: string; results: { title: string; url: string; snippet: string }[]; needLogin?: boolean } | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const langRef = useRef<HTMLDivElement>(null);
@@ -91,13 +91,19 @@ export default function Navbar() {
       const found = (d?.listings?.length ?? 0) > 0 || (d?.total ?? 0) > 0;
       if (found) return;
     } catch {
-      return; // sayt axtarışı alınmadısa internetə keçmirik
+      // Sayt axtarışı alınmadısa da internetə keçirik — istifadəçi nəticəsiz qalmasın.
     }
 
-    if (!isLoggedIn || !token) return; // internet axtarışı yalnız daxil olanlar üçün
-    setWebOpen(true);
-    setWebLoading(true);
+    // Saytda tapılmadı — pəncərə HƏR HALDA açılır ki, istifadəçi nə baş
+    // verdiyini görsün (əvvəl daxil olmayanda səssizcə heç nə olmurdu).
     setWebQuery(q);
+    setWebOpen(true);
+    if (!isLoggedIn || !token) {
+      setWebLoading(false);
+      setWebData({ summary: "", results: [], needLogin: true });
+      return;
+    }
+    setWebLoading(true);
     try {
       const res = await fetch(`${API}/search/web`, {
         method: "POST",
@@ -321,6 +327,17 @@ export default function Navbar() {
                     </div>
                   ) : (
                     <>
+                      {webData?.needLogin ? (
+                        <div className="px-4 py-5">
+                          <p className="text-sm text-foreground/90">Saytda uyğun elan tapılmadı.</p>
+                          <p className="text-xs text-muted mt-1">İnternetdən axtarış üçün hesabınıza daxil olun.</p>
+                          <Link href="/" onClick={() => setWebOpen(false)}
+                            className="inline-block mt-3 px-4 py-2 text-white text-sm font-semibold" style={{ background: PINK }}>
+                            Daxil ol
+                          </Link>
+                        </div>
+                      ) : (
+                      <>
                       {webData?.summary && (
                         <p className="px-4 py-3 text-sm text-foreground/90 border-b border-card-border">{webData.summary}</p>
                       )}
@@ -343,6 +360,8 @@ export default function Navbar() {
                             );
                           })}
                         </ul>
+                      )}
+                      </>
                       )}
                     </>
                   )}
