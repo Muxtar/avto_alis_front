@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { Locale } from "@/lib/translations";
 import { API } from "@/lib/api";
+import { formatPriceShort } from "@/lib/format";
 import NotificationBell from "@/components/NotificationBell";
 import { CATEGORIES, slugify } from "@/lib/categories";
 import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
@@ -41,7 +42,7 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
-  const [webData, setWebData] = useState<{ summary: string; results: { title: string; url: string; snippet: string }[]; needLogin?: boolean } | null>(null);
+  const [webData, setWebData] = useState<{ summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string }[]; needLogin?: boolean } | null>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const langRef = useRef<HTMLDivElement>(null);
@@ -312,7 +313,7 @@ export default function Navbar() {
                     <div className="min-w-0">
                       <p className="text-sm font-bold">İnternet nəticələri</p>
                       <p className="text-xs text-muted mt-0.5 truncate">
-                        «{webQuery}» saytda tapılmadı — Azərbaycan üzrə internetdən axtarıldı
+                        «{webQuery}» saytda tapılmadı — Azərbaycan üzrə internetdən, ucuzdan bahaya
                       </p>
                     </div>
                     <button onClick={() => setWebOpen(false)} aria-label="Bağla" className="shrink-0 p-1 text-muted hover:text-foreground transition-colors">
@@ -346,14 +347,25 @@ export default function Navbar() {
                       ) : (
                         <ul className="divide-y divide-card-border">
                           {webData!.results.map((r) => {
-                            let host = r.url;
-                            try { host = new URL(r.url).hostname.replace(/^www\./, ""); } catch { /* keç */ }
+                            let host = r.site || r.url;
+                            try { if (!r.site) host = new URL(r.url).hostname.replace(/^www\./, ""); } catch { /* keç */ }
                             return (
                               <li key={r.url}>
                                 <a href={r.url} target="_blank" rel="noopener noreferrer"
                                   className="block px-4 py-3 hover:bg-input-bg transition-colors">
-                                  <p className="text-sm font-semibold text-primary line-clamp-2">{r.title}</p>
-                                  <p className="text-[11px] text-muted mt-0.5 truncate">{host}</p>
+                                  <div className="flex items-start justify-between gap-3">
+                                    <p className="text-sm font-semibold text-primary line-clamp-2 min-w-0">{r.title}</p>
+                                    {typeof r.price === "number" && (
+                                      <span className="shrink-0 text-sm font-bold text-foreground whitespace-nowrap">
+                                        {formatPriceShort(r.price)} <span className="text-[10px] text-muted font-semibold">AZN</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-1">
+                                    <span className="inline-block px-1.5 py-0.5 bg-input-bg border border-input-border text-[10px] font-semibold text-muted">
+                                      {host}
+                                    </span>
+                                  </p>
                                   {r.snippet && <p className="text-xs text-muted mt-1 line-clamp-2">{r.snippet}</p>}
                                 </a>
                               </li>
