@@ -253,7 +253,7 @@ body {
 .input-base {
   background: var(--input-bg);
   border: 1px solid var(--input-border);
-  border-radius: 0.75rem;
+  border-radius: 0;
   color: var(--foreground);
   transition: border-color 0.2s, box-shadow 0.2s;
 }
@@ -644,4 +644,16 @@ a, button {
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+}
+
+
+/* ============================================================
+   Inputlar düz künclü — sayt üzrə vahid (header, ana səhifə,
+   məhsullar, formlar, admin). Layer-siz olduğu üçün Tailwind-in
+   `rounded-*` utilitlərini üstələyir. Checkbox/radio/range istisna.
+   ============================================================ */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+select,
+textarea {
+  border-radius: 0;
 }

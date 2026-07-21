@@ -190,7 +190,7 @@ export default function Navbar() {
             </div>
 
             {/* Axtarış */}
-            <form onSubmit={submitSearch} className="flex-1 min-w-[160px] flex items-stretch h-11 rounded-xl overflow-hidden border-2 transition-colors" style={{ borderColor: PINK }}>
+            <form onSubmit={submitSearch} className="flex-1 min-w-[160px] flex items-stretch h-11 overflow-hidden border-2 transition-colors" style={{ borderColor: PINK }}>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
