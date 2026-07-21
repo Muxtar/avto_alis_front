@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500" role="img" aria-label="Təhlükəsiz ödəniş">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0ea5e9"/><stop offset="100%" stop-color="#0369a1"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#g)"/>
+  <circle cx="700" cy="80" r="150" fill="#ffffff" opacity="0.10"/>
+  <circle cx="90" cy="430" r="180" fill="#ffffff" opacity="0.08"/>
+  <text x="60" y="150" font-size="90" opacity="0.9">🔒</text>
+  <text x="60" y="270" font-family="Helvetica,Arial,sans-serif" font-size="52" font-weight="bold" fill="#ffffff">Təhlükəsiz ödəniş</text>
+  <text x="60" y="325" font-family="Helvetica,Arial,sans-serif" font-size="28" fill="#ffffff" opacity="0.9">Kartla rahat al</text>
+  <rect x="60" y="370" width="220" height="56" rx="28" fill="#ffffff"/>
+  <text x="170" y="406" font-family="Helvetica,Arial,sans-serif" font-size="22" font-weight="bold" fill="#0369a1" text-anchor="middle">Bazara keç</text>
+  <text x="740" y="465" font-family="Helvetica,Arial,sans-serif" font-size="22" font-weight="bold" fill="#ffffff" opacity="0.85" text-anchor="end">tradixai</text>
+</svg>
