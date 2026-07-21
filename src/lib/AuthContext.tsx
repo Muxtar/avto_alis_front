@@ -45,10 +45,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (savedToken) {
       setToken(savedToken);
-      if (savedUser) setUser(JSON.parse(savedUser));
+      // Zədəli userData (məs. "undefined") bütün tətbiqi çökdürməməlidir —
+      // parse xətasında sadəcə saxlanmış məlumatı atırıq, /me onsuz da yenilləyir.
+      if (savedUser) {
+        try { setUser(JSON.parse(savedUser)); }
+        catch { localStorage.removeItem("userData"); }
+      }
       fetch(`${API}/me`, { headers: { Authorization: `Bearer ${savedToken}` } })
         .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
         .then((d) => {
+          // Cavabda user yoxdursa "undefined" sətri yazmırıq — sessiyanı bitiririk.
+          if (!d?.user) throw new Error("user yoxdur");
           setUser(d.user);
           setToken(savedToken);
           localStorage.setItem("userToken", savedToken!);

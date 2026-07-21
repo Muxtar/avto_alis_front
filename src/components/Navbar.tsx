@@ -161,7 +161,9 @@ export default function Navbar() {
             <Link href="/elanlar" className="flex items-center gap-2 shrink-0 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/tradixai-icon.svg" alt="tradixai" className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0" />
-              <span className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: PINK }}>tradixai</span>
+              {/* Telefon ölçüsündə yalnız ikon — ana səhifəyə qayıtmaq üçün kifayətdir,
+                  qalan yer axtarış sahəsinə verilir. */}
+              <span className="hidden sm:inline text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: PINK }}>tradixai</span>
             </Link>
 
             {/* Şəhər */}
