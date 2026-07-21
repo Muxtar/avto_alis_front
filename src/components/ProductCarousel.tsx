@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type CarouselItem = {
@@ -14,7 +14,7 @@ export type CarouselItem = {
 };
 
 // Saytın reklam slaydları — public/promo/ altındakı SVG-lər (xarici mənbə yoxdur).
-const DEFAULT_ITEMS: CarouselItem[] = [
+export const PROMO_ITEMS: CarouselItem[] = [
   { id: 1, image: "/promo/1.svg", title: "Minlərlə məhsul", subtitle: "Hər şey bir platformada", href: "/elanlar" },
   { id: 2, image: "/promo/2.svg", title: "Yango ilə çatdırılma", subtitle: "Sifarişin qapına gəlsin", href: "/elanlar" },
   { id: 3, image: "/promo/3.svg", title: "Endirimlər", subtitle: "Kampaniyaları qaçırma", href: "/elanlar" },
@@ -29,7 +29,17 @@ const DEFAULT_ITEMS: CarouselItem[] = [
 
 const AUTOPLAY_DELAY = 4000;
 
-export default function ProductCarousel({ items = DEFAULT_ITEMS }: { items?: CarouselItem[] }) {
+type Props = {
+  items?: CarouselItem[];
+  /**
+   * hero — ana səhifə banneri: ekranda 1 böyük slayd, 16:9, şəkil kəsilmir
+   * (contain + bulanıq arxa fon), mətn şəklin üstündə.
+   * Default (hero=false) — kart rejimi: masaüstü 4 / planşet 2 / mobil 1.
+   */
+  hero?: boolean;
+};
+
+export default function ProductCarousel({ items = PROMO_ITEMS, hero = false }: Props) {
   const [emblaRef, emblaApi] = useEmblaCarousel(
     // watchDrag — Embla v8-də sürükləmə seçimi (köhnə adı: draggable).
     { loop: true, align: "start", duration: 25, watchDrag: true },
@@ -63,75 +73,120 @@ export default function ProductCarousel({ items = DEFAULT_ITEMS }: { items?: Car
   if (items.length === 0) return null;
 
   const arrowCls =
-    "absolute top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white shadow-md " +
+    "absolute top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-md " +
     "flex items-center justify-center text-gray-800 transition-transform duration-200 " +
-    "hover:scale-110 active:scale-95 disabled:opacity-40";
+    "hover:scale-110 active:scale-95";
 
   return (
     <div>
       {/* Oxlar KARUSELƏ görə mərkəzlənsin deyə ayrıca relative sarğı —
           nöqtələr bu sarğının kənarındadır, əks halda oxlar aşağı sürüşürdü. */}
       <div className="relative">
-      {/* Görüntü sahəsi — kartlar arası 16px boşluq (-ml-4 / pl-4) */}
-      <div className="overflow-hidden" ref={emblaRef}>
-        <div className="flex -ml-4">
-          {items.map((it) => {
-            const Card = (
-              <div className="overflow-hidden rounded-2xl bg-card border border-card-border h-full">
-                <div className="aspect-[16/10] bg-input-bg">
+        {/* Kart rejimində kartlar arası 16px boşluq (-ml-4 / pl-4); hero-da boşluq yoxdur */}
+        <div className="overflow-hidden" ref={emblaRef}>
+          <div className={cn("flex", !hero && "-ml-4")}>
+            {items.map((it) => {
+              const inner = hero ? (
+                // ── Hero: şəkil kəsilmir, boşluqları bulanıq arxa fon doldurur ──
+                <div className="relative w-full aspect-[16/9] max-h-[560px] overflow-hidden bg-black">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={it.image}
-                    alt={it.title || "reklam"}
-                    draggable={false}
-                    loading="lazy"
-                    className="w-full h-full object-cover select-none"
-                  />
+                  <img src={it.image} alt="" aria-hidden
+                    className="absolute inset-0 w-full h-full object-cover blur-2xl brightness-[0.72] scale-110" />
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={it.image} alt={it.title || "banner"} draggable={false}
+                    className="absolute inset-0 w-full h-full object-contain select-none" />
+                  {(it.title || it.subtitle) && (
+                    <>
+                      <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
+                      <div className="absolute inset-x-0 bottom-0 p-5 sm:p-8 lg:p-10">
+                        {it.title && (
+                          <h2 className="text-white font-black text-lg sm:text-3xl lg:text-4xl leading-[1.1] tracking-tight drop-shadow-2xl max-w-2xl">
+                            {it.title}
+                          </h2>
+                        )}
+                        {it.subtitle && (
+                          <p className="text-white/85 text-xs sm:text-base mt-1.5 max-w-xl drop-shadow-lg">{it.subtitle}</p>
+                        )}
+                        {it.href && (
+                          <span className="mt-3 sm:mt-5 inline-flex items-center gap-2 bg-white text-gray-900 rounded-full px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold shadow-lg">
+                            Ətraflı bax <ArrowRight className="w-4 h-4" />
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
-                {(it.title || it.subtitle) && (
-                  <div className="p-3">
-                    {it.title && <p className="font-semibold text-sm truncate">{it.title}</p>}
-                    {it.subtitle && <p className="text-xs text-muted truncate mt-0.5">{it.subtitle}</p>}
+              ) : (
+                // ── Kart rejimi ──
+                <div className="overflow-hidden rounded-2xl bg-card border border-card-border h-full">
+                  <div className="aspect-[16/10] bg-input-bg">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={it.image} alt={it.title || "reklam"} draggable={false} loading="lazy"
+                      className="w-full h-full object-cover select-none" />
                   </div>
-                )}
-              </div>
-            );
-            return (
-              // Mobil 1, tablet 2, masaüstü 4 kart
-              <div key={it.id} className="pl-4 min-w-0 flex-[0_0_100%] md:flex-[0_0_50%] lg:flex-[0_0_25%]">
-                {it.href ? (
-                  <a href={it.href} className="block h-full" draggable={false}>{Card}</a>
-                ) : Card}
-              </div>
-            );
-          })}
+                  {(it.title || it.subtitle) && (
+                    <div className="p-3">
+                      {it.title && <p className="font-semibold text-sm truncate">{it.title}</p>}
+                      {it.subtitle && <p className="text-xs text-muted truncate mt-0.5">{it.subtitle}</p>}
+                    </div>
+                  )}
+                </div>
+              );
+
+              return (
+                // hero: 1 slayd; kart rejimi: mobil 1, planşet 2, masaüstü 4
+                <div
+                  key={it.id}
+                  className={cn(
+                    "min-w-0",
+                    hero ? "flex-[0_0_100%]" : "pl-4 flex-[0_0_100%] md:flex-[0_0_50%] lg:flex-[0_0_25%]",
+                  )}
+                >
+                  {it.href ? (
+                    <a href={it.href} className="block h-full" draggable={false}
+                      target={it.href.startsWith("http") ? "_blank" : undefined}
+                      rel={it.href.startsWith("http") ? "noreferrer" : undefined}>
+                      {inner}
+                    </a>
+                  ) : inner}
+                </div>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Ox düymələri — dikey mərkəzdə, kənardan 16px içəridə */}
+        {items.length > 1 && (
+          <>
+            <button type="button" onClick={scrollPrev} aria-label="Əvvəlki" className={cn(arrowCls, "left-4")}>
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button type="button" onClick={scrollNext} aria-label="Növbəti" className={cn(arrowCls, "right-4")}>
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </>
+        )}
+
+        {/* Hero-da nöqtələr şəklin üstündə olsun ki, yer tutmasın */}
+        {hero && snaps.length > 1 && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-black/30 backdrop-blur-md">
+            {snaps.map((_, i) => (
+              <button key={i} type="button" onClick={() => scrollTo(i)} aria-label={`Slayd ${i + 1}`} aria-current={i === selected}
+                className={cn("h-2 rounded-full transition-all duration-300", i === selected ? "w-6 bg-white" : "w-2 bg-white/50 hover:bg-white/80")} />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Ox düymələri — dikey mərkəzdə, kənardan 16px içəridə */}
-      <button type="button" onClick={scrollPrev} aria-label="Əvvəlki" className={cn(arrowCls, "left-4")}>
-        <ChevronLeft className="w-5 h-5" />
-      </button>
-      <button type="button" onClick={scrollNext} aria-label="Növbəti" className={cn(arrowCls, "right-4")}>
-        <ChevronRight className="w-5 h-5" />
-      </button>
-      </div>
-
-      {/* Nöqtələr — aktiv olan daha geniş və tünd */}
-      {snaps.length > 1 && (
+      {/* Kart rejimində nöqtələr altda — aktiv olan daha geniş və tünd */}
+      {!hero && snaps.length > 1 && (
         <div className="flex justify-center items-center gap-2 mt-4">
           {snaps.map((_, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => scrollTo(i)}
-              aria-label={`Slayd ${i + 1}`}
-              aria-current={i === selected}
+            <button key={i} type="button" onClick={() => scrollTo(i)} aria-label={`Slayd ${i + 1}`} aria-current={i === selected}
               className={cn(
                 "h-2 rounded-full transition-all duration-300",
                 i === selected ? "w-6 bg-gray-800 dark:bg-white" : "w-2 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400",
-              )}
-            />
+              )} />
           ))}
         </div>
       )}
