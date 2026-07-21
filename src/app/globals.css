@@ -382,8 +382,11 @@ a:focus-visible {
 
 /* ── Chat qutusu — responsiv, bütün telefonlarda sabit ── */
 /* Desktop / tablet + mobil siyahı görünüşü: adi axında sabit hündürlük. */
+/* Hündürlük qutunun real yuxarı ofsetindən hesablanır (--chat-top JS-də
+   qoyulur) + altdan 24px nəfəs. Beləliklə başlıq hündürlüyü dəyişəndə
+   mesaj yazma sahəsi ekrandan çıxmır. Var yoxdursa ehtiyat dəyər. */
 .chat-shell {
-  height: calc(100dvh - 180px);
+  height: calc(100dvh - var(--chat-top, 190px) - 24px);
   min-height: 320px;
 }
 /* Mobil aktiv chat: görünən viewport-a (--vvh) tam oturan overlay.

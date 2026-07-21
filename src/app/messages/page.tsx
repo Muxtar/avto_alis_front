@@ -155,6 +155,15 @@ export default function MessagesPage() {
         const offsetTop = vv ? vv.offsetTop : 0;
         root.style.setProperty("--vvh", `${Math.round(vh)}px`);
         root.style.setProperty("--vvt", `${Math.round(offsetTop)}px`);
+        // Chat qutusunun hündürlüyü sabit rəqəmlə hesablanırdı (100dvh-180px) —
+        // başlıq hündürlüyü dəyişəndə mesaj yazma sahəsi ekranın altında qalırdı.
+        // İndi qutunun REAL yuxarı ofseti ölçülür, ona görə başlıq dəyişsə də
+        // hesablama özü-özünü düzəldir.
+        const box = boxRef.current;
+        if (box) {
+          const top = box.getBoundingClientRect().top;
+          root.style.setProperty("--chat-top", `${Math.max(0, Math.round(top))}px`);
+        }
       });
     };
     apply();
@@ -170,6 +179,7 @@ export default function MessagesPage() {
       window.removeEventListener("orientationchange", apply);
       root.style.removeProperty("--vvh");
       root.style.removeProperty("--vvt");
+      root.style.removeProperty("--chat-top");
     };
   }, []);
 
