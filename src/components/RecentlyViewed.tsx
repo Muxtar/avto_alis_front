@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { imgUrl } from "@/lib/api";
-import { formatPrice } from "@/lib/format";
+import { formatPrice, formatPriceShort } from "@/lib/format";
 import { getRecentViews, type RecentItem } from "@/lib/recentlyViewed";
 import { useLanguage } from "@/lib/LanguageContext";
 
@@ -35,7 +35,7 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: number }) {
             </div>
             <div className="p-2">
               <p className="text-xs line-clamp-2 mb-1 h-8">{it.title}</p>
-              <p className="brand-text font-bold text-sm">{formatPrice(it.price)} <span className="text-[10px] text-muted-foreground font-medium">{t("azn")}</span></p>
+              <p className="brand-text font-bold text-sm truncate" title={`${formatPrice(it.price)} ${t("azn")}`}>{formatPriceShort(it.price)} <span className="text-[10px] text-muted-foreground font-medium">{t("azn")}</span></p>
             </div>
           </Link>
         ))}

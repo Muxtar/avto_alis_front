@@ -50,6 +50,9 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false }: P
 
   const [selected, setSelected] = useState(0);
   const [snaps, setSnaps] = useState<number[]>([]);
+  // Şəklin öz nisbəti — 16:9-a yaxınsa çərçivəni tam doldururuq (cover),
+  // uzaqsa kəsməmək üçün contain + bulanıq arxa fon işlədirik.
+  const [ratios, setRatios] = useState<Record<string, number>>({});
 
   const onSelect = useCallback(() => {
     if (!emblaApi) return;
@@ -86,15 +89,28 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false }: P
         <div className="overflow-hidden" ref={emblaRef}>
           <div className={cn("flex", !hero && "-ml-4")}>
             {items.map((it) => {
+              // 16:9-dan ±12% kənara çıxmayan şəkil "cover" ilə tam doldurulur
+              // (kəsilmə gözlə seçilmir); daha fərqli nisbətlərdə kəsmirik.
+              const ratio = ratios[String(it.id)];
+              const fill = ratio != null && ratio > 1.56 && ratio < 2.03;
+
               const inner = hero ? (
-                // ── Hero: şəkil kəsilmir, boşluqları bulanıq arxa fon doldurur ──
-                <div className="relative w-full aspect-[16/9] max-h-[560px] overflow-hidden bg-black">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={it.image} alt="" aria-hidden
-                    className="absolute inset-0 w-full h-full object-cover blur-2xl brightness-[0.72] scale-110" />
+                <div className="relative w-full aspect-[16/9] max-h-[560px] overflow-hidden bg-input-bg">
+                  {/* Bulanıq arxa fon — yalnız şəkil çərçivəni doldurmayanda lazımdır */}
+                  {!fill && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={it.image} alt="" aria-hidden
+                      className="absolute inset-0 w-full h-full object-cover blur-2xl brightness-90 scale-125" />
+                  )}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={it.image} alt={it.title || "banner"} draggable={false}
-                    className="absolute inset-0 w-full h-full object-contain select-none" />
+                    onLoad={(e) => {
+                      const im = e.currentTarget;
+                      if (im.naturalWidth && im.naturalHeight) {
+                        setRatios((p) => p[String(it.id)] ? p : { ...p, [String(it.id)]: im.naturalWidth / im.naturalHeight });
+                      }
+                    }}
+                    className={cn("absolute inset-0 w-full h-full select-none", fill ? "object-cover" : "object-contain drop-shadow-2xl")} />
                   {(it.title || it.subtitle) && (
                     <>
                       <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
@@ -169,7 +185,7 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false }: P
 
         {/* Hero-da nöqtələr şəklin üstündə olsun ki, yer tutmasın */}
         {hero && snaps.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-black/30 backdrop-blur-md">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-2 rounded-full bg-black/45 backdrop-blur-md ring-1 ring-white/20">
             {snaps.map((_, i) => (
               <button key={i} type="button" onClick={() => scrollTo(i)} aria-label={`Slayd ${i + 1}`} aria-current={i === selected}
                 className={cn("h-2 rounded-full transition-all duration-300", i === selected ? "w-6 bg-white" : "w-2 bg-white/50 hover:bg-white/80")} />

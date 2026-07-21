@@ -12,6 +12,8 @@ export default function AdminBannersPage() {
   const [title, setTitle] = useState("");
   const [position, setPosition] = useState("MAIN");
   const [uploading, setUploading] = useState(false);
+  // Seçilən şəklin nisbəti — 16:9-dan uzaqsa karuseldə yanlarda boşluq qalır.
+  const [ratio, setRatio] = useState<number | null>(null);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const authHeaders = { Authorization: `Bearer ${token}` };
@@ -61,8 +63,34 @@ export default function AdminBannersPage() {
         <h2 className="font-semibold mb-3">Yeni banner əlavə et</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-muted mb-1">Şəkil (16:5 tövsiyə olunur)</label>
-            <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] || null)} className="w-full text-sm text-muted file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500 file:text-sm file:font-semibold" />
+            <label className="block text-xs font-medium text-muted mb-1">
+              Şəkil — <b>16:9</b> tövsiyə olunur (məs. 1280×720, 1920×1080)
+            </label>
+            <input type="file" accept="image/*"
+              onChange={(e) => {
+                const f = e.target.files?.[0] || null;
+                setFile(f); setRatio(null);
+                if (f) {
+                  const url = URL.createObjectURL(f);
+                  const im = new Image();
+                  im.onload = () => { setRatio(im.naturalWidth / im.naturalHeight); URL.revokeObjectURL(url); };
+                  im.onerror = () => URL.revokeObjectURL(url);
+                  im.src = url;
+                }
+              }}
+              className="w-full text-sm text-muted file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500 file:text-sm file:font-semibold" />
+            {ratio != null && position === "MAIN" && (
+              ratio > 1.56 && ratio < 2.03 ? (
+                <p className="mt-1.5 text-[11px] text-green-500">
+                  ✓ Nisbət {ratio.toFixed(2)}:1 — karuseldə tam doldurulacaq.
+                </p>
+              ) : (
+                <p className="mt-1.5 text-[11px] text-amber-500">
+                  ⚠ Nisbət {ratio.toFixed(2)}:1 — karusel 16:9 (1.78:1) olduğu üçün yanlarda
+                  bulanıq boşluq qalacaq. Şəkli 16:9 kəsib yükləsəniz daha yaxşı görünəcək.
+                </p>
+              )
+            )}
           </div>
           <div>
             <label className="block text-xs font-medium text-muted mb-1">Keçid linki (opsional)</label>
