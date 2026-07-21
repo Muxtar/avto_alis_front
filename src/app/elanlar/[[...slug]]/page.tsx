@@ -349,9 +349,7 @@ function MarketplacePage() {
                   </>
                 )}
               </div>
-            ) : (
-              <span className="shrink-0 self-center px-1 text-sm text-muted lowercase">ən son elanlar</span>
-            )}
+            ) : null}
           </div>
 
           {/* Aktiv axtarış göstəricisi (header-dən gələn) — təmizləmək üçün */}
@@ -609,7 +607,13 @@ function MarketplacePage() {
             )}
 
             {/* Ana səhifə: əvvəl baxdıqlarınız */}
-            {!selectedCategory && !searchQuery.trim() && <RecentlyViewed />}
+            {!selectedCategory && !searchQuery.trim() && (
+              <>
+                <RecentlyViewed />
+                {/* Bütün elanların üst başlığı — yalnız ana səhifədə */}
+                <p className="mb-3 px-1 text-sm text-muted lowercase">ən son elanlar</p>
+              </>
+            )}
 
             {/* Üst axtarışdan tapılan mütəxəssislər (məhsul/xidmət nəticələrinin üstündə) */}
             {searchQuery && activeType !== "PROFESSION" && matchedPros.length > 0 && (
