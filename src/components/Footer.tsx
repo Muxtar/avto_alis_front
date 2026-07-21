@@ -1,11 +1,16 @@
 'use client';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useLanguage } from '@/lib/LanguageContext';
 import { COMPANY } from '@/lib/company';
 
 export default function Footer() {
+  const pathname = usePathname();
   const { t, locale } = useLanguage();
   const year = new Date().getFullYear();
+  // Admin paneli tam ekran işləyir — footer səhifəni uzadıb sidebar-ın
+  // yapışıq qalmasına mane olurdu.
+  const isAdmin = pathname?.startsWith('/admin');
   const lbl: any = {
     about: { az: 'Haqqımızda', en: 'About Us', ru: 'О нас' },
     contact: { az: 'Əlaqə', en: 'Contact', ru: 'Контакты' },
@@ -14,6 +19,8 @@ export default function Footer() {
     cancellation: { az: 'Ləğv və ödəmə', en: 'Cancellation', ru: 'Отмена' },
   };
   const pick = (k: string) => (lbl[k]?.[locale] || lbl[k]?.az);
+
+  if (isAdmin) return null;
 
   return (
     <footer className="border-t border-card-border bg-card/40 backdrop-blur-sm mt-auto">

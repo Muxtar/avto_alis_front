@@ -131,11 +131,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    <div className="flex flex-col min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)]">
+    // Admin sahəsi dəqiq ekran hündürlüyündədir: pəncərə sürüşmür,
+    // sidebar və məzmun ayrı-ayrı sürüşür.
+    <div className="flex flex-col h-[calc(100vh-68px)] md:h-[calc(100vh-118px)] overflow-hidden">
       <AdminHeader overview={overview} adminName={adminName} onRefresh={loadOverview} onLogout={handleLogout} />
       <div className="flex flex-1 min-h-0">
       {/* Sidebar */}
-      <aside className="w-16 sm:w-56 bg-card border-r border-card-border flex flex-col shrink-0 transition-colors">
+      {/* Sağdakı məzmun sürüşəndə sidebar tərpənmir; sidebar-ın özü də
+          uzun olduqda daxilində sürüşür. */}
+      <aside className="h-full w-16 sm:w-56 bg-card border-r border-card-border flex flex-col shrink-0 transition-colors">
         <div className="p-3 sm:p-4 border-b border-card-border">
           <div className="hidden sm:flex items-center gap-2">
             <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center font-bold text-xs text-white">A</div>
@@ -146,7 +150,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
         </div>
 
-        <nav className="flex-1 p-2 sm:p-3 space-y-1">
+        <nav className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3 space-y-1">
           {links.map((link) => {
             const isActive = pathname === link.href;
             const badge = pendingFor(link.href);
@@ -176,7 +180,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 overflow-auto p-3 sm:p-6">
+      <div className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-6">
         {children}
       </div>
       </div>

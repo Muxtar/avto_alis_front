@@ -67,8 +67,11 @@ export default function AdminHeader({ overview, adminName, onRefresh, onLogout }
   const totalPending = overview?.pendingTotal || 0;
   const s = overview?.stats;
 
+  // Admin sahəsi dəqiq ekran hündürlüyündədir və daxildə sürüşür — başlıq
+  // onsuz da yuxarıda qalır, sticky lazım deyil (sticky olanda yuxarıda
+  // 64px boşluq qalıb məzmun oradan görünürdü).
   return (
-    <header className="sticky top-14 sm:top-16 z-30 bg-card/95 backdrop-blur border-b border-card-border">
+    <header className="shrink-0 z-30 bg-card border-b border-card-border">
       <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2.5">
         {/* Qlobal axtarış */}
         <div className="relative flex-1 max-w-xl">
