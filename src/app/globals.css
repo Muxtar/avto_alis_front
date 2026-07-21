@@ -589,3 +589,59 @@ a, button {
 .carousel-progress {
   animation: carouselProgress linear forwards;
 }
+
+/* ============================================================
+   shadcn/ui token-ləri — mövcud brend paleti ilə eyniləşdirilib.
+   Beləcə `npx shadcn@latest add ...` ilə gələn komponentlər
+   saytın öz rəngləri ilə render olunur (ayrıca tema yoxdur).
+   ============================================================ */
+:root,
+.light {
+  --primary: #2f6bff;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+  --accent: #eef3ff;
+  --accent-foreground: #2056e6;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+  --border: #e6eaf2;
+  --input: #d8dfe9;
+  --radius: 0.75rem;
+}
+.dark {
+  --primary: #5e8bff;
+  --primary-foreground: #0b1120;
+  --secondary: rgba(30, 41, 59, 0.55);
+  --secondary-foreground: #e6ecf5;
+  --accent: rgba(94, 139, 255, 0.12);
+  --accent-foreground: #93b0ff;
+  --destructive: #f87171;
+  --destructive-foreground: #0b1120;
+  --popover: #162033;
+  --popover-foreground: #e6ecf5;
+  --border: rgba(71, 85, 105, 0.35);
+  --input: rgba(71, 85, 105, 0.4);
+}
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}

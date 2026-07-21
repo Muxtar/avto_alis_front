@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { motion } from "motion/react";
 import { API, imgUrl } from "@/lib/api";
 
 type Banner = { id: number; image: string; link: string | null; title: string | null; position?: string };
@@ -17,7 +18,7 @@ export default function SideBanners() {
   if (items.length === 0) return null;
 
   return (
-    <div className="hidden lg:flex flex-col gap-3 h-full">
+    <motion.div className="hidden lg:flex flex-col gap-3 h-full" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}>
       {items.map((b) => {
         const src = /^(https?:|data:)/.test(b.image) ? b.image : imgUrl(b.image);
         const inner = (
@@ -35,12 +36,13 @@ export default function SideBanners() {
             )}
           </div>
         );
+        const V = { hidden: { opacity: 0, x: 24 }, show: { opacity: 1, x: 0, transition: { type: "spring" as const, stiffness: 280, damping: 26 } } };
         return b.link ? (
-          <a key={b.id} href={b.link} target={b.link.startsWith("http") ? "_blank" : undefined} rel="noreferrer" className="flex-1 flex">{inner}</a>
+          <motion.a key={b.id} variants={V} whileHover={{ y: -3 }} href={b.link} target={b.link.startsWith("http") ? "_blank" : undefined} rel="noreferrer" className="flex-1 flex">{inner}</motion.a>
         ) : (
-          <div key={b.id} className="flex-1 flex">{inner}</div>
+          <motion.div key={b.id} variants={V} whileHover={{ y: -3 }} className="flex-1 flex">{inner}</motion.div>
         );
       })}
-    </div>
+    </motion.div>
   );
 }

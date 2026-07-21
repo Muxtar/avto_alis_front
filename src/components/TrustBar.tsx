@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { motion } from "motion/react";
 
 // Hero-nun altındakı üstünlüklər zolağı (birmarket üslubu) — 4 element, aralarında ayırıcı.
 const ITEMS = [
@@ -39,17 +40,32 @@ const ITEMS = [
 
 export default function TrustBar() {
   return (
-    <div className="surface px-3 sm:px-5 py-3 sm:py-4 mb-6">
+    <motion.div
+      className="surface px-3 sm:px-5 py-3 sm:py-4 mb-6"
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, amount: 0.3 }}
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08 } } }}
+    >
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-4 lg:divide-x divide-card-border">
         {ITEMS.map((it) => (
-          <Link key={it.label} href={it.href} className="flex items-center gap-2.5 sm:gap-3 lg:px-5 first:lg:pl-0 last:lg:pr-0 group">
-            <span className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shrink-0 ${it.color} group-hover:scale-110 transition-transform`}>
-              {it.icon}
-            </span>
-            <span className="text-[11px] sm:text-sm font-medium leading-snug">{it.label}</span>
-          </Link>
+          <motion.div
+            key={it.label}
+            variants={{ hidden: { opacity: 0, y: 14 }, show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } } }}
+          >
+            <Link href={it.href} className="flex items-center gap-2.5 sm:gap-3 lg:px-5 group">
+              <motion.span
+                whileHover={{ scale: 1.12, rotate: -4 }}
+                transition={{ type: "spring", stiffness: 400, damping: 15 }}
+                className={`w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shrink-0 ${it.color}`}
+              >
+                {it.icon}
+              </motion.span>
+              <span className="text-[11px] sm:text-sm font-medium leading-snug">{it.label}</span>
+            </Link>
+          </motion.div>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 }
