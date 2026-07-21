@@ -12,6 +12,7 @@ import TrustBar from "@/components/TrustBar";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import AddListingMenu from "@/components/AddListingMenu";
 import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
+import CategoryFilterPanel from "@/components/CategoryFilterPanel";
 import { API, imgUrl } from "@/lib/api";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { CATEGORIES, getSubs, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
@@ -114,6 +115,7 @@ function MarketplacePage() {
   const [maxPrice, setMaxPrice] = useState<string>("");
   const [sortBy, setSortBy] = useState<"newest" | "priceAsc" | "priceDesc" | "popular" | "yearAsc" | "yearDesc">("newest");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -322,15 +324,34 @@ function MarketplacePage() {
                 </button>
               ))}
             </div>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}
-              className="px-3 py-3 input-base text-sm cursor-pointer shadow-sm">
-              <option value="newest">{t("sortNewest")}</option>
-              <option value="priceAsc">{t("sortPriceAsc")}</option>
-              <option value="priceDesc">{t("sortPriceDesc")}</option>
-              <option value="popular">{t("sortPopular")}</option>
-              <option value="yearDesc">{t("sortYearDesc")}</option>
-              <option value="yearAsc">{t("sortYearAsc")}</option>
-            </select>
+            {(selectedCategory || searchQuery.trim()) ? (
+              <div className="relative shrink-0">
+                <button type="button" onClick={() => setSortOpen((v) => !v)}
+                  className="inline-flex items-center gap-2 px-4 py-3 input-base text-sm font-medium hover:border-primary transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 7h18M6 12h12M10 17h4" /></svg>
+                  Sıralama
+                </button>
+                {sortOpen && (
+                  <>
+                    <div className="fixed inset-0 z-20" onClick={() => setSortOpen(false)} />
+                    <div className="absolute right-0 mt-1 z-30 w-48 bg-card border border-card-border shadow-xl p-1">
+                      {[
+                        { v: "newest", l: "Tarix üzrə" },
+                        { v: "priceDesc", l: "Öncə baha" },
+                        { v: "priceAsc", l: "Öncə ucuz" },
+                      ].map((o) => (
+                        <button key={o.v} onClick={() => { setSortBy(o.v as any); setSortOpen(false); }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-input-bg transition-colors ${sortBy === o.v ? "text-primary font-semibold" : ""}`}>
+                          {o.l}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : (
+              <span className="shrink-0 self-center px-1 text-sm text-muted lowercase">ən son elanlar</span>
+            )}
           </div>
 
           {/* Aktiv axtarış göstəricisi (header-dən gələn) — təmizləmək üçün */}
@@ -474,6 +495,19 @@ function MarketplacePage() {
         <div className="lg:grid lg:grid-cols-[230px_1fr] lg:gap-6">
           {/* Sol kateqoriya paneli (umico üslubu) — sabit hündürlük + scroll, hover-da sağda alt-kateqoriyalar */}
           <aside className="hidden lg:block">
+            {selectedCategory ? (
+              <CategoryFilterPanel
+                category={selectedCategory}
+                type={activeType}
+                minPrice={minPrice} setMinPrice={setMinPrice}
+                maxPrice={maxPrice} setMaxPrice={setMaxPrice}
+                city={cityFilter} setCity={setCityFilter}
+                brand={brandFilter} setBrand={setBrandFilter}
+                condition={conditionFilter} setCondition={setConditionFilter}
+                onReset={resetFilters}
+                activeCount={activeFilterCount}
+              />
+            ) : (
             <div className="sticky top-20 z-30 surface" onMouseLeave={() => setHoverCat(null)}>
               <p className="px-4 py-3 text-sm font-bold border-b border-card-border">Kateqoriyalar</p>
               <nav className="py-1 max-h-[60vh] overflow-y-auto">
@@ -525,6 +559,7 @@ function MarketplacePage() {
                 </div>
               )}
             </div>
+            )}
           </aside>
 
           {/* Center column - listings */}

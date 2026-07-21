@@ -657,3 +657,12 @@ select,
 textarea {
   border-radius: 0;
 }
+
+/* Düymələr də düz künclü. `rounded-full` ilə qəsdən dairəvi edilənlər
+   (ikon düymələri, karusel oxları, nöqtələr, avatarlar) toxunulmaz qalır. */
+button:not([class*="rounded-full"]),
+a[class*="btn-"]:not([class*="rounded-full"]),
+.btn-primary,
+.btn-outline {
+  border-radius: 0;
+}

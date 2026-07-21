@@ -35,6 +35,8 @@ export default function Navbar() {
   const [catHover, setCatHover] = useState<{ cat: any; top: number; left: number } | null>(null);
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
+  const [imgBusy, setImgBusy] = useState(false);
+  const imgInputRef = useRef<HTMLInputElement>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const langRef = useRef<HTMLDivElement>(null);
@@ -72,6 +74,38 @@ export default function Navbar() {
     e?.preventDefault();
     const q = search.trim();
     router.push(`/elanlar${q ? `?search=${encodeURIComponent(q)}` : ""}`);
+  };
+
+  // Şəkillə axtarış — şəkil serverə göndərilir, AI məhsulu tanıyır və
+  // qaytardığı sorğu ilə birbaşa elanlar səhifəsinə keçirik.
+  const searchByImage = async (file: File) => {
+    if (!isLoggedIn || !token) {
+      alert("Şəkillə axtarış üçün hesabınıza daxil olun.");
+      return;
+    }
+    if (!/^image\//.test(file.type)) return;
+    setImgBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("image", file);
+      const res = await fetch(`${API}/search/image`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success || !data.searchQuery) {
+        alert(data.message || "Şəkil tanınmadı. Yenidən cəhd edin.");
+        return;
+      }
+      setSearch(data.searchQuery);
+      router.push(`/elanlar?search=${encodeURIComponent(data.searchQuery)}`);
+    } catch {
+      alert("Şəkilli axtarış alınmadı. İnternet bağlantınızı yoxlayın.");
+    } finally {
+      setImgBusy(false);
+      if (imgInputRef.current) imgInputRef.current.value = "";
+    }
   };
 
   const current = languages.find((l) => l.code === locale)!;
@@ -122,12 +156,12 @@ export default function Navbar() {
       {/* ── Əsas başlıq ── */}
       <div className="relative z-10 bg-card border-b border-card-border">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 sm:gap-4 h-16">
+          <div className="flex items-center gap-2 sm:gap-4 h-[68px] sm:h-20">
             {/* Logo */}
             <Link href="/elanlar" className="flex items-center gap-2 shrink-0 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/tradixai-icon.svg" alt="tradixai" className="w-9 h-9 rounded-xl shrink-0" />
-              <span className="text-xl sm:text-2xl font-extrabold tracking-tight" style={{ color: PINK }}>tradixai</span>
+              <img src="/tradixai-icon.svg" alt="tradixai" className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0" />
+              <span className="text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: PINK }}>tradixai</span>
             </Link>
 
             {/* Şəhər */}
@@ -138,7 +172,7 @@ export default function Navbar() {
 
             {/* Kataloq — kateqoriya menyusu */}
             <div ref={catRef} className="relative hidden sm:block shrink-0">
-              <button onClick={() => { setCatOpen((v) => !v); setCatHover(null); }} className="flex items-center gap-2 px-4 h-11 rounded-xl text-white font-semibold text-sm hover:opacity-90 transition-opacity" style={{ background: PINK }}>
+              <button onClick={() => { setCatOpen((v) => !v); setCatHover(null); }} className="flex items-center gap-2 px-5 h-13 rounded-xl text-white font-semibold text-[15px] hover:opacity-90 transition-opacity" style={{ background: PINK }}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                 {t("navCatalog")}
                 <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
@@ -190,15 +224,34 @@ export default function Navbar() {
             </div>
 
             {/* Axtarış */}
-            <form onSubmit={submitSearch} className="flex-1 min-w-[160px] flex items-stretch h-11 overflow-hidden border-2 transition-colors" style={{ borderColor: PINK }}>
+            <form onSubmit={submitSearch} className="flex-1 min-w-[160px] flex items-stretch h-13 overflow-hidden border-2 transition-colors" style={{ borderColor: PINK }}>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Məhsul, xidmət, ad-soyad, şirkət — hər şeyi axtar"
-                className="flex-1 min-w-0 px-4 bg-card text-foreground text-sm focus:outline-none placeholder-muted-foreground"
+                className="flex-1 min-w-0 px-4 bg-card text-foreground text-[15px] focus:outline-none placeholder-muted-foreground"
               />
-              <button type="submit" className="px-5 sm:px-7 text-white font-semibold text-sm flex items-center gap-1.5 hover:opacity-90 transition-opacity" style={{ background: PINK }}>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
+
+              {/* Şəkillə axtarış — axtarış sahəsinin içində */}
+              <input ref={imgInputRef} type="file" accept="image/*" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) searchByImage(f); }} />
+              <button
+                type="button"
+                onClick={() => imgInputRef.current?.click()}
+                disabled={imgBusy}
+                title="Şəkil ilə axtar"
+                aria-label="Şəkil ilə axtar"
+                className="px-3 flex items-center justify-center text-muted hover:text-foreground disabled:opacity-60 transition-colors border-l border-card-border"
+              >
+                {imgBusy ? (
+                  <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" /></svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
+                )}
+              </button>
+
+              <button type="submit" className="px-5 sm:px-7 text-white font-semibold text-[15px] flex items-center gap-1.5 hover:opacity-90 transition-opacity" style={{ background: PINK }}>
+                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
                 <span className="hidden sm:inline">Axtar</span>
               </button>
             </form>
