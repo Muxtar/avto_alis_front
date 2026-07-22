@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -98,6 +98,17 @@ export default function MessagesPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
+  // Callback ref — chat-shell DOM-a bağlanan kimi --chat-top-u zəmanətlə
+  // yeniləyir. Əvvəl useEffect box hələ render olmadan işlədiyi üçün dəyər
+  // boş qalıb qutu alt naviqasiyanın altına girirdi.
+  const attachBox = useCallback((el: HTMLDivElement | null) => {
+    boxRef.current = el;
+    if (!el || typeof window === "undefined") return;
+    requestAnimationFrame(() => {
+      const top = el.getBoundingClientRect().top;
+      document.documentElement.style.setProperty("--chat-top", `${Math.max(0, Math.round(top))}px`);
+    });
+  }, []);
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -167,21 +178,33 @@ export default function MessagesPage() {
       });
     };
     apply();
+    // Box mount olduqdan sonra --chat-top-u zəmanətlə set et (ilk apply-da
+    // ref hələ dolmamış ola bilər → dəyər boş qalıb fallback işə düşürdü,
+    // qutu bir az uzun olub alt naviqasiyanın altına girirdi).
+    const t1 = setTimeout(apply, 60);
+    const t2 = setTimeout(apply, 200);
     vv?.addEventListener("resize", apply);
     vv?.addEventListener("scroll", apply);
     window.addEventListener("resize", apply);
+    window.addEventListener("scroll", apply, { passive: true });
     window.addEventListener("orientationchange", apply);
     return () => {
       cancelAnimationFrame(raf);
+      clearTimeout(t1); clearTimeout(t2);
       vv?.removeEventListener("resize", apply);
       vv?.removeEventListener("scroll", apply);
       window.removeEventListener("resize", apply);
+      window.removeEventListener("scroll", apply);
       window.removeEventListener("orientationchange", apply);
       root.style.removeProperty("--vvh");
       root.style.removeProperty("--vvt");
-      root.style.removeProperty("--chat-top");
+      // --chat-top-u burada silmirik — onu callback ref (attachBox) idarə edir.
+      // Silinsə, re-render-dəki cleanup dəyəri təmizləyib fallback-a salırdı.
     };
-  }, []);
+    // authLoading/active dəyişəndə yenidən qur — chat-shell yalnız auth
+    // yüklənəndən sonra render olunur, ona görə ölçmə o vaxt işə düşməlidir.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, active]);
 
   useEffect(() => {
     if (authLoading) return;
@@ -690,7 +713,7 @@ export default function MessagesPage() {
     <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
       <h1 className="text-xl sm:text-2xl font-bold mb-4">{t("messages")}</h1>
 
-      <div ref={boxRef} className={`surface overflow-hidden flex chat-shell ${active ? "chat-active-mobile" : ""}`}>
+      <div ref={attachBox} className={`surface overflow-hidden flex chat-shell ${active ? "chat-active-mobile" : ""}`}>
         {/* Sol panel */}
         <div className={`${active ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-80 border-r border-card-border shrink-0`}>
           <div className="p-2 border-b border-card-border">

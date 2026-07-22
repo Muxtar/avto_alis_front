@@ -27,18 +27,19 @@ export default function BackButton() {
     else router.push("/elanlar");
   };
 
-  // Axını (flow) tutan sticky zolaq — məzmunun üstünə minmir, üstündə durur
-  // və scroll zamanı başlığın altında yapışıq qalır.
+  // Axını tutan zolaq — məzmunun üstündə, SAĞDA və kiçik (VÖEN ilə elan
+  // yerləşdirmə sihirbazındakı "← Geri" kimi). Məzmun sahəsi ilə eyni
+  // enlik/kənarda olsun deyə max-w-7xl + eyni px.
   return (
-    <div className="sticky top-[68px] md:top-[118px] z-40 flex justify-center py-2">
+    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-3 flex justify-end">
       <button
         onClick={goBack}
         aria-label="Geri qayıt"
         title="Geri qayıt"
-        className="flex items-center gap-1.5 pl-3 pr-4 py-2 rounded-full bg-card/95 backdrop-blur border border-card-border shadow-lg text-sm font-medium text-foreground hover:border-orange-500/50 hover:text-orange-500 transition-all"
+        className="inline-flex items-center gap-1 text-sm text-muted hover:text-orange-500 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M15 19l-7-7 7-7" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
         </svg>
         Geri
       </button>
