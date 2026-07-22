@@ -64,7 +64,14 @@ export default function GroupCallModal({
   convRef.current = convId; kindRef.current = kind;
   const socket = token ? getCallSocket(token) : null;
 
-  const sig = (to: number, data: any) => socket?.emit("groupcall:signal", { conversationId: convRef.current, to, data });
+  // Socket-i ref-də saxlayırıq: ensurePeer/onSignal useCallback([]) ilə
+  // sabitdir və köhnə render-in socket-inə "ilişib" qalırdı (token async
+  // yükləndiyi üçün ilk render-də socket null olur → heç bir SDP/ICE
+  // getmirdi, mesh qurulmurdu). Ref hər zaman güncəl socket-i verir.
+  const socketRef = useRef<typeof socket>(null);
+  socketRef.current = socket;
+
+  const sig = (to: number, data: any) => socketRef.current?.emit("groupcall:signal", { conversationId: convRef.current, to, data });
 
   const cleanup = useCallback(() => {
     pcsRef.current.forEach((pc) => { try { pc.close(); } catch { /* boş */ } });
@@ -105,13 +112,13 @@ export default function GroupCallModal({
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: k === "video" ? { facingMode: "user" } : false });
       localStreamRef.current = stream; setLocalStream(stream);
       setPhase("active"); setConvId(cid); convRef.current = cid; setKind(k); kindRef.current = k;
-      if (initiator) socket?.emit("groupcall:start", { conversationId: cid, kind: k });
-      else socket?.emit("groupcall:join", { conversationId: cid });
+      if (initiator) socketRef.current?.emit("groupcall:start", { conversationId: cid, kind: k });
+      else socketRef.current?.emit("groupcall:join", { conversationId: cid });
     } catch {
       toast("Mikrofon/kamera icazəsi verilmədi", "error"); cleanup();
     }
     // eslint-disable-next-line
-  }, [socket]);
+  }, []);
 
   // ── Zəngi başlat (parent-dən) ──
   useEffect(() => {
@@ -150,6 +157,12 @@ export default function GroupCallModal({
       } catch { /* keç */ }
     };
     const onPeerLeft = (d: any) => { if (d.conversationId === convRef.current) removePeer(d.userId); };
+    // Qrup zəngi doludur (server MAX_GROUP_CALL limitini keçib).
+    const onFull = (d: any) => {
+      if (d.conversationId !== convRef.current) return;
+      toast(`Qrup zəngi doludur (maksimum ${d.max || 5} nəfər)`, "error");
+      cleanup();
+    };
 
     socket.on("config", onConfig);
     socket.on("groupcall:incoming", onIncoming);
@@ -157,16 +170,18 @@ export default function GroupCallModal({
     socket.on("groupcall:peer-joined", onPeerJoined);
     socket.on("groupcall:signal", onSignal);
     socket.on("groupcall:peer-left", onPeerLeft);
+    socket.on("groupcall:full", onFull);
     return () => {
       socket.off("config", onConfig); socket.off("groupcall:incoming", onIncoming); socket.off("groupcall:participants", onParticipants);
       socket.off("groupcall:peer-joined", onPeerJoined); socket.off("groupcall:signal", onSignal); socket.off("groupcall:peer-left", onPeerLeft);
+      socket.off("groupcall:full", onFull);
     };
     // eslint-disable-next-line
   }, [socket, phase, myId]);
 
   const accept = () => { if (convId) enterCall(convId, kind, false); };
   const decline = () => cleanup();
-  const leave = () => { if (convRef.current) socket?.emit("groupcall:leave", { conversationId: convRef.current }); cleanup(); };
+  const leave = () => { if (convRef.current) socketRef.current?.emit("groupcall:leave", { conversationId: convRef.current }); cleanup(); };
   const toggleMute = () => { const on = !muted; setMuted(on); localStreamRef.current?.getAudioTracks().forEach((t) => (t.enabled = !on)); };
   const toggleCam = () => { const off = !camOff; setCamOff(off); localStreamRef.current?.getVideoTracks().forEach((t) => (t.enabled = !off)); };
 
