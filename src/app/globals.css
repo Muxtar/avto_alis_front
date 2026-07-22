@@ -389,7 +389,7 @@ a:focus-visible {
    qoyulur) + altdan 24px nəfəs. Beləliklə başlıq hündürlüyü dəyişəndə
    mesaj yazma sahəsi ekrandan çıxmır. Var yoxdursa ehtiyat dəyər. */
 .chat-shell {
-  height: calc(100dvh - var(--chat-top, 190px) - 24px);
+  height: calc(100dvh - var(--chat-top, 135px) - 24px);
   min-height: 320px;
 }
 /* Telefonda chat siyahısı görünüşündə (aktiv chat açıq deyil) alt mobil-nav
@@ -398,9 +398,10 @@ a:focus-visible {
    (--vvh, bottom-nav-ın üstündə), ona görə istisna edirik. */
 @media (max-width: 767px) {
   .chat-shell:not(.chat-active-mobile) {
-    /* Fallback 220px — telefonda qutunun real yuxarı ofseti (başlıq+geri+
-       "Chat" başlığı) təxminən budur; JS --chat-top-u yeniləsə daha dəqiq olur. */
-    height: calc(100dvh - var(--chat-top, 220px) - 24px - 64px - env(safe-area-inset-bottom));
+    /* Fallback 135px — "Chat" başlığı və "Geri" düyməsi legv edildikdən sonra
+       telefonda qutunun real yuxarı ofseti (yalnız navbar + kiçik boşluq)
+       təxminən budur; JS --chat-top-u yeniləsə daha dəqiq olur. */
+    height: calc(100dvh - var(--chat-top, 135px) - 24px - 64px - env(safe-area-inset-bottom));
   }
 }
 /* Mobil aktiv chat: görünən viewport-a (--vvh) tam oturan overlay.

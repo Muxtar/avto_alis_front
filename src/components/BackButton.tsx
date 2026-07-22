@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 // Qlobal "Geri" düyməsi — dərin səhifələrdə (elan → obyekt → profil ...) bir
 // addım geri qayıtmağa imkan verir. Tarixçə yoxdursa ana bazara yönləndirir.
 // Yalnız üst səviyyə səhifələrdə gizlədilir.
-const HIDDEN_PATHS = new Set(["/", "/elanlar", "/verify"]);
+const HIDDEN_PATHS = new Set(["/", "/elanlar", "/verify", "/messages"]);
 
 // Səhifənin ÖZ geri naviqasiyası olan yerlərdə qlobal düymə göstərilmir —
 // əks halda ekranda iki "Geri" olurdu:

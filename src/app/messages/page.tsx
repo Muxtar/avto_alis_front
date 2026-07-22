@@ -709,9 +709,10 @@ export default function MessagesPage() {
   // Mətn + media (şəkil/video/səs/fayl) redaktə oluna bilər — media üçün başlıq (caption) dəyişir.
   const canEdit = (m: any) => m?.senderId === user?.id && !m.deletedAt && (!m.type || ["TEXT", "IMAGE", "VIDEO", "AUDIO", "FILE"].includes(m.type));
 
+  // "Chat" başlığı legv edildi — onsuz da chat olduğu bəllidir; header
+  // (Chat/Kontaktlar tabları) yuxarı qalxsın deyə üst boşluq azaldıldı.
   return (
-    <div className="max-w-5xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
-      <h1 className="text-xl sm:text-2xl font-bold mb-4">{t("messages")}</h1>
+    <div className="max-w-5xl mx-auto px-3 sm:px-6 pt-2 sm:pt-4 pb-4 sm:pb-6">
 
       <div ref={attachBox} className={`surface overflow-hidden flex chat-shell ${active ? "chat-active-mobile" : ""}`}>
         {/* Sol panel */}
