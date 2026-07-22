@@ -27,7 +27,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setAdminName(localStorage.getItem("adminName") || "Admin");
     loadOverview();
     const id = setInterval(loadOverview, 30000);
-    return () => clearInterval(id);
+    // Elan təsdiqi/silinməsi kimi əməliyyatlardan sonra sidebar badge-i
+    // dərhal (səhifə yenilənmədən) güncəllənsin.
+    const onChange = () => loadOverview();
+    window.addEventListener("admin:pending-changed", onChange);
+    return () => { clearInterval(id); window.removeEventListener("admin:pending-changed", onChange); };
   }, [ready, pathname]);
 
   useEffect(() => {

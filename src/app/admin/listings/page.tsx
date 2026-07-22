@@ -61,17 +61,33 @@ export default function AdminListingsPage() {
   useEffect(() => { fetchOwners(); setRows({}); setOpenKey(null); }, [statusFilter, typeFilter]);
   useEffect(() => { const tm = setTimeout(() => { fetchOwners(); setRows({}); setOpenKey(null); }, 300); return () => clearTimeout(tm); }, [search]);
 
-  // Dəyişiklikdən sonra həm sahiblərin sayğaclarını, həm açıq siyahını yenilə.
-  const refresh = (owner?: any) => { fetchOwners(); if (owner) fetchRows(owner); };
+  // Sahib sayğaclarını YERİNDƏ güncəllə (səhifə yenilənmədən) — bir elanın
+  // köhnə→yeni statusu və/və ya total dəyişimi. total 0 olsa sahibi çıxar.
+  const bumpOwner = (ownerKey: string, oldStatus: string | null, newStatus: string | null, totalDelta = 0) => {
+    setOwners((prev) => prev.flatMap((o) => {
+      if (o.key !== ownerKey) return [o];
+      const total = (o.total || 0) + totalDelta;
+      if (total <= 0) { if (openKey === ownerKey) setOpenKey(null); return []; }
+      const n: any = { ...o, total, pending: o.pending || 0, approved: o.approved || 0, rejected: o.rejected || 0 };
+      const key = (s: string) => (s === "PENDING" ? "pending" : s === "APPROVED" ? "approved" : "rejected");
+      if (oldStatus) n[key(oldStatus)] = Math.max(0, n[key(oldStatus)] - 1);
+      if (newStatus) n[key(newStatus)] = n[key(newStatus)] + 1;
+      return [n];
+    }));
+  };
 
   const handleDelete = async (id: number, owner: any) => {
     if (!confirm(t("adminConfirmDelete"))) return;
+    const oldStatus = (rows[owner.key] || []).find((l) => l.id === id)?.status || null;
     try {
       const res = await fetch(`${API}/admin/listings/${id}`, { method: "DELETE", headers });
       const data = await res.json();
       if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
       toast(t("adminDeleted") || "Silindi", "success");
-      refresh(owner);
+      // Yerində sil — siyahını yenidən çəkmirik.
+      setRows((prev) => ({ ...prev, [owner.key]: (prev[owner.key] || []).filter((l) => l.id !== id) }));
+      bumpOwner(owner.key, oldStatus, null, -1);
+      window.dispatchEvent(new Event("admin:pending-changed"));
     } catch { toast(t("error"), "error"); }
   };
 
@@ -82,6 +98,7 @@ export default function AdminListingsPage() {
       rejectReason = prompt("Rədd səbəbi (elan sahibi görəcək):", "") ?? null;
       if (rejectReason === null) return;
     }
+    const oldStatus = (rows[owner.key] || []).find((l) => l.id === id)?.status || null;
     try {
       const res = await fetch(`${API}/admin/listings/${id}/status`, {
         method: "PATCH", headers, body: JSON.stringify({ status, rejectReason }),
@@ -89,7 +106,14 @@ export default function AdminListingsPage() {
       const r = await res.json();
       if (!res.ok || !r.success) { toast(r.message || t("error"), "error"); return; }
       toast(status === "APPROVED" ? "Elan təsdiqləndi" : status === "REJECTED" ? "Elan rədd edildi" : "Gözləməyə qaytarıldı", "success");
-      refresh(owner);
+      // Elanın statusunu yerində dəyiş — səhifə/siyahı yenilənmir, akkordeon açıq qalır.
+      setRows((prev) => ({
+        ...prev,
+        [owner.key]: (prev[owner.key] || []).map((l) => (l.id === id ? { ...l, status, rejectReason } : l)),
+      }));
+      if (oldStatus !== status) bumpOwner(owner.key, oldStatus, status);
+      // Sol sidebar badge-i (overview) də yenilənmədən güncəllənsin.
+      window.dispatchEvent(new Event("admin:pending-changed"));
     } catch { toast(t("error"), "error"); }
   };
 
@@ -109,8 +133,12 @@ export default function AdminListingsPage() {
       const res = await fetch(`${API}/admin/listings/${id}`, { method: "PUT", headers, body: JSON.stringify(data) });
       const r = await res.json();
       if (!res.ok || !r.success) { toast(r.message || t("error"), "error"); return; }
+      // Redaktə edilən elanı yerində güncəllə — səhifə yenilənmir.
+      if (_owner) setRows((prev) => ({
+        ...prev,
+        [_owner.key]: (prev[_owner.key] || []).map((l) => (l.id === id ? { ...l, ...data, price: Number(data.price) } : l)),
+      }));
       setModal(null);
-      refresh(_owner);
       toast(t("adminSaved") || "Yadda saxlanıldı", "success");
     } catch { toast(t("error"), "error"); }
   };
