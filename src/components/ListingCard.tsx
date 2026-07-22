@@ -265,8 +265,11 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
           {/* Price + Meta */}
           <div className="flex items-center justify-between gap-2 mb-2">
+            {/* Qiymət tam görünsün — formatPriceShort onsuz da yalnız çox
+                böyükləri (milyon+) qısaldır (məs. "1 trln"), ona görə truncate
+                lazım deyil; 40.000 kimi normal qiymətlər tam görünür. */}
             <div className="flex items-baseline gap-0.5 min-w-0" title={`${formatPrice(listing.price)} ${t("azn")}`}>
-              <span className="brand-text font-extrabold text-xl sm:text-[22px] leading-none truncate">{formatPriceShort(listing.price)}</span>
+              <span className="brand-text font-extrabold text-xl sm:text-[22px] leading-none whitespace-nowrap">{formatPriceShort(listing.price)}</span>
               <span className="text-muted-foreground text-xs font-semibold ml-0.5 shrink-0">{t("azn")}</span>
             </div>
             <div className="flex items-center gap-2 text-muted-foreground text-[10px] shrink-0">

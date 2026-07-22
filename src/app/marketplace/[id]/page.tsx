@@ -337,7 +337,8 @@ export default function ListingDetailPage() {
           {!isService && (
             <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 mt-4">
               <h3 className="font-semibold mb-3">{t("productInfo")}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+              {/* Telefonda da 2 sütun — məlumat yığcam və oxunaqlı olsun */}
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">
                 {listing.attributes && Object.entries(listing.attributes).map(([k, v]) => {
                   if (v === null || v === undefined || String(v).trim() === "") return null;
                   const def = getCategoryAttrs(parseCat(listing.category).main).find((a) => a.key === k);
@@ -478,7 +479,8 @@ export default function ListingDetailPage() {
               </div>
             ) : (listing.comments || []).some((c: any) => c.user?.id === user?.id) ? (
               <div className="mb-4 text-center py-2.5 bg-input-bg border border-input-border rounded-xl text-muted text-xs">Bu məhsula rəyinizi yazmısınız — aşağıdan dəyişə/silə bilərsiniz</div>
-            ) : (
+            ) : listing.canReview ? (
+              // Yalnız məhsulu alan / satıcı ilə əlaqə saxlayan rəy yaza bilər.
               <div className="mb-4 space-y-2">
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((n) => (
@@ -498,12 +500,33 @@ export default function ListingDetailPage() {
                   </button>
                 </div>
               </div>
+            ) : user?.id !== listing.user.id && (
+              // Rəy yalnız alışdan sonra verilir. Alış səhifəsində "Satıcıdan soruş".
+              <div className="mb-4 space-y-2">
+                <div className="flex items-center gap-2 text-xs text-muted">
+                  <svg className="w-4 h-4 text-orange-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  Rəyi məhsulu aldıqdan sonra yaza bilərsiniz. Sualınız varsa satıcıdan soruşun.
+                </div>
+                {msgSent ? (
+                  <div className="py-2.5 px-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-600 text-sm text-center">Sualınız satıcıya göndərildi ✓</div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input type="text" value={msgText} onChange={(e) => setMsgText(e.target.value)}
+                      placeholder="Satıcıdan soruşun (məs. ölçü, rəng, çatdırılma...)"
+                      className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
+                    <button onClick={handleSendMessage} disabled={!msgText.trim() || msgSending}
+                      className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white text-sm font-medium hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 whitespace-nowrap">
+                      {msgSending ? "..." : "Satıcıdan soruş"}
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             {listing.comments?.length === 0 ? (
               <div className="text-center py-8">
                 <span className="text-3xl block mb-2">💬</span>
-                <p className="text-muted text-sm">İlk rəyi siz yazın</p>
+                <p className="text-muted text-sm">{listing.canReview ? "İlk rəyi siz yazın" : "Hələ rəy yoxdur"}</p>
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -553,8 +576,10 @@ export default function ListingDetailPage() {
           </div>
         </div>
 
-        {/* Right - Info (birmarket üslubu: alış qutusu scroll-da yapışıq qalır) */}
-        <div className="lg:col-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
+        {/* Right - Info (birmarket üslubu: alış qutusu scroll-da yapışıq qalır).
+            Telefonda order-first — qiymət və "səbətə əlavə et" ən üstdə görünsün
+            (aşağı sürüşmədən). Masaüstündə normal (sağda). */}
+        <div className="order-first lg:order-none lg:col-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
           {/* Price Card */}
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
             <div className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium mb-3 ${

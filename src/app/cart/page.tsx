@@ -597,7 +597,7 @@ export default function CartPage() {
                   <div>
                     <label className="block text-xs text-muted mb-1">{t("promoCode")}</label>
                     <div className="flex gap-2">
-                      <input value={promoCode} onChange={e => { setPromoCode(e.target.value); setPromoValidated(false); setPromoDiscount(0); }} placeholder="BOLT5" className={inputCls + " flex-1"} />
+                      <input value={promoCode} onChange={e => { setPromoCode(e.target.value); setPromoValidated(false); setPromoDiscount(0); }} placeholder="YANGO" className={inputCls + " flex-1"} />
                       <button onClick={validatePromo} disabled={!promoCode.trim() || promoValidated} className="px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs">
                         {promoValidated ? "✓" : t("apply")}
                       </button>
