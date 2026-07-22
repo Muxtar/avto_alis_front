@@ -201,9 +201,12 @@ export default function Navbar() {
       {/* ── Əsas başlıq ── */}
       <div className="relative z-10 bg-card border-b border-card-border">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-2 sm:gap-4 h-[68px] sm:h-20">
+          {/* Telefonda iki sətir (flex-wrap): üstdə logo/kataloq/ikonlar,
+              altda tam enli axtarış (order-last + basis-full). Masaüstündə
+              tək sətir (sm:flex-nowrap). */}
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-2.5 sm:gap-4 py-2.5 sm:py-0 sm:h-20">
             {/* Logo */}
-            <Link href="/elanlar" className="flex items-center gap-2 shrink-0 group">
+            <Link href="/elanlar" className="order-1 flex items-center gap-2 shrink-0 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/tradixai-icon.svg" alt="tradixai" className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0" />
               {/* Telefon ölçüsündə yalnız ikon — ana səhifəyə qayıtmaq üçün kifayətdir,
@@ -212,16 +215,16 @@ export default function Navbar() {
             </Link>
 
             {/* Şəhər */}
-            <Link href="/locations" className="hidden lg:flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors shrink-0">
+            <Link href="/locations" className="order-2 hidden lg:flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors shrink-0">
               <svg className="w-4 h-4" style={{ color: PINK }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
               <span>Şəhər: <b className="text-foreground">Bakı</b></span>
             </Link>
 
-            {/* Kataloq — kateqoriya menyusu */}
-            <div ref={catRef} className="relative hidden sm:block shrink-0">
-              <button onClick={() => { setCatOpen((v) => !v); setCatHover(null); }} className="flex items-center gap-2 px-5 h-13 rounded-xl text-white font-semibold text-[15px] hover:opacity-90 transition-opacity" style={{ background: PINK }}>
+            {/* Kataloq — kateqoriya menyusu (telefonda da görünür, kompakt) */}
+            <div ref={catRef} className="order-2 relative shrink-0">
+              <button onClick={() => { setCatOpen((v) => !v); setCatHover(null); }} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 h-11 sm:h-13 rounded-xl text-white font-semibold text-sm sm:text-[15px] hover:opacity-90 transition-opacity" style={{ background: PINK }}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-                {t("navCatalog")}
+                <span className="hidden xs:inline">{t("navCatalog")}</span>
                 <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {catOpen && (
@@ -270,14 +273,15 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Axtarış */}
-            <div className="relative flex-1 min-w-[160px]">
-            <form onSubmit={submitSearch} className="w-full flex items-stretch h-13 overflow-hidden border-2 transition-colors" style={{ borderColor: PINK }}>
+            {/* Axtarış — telefonda tam enli alt sətirdə (order-last basis-full),
+                masaüstündə sətir içində. İncə kənar + yarımşəffaf bulanıq fon. */}
+            <div className="order-last basis-full w-full sm:order-none sm:basis-auto sm:flex-1 relative min-w-0 sm:min-w-[160px]">
+            <form onSubmit={submitSearch} className="w-full flex items-stretch h-12 sm:h-13 overflow-hidden border transition-colors" style={{ borderColor: PINK }}>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Məhsul, xidmət, ad-soyad, şirkət — hər şeyi axtar"
-                className="flex-1 min-w-0 px-4 bg-card text-foreground text-[15px] focus:outline-none placeholder-muted-foreground"
+                className="flex-1 min-w-0 px-4 bg-card/70 backdrop-blur-md text-foreground text-sm sm:text-[15px] focus:outline-none placeholder-muted-foreground"
               />
 
               {/* Şəkillə axtarış — axtarış sahəsinin içində */}
@@ -289,7 +293,7 @@ export default function Navbar() {
                 disabled={imgBusy}
                 title="Şəkil ilə axtar"
                 aria-label="Şəkil ilə axtar"
-                className="px-3 flex items-center justify-center text-muted hover:text-foreground disabled:opacity-60 transition-colors border-l border-card-border"
+                className="px-3 flex items-center justify-center bg-card/70 backdrop-blur-md text-muted hover:text-foreground disabled:opacity-60 transition-colors border-l border-card-border"
               >
                 {imgBusy ? (
                   <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" /></svg>
@@ -382,13 +386,14 @@ export default function Navbar() {
             )}
             </div>
 
-            {/* Sağ: bildiriş / seçilmişlər / səbət / istifadəçi */}
-            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
-              {isLoggedIn && <div className="hidden sm:block"><NotificationBell /></div>}
+            {/* Sağ: bildiriş / seçilmişlər / səbət / istifadəçi.
+                Telefonda ml-auto ilə sağa yaslanır (axtarış alt sətrə düşür). */}
+            <div className="order-3 ml-auto sm:ml-0 flex items-center gap-1.5 sm:gap-3 shrink-0">
+              {isLoggedIn && <NotificationBell />}
 
-              <Link href="/favorites" className="hidden lg:flex flex-col items-center text-muted hover:text-foreground transition-colors" title={t("favorites")}>
+              <Link href="/favorites" className="flex flex-col items-center text-muted hover:text-foreground transition-colors" title={t("favorites")}>
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
-                <span className="text-[10px] mt-0.5">{t("favorites")}</span>
+                <span className="text-[10px] mt-0.5 hidden lg:inline">{t("favorites")}</span>
               </Link>
 
               {isLoggedIn && (

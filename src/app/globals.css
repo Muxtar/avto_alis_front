@@ -59,6 +59,9 @@
    "orange-*" Tailwind utiliti qlobal olaraq bu çəhrayı ailəyə remap edilir,
    beləcə bütün səhifələrdəki vurğu rəngi tək yerdən idarə olunur. */
 @theme {
+  /* Dar telefonlarda (≥400px) mətn/etiket göstərmək üçün əlavə breakpoint.
+     Bundan kiçik ekranlarda yalnız ikon qalır. */
+  --breakpoint-xs: 400px;
   --color-orange-50: #eef3ff;
   --color-orange-100: #dbe5ff;
   --color-orange-200: #bccfff;
