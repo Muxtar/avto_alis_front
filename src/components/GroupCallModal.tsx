@@ -17,13 +17,20 @@ function Tile({ name, avatar, stream, kind, muted, self }: { name: string; avata
   const vRef = useRef<HTMLVideoElement | null>(null);
   const aRef = useRef<HTMLAudioElement | null>(null);
   useEffect(() => {
-    if (kind === "video" && vRef.current) vRef.current.srcObject = stream;
+    if (kind === "video" && vRef.current) {
+      vRef.current.srcObject = stream;
+      // autoPlay srcObject dinamik təyin olunanda bəzən işə düşmür — açıq
+      // play() olmasa qarşı tərəfin videosu qara qalırdı.
+      vRef.current.play?.().catch(() => {});
+    }
     if (kind === "audio" && aRef.current && !self) { aRef.current.srcObject = stream; aRef.current.play?.().catch(() => {}); }
   }, [stream, kind, self]);
   return (
     <div className="relative bg-black/60 rounded-xl overflow-hidden flex items-center justify-center aspect-square">
       {kind === "video" ? (
-        <video ref={vRef} autoPlay playsInline muted={self || muted} className="w-full h-full object-cover" />
+        // muted YALNIZ öz videomuz üçün (əks-səda). Qarşı tərəfin videosunu
+        // öz mikrofon "muted" halımızla susdurmuruq — səsi onun videosundan gəlir.
+        <video ref={vRef} autoPlay playsInline muted={self} className="w-full h-full object-cover" />
       ) : (
         <div className="flex flex-col items-center gap-1 text-white">
           {avatar ? <img src={imgUrl(avatar)} alt={name} className="w-14 h-14 rounded-full object-cover" /> : <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center font-bold">{initials(name)}</div>}
@@ -109,7 +116,10 @@ export default function GroupCallModal({
   // Lokal media al, sonra zəngə qoşul/başlat (media hazır olmadan siqnal gəlməsin).
   const enterCall = useCallback(async (cid: number, k: "audio" | "video", initiator: boolean) => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: k === "video" ? { facingMode: "user" } : false });
+      // facingMode: "user" SABİT kısıt idi — masaüstü veb-kameralarında
+      // OverconstrainedError verib bütün video zəngi çökürdü. "ideal" ilə
+      // dəstəklənməsə belə mövcud kamera açılır.
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: k === "video" ? { facingMode: { ideal: "user" } } : false });
       localStreamRef.current = stream; setLocalStream(stream);
       setPhase("active"); setConvId(cid); convRef.current = cid; setKind(k); kindRef.current = k;
       if (initiator) socketRef.current?.emit("groupcall:start", { conversationId: cid, kind: k });
