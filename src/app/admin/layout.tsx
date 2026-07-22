@@ -117,6 +117,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Sidebar linkinə uyğun gözləyən iş sayı (badge üçün).
   const pendingByHref: Record<string, string> = {
+    "/admin/listings": "listings",       // təsdiq gözləyən yeni elanlar
     "/admin/businesses": "businesses",
     "/admin/seller-applications": "sellerApps",
     "/admin/id-verifications": "idVerifications",

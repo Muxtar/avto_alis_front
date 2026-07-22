@@ -205,6 +205,11 @@ export default function Navbar() {
               altda tam enli axtarış (order-last + basis-full). Masaüstündə
               tək sətir (sm:flex-nowrap). */}
           <div className="flex flex-wrap sm:flex-nowrap items-center gap-x-2 gap-y-2.5 sm:gap-4 py-2.5 sm:py-0 sm:h-20">
+            {/* Sol qrup (logo/şəhər/kataloq) — masaüstündə flex-1 (search-i
+                MƏRKƏZDƏ tutmaq üçün sol və sağ qruplar bərabər çəkidir).
+                Telefonda `display:contents` ilə şəffafdır → uşaqlar birbaşa
+                əsas flex-in item-ıdır, order/wrap düzəni pozulmur. */}
+            <div className="contents sm:flex sm:flex-1 sm:min-w-0 sm:items-center sm:gap-4">
             {/* Logo */}
             <Link href="/elanlar" className="order-1 flex items-center gap-2 shrink-0 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -215,7 +220,7 @@ export default function Navbar() {
             </Link>
 
             {/* Şəhər */}
-            <Link href="/locations" className="order-2 hidden lg:flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors shrink-0">
+            <Link href="/locations" className="order-2 hidden 2xl:flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors shrink-0">
               <svg className="w-4 h-4" style={{ color: PINK }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
               <span>Şəhər: <b className="text-foreground">Bakı</b></span>
             </Link>
@@ -272,10 +277,12 @@ export default function Navbar() {
                 </div>
               )}
             </div>
+            </div>{/* sol qrup sonu */}
 
             {/* Axtarış — telefonda tam enli alt sətirdə (order-last basis-full),
-                masaüstündə sətir içində. İncə kənar + yarımşəffaf bulanıq fon. */}
-            <div className="order-last basis-full w-full sm:order-none sm:basis-auto sm:flex-1 relative min-w-0 sm:min-w-[160px]">
+                masaüstündə başlığın MƏRKƏZİNDƏ: sol/sağ qruplar flex-1, bu isə
+                sabit max-w ilə ortada. İncə kənar + yarımşəffaf bulanıq fon. */}
+            <div className="order-last basis-full w-full sm:order-none sm:basis-auto sm:flex-none sm:w-full sm:max-w-sm lg:max-w-lg relative min-w-0 sm:min-w-[160px]">
             <form onSubmit={submitSearch} className="w-full flex items-stretch h-12 sm:h-13 overflow-hidden border transition-colors" style={{ borderColor: PINK }}>
               <input
                 value={search}
@@ -387,8 +394,10 @@ export default function Navbar() {
             </div>
 
             {/* Sağ: bildiriş / seçilmişlər / səbət / istifadəçi.
-                Telefonda ml-auto ilə sağa yaslanır (axtarış alt sətrə düşür). */}
-            <div className="order-3 ml-auto sm:ml-0 flex items-center gap-1.5 sm:gap-3 shrink-0">
+                Telefonda ml-auto ilə sağa yaslanır (axtarış alt sətrə düşür);
+                masaüstündə flex-1 + justify-end — sol qrupla bərabər çəki
+                verib search-i mərkəzdə saxlayır. */}
+            <div className="order-3 ml-auto sm:ml-0 sm:flex-1 flex items-center justify-end gap-1.5 sm:gap-3 shrink-0">
               {isLoggedIn && <NotificationBell />}
 
               <Link href="/favorites" className="flex flex-col items-center text-muted hover:text-foreground transition-colors" title={t("favorites")}>
