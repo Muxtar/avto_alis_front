@@ -349,9 +349,9 @@ export default function ListingDetailPage() {
           </div>
         </div>
 
-        {/* Məhsul məlumatları + təsvir + rəylər — TELEFONDA alış qutusundan sonra
-            (order-3); masaüstündə sol sütun aşağı sıra. */}
-        <div className="order-3 lg:col-span-3 lg:col-start-1 lg:row-start-2">
+        {/* Məhsul məlumatları + təsvir + rəylər — TELEFONDA birbaşa şəkillərin
+            altında (order-2); masaüstündə sol sütun aşağı sıra. */}
+        <div className="order-2 lg:col-span-3 lg:col-start-1 lg:row-start-2">
           {/* Specifications */}
           {!isService && (
             <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
@@ -583,10 +583,9 @@ export default function ListingDetailPage() {
           </div>
         </div>
 
-        {/* Alış qutusu — TELEFONDA şəkillərdən sonra (order-2), qiymət/səbət
-            yuxarıda əlçatan qalır. Masaüstündə sağ sütunda (col 4-5) iki sıra
-            boyu yapışıq (sticky) qalır. */}
-        <div className="order-2 lg:col-span-2 lg:col-start-4 lg:row-start-1 lg:row-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
+        {/* Alış qutusu — TELEFONDA məhsul məlumatından sonra (order-3).
+            Masaüstündə sağ sütunda (col 4-5) iki sıra boyu yapışıq (sticky). */}
+        <div className="order-3 lg:col-span-2 lg:col-start-4 lg:row-start-1 lg:row-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
           {/* Price Card */}
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
             <div className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium mb-3 ${
@@ -894,14 +893,11 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
-      {/* 1) Satıcının / obyektin (mağazanın) DİGƏR elanları — məhsul məlumatından sonra */}
+      {/* 1) Elanı paylaşanın (satıcı/obyekt) DİGƏR elanları — məhsul məlumatından
+          sonra. Başlıq "əvvəl baxdıqlarınız" stilində: kiçik, solğun, adsız. */}
       {sellerListings.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-lg font-bold mb-4">
-            {listing.businessObject?.name
-              ? `${listing.businessObject.name} — digər elanları`
-              : `${listing.user?.name || "Satıcı"} — digər elanları`}
-          </h2>
+          <h2 className="mb-3 px-1 text-sm text-muted lowercase">digər elanları</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {sellerListings.map((l) => <ListingCard key={l.id} listing={l} />)}
           </div>
@@ -911,7 +907,7 @@ export default function ListingDetailPage() {
       {/* 2) Eyni kateqoriyada BAŞQA satıcıların elanları — ən altda */}
       {related.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-lg font-bold mb-4">Eyni kateqoriyada başqa elanlar</h2>
+          <h2 className="mb-3 px-1 text-sm text-muted lowercase">eyni kateqoriyada başqa elanlar</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {related.map((l) => <ListingCard key={l.id} listing={l} />)}
           </div>
