@@ -139,9 +139,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   };
 
   return (
-    // Admin sahəsi dəqiq ekran hündürlüyündədir: pəncərə sürüşmür,
-    // sidebar və məzmun ayrı-ayrı sürüşür.
-    <div className="flex flex-col h-[calc(100vh-68px)] md:h-[calc(100vh-118px)] overflow-hidden">
+    // Admin sahəsi tam ekran hündürlüyündədir (sayt Navbar-ı burada gizlidir):
+    // pəncərə sürüşmür, sidebar və məzmun ayrı-ayrı sürüşür.
+    <div className="flex flex-col h-screen overflow-hidden">
       <AdminHeader overview={overview} adminName={adminName} onRefresh={loadOverview} onLogout={handleLogout} />
       <div className="flex flex-1 min-h-0">
       {/* Sidebar */}

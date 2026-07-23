@@ -2,11 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
-import Navbar from "@/components/Navbar";
-import MobileBottomNav from "@/components/MobileBottomNav";
-import InquiryChatbot from "@/components/InquiryChatbot";
-import Footer from "@/components/Footer";
-import BackButton from "@/components/BackButton";
+import SiteChrome from "@/components/SiteChrome";
 
 const geist = Geist({
   variable: "--font-geist-sans",
@@ -41,12 +37,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background text-foreground transition-colors duration-300 flex flex-col">
         <Providers>
-          <Navbar />
-          <BackButton />
-          <main className="flex-1 pb-safe-nav md:pb-0">{children}</main>
-          <Footer />
-          <InquiryChatbot />
-          <MobileBottomNav />
+          <SiteChrome>{children}</SiteChrome>
         </Providers>
       </body>
     </html>
