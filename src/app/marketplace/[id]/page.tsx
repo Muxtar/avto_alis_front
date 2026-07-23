@@ -502,25 +502,12 @@ export default function ListingDetailPage() {
                 </div>
               </div>
             ) : user?.id !== listing.user.id && (
-              // Rəy yalnız alışdan sonra verilir. Alış səhifəsində "Satıcıdan soruş".
-              <div className="mb-4 space-y-2">
-                <div className="flex items-center gap-2 text-xs text-muted">
-                  <svg className="w-4 h-4 text-orange-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  Rəyi məhsulu aldıqdan sonra yaza bilərsiniz. Sualınız varsa satıcıdan soruşun.
-                </div>
-                {msgSent ? (
-                  <div className="py-2.5 px-3 bg-green-500/10 border border-green-500/20 rounded-xl text-green-600 text-sm text-center">Sualınız satıcıya göndərildi ✓</div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input type="text" value={msgText} onChange={(e) => setMsgText(e.target.value)}
-                      placeholder="Satıcıdan soruşun (məs. ölçü, rəng, çatdırılma...)"
-                      className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
-                    <button onClick={handleSendMessage} disabled={!msgText.trim() || msgSending}
-                      className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white text-sm font-medium hover:from-green-600 hover:to-emerald-700 transition-all disabled:opacity-50 whitespace-nowrap">
-                      {msgSending ? "..." : "Satıcıdan soruş"}
-                    </button>
-                  </div>
-                )}
+              // VÖEN-li elan: rəy yalnız məhsulu aldıqdan sonra yazıla bilər.
+              // Ayrıca "Satıcıdan soruş" inputu YOXDUR — aşağıda "Mesaj yaz"
+              // kartı onsuz da mövcuddur (istifadəçi tələbi).
+              <div className="mb-4 flex items-center gap-2 text-xs text-muted bg-input-bg border border-input-border rounded-xl px-3 py-2.5">
+                <svg className="w-4 h-4 text-orange-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                Rəyi məhsulu aldıqdan sonra yaza bilərsiniz. Sualınız varsa aşağıdan satıcıya mesaj yazın.
               </div>
             )}
 
