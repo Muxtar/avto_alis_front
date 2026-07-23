@@ -13,7 +13,9 @@ function VerifyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const userId = searchParams.get("userId");
-  const initialCode = searchParams.get("code") || "";
+  // Yalnız həqiqi rəqəmli test kodunu qəbul et — "undefined"/boş dəyər yox.
+  const rawCode = searchParams.get("code") || "";
+  const initialCode = /^\d{4,8}$/.test(rawCode) ? rawCode : "";
 
   const [code, setCode] = useState("");
   const [testCode, setTestCode] = useState(initialCode);
@@ -90,7 +92,15 @@ function VerifyContent() {
           <h1 className="text-2xl font-bold text-center mb-2">{t("verifyTitle")}</h1>
           <p className="text-muted text-center text-sm mb-4">{t("verifySubtitle")}</p>
 
-          {/* TEST MODE Banner - SMS provider qosulana kimi gosterilir */}
+          {/* Real göndərmə (Infobip WhatsApp konfiqurasiyalı) — test kodu yoxdur:
+              istifadəçiyə kodun WhatsApp-a getdiyini bildir. */}
+          {!testCode && (
+            <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-3 mb-6 text-center">
+              <p className="text-green-500 text-xs font-medium">📱 Doğrulama kodu WhatsApp nömrənizə göndərildi. Kodu aşağıda daxil edin.</p>
+            </div>
+          )}
+
+          {/* TEST MODE Banner - WhatsApp provider qoşulana kimi göstərilir */}
           {testCode && (
             <div className="bg-amber-500/15 border border-amber-500/40 rounded-xl p-4 mb-6 text-center">
               <p className="text-amber-500 text-[11px] font-bold uppercase tracking-wider mb-1">⚠️ Test rejimi · Kod sizə SMS ilə getmir</p>

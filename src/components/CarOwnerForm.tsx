@@ -102,7 +102,7 @@ export default function CarOwnerForm() {
       });
       if (res.ok) {
         const data = await res.json();
-        router.push(`/verify?userId=${data.user.id}&code=${data.verificationCode}`);
+        router.push(`/verify?userId=${data.user.id}${data.verificationCode ? `&code=${data.verificationCode}` : ""}`);
         return;
       }
     } catch {

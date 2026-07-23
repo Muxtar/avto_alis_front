@@ -33,7 +33,7 @@ export default function PartsSellerForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, phone, workplaces }),
       });
-      if (res.ok) { const data = await res.json(); router.push(`/verify?userId=${data.user.id}&code=${data.verificationCode}`); return; }
+      if (res.ok) { const data = await res.json(); router.push(`/verify?userId=${data.user.id}${data.verificationCode ? `&code=${data.verificationCode}` : ""}`); return; }
     } catch { toast(t("error"), 'error'); } finally { setLoading(false); }
   };
 
