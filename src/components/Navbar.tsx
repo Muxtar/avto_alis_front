@@ -19,6 +19,31 @@ const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "en", label: "EN", flag: "🇬🇧" },
 ];
 
+// ── Axtarış avtomatik-tamamlama (Google kimi) ──
+// Statik kateqoriya/alt-kateqoriya indeksi — ani, şəbəkəsiz təkliflər.
+type Suggest = { kind: "recent" | "cat" | "text"; label: string; context?: string; href?: string };
+const CAT_SUGGEST: { label: string; context: string; href: string }[] = [];
+for (const c of CATEGORIES) {
+  CAT_SUGGEST.push({ label: c.name, context: "Kateqoriya", href: `/elanlar/${slugify(c.name)}` });
+  for (const su of c.subs) {
+    CAT_SUGGEST.push({ label: su.name, context: c.name, href: `/elanlar/${slugify(c.name)}/${slugify(su.name)}` });
+  }
+}
+// Aksent-həssas olmayan uyğunlaşma üçün (ə→e, ş→s ...). slugify boşluğu "-" edir.
+const normQ = (s: string) => slugify(s);
+function getRecentSearches(): string[] {
+  try { return JSON.parse(localStorage.getItem("recentSearches") || "[]"); } catch { return []; }
+}
+function addRecentSearch(q: string) {
+  const t = q.trim();
+  if (!t) return;
+  try {
+    const list = getRecentSearches().filter((x) => x.toLowerCase() !== t.toLowerCase());
+    list.unshift(t);
+    localStorage.setItem("recentSearches", JSON.stringify(list.slice(0, 8)));
+  } catch { /* localStorage yoxdursa keç */ }
+}
+
 // Vahid brend rəngi (globals.css orange-* remap ilə eyni — logo mavisi (#2f6bff)).
 const PINK = "#2f6bff";
 
@@ -38,6 +63,12 @@ export default function Navbar() {
   const [search, setSearch] = useState("");
   const [imgBusy, setImgBusy] = useState(false);
   const imgInputRef = useRef<HTMLInputElement>(null);
+  // Avtomatik-tamamlama (təkliflər)
+  const [suggestions, setSuggestions] = useState<Suggest[]>([]);
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [suggestIdx, setSuggestIdx] = useState(-1);
+  const searchBoxRef = useRef<HTMLDivElement>(null);
+  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // İnternet (Claude web search) nəticələri — axtarış sahəsinin altındakı pencere
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
@@ -71,6 +102,7 @@ export default function Navbar() {
       if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
       if (userRef.current && !userRef.current.contains(e.target as Node)) setUserOpen(false);
       if (catRef.current && !catRef.current.contains(e.target as Node)) { setCatOpen(false); setCatHover(null); }
+      if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) setSearchFocused(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -78,11 +110,14 @@ export default function Navbar() {
 
   // Axtarış: əvvəlcə sayt daxili. Saytda heç nə tapılmasa, Claude-un internet
   // axtarışı işə düşür və nəticələr axtarış sahəsinin altında açılır.
-  const submitSearch = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    const q = search.trim();
+  const submitSearch = (e?: React.FormEvent) => { e?.preventDefault(); runSearch(search); };
+
+  const runSearch = async (raw: string) => {
+    const q = raw.trim();
+    setSearchFocused(false);
     setWebOpen(false);
     setWebData(null);
+    if (q) addRecentSearch(q);
     router.push(`/elanlar${q ? `?search=${encodeURIComponent(q)}` : ""}`);
     if (!q) return;
 
@@ -151,6 +186,57 @@ export default function Navbar() {
       setImgBusy(false);
       if (imgInputRef.current) imgInputRef.current.value = "";
     }
+  };
+
+  // İstifadəçi yazdıqca təkliflər: son axtarışlar + kateqoriyalar (ani) +
+  // saytdakı elan başlıqları (300ms debounce ilə mövcud /listings-dən).
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 1) { setSuggestions([]); setSuggestIdx(-1); return; }
+    const nq = normQ(q);
+    const recent: Suggest[] = getRecentSearches()
+      .filter((r) => normQ(r).includes(nq))
+      .slice(0, 3)
+      .map((r) => ({ kind: "recent", label: r }));
+    const cats: Suggest[] = CAT_SUGGEST
+      .filter((c) => normQ(c.label).includes(nq))
+      .slice(0, 6)
+      .map((c) => ({ kind: "cat", label: c.label, context: c.context, href: c.href }));
+    setSuggestions([...recent, ...cats]);
+    setSuggestIdx(-1);
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    suggestTimer.current = setTimeout(async () => {
+      try {
+        const r = await fetch(`${API}/listings?search=${encodeURIComponent(q)}&limit=6`);
+        const d = await r.json();
+        const titles = Array.from(new Set((d?.listings || []).map((l: any) => l.title).filter(Boolean))).slice(0, 5);
+        setSuggestions((prev) => {
+          const base = prev.filter((p) => p.kind !== "text");
+          const seen = new Set(base.map((b) => normQ(b.label)));
+          const add: Suggest[] = (titles as string[])
+            .filter((tt) => !seen.has(normQ(tt)))
+            .map((tt) => ({ kind: "text", label: tt }));
+          return [...base, ...add];
+        });
+      } catch { /* təklif alınmadısa səssiz keç */ }
+    }, 300);
+    return () => { if (suggestTimer.current) clearTimeout(suggestTimer.current); };
+  }, [search]);
+
+  const pickSuggestion = (s: Suggest) => {
+    setSearchFocused(false);
+    setSuggestIdx(-1);
+    if (s.kind === "cat" && s.href) { setSearch(""); router.push(s.href); return; }
+    setSearch(s.label);
+    runSearch(s.label);
+  };
+
+  const onSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (!searchFocused || suggestions.length === 0) return;
+    if (e.key === "ArrowDown") { e.preventDefault(); setSuggestIdx((i) => Math.min(i + 1, suggestions.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setSuggestIdx((i) => Math.max(i - 1, -1)); }
+    else if (e.key === "Enter") { if (suggestIdx >= 0) { e.preventDefault(); pickSuggestion(suggestions[suggestIdx]); } }
+    else if (e.key === "Escape") { setSearchFocused(false); }
   };
 
   const current = languages.find((l) => l.code === locale)!;
@@ -283,11 +369,14 @@ export default function Navbar() {
             {/* Axtarış — telefonda tam enli alt sətirdə (order-last basis-full),
                 masaüstündə başlığın MƏRKƏZİNDƏ: sol/sağ qruplar flex-1, bu isə
                 sabit max-w ilə ortada. İncə kənar + yarımşəffaf bulanıq fon. */}
-            <div className="order-last basis-full w-full sm:order-none sm:basis-auto sm:flex-none sm:w-full sm:max-w-xs md:max-w-sm lg:max-w-md relative min-w-0 sm:min-w-[160px]">
+            <div ref={searchBoxRef} className="order-last basis-full w-full sm:order-none sm:basis-auto sm:flex-none sm:w-full sm:max-w-xs md:max-w-sm lg:max-w-md relative min-w-0 sm:min-w-[160px]">
             <form onSubmit={submitSearch} className="w-full flex items-stretch h-12 sm:h-13 overflow-hidden border transition-colors" style={{ borderColor: PINK }}>
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setSearchFocused(true); }}
+                onFocus={() => setSearchFocused(true)}
+                onKeyDown={onSearchKeyDown}
+                autoComplete="off"
                 placeholder="Məhsul, xidmət, ad-soyad, şirkət — hər şeyi axtar"
                 className="flex-1 min-w-0 px-4 bg-card/70 backdrop-blur-md text-foreground text-sm sm:text-[15px] focus:outline-none placeholder-muted-foreground"
               />
@@ -315,6 +404,26 @@ export default function Navbar() {
                 <span className="hidden sm:inline">Axtar</span>
               </button>
             </form>
+
+            {/* Avtomatik-tamamlama təklifləri (Google kimi) — yazıldıqca açılır.
+                İnternet nəticələri açıqdırsa göstərilmir. */}
+            {searchFocused && !webOpen && suggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card border border-card-border rounded-b-xl shadow-2xl max-h-[60vh] overflow-y-auto">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={`${s.kind}-${i}-${s.label}`}
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); pickSuggestion(s); }}
+                    onMouseEnter={() => setSuggestIdx(i)}
+                    className={`w-full text-left px-4 py-2.5 flex items-center gap-3 text-sm border-b border-card-border/40 last:border-0 transition-colors ${suggestIdx === i ? "bg-input-bg" : "hover:bg-input-bg"}`}
+                  >
+                    <span className="shrink-0 text-muted">{s.kind === "recent" ? "🕘" : s.kind === "cat" ? "📂" : "🔍"}</span>
+                    <span className="min-w-0 truncate">{s.label}</span>
+                    {s.context && <span className="ml-auto shrink-0 text-[11px] text-muted">{s.context}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Saytda tapılmadı → internet nəticələri (Claude web search) */}
             {webOpen && (

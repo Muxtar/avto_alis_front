@@ -567,39 +567,8 @@ function MarketplacePage() {
                 <TrustBar />
               </>
             )}
-            {/* Hero banner — yalnız kateqoriya/axtarış görünüşündə (ana səhifədə karusel var) */}
-            {(selectedCategory || searchQuery.trim()) && (
-            <div className="grid sm:grid-cols-3 gap-3.5 mb-6">
-              <Link href="/elanlar" className="sm:col-span-2 group relative overflow-hidden rounded-3xl p-7 sm:p-9 flex flex-col justify-center text-white min-h-[190px] shadow-xl shadow-blue-500/20" style={{ background: "linear-gradient(135deg,#5e8bff 0%,#2f6bff 55%,#2056e6 100%)" }}>
-                <div className="absolute -top-14 -right-12 w-52 h-52 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-                <div className="absolute -bottom-20 -left-12 w-64 h-64 rounded-full bg-white/10 blur-3xl pointer-events-none" />
-                <span className="relative inline-flex w-fit items-center gap-1.5 bg-white/15 backdrop-blur ring-1 ring-white/25 rounded-full px-3 py-1 text-[11px] font-semibold mb-3">✦ Azərbaycanın onlayn bazarı</span>
-                <p className="relative text-2xl sm:text-3xl font-extrabold leading-tight tracking-tight">Hər şey bir platformada</p>
-                <p className="relative text-sm sm:text-base text-white/85 mt-1.5 max-w-md">Məhsul, xidmət və peşəkarlar — al, sat, kəşf et.</p>
-                <span className="relative mt-4 inline-flex w-fit items-center gap-2 bg-white rounded-xl px-5 py-2.5 text-sm font-bold shadow-md group-hover:gap-3 transition-all" style={{ color: "#2056e6" }}>
-                  Bazara keç
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-                </span>
-              </Link>
-              <div className="flex sm:flex-col gap-3.5">
-                <Link href="/consultations" className="group flex-1 rounded-2xl p-4 surface card-hover flex items-center gap-3">
-                  <span className="w-11 h-11 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center text-xl shrink-0 group-hover:scale-110 transition-transform">🗣️</span>
-                  <span className="min-w-0">
-                    <p className="font-bold text-sm">Peşəkardan Rəy al</p>
-                    <p className="text-[11px] text-muted">Onlayn konsultasiya</p>
-                  </span>
-                </Link>
-                <Link href="/locations" className="group flex-1 rounded-2xl p-4 surface card-hover flex items-center gap-3">
-                  <span className="w-11 h-11 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center text-xl shrink-0 group-hover:scale-110 transition-transform">🗺️</span>
-                  <span className="min-w-0">
-                    <p className="font-bold text-sm">Xəritədə tap</p>
-                    <p className="text-[11px] text-muted">Yaxınında obyekt və usta</p>
-                  </span>
-                </Link>
-              </div>
-            </div>
-
-            )}
+            {/* Hero promo banner ("Hər şey bir platformada") legv edildi —
+                kateqoriya/axtarış görünüşündə lazımsızdır (istifadəçi tələbi). */}
 
             {/* Ana səhifə: əvvəl baxdıqlarınız */}
             {!selectedCategory && !searchQuery.trim() && (

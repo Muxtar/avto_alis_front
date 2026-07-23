@@ -491,33 +491,44 @@ function AccountPageInner() {
             {(() => {
               const { main, sub } = parseCat(form.category);
               const subs = getSubs(main);
+              // Məhsul/Xidmət artıq əvvəlki addımda seçilib — burada təkrar tip
+              // seçimi yoxdur. Xidmət isə ana kateqoriya "Xidmətlər"-dir (dəyişmir),
+              // yalnız alt kateqoriya seçilir. Məhsul üçün yalnız məhsul
+              // kateqoriyaları göstərilir (səhvən xidmətə keçmək olmur).
+              const isService = form.type === "SERVICE";
+              const mainOptions = isService
+                ? CATEGORIES.filter((c) => c.service)
+                : CATEGORIES.filter((c) => !c.service);
               return (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-1.5">{t("mainCategory") || "Ana kateqoriya"}</label>
-                    <select
-                      value={main}
-                      onChange={(e) => {
-                        const newMain = e.target.value;
-                        const newSub = getSubs(newMain)[0] || "";
-                        // Xidmət kateqoriyası → SERVICE; digər kateqoriyalar → PRODUCT
-                        // (xidmətdən məhsula keçəndə tip düzgün sıfırlansın).
-                        const nextType = isServiceCat(newMain) ? "SERVICE" : "PRODUCT";
-                        setForm({ ...form, category: buildCat(newMain, newSub), type: nextType });
-                        setAttrs({}); // yeni kateqoriya → atributları sıfırla
-                      }}
-                      className={inputCls}
-                    >
-                      {CATEGORIES.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
-                    </select>
-                  </div>
-                  <div>
+                  {!isService && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1.5">{t("mainCategory") || "Ana kateqoriya"}</label>
+                      <select
+                        value={main}
+                        onChange={(e) => {
+                          const newMain = e.target.value;
+                          // Ana kateqoriya dəyişəndə alt kateqoriya BOŞ qalır —
+                          // avtomatik yanlış alt seçilməsin (məs. Turizm → Restoran
+                          // əvəzinə istifadəçi özü Otel seçsin). Alt seçim məcburidir.
+                          setForm({ ...form, category: newMain, type: isServiceCat(newMain) ? "SERVICE" : "PRODUCT" });
+                          setAttrs({}); // yeni kateqoriya → atributları sıfırla
+                        }}
+                        className={inputCls}
+                      >
+                        {mainOptions.map((m) => <option key={m.name} value={m.name}>{m.name}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div className={isService ? "sm:col-span-2" : ""}>
                     <label className="block text-sm font-medium mb-1.5">{t("subCategory") || "Alt kateqoriya"}</label>
                     <select
+                      required
                       value={sub}
                       onChange={(e) => setForm({ ...form, category: buildCat(main, e.target.value) })}
                       className={inputCls}
                     >
+                      <option value="">— {t("subCategory") || "Alt kateqoriya"} seçin —</option>
                       {subs.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
@@ -546,21 +557,11 @@ function AccountPageInner() {
                 </div>
               );
             })()}
+            {/* Məhsul/Xidmət tipi əvvəlki addımda (Addım 2) seçilir — burada təkrar
+                seçim legv edildi (istifadəçi tələbi). Tip ana kateqoriyaya görə
+                onsuz da düzgün saxlanılır. */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {!isServiceCat(parseCat(form.category).main) && (
-                <div>
-                  <label className="block text-sm font-medium mb-1.5">{t("listingType")}</label>
-                  <select
-                    value={form.type}
-                    onChange={(e) => setForm({ ...form, type: e.target.value })}
-                    className={inputCls}
-                  >
-                    <option value="PRODUCT">{t("product")}</option>
-                    <option value="SERVICE">{t("service")}</option>
-                  </select>
-                </div>
-              )}
-              <div>
+              <div className="sm:col-span-2">
                 <label className="block text-sm font-medium mb-1.5">{t("listingLocation")}</label>
                 <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder={t("listingLocation")} className={inputCls} />
                 {myLocation.address && form.location === myLocation.address && (

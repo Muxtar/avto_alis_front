@@ -75,6 +75,7 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
   const { t } = useLanguage();
   const [geoLoading, setGeoLoading] = useState(false);
   const [reverseLoading, setReverseLoading] = useState(false);
+  const [autoLoading, setAutoLoading] = useState(false);
   // Ünvan/yer axtarışı (irəli geocoding) — Google Maps kimi yazıb xəritədə tap.
   const [searchQuery, setSearchQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -125,27 +126,52 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
     navigator.geolocation.getCurrentPosition(onOk, onErrHigh, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
   };
 
+  // Verilən koordinat üçün Nominatim reverse-geocode → ünvan mətni (və ya null).
+  const reverseGeocodeAt = async (lat: number, lng: number): Promise<string | null> => {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=az`,
+        { headers: { 'User-Agent': 'avto-buy-sell/1.0' } }
+      );
+      const data = await res.json();
+      return (data.display_name as string) || null;
+    } catch {
+      return null; // Səssiz — istifadəçi ünvanı əl ilə yaza bilər.
+    }
+  };
+
   // Reverse geocode using free Nominatim — fills the address field when the
   // user explicitly clicks "Doldur". Not auto-run on every pin drop because
   // Nominatim's usage policy caps to 1 req/sec and the user may not want it.
   const reverseGeocode = async () => {
     if (!latitude || !longitude) return;
     setReverseLoading(true);
-    try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=az`,
-        { headers: { 'User-Agent': 'avto-buy-sell/1.0' } }
-      );
-      const data = await res.json();
-      const display = data.display_name as string | undefined;
-      if (display) {
-        onChange({ city, address: display, latitude, longitude });
-      }
-    } catch {
-      // Silent — user can type the address manually.
-    } finally {
-      setReverseLoading(false);
-    }
+    const display = await reverseGeocodeAt(latitude, longitude);
+    if (display) onChange({ city, address: display, latitude, longitude });
+    setReverseLoading(false);
+  };
+
+  // "Xəritədən avtomatik əlavə et" — bir addımda cari GPS yerini tapır və
+  // ünvanı avtomatik doldurur (GPS + reverse geocode birləşdirilir).
+  const autoFromLocation = () => {
+    if (!navigator.geolocation) { alert(t('geolocationNotSupported')); return; }
+    setAutoLoading(true);
+    const onOk = async (pos: GeolocationPosition) => {
+      const { latitude: lat, longitude: lng } = pos.coords;
+      setCenter([lat, lng]);
+      setZoom(16);
+      const display = await reverseGeocodeAt(lat, lng);
+      onChange({ city, address: display || address, latitude: lat, longitude: lng });
+      setAutoLoading(false);
+    };
+    const onErrLow = (err: GeolocationPositionError) => {
+      setAutoLoading(false);
+      alert(t('geolocationFailed') + (err?.code === 1 ? ' — brauzer/telefon konum icazəsini bloklayıb' : ': ' + err.message));
+    };
+    const onErrHigh = () => {
+      navigator.geolocation.getCurrentPosition(onOk, onErrLow, { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 });
+    };
+    navigator.geolocation.getCurrentPosition(onOk, onErrHigh, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
   };
 
   // İrəli geocoding — yer/ünvan adı yazıb xəritədə tapır (Nominatim, yalnız Azərbaycan).
@@ -222,6 +248,20 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
           />
         </div>
       </div>
+
+      {/* Bir addımlıq avtomatik: cari GPS + ünvanı doldur — ən sadə yol. */}
+      <button
+        type="button"
+        onClick={autoFromLocation}
+        disabled={autoLoading}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        {autoLoading ? 'Cari ünvan tapılır…' : '📍 Xəritədən avtomatik əlavə et (cari ünvan)'}
+      </button>
 
       <div className="flex flex-wrap gap-2">
         <button

@@ -15,7 +15,7 @@ export type CarouselItem = {
 
 // Saytın reklam slaydları — public/promo/ altındakı SVG-lər (xarici mənbə yoxdur).
 export const PROMO_ITEMS: CarouselItem[] = [
-  { id: 1, image: "/promo/1.svg", title: "Minlərlə məhsul", subtitle: "Hər şey bir platformada", href: "/elanlar" },
+  { id: 1, image: "/promo/1.svg", title: "Minlərlə məhsul", subtitle: "Al, sat, kəşf et", href: "/elanlar" },
   { id: 2, image: "/promo/2.svg", title: "Yango ilə çatdırılma", subtitle: "Sifarişin qapına gəlsin", href: "/elanlar" },
   { id: 3, image: "/promo/3.svg", title: "Endirimlər", subtitle: "Kampaniyaları qaçırma", href: "/elanlar" },
   { id: 4, image: "/promo/4.svg", title: "Peşəkardan rəy", subtitle: "Onlayn konsultasiya", href: "/consultations" },

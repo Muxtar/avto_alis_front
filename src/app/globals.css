@@ -363,6 +363,10 @@ a:focus-visible {
 .hero-bg {
   position: relative;
   isolation: isolate;
+  /* z-40: alət panelindəki açılan menyular (Sıralama və s.) aşağıdakı sticky
+     kateqoriya panelinin (z-30) altında qalmasın. Navbar z-50 olduğu üçün
+     onun altında qalır. isolation ::before qradiyentini (z:-1) saxlayır. */
+  z-index: 40;
 }
 .hero-bg::before {
   content: "";
