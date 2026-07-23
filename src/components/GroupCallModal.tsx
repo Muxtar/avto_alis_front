@@ -63,12 +63,19 @@ export default function GroupCallModal({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
 
   const pcsRef = useRef<Map<number, RTCPeerConnection>>(new Map());
+  // SDP-dən əvvəl gələn ICE candidate-lər peer üzrə burada gözlədilir və
+  // setRemoteDescription-dan sonra tətbiq olunur (əks halda itirdi → mesh qurulmurdu).
+  const pendingCandRef = useRef<Map<number, RTCIceCandidateInit[]>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
   const iceRef = useRef<any[]>([{ urls: "stun:stun.l.google.com:19302" }]);
   const convRef = useRef<number | null>(null);
   const kindRef = useRef<"audio" | "video">("audio");
+  // phase-i ref-də saxlayırıq ki, socket listener-ləri phase dəyişəndə yenidən
+  // qeydiyyatdan keçməsin (əks halda bootstrap mesajları — participants/peer-joined
+  // — listener-lərin yenilənmə anında itə bilirdi).
+  const phaseRef = useRef<Phase>(null);
   const myId = user?.id ?? 0;
-  convRef.current = convId; kindRef.current = kind;
+  convRef.current = convId; kindRef.current = kind; phaseRef.current = phase;
   const socket = token ? getCallSocket(token) : null;
 
   // Socket-i ref-də saxlayırıq: ensurePeer/onSignal useCallback([]) ilə
@@ -83,6 +90,7 @@ export default function GroupCallModal({
   const cleanup = useCallback(() => {
     pcsRef.current.forEach((pc) => { try { pc.close(); } catch { /* boş */ } });
     pcsRef.current.clear();
+    pendingCandRef.current.clear();
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
     setLocalStream(null); setPeers({}); setPhase(null); setConvId(null); setIncomingFrom(null);
@@ -93,6 +101,7 @@ export default function GroupCallModal({
 
   const removePeer = (id: number) => {
     const pc = pcsRef.current.get(id); if (pc) { try { pc.close(); } catch { /* boş */ } pcsRef.current.delete(id); }
+    pendingCandRef.current.delete(id);
     setPeers((p) => { const n = { ...p }; delete n[id]; return n; });
   };
 
@@ -143,7 +152,7 @@ export default function GroupCallModal({
     if (!socket) return;
     const onConfig = (d: any) => { if (d?.iceServers?.length) iceRef.current = d.iceServers; };
     const onIncoming = (d: any) => {
-      if (phase) return; // artıq zəngdəyəm
+      if (phaseRef.current) return; // artıq zəngdəyəm
       setIncomingFrom(d.from); setKind(d.kind === "video" ? "video" : "audio"); setConvId(d.conversationId); convRef.current = d.conversationId; setGroupName(""); setPhase("incoming");
     };
     const onParticipants = (d: any) => {
@@ -162,8 +171,15 @@ export default function GroupCallModal({
       try {
         if (d.data.sdp) {
           await pc.setRemoteDescription(d.data.sdp);
+          // SDP-dən əvvəl gəlib gözlədilən ICE candidate-ləri indi tətbiq et.
+          const pend = pendingCandRef.current.get(from);
+          if (pend) { for (const c of pend) await pc.addIceCandidate(c).catch(() => {}); pendingCandRef.current.delete(from); }
           if (d.data.sdp.type === "offer") { const a = await pc.createAnswer(); await pc.setLocalDescription(a); sig(from, { sdp: pc.localDescription }); }
-        } else if (d.data.candidate) { await pc.addIceCandidate(d.data.candidate).catch(() => {}); }
+        } else if (d.data.candidate) {
+          // remoteDescription hələ yoxdursa candidate-i gözlət (əks halda atılırdı).
+          if (pc.remoteDescription && pc.remoteDescription.type) await pc.addIceCandidate(d.data.candidate).catch(() => {});
+          else { const arr = pendingCandRef.current.get(from) || []; arr.push(d.data.candidate); pendingCandRef.current.set(from, arr); }
+        }
       } catch { /* keç */ }
     };
     const onPeerLeft = (d: any) => { if (d.conversationId === convRef.current) removePeer(d.userId); };
@@ -186,8 +202,10 @@ export default function GroupCallModal({
       socket.off("groupcall:peer-joined", onPeerJoined); socket.off("groupcall:signal", onSignal); socket.off("groupcall:peer-left", onPeerLeft);
       socket.off("groupcall:full", onFull);
     };
+    // phase-i deps-dən çıxardıq (phaseRef istifadə olunur) — listener-lər zəng
+    // boyu sabit qalır, bootstrap mesajları itmir.
     // eslint-disable-next-line
-  }, [socket, phase, myId]);
+  }, [socket, myId]);
 
   const accept = () => { if (convId) enterCall(convId, kind, false); };
   const decline = () => cleanup();
