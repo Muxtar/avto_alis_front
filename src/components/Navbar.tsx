@@ -295,7 +295,7 @@ export default function Navbar() {
                 MƏRKƏZDƏ tutmaq üçün sol və sağ qruplar bərabər çəkidir).
                 Telefonda `display:contents` ilə şəffafdır → uşaqlar birbaşa
                 əsas flex-in item-ıdır, order/wrap düzəni pozulmur. */}
-            <div className="contents sm:flex sm:flex-1 sm:min-w-0 sm:items-center sm:gap-4">
+            <div className="contents sm:flex sm:min-w-0 sm:items-center sm:gap-4">
             {/* Logo */}
             <Link href="/elanlar" className="order-1 flex items-center gap-2 shrink-0 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -367,9 +367,9 @@ export default function Navbar() {
             </div>{/* sol qrup sonu */}
 
             {/* Axtarış — telefonda tam enli alt sətirdə (order-last basis-full),
-                masaüstündə başlığın MƏRKƏZİNDƏ: sol/sağ qruplar flex-1, bu isə
-                sabit max-w ilə ortada. İncə kənar + yarımşəffaf bulanıq fon. */}
-            <div ref={searchBoxRef} className="order-last basis-full w-full sm:order-none sm:basis-auto sm:flex-none sm:w-full sm:max-w-xs md:max-w-sm lg:max-w-md relative min-w-0 sm:min-w-[160px]">
+                masaüstündə flex-1 ilə BÖYÜYÜB boş yeri tutur (əvvəl sabit max-w
+                ilə ortada kiçik qalıb ikonlardan uzaq idi). İncə kənar + bulanıq fon. */}
+            <div ref={searchBoxRef} className="order-last basis-full w-full sm:order-none sm:basis-auto sm:flex-1 sm:w-auto relative min-w-0 sm:min-w-[160px]">
             <form onSubmit={submitSearch} className="w-full flex items-stretch h-12 sm:h-13 overflow-hidden border transition-colors" style={{ borderColor: PINK }}>
               <input
                 value={search}
@@ -505,9 +505,9 @@ export default function Navbar() {
 
             {/* Sağ: bildiriş / seçilmişlər / səbət / istifadəçi.
                 Telefonda ml-auto ilə sağa yaslanır (axtarış alt sətrə düşür);
-                masaüstündə flex-1 + justify-end — sol qrupla bərabər çəki
-                verib search-i mərkəzdə saxlayır. */}
-            <div className="order-3 ml-auto sm:ml-0 sm:flex-1 flex items-center justify-end gap-1.5 sm:gap-3 shrink-0">
+                masaüstündə şrink-0 (təbii en) — böyüyən axtarışın həmən sağında
+                durur ki, bell/ikonlarla search arasında böyük boşluq qalmasın. */}
+            <div className="order-3 ml-auto sm:ml-0 flex items-center justify-end gap-1.5 sm:gap-3 shrink-0">
               {isLoggedIn && <NotificationBell />}
 
               <Link href="/favorites" className="flex flex-col items-center text-muted hover:text-foreground transition-colors" title={t("favorites")}>
