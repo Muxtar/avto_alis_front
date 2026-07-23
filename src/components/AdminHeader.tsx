@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 // sürətli əməliyyatlar, canlı statistika və çıxış.
 type Overview = {
   stats: { users: number; blockedUsers: number; listings: number; orders: number; businesses: number; couriers: number; revenueTotal: number; revenueToday: number; ordersToday: number; newUsers7d: number; activeConsult: number };
-  pending: { listings: number; businesses: number; sellerApps: number; idVerifications: number; credentials: number; socialLinks: number; complaints: number; returns: number };
+  pending: { listings: number; businesses: number; sellerApps: number; credentials: number; socialLinks: number; complaints: number; returns: number };
   pendingTotal: number;
 };
 
@@ -19,7 +19,6 @@ const PENDING_LINKS: { key: keyof Overview["pending"]; label: string; href: stri
   { key: "listings", label: "Yeni elan təsdiqi", href: "/admin/listings" },
   { key: "businesses", label: "Biznes təsdiqi", href: "/admin/businesses" },
   { key: "sellerApps", label: "Satıcı KYC", href: "/admin/seller-applications" },
-  { key: "idVerifications", label: "Kimlik təsdiqi", href: "/admin/id-verifications" },
   { key: "credentials", label: "Sənəd təsdiqi", href: "/admin/credentials" },
   { key: "socialLinks", label: "Sosial linklər", href: "/admin/social-links" },
   { key: "complaints", label: "Şikayətlər", href: "/admin/complaints" },
