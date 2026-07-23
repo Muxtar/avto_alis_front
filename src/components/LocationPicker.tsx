@@ -73,7 +73,6 @@ function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }
 
 export default function LocationPicker({ city, address, latitude, longitude, onChange, height = '300px' }: Props) {
   const { t } = useLanguage();
-  const [geoLoading, setGeoLoading] = useState(false);
   const [reverseLoading, setReverseLoading] = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
   // Ünvan/yer axtarışı (irəli geocoding) — Google Maps kimi yazıb xəritədə tap.
@@ -102,29 +101,6 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
     }
   };
 
-  const useMyLocationHandler = () => {
-    if (!navigator.geolocation) {
-      alert(t('geolocationNotSupported'));
-      return;
-    }
-    setGeoLoading(true);
-    const onOk = (pos: GeolocationPosition) => {
-      const { latitude: lat, longitude: lng } = pos.coords;
-      onChange({ city, address, latitude: lat, longitude: lng });
-      setCenter([lat, lng]);
-      setZoom(16);
-      setGeoLoading(false);
-    };
-    // Mobil: əvvəl yüksək dəqiqlik (qısa), alınmasa aşağı dəqiqliyə keç (uzun, cache).
-    const onErrLow = (err: GeolocationPositionError) => {
-      setGeoLoading(false);
-      alert(t('geolocationFailed') + (err?.code === 1 ? ' — brauzer/telefon konum icazəsini bloklayıb' : ': ' + err.message));
-    };
-    const onErrHigh = () => {
-      navigator.geolocation.getCurrentPosition(onOk, onErrLow, { enableHighAccuracy: false, timeout: 20000, maximumAge: 60000 });
-    };
-    navigator.geolocation.getCurrentPosition(onOk, onErrHigh, { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 });
-  };
 
   // Verilən koordinat üçün Nominatim reverse-geocode → ünvan mətni (və ya null).
   const reverseGeocodeAt = async (lat: number, lng: number): Promise<string | null> => {
@@ -201,15 +177,17 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
       {/* Ünvan/yer axtarışı — yaz, xəritədə işarələsin */}
       <div className="relative">
         <div className="flex gap-2">
+          {/* min-w-0 vacibdir — flex item-in intrinsic min-width-i "Axtar" düyməsini
+              konteynerdən kənara daşıyırdı. İndi input daralır, daşma olmur. */}
           <input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } }}
-            placeholder="🔍 Ünvan və ya yer adı yaz (məs. 28 May metrosu, Nizami küç.)"
-            className="flex-1 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm"
+            placeholder="🔍 Ünvan və ya yer adı yaz…"
+            className="flex-1 min-w-0 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm"
           />
           <button type="button" onClick={doSearch} disabled={searching || !searchQuery.trim()}
-            className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium disabled:opacity-50 whitespace-nowrap">
+            className="shrink-0 px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium disabled:opacity-50 whitespace-nowrap">
             {searching ? '…' : 'Axtar'}
           </button>
         </div>
@@ -230,7 +208,7 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
           <select
             value={city}
             onChange={(e) => handleCityChange(e.target.value)}
-            className="w-full px-4 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-foreground text-sm"
+            className="w-full min-w-0 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-foreground text-sm"
           >
             <option value="">{t('citySelect')}</option>
             {AZ_CITIES.map((c) => (
@@ -244,7 +222,7 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
             value={address}
             onChange={(e) => onChange({ city, address: e.target.value, latitude, longitude })}
             placeholder={t('addressPlaceholderShort')}
-            className="w-full px-4 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm"
+            className="w-full min-w-0 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm"
           />
         </div>
       </div>
@@ -263,39 +241,28 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
         {autoLoading ? 'Cari ünvan tapılır…' : '📍 Xəritədən avtomatik əlavə et (cari ünvan)'}
       </button>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={useMyLocationHandler}
-          disabled={geoLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-500 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          {geoLoading ? t('findingLocation') : t('useMyLocation')}
-        </button>
-        {latitude && longitude && (
-          <>
-            <button
-              type="button"
-              onClick={reverseGeocode}
-              disabled={reverseLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-            >
-              {reverseLoading ? t('fillingAddress') : t('fillAddressFromPin')}
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange({ city, address, latitude: null, longitude: null })}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-medium transition-colors"
-            >
-              {t('removePin')}
-            </button>
-          </>
-        )}
-      </div>
+      {/* Pin qoyulubsa (xəritəyə klik və ya avtomatik): ünvanı doldur / pini sil.
+          Ayrıca "Mənim yerim" düyməsi legv edildi — yuxarıdakı "Cari ünvanı
+          avtomatik tap" onsuz da GPS ilə yeri tapıb ünvanı doldurur (təkrar idi). */}
+      {latitude && longitude && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={reverseGeocode}
+            disabled={reverseLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+          >
+            {reverseLoading ? t('fillingAddress') : t('fillAddressFromPin')}
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange({ city, address, latitude: null, longitude: null })}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-medium transition-colors"
+          >
+            {t('removePin')}
+          </button>
+        </div>
+      )}
 
       <p className="text-[11px] text-muted">
         {t('locationPickerHint')}
