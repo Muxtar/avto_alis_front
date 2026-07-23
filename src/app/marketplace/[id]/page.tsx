@@ -25,6 +25,7 @@ export default function ListingDetailPage() {
   const router = useRouter();
   const [listing, setListing] = useState<any>(null);
   const [related, setRelated] = useState<any[]>([]);
+  const [sellerListings, setSellerListings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [msgText, setMsgText] = useState("");
   const [msgSent, setMsgSent] = useState(false);
@@ -219,12 +220,20 @@ export default function ListingDetailPage() {
         setListing(d);
         // Əvvəl baxılanlara yaz (ana səhifədə "Əvvəl baxdıqlarınız" üçün).
         if (d?.id) recordView({ id: d.id, title: d.title, price: d.price, image: d.images?.[0] || null, type: d.type });
-        // Eyni kateqoriyadan bənzər elanlar.
+        // Satıcının/obyektin DİGƏR elanları — VÖEN-də obyekt üzrə, fərdidə satıcı üzrə.
+        const sellerQ = d?.businessObjectId ? `objectId=${d.businessObjectId}` : `sellerId=${d?.user?.id}`;
+        if (d?.user?.id) {
+          fetch(`${API}/listings?${sellerQ}&limit=12`)
+            .then((r) => r.json())
+            .then((rd) => setSellerListings((rd.listings || []).filter((x: any) => x.id !== d.id).slice(0, 10)))
+            .catch(() => {});
+        }
+        // Eyni kateqoriyada BAŞQA satıcıların elanları (cari satıcı istisna).
         const mainCat = parseCat(d?.category).main;
         if (mainCat) {
-          fetch(`${API}/listings?category=${encodeURIComponent(mainCat)}&limit=12`)
+          fetch(`${API}/listings?category=${encodeURIComponent(mainCat)}&limit=16`)
             .then((r) => r.json())
-            .then((rd) => setRelated((rd.listings || []).filter((x: any) => x.id !== d.id).slice(0, 10)))
+            .then((rd) => setRelated((rd.listings || []).filter((x: any) => x.id !== d.id && x.user?.id !== d?.user?.id).slice(0, 10)))
             .catch(() => {});
         }
       })
@@ -269,8 +278,9 @@ export default function ListingDetailPage() {
       })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
-        {/* Left - Image gallery */}
-        <div className="lg:col-span-3">
+        {/* Şəkillər — TELEFONDA ƏN ÜSTDƏ (order-1); masaüstündə sol sütun yuxarı sıra.
+            Əvvəl şəkillər alış qutusundan sonra (aşağıda) görünürdü. */}
+        <div className="order-1 lg:col-span-3 lg:col-start-1 lg:row-start-1">
           <div className="bg-card border border-card-border rounded-2xl overflow-hidden">
             <div className="relative aspect-video bg-input-bg flex items-center justify-center group">
               {listing.images?.length > 0 ? (
@@ -337,10 +347,14 @@ export default function ListingDetailPage() {
               </div>
             )}
           </div>
+        </div>
 
+        {/* Məhsul məlumatları + təsvir + rəylər — TELEFONDA alış qutusundan sonra
+            (order-3); masaüstündə sol sütun aşağı sıra. */}
+        <div className="order-3 lg:col-span-3 lg:col-start-1 lg:row-start-2">
           {/* Specifications */}
           {!isService && (
-            <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 mt-4">
+            <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
               <h3 className="font-semibold mb-3">{t("productInfo")}</h3>
               {/* Telefonda da 2 sütun — məlumat yığcam və oxunaqlı olsun */}
               <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-sm">
@@ -569,10 +583,10 @@ export default function ListingDetailPage() {
           </div>
         </div>
 
-        {/* Right - Info (birmarket üslubu: alış qutusu scroll-da yapışıq qalır).
-            Telefonda order-first — qiymət və "səbətə əlavə et" ən üstdə görünsün
-            (aşağı sürüşmədən). Masaüstündə normal (sağda). */}
-        <div className="order-first lg:order-none lg:col-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
+        {/* Alış qutusu — TELEFONDA şəkillərdən sonra (order-2), qiymət/səbət
+            yuxarıda əlçatan qalır. Masaüstündə sağ sütunda (col 4-5) iki sıra
+            boyu yapışıq (sticky) qalır. */}
+        <div className="order-2 lg:col-span-2 lg:col-start-4 lg:row-start-1 lg:row-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
           {/* Price Card */}
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
             <div className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium mb-3 ${
@@ -880,10 +894,24 @@ export default function ListingDetailPage() {
         </div>
       </div>
 
-      {/* Eyni kateqoriyada digər elanlar */}
+      {/* 1) Satıcının / obyektin (mağazanın) DİGƏR elanları — məhsul məlumatından sonra */}
+      {sellerListings.length > 0 && (
+        <section className="mt-8">
+          <h2 className="text-lg font-bold mb-4">
+            {listing.businessObject?.name
+              ? `${listing.businessObject.name} — digər elanları`
+              : `${listing.user?.name || "Satıcı"} — digər elanları`}
+          </h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {sellerListings.map((l) => <ListingCard key={l.id} listing={l} />)}
+          </div>
+        </section>
+      )}
+
+      {/* 2) Eyni kateqoriyada BAŞQA satıcıların elanları — ən altda */}
       {related.length > 0 && (
         <section className="mt-8">
-          <h2 className="text-lg font-bold mb-4">Eyni kateqoriyada digər elanlar</h2>
+          <h2 className="text-lg font-bold mb-4">Eyni kateqoriyada başqa elanlar</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {related.map((l) => <ListingCard key={l.id} listing={l} />)}
           </div>
