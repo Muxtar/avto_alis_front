@@ -480,7 +480,8 @@ export default function ListingDetailPage() {
             ) : (listing.comments || []).some((c: any) => c.user?.id === user?.id) ? (
               <div className="mb-4 text-center py-2.5 bg-input-bg border border-input-border rounded-xl text-muted text-xs">Bu məhsula rəyinizi yazmısınız — aşağıdan dəyişə/silə bilərsiniz</div>
             ) : listing.canReview ? (
-              // Yalnız məhsulu alan / satıcı ilə əlaqə saxlayan rəy yaza bilər.
+              // VÖEN-li elan: yalnız məhsulu alan. Fərdi (VÖEN-siz) elan: hər kəs
+              // almadan da rəy yaza bilər (bir dəfə, dəyişilə bilər).
               <div className="mb-4 space-y-2">
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((n) => (
