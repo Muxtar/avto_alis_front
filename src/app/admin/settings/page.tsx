@@ -12,14 +12,19 @@ interface Flag {
   isDefault: boolean;
 }
 
-interface WaStatus {
+interface ChannelStatus {
   configured: boolean;
   missing: string[];
-  templateName: string | null;
   sender: string | null;
-  language: string;
-  otpButton: boolean;
   baseUrl: string | null;
+  templateName?: string | null; // yalnız WhatsApp
+  language?: string; // yalnız WhatsApp
+  otpButton?: boolean; // yalnız WhatsApp
+}
+interface OtpDiag {
+  channel: "sms" | "whatsapp";
+  sms: ChannelStatus;
+  whatsapp: ChannelStatus;
 }
 
 export default function AdminSettingsPage() {
@@ -27,7 +32,7 @@ export default function AdminSettingsPage() {
   const [flags, setFlags] = useState<Flag[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [wa, setWa] = useState<WaStatus | null>(null);
+  const [wa, setWa] = useState<OtpDiag | null>(null);
   const [testPhone, setTestPhone] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
@@ -44,7 +49,7 @@ export default function AdminSettingsPage() {
       .finally(() => setLoading(false));
     fetch(`${API}/admin/whatsapp-status`, { headers })
       .then((r) => r.json())
-      .then((d) => setWa(d.status || null))
+      .then((d) => setWa(d.channel ? { channel: d.channel, sms: d.sms, whatsapp: d.whatsapp } : null))
       .catch(() => {});
   };
   useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -102,56 +107,66 @@ export default function AdminSettingsPage() {
         <p className="text-muted text-sm mt-1">Xüsusiyyətləri aktiv/deaktiv edin. Dəyişikliklər dərhal tətbiq olunur.</p>
       </div>
 
-      {/* WhatsApp (Infobip) diaqnostikası — nömrəyə kod gəlmirsə səbəbi burada görünür */}
-      <div className="mb-6 bg-card border border-card-border rounded-2xl p-4">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-lg">📱</span>
-          <p className="font-semibold text-sm">WhatsApp (Infobip) diaqnostika</p>
-          {wa && (
-            <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${wa.configured ? "text-emerald-500 bg-emerald-500/10" : "text-red-500 bg-red-500/10"}`}>
-              {wa.configured ? "Konfiqurasiya OK" : "Konfiqurasiya natamam"}
-            </span>
-          )}
-        </div>
+      {/* OTP (Infobip) diaqnostikası — aktiv kanal (SMS/WhatsApp), nömrəyə kod
+          gəlmirsə səbəbi burada görünür. */}
+      {(() => {
+        const active = wa ? (wa.channel === "sms" ? wa.sms : wa.whatsapp) : null;
+        const chLabel = wa?.channel === "sms" ? "SMS" : "WhatsApp";
+        return (
+          <div className="mb-6 bg-card border border-card-border rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="text-lg">{wa?.channel === "sms" ? "✉️" : "📱"}</span>
+              <p className="font-semibold text-sm">OTP diaqnostika</p>
+              {wa && <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-blue-500/10 text-blue-500">Kanal: {chLabel}</span>}
+              {active && (
+                <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${active.configured ? "text-emerald-500 bg-emerald-500/10" : "text-red-500 bg-red-500/10"}`}>
+                  {active.configured ? "Konfiqurasiya OK" : "Konfiqurasiya natamam"}
+                </span>
+              )}
+            </div>
 
-        {wa && !wa.configured && (
-          <div className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-3">
-            Çatışmayan env dəyişənləri (Railway-də təyin edin): <b>{wa.missing.join(", ")}</b>
-          </div>
-        )}
-        {wa && wa.configured && (
-          <div className="text-[11px] text-muted mb-3 space-y-0.5">
-            <div>Şablon: <b className="text-foreground">{wa.templateName}</b> · Dil: <b className="text-foreground">{wa.language}</b> · OTP düymə: <b className="text-foreground">{wa.otpButton ? "bəli" : "xeyr"}</b></div>
-            <div>Sender: <b className="text-foreground">{wa.sender}</b> · Base: <b className="text-foreground">{wa.baseUrl}</b></div>
-          </div>
-        )}
+            {active && !active.configured && (
+              <div className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-3">
+                Çatışmayan env dəyişənləri (Railway-də təyin edin): <b>{active.missing.join(", ")}</b>
+              </div>
+            )}
+            {active && active.configured && (
+              <div className="text-[11px] text-muted mb-3 space-y-0.5">
+                {wa?.channel === "whatsapp" && (
+                  <div>Şablon: <b className="text-foreground">{active.templateName}</b> · Dil: <b className="text-foreground">{active.language}</b> · OTP düymə: <b className="text-foreground">{active.otpButton ? "bəli" : "xeyr"}</b></div>
+                )}
+                <div>Sender: <b className="text-foreground">{active.sender}</b> · Base: <b className="text-foreground">{active.baseUrl}</b></div>
+              </div>
+            )}
 
-        {/* Test göndər */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            value={testPhone}
-            onChange={(e) => setTestPhone(e.target.value)}
-            placeholder="Test nömrəsi (məs. +99450...)"
-            className="flex-1 px-3 py-2 bg-input-bg border border-input-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
-          />
-          <button
-            type="button"
-            onClick={runTest}
-            disabled={testing || !testPhone.trim()}
-            className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50 whitespace-nowrap"
-          >
-            {testing ? "Göndərilir…" : "Test WhatsApp göndər"}
-          </button>
-        </div>
-        <p className="text-[11px] text-muted mt-1.5">Bu nömrəyə test kodu (123456) göndərilir. Nəticə/xəta aşağıda görünür.</p>
+            {/* Test göndər */}
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+                placeholder="Test nömrəsi (məs. +99450...)"
+                className="flex-1 px-3 py-2 bg-input-bg border border-input-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+              />
+              <button
+                type="button"
+                onClick={runTest}
+                disabled={testing || !testPhone.trim()}
+                className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50 whitespace-nowrap"
+              >
+                {testing ? "Göndərilir…" : `Test ${chLabel} göndər`}
+              </button>
+            </div>
+            <p className="text-[11px] text-muted mt-1.5">Bu nömrəyə test kodu (123456) {chLabel} ilə göndərilir. Nəticə/xəta aşağıda görünür.</p>
 
-        {testResult && (
-          <div className={`mt-3 rounded-lg px-3 py-2 text-xs border ${testResult.ok ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/20" : "text-red-500 bg-red-500/10 border-red-500/20"}`}>
-            <p className="font-semibold mb-0.5">{testResult.ok ? "✓ Göndərildi (WhatsApp-ı yoxlayın)" : `✗ Alınmadı${testResult.status ? ` (HTTP ${testResult.status})` : ""}`}</p>
-            {testResult.detail && <p className="break-words opacity-90">{testResult.detail}</p>}
+            {testResult && (
+              <div className={`mt-3 rounded-lg px-3 py-2 text-xs border ${testResult.ok ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/20" : "text-red-500 bg-red-500/10 border-red-500/20"}`}>
+                <p className="font-semibold mb-0.5">{testResult.ok ? `✓ Göndərildi (${chLabel} yoxlayın)` : `✗ Alınmadı${testResult.status ? ` (HTTP ${testResult.status})` : ""}`}</p>
+                {testResult.detail && <p className="break-words opacity-90">{testResult.detail}</p>}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        );
+      })()}
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted text-sm py-10">
