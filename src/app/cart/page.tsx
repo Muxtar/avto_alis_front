@@ -496,10 +496,11 @@ export default function CartPage() {
 
                   {deliveryType === "DELIVERY" && (
                     <div>
+                      {/* Ünvan yalnız bir dəfə — LocationPicker özü küçə ünvanı + şəhər
+                          sahələrini göstərir (əvvəl üstdə ayrıca ünvan input-u da vardı,
+                          eyni `address` state-inə bağlı olub təkrarlanırdı → silindi). */}
                       <label className="block text-xs text-muted mb-1">{t("deliveryAddress")}</label>
-                      <input value={address} onChange={(e) => { setAddress(e.target.value); setSelectedAddressId(null); }} required placeholder={t("address")} className={inputCls} />
-                      {/* Xəritədən konum — telefonda 📍 ilə avtomatik, web-də əl ilə. Yango üçün vacibdir. */}
-                      <div className="mt-2">
+                      <div>
                         <p className="text-[11px] text-muted mb-1">📍 Çatdırılma konumunu seçin (Yango kuryeri üçün vacibdir):</p>
                         <LocationPicker
                           city={city}

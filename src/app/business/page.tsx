@@ -28,6 +28,16 @@ interface Business {
 
 const blankFiles = { taxDocImage: null, companyDocImage: null, powerOfAttorneyImage: null, bankDocImage: null, idCardImage: null, selfieImage: null } as Record<string, File | null>;
 
+// Şəxs növü VÖEN-in son rəqəmindən avtomatik təyin olunur (əl ilə seçilmir):
+//   son rəqəm 1 → Hüquqi şəxs (LEGAL), 2 → Fiziki şəxs (PHYSICAL).
+// Server də eyni məntiqlə yoxlayır (mənbə odur); bu yalnız UI göstərişi üçündür.
+function kindFromVoen(voen?: string | null): "LEGAL" | "PHYSICAL" | null {
+  const digits = String(voen || "").replace(/\D/g, "");
+  if (!digits) return null;
+  const last = digits[digits.length - 1];
+  return last === "1" ? "LEGAL" : last === "2" ? "PHYSICAL" : null;
+}
+
 export default function BusinessPage() {
   const router = useRouter();
   const { token, authLoading, isLoggedIn } = useAuth();
@@ -119,6 +129,9 @@ export default function BusinessPage() {
           founderName: data.founderName || prev.founderName,
         }));
         if (data.companyName || data.voen) setBizInfoFilled(true);
+        // Şəxs növünü VÖEN-in son rəqəmindən avtomatik təyin et (1→hüquqi, 2→fiziki).
+        const k = kindFromVoen(data.voen);
+        if (k) setKind(k);
         if (typeof data.isOwner === "boolean") setOwnerCheck({ isOwner: data.isOwner, message: data.ownerMessage || "" });
       }
     } catch { /* səssiz keç */ } finally { setBizInfoReading(false); }
@@ -246,11 +259,18 @@ export default function BusinessPage() {
 
       {showForm && idVerified !== false && (
         <div className="bg-card border border-card-border rounded-xl p-4 sm:p-5 mb-5 space-y-4">
-          {/* Tip */}
-          <div className="grid grid-cols-2 gap-2">
-            {[["PHYSICAL", t("bizPhysical") || "Fiziki şəxs"], ["LEGAL", t("bizLegal") || "Hüquqi şəxs"]].map(([v, l]) => (
-              <button key={v} onClick={() => setKind(v)} className={`py-2 rounded-lg text-sm ${kind === v ? "bg-orange-500 text-white" : "bg-input-bg border border-input-border"}`}>{l}</button>
-            ))}
+          {/* Şəxs növü — əl ilə seçilmir; VÖEN sənəddən oxunduqda son rəqəmə görə
+              avtomatik təyin olunur (1 → Hüquqi şəxs, 2 → Fiziki şəxs). */}
+          <div className="flex items-center gap-2 py-2 px-3 bg-input-bg border border-input-border rounded-lg text-sm">
+            <span className="text-muted">Şəxs növü:</span>
+            {f.voen && kindFromVoen(f.voen) ? (
+              <>
+                <span className="font-semibold text-orange-500">{kindFromVoen(f.voen) === "LEGAL" ? (t("bizLegal") || "Hüquqi şəxs") : (t("bizPhysical") || "Fiziki şəxs")}</span>
+                <span className="text-[11px] text-muted">(VÖEN-ə görə avtomatik)</span>
+              </>
+            ) : (
+              <span className="text-muted-foreground">VÖEN sənəddən oxunduqda avtomatik təyin olunacaq</span>
+            )}
           </div>
           {/* Sübut növü */}
           <div className="grid grid-cols-2 gap-2">
