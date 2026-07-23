@@ -209,7 +209,11 @@ export default function ListingDetailPage() {
   };
 
   useEffect(() => {
-    fetch(`${API}/listings/${params.id}`)
+    // Token GÖNDƏRİLİR — backend canReview-i giriş etmiş istifadəçiyə görə
+    // hesablayır (fərdi elanda rəy formu, VÖEN-də alış yoxlaması). Token
+    // olmadan reviewerId=null olub canReview həmişə false qalırdı → rəy
+    // formu heç vaxt görünmürdü.
+    fetch(`${API}/listings/${params.id}`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
       .then((r) => r.json())
       .then((d) => {
         setListing(d);
@@ -226,7 +230,8 @@ export default function ListingDetailPage() {
       })
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoading(false));
-  }, [params.id]);
+    // token deps-də — async yüklənəndə yenidən çəkilib canReview düzgün gəlsin.
+  }, [params.id, token]);
 
   if (loading) {
     return (
