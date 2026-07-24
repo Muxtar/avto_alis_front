@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { imgUrl } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { formatPrice, formatPriceShort } from "@/lib/format";
-import { getRecentViews, type RecentItem } from "@/lib/recentlyViewed";
+import { getRecentViews, pruneRecentViews, type RecentItem } from "@/lib/recentlyViewed";
 import { useLanguage } from "@/lib/LanguageContext";
 
 // "Əvvəl baxdıqlarınız" — son baxılan məhsullar, üfüqi scroll.
@@ -12,7 +12,22 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: number }) {
   const [items, setItems] = useState<RecentItem[]>([]);
 
   useEffect(() => {
-    setItems(getRecentViews().filter((x) => x.id !== excludeId));
+    const all = getRecentViews();
+    if (all.length === 0) { setItems([]); return; }
+    let cancelled = false;
+    // Backend-də hələ mövcud (APPROVED) elanları yoxla — silinmiş/gizli olanları
+    // həm göstərmə, həm də localStorage-dan təmizlə (klik 404 verməsin).
+    const ids = all.map((x) => x.id).join(",");
+    fetch(`${API}/listings/exist?ids=${ids}`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (cancelled) return;
+        const existing = new Set<number>(d.ids || []);
+        pruneRecentViews(Array.from(existing));
+        setItems(all.filter((x) => existing.has(x.id) && x.id !== excludeId));
+      })
+      .catch(() => { if (!cancelled) setItems(all.filter((x) => x.id !== excludeId)); });
+    return () => { cancelled = true; };
   }, [excludeId]);
 
   if (items.length === 0) return null;

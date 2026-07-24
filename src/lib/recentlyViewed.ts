@@ -16,3 +16,13 @@ export function getRecentViews(): RecentItem[] {
   if (typeof window === "undefined") return [];
   try { return JSON.parse(localStorage.getItem(KEY) || "[]"); } catch { return []; }
 }
+
+// Yalnız verilmiş id-ləri saxla — silinmiş/gizli elanları localStorage-dan təmizlə.
+export function pruneRecentViews(keepIds: number[]) {
+  if (typeof window === "undefined") return;
+  try {
+    const keep = new Set(keepIds);
+    const list: RecentItem[] = JSON.parse(localStorage.getItem(KEY) || "[]");
+    localStorage.setItem(KEY, JSON.stringify(list.filter((x) => keep.has(x.id))));
+  } catch { /* keç */ }
+}
