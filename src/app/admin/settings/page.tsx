@@ -17,10 +17,14 @@ interface ChannelStatus {
   missing: string[];
   sender: string | null;
   baseUrl: string | null;
+  templateName?: string | null; // yalnız WhatsApp
+  language?: string; // yalnız WhatsApp
+  otpButton?: boolean; // yalnız WhatsApp
 }
 interface OtpDiag {
-  channel: "sms1az";
-  sms1az: ChannelStatus;
+  channel: "sms" | "whatsapp";
+  sms: ChannelStatus;
+  whatsapp: ChannelStatus;
 }
 
 export default function AdminSettingsPage() {
@@ -45,7 +49,7 @@ export default function AdminSettingsPage() {
       .finally(() => setLoading(false));
     fetch(`${API}/admin/whatsapp-status`, { headers })
       .then((r) => r.json())
-      .then((d) => setWa(d.channel ? { channel: d.channel, sms1az: d.sms1az } : null))
+      .then((d) => setWa(d.channel ? { channel: d.channel, sms: d.sms, whatsapp: d.whatsapp } : null))
       .catch(() => {});
   };
   useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -103,14 +107,15 @@ export default function AdminSettingsPage() {
         <p className="text-muted text-sm mt-1">Xüsusiyyətləri aktiv/deaktiv edin. Dəyişikliklər dərhal tətbiq olunur.</p>
       </div>
 
-      {/* OTP (1sms.az) diaqnostikası — nömrəyə kod gəlmirsə səbəbi burada görünür. */}
+      {/* OTP (Infobip) diaqnostikası — aktiv kanal (SMS/WhatsApp), nömrəyə kod
+          gəlmirsə səbəbi burada görünür. */}
       {(() => {
-        const active = wa ? wa.sms1az : null;
-        const chLabel = "1sms.az SMS";
+        const active = wa ? (wa.channel === "sms" ? wa.sms : wa.whatsapp) : null;
+        const chLabel = wa?.channel === "sms" ? "SMS (Infobip)" : "WhatsApp";
         return (
           <div className="mb-6 bg-card border border-card-border rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="text-lg">✉️</span>
+              <span className="text-lg">{wa?.channel === "sms" ? "✉️" : "📱"}</span>
               <p className="font-semibold text-sm">OTP diaqnostika</p>
               {wa && <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-blue-500/10 text-blue-500">Kanal: {chLabel}</span>}
               {active && (
@@ -127,6 +132,9 @@ export default function AdminSettingsPage() {
             )}
             {active && active.configured && (
               <div className="text-[11px] text-muted mb-3 space-y-0.5">
+                {wa?.channel === "whatsapp" && (
+                  <div>Şablon: <b className="text-foreground">{active.templateName}</b> · Dil: <b className="text-foreground">{active.language}</b> · OTP düymə: <b className="text-foreground">{active.otpButton ? "bəli" : "xeyr"}</b></div>
+                )}
                 <div>Sender: <b className="text-foreground">{active.sender}</b> · Base: <b className="text-foreground">{active.baseUrl}</b></div>
               </div>
             )}
