@@ -23,6 +23,7 @@ export default function AdminBusinessesPage() {
   const [rejectReason, setRejectReason] = useState<{ [id: number]: string }>({});
   const [busyId, setBusyId] = useState<number | null>(null); // AI əməliyyatı gedən biznes
   const [edit, setEdit] = useState<{ id: number; name: string; voen: string; ownerName: string; founderName: string; phone: string } | null>(null);
+  const [ibanInput, setIbanInput] = useState<{ [bizId: number]: string }>({});
 
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
 
@@ -115,6 +116,18 @@ export default function AdminBusinessesPage() {
       if (res.ok && data.success) { toast("Biznes məlumatları yeniləndi ✓", "success"); setEdit(null); load(); }
       else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); } finally { setBusyId(null); }
+  };
+
+  // Biznesə IBAN əlavə et (admin sənədə baxıb).
+  const addBank = async (bizId: number) => {
+    const iban = (ibanInput[bizId] || "").trim();
+    if (!iban) return;
+    try {
+      const res = await fetch(`${API}/admin/businesses/${bizId}/banks`, { method: "POST", headers, body: JSON.stringify({ iban }) });
+      const data = await res.json();
+      if (res.ok && data.success) { toast("IBAN əlavə edildi", "success"); setIbanInput((p) => ({ ...p, [bizId]: "" })); load(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
   };
 
   // Bank hesabını sil (admin).
@@ -233,7 +246,7 @@ export default function AdminBusinessesPage() {
               <div className="mb-3">
                 <p className="text-xs font-semibold text-muted mb-1">🏦 Bank hesabları:</p>
                 {b.banks?.length ? (
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="flex flex-wrap gap-1.5 mb-2">
                     {b.banks.map((bk) => (
                       <span key={bk.id} className="inline-flex items-center gap-1.5 px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs font-mono">
                         {bk.iban}{bk.title ? <span className="text-muted font-sans">({bk.title})</span> : null}
@@ -241,7 +254,18 @@ export default function AdminBusinessesPage() {
                       </span>
                     ))}
                   </div>
-                ) : <p className="text-xs text-muted">—</p>}
+                ) : <p className="text-xs text-muted mb-2">Hələ IBAN yoxdur — sənədə (aşağıda «Bank sənədi») baxıb əlavə edin.</p>}
+                {/* Sənədə baxıb IBAN əlavə et */}
+                <div className="flex items-center gap-2">
+                  <input
+                    value={ibanInput[b.id] || ""}
+                    onChange={(e) => setIbanInput((p) => ({ ...p, [b.id]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === "Enter") addBank(b.id); }}
+                    placeholder="AZ00 XXXX 0000 ... (sənəddən)"
+                    className="flex-1 sm:max-w-xs px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs font-mono"
+                  />
+                  <button onClick={() => addBank(b.id)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20 hover:bg-orange-500/20">+ IBAN əlavə et</button>
+                </div>
               </div>
 
               {/* KYC sənədləri — admin əllə yoxlayır (üz tanıma) */}

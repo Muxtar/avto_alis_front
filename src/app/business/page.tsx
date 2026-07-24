@@ -138,8 +138,7 @@ export default function BusinessPage() {
   const openForm = () => { if (!showForm) { resetForm(); window.scrollTo({ top: 0, behavior: "smooth" }); } setShowForm(!showForm); };
 
   const createBusiness = async () => {
-    if (!f.name || !f.voen || !f.ownerName) { toast("Şirkət sənədi oxunmadı — sənədi yenidən yükləyin", "error"); return; }
-    if (ownerBlocked) { toast(ownerCheck?.message || "Kimliyiniz şirkətin rəhbəri ilə uyğun deyil", "error"); return; }
+    if (!f.name.trim() || !f.voen.trim() || !f.ownerName.trim()) { toast("Şirkət adı, VÖEN və sahibi doldurulmalıdır", "error"); return; }
     if (proofType === "TAX_DOC" && !files.taxDocImage) { toast("Vergi sənədi tələb olunur", "error"); return; }
     if (proofType === "POWER_OF_ATTORNEY" && (!files.companyDocImage || !files.powerOfAttorneyImage)) { toast("Şirkət sənədi və etibarnamə tələb olunur", "error"); return; }
     if (!identityReusable && (!files.idCardImage || !files.selfieImage)) { toast("Şəxsiyyət vəsiqəsi və selfie tələb olunur", "error"); return; }
@@ -262,7 +261,7 @@ export default function BusinessPage() {
                   <input type="radio" name="primaryBank" checked={primaryBankIdx === i} onChange={() => setPrimaryBankIdx(i)} className="mt-1 accent-orange-500" title="Ödəniş bu hesaba" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{d.file.name}</p>
-                    <p className="text-[11px] text-muted">IBAN-ı aşağıdakı «Bank hesabları» sahəsinə əl ilə yazın.</p>
+                    <p className="text-[11px] text-muted">✓ Yükləndi — IBAN admin tərəfindən sənəddən daxil ediləcək.</p>
                     {primaryBankIdx === i && <span className="text-[10px] text-orange-500">⬅ Ödəniş bu hesaba gedəcək</span>}
                   </div>
                   <button type="button" onClick={() => removeBankDoc(i)} className="text-muted hover:text-red-500 text-xs">✕</button>
@@ -314,18 +313,7 @@ export default function BusinessPage() {
               <input className={inputCls} placeholder="LinkedIn" value={f.linkedin} onChange={(e) => setF({ ...f, linkedin: e.target.value })} />
             </div>
           </div>
-          {/* Bank hesabları — IBAN əl ilə daxil edilir (yoxlama admin paneldə) */}
-          <div>
-            <p className="text-xs font-semibold text-muted mb-1">🏦 Bank hesabları (IBAN — əl ilə yazın)</p>
-            {banks.map((bk, i) => (
-              <div key={i} className="flex items-center gap-2 mb-2">
-                <input value={bk.iban} onChange={(e) => setBanks((p) => p.map((x, j) => j === i ? { ...x, iban: e.target.value } : x))} placeholder="AZ00 XXXX 0000 ..." className={`${inputCls} flex-1 font-mono`} />
-                <input value={bk.title} onChange={(e) => setBanks((p) => p.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} placeholder="Bank adı (opsional)" className={`${inputCls} w-28 sm:w-36`} />
-                {banks.length > 1 && <button type="button" onClick={() => setBanks((p) => p.filter((_, j) => j !== i))} className="text-red-500 text-sm shrink-0">✕</button>}
-              </div>
-            ))}
-            <button type="button" onClick={() => setBanks((p) => [...p, { iban: "", title: "" }])} className="text-xs text-orange-500 hover:text-orange-400">+ IBAN əlavə et</button>
-          </div>
+          {/* Bank IBAN-ı burada əl ilə girilmir — admin sənədə baxıb daxil edir. */}
           {ownerBlocked && <p className="text-xs text-red-500 text-center">Kimliyiniz şirkətin rəhbəri ilə uyğun olmadığı üçün göndərmək mümkün deyil.</p>}
           <button onClick={createBusiness} disabled={busy || ownerBlocked} className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : (t("bizSubmit") || "Təsdiq üçün göndər")}</button>
         </div>
