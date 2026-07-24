@@ -23,6 +23,7 @@ interface Member { id: number; status?: string; canSell?: boolean; canBuy?: bool
 interface Business {
   id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
   status: "PENDING" | "APPROVED" | "REJECTED"; isActive: boolean; rejectionReason: string | null;
+  website?: string | null; instagram?: string | null; facebook?: string | null; tiktok?: string | null; youtube?: string | null; linkedin?: string | null;
   banks: Bank[]; objects: BizObject[]; members: Member[];
 }
 
@@ -352,24 +353,29 @@ export default function BusinessPage() {
 
               {b.status === "APPROVED" ? (
               <>
-              {/* Əlaqə & sosial — YALNIZ təsdiqdən sonra, istifadəçi özü doldurur */}
-              <ContactSocial b={b} inputCls={inputCls} onSave={async (d: any) => { await jsonReq(`${API}/me/businesses/${b.id}`, "PUT", d); load(); }} />
+              {/* Əlaqə & sosial — SALT-OXUNUR (admin/təsdiqlənmiş məlumat, dəyişmir) */}
+              {(b.website || b.instagram || b.facebook || b.tiktok || b.youtube || b.linkedin) && (
+                <div className="border-t border-card-border pt-3 mb-3">
+                  <p className="text-sm font-semibold mb-2">🔗 Sosial şəbəkələr</p>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {([["website", "🌐 Veb-sayt"], ["instagram", "Instagram"], ["facebook", "Facebook"], ["tiktok", "TikTok"], ["youtube", "YouTube"], ["linkedin", "LinkedIn"]] as const).map(([k, label]) => {
+                      const v = (b as any)[k] as string | null | undefined;
+                      if (!v) return null;
+                      return <a key={k} href={v.startsWith("http") ? v : `https://${v}`} target="_blank" rel="noreferrer" className="px-2.5 py-1 rounded-lg bg-input-bg border border-input-border text-orange-500 hover:border-orange-500/50">{label}</a>;
+                    })}
+                  </div>
+                </div>
+              )}
 
-              {/* Banklar */}
+              {/* Banklar — SALT-OXUNUR (admin idarə edir) */}
               <div className="border-t border-card-border pt-3 mb-3">
                 <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">🏦 {t("bizBank") || "Bank hesabları"} <span className="text-[10px] text-muted font-normal">({b.banks.length})</span></p>
-                {b.banks.map((bk) => (
-                  <div key={bk.id} className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg text-sm mb-1 ${bk.isPrimary ? "bg-green-500/10 border border-green-500/30" : "bg-input-bg/50"}`}>
-                    <span className="min-w-0 truncate">
-                      <span className={bk.isActive ? "" : "line-through text-muted"}>{bk.iban}{bk.title ? ` · ${bk.title}` : ""}</span>
-                      {bk.isPrimary && <span className="ml-1.5 text-[10px] text-green-600 font-semibold">💳 Ödəniş</span>}
-                    </span>
-                    {/* IBAN admin tərəfindən idarə olunur — istifadəçi dəyişmir (salt-oxunur) */}
+                {b.banks.length > 0 ? b.banks.map((bk) => (
+                  <div key={bk.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm mb-1 ${bk.isPrimary ? "bg-green-500/10 border border-green-500/30" : "bg-input-bg/50"}`}>
+                    <span className="min-w-0 truncate font-mono">{bk.iban}{bk.title ? ` · ${bk.title}` : ""}</span>
+                    {bk.isPrimary && <span className="text-[10px] text-green-600 font-semibold shrink-0">💳 Ödəniş</span>}
                   </div>
-                ))}
-                {b.banks.length === 0
-                  ? <p className="text-xs text-muted">IBAN admin tərəfindən sənəddən əlavə olunacaq.</p>
-                  : <p className="text-[11px] text-muted mt-1">🔒 IBAN admin tərəfindən idarə olunur. Dəyişiklik lazımdırsa adminlə əlaqə saxlayın — yeni IBAN admin paneldə yoxlanılıb təsdiqlənəcək.</p>}
+                )) : <p className="text-xs text-muted">—</p>}
               </div>
 
               {/* Obyektlər */}
@@ -512,25 +518,6 @@ export default function BusinessPage() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-// Təsdiqlənmiş biznes üçün əlaqə + sosial şəbəkə redaktoru (istifadəçi özü doldurur).
-function ContactSocial({ b, inputCls, onSave }: any) {
-  const [d, setD] = useState({ phone: b.phone || "", website: b.website || "", instagram: b.instagram || "", facebook: b.facebook || "", tiktok: b.tiktok || "", youtube: b.youtube || "", linkedin: b.linkedin || "" });
-  const [busy, setBusy] = useState(false);
-  const save = async () => { setBusy(true); try { await onSave(d); } finally { setBusy(false); } };
-  const fields: [keyof typeof d, string][] = [["phone", "Telefon"], ["website", "Veb-sayt"], ["instagram", "Instagram"], ["facebook", "Facebook"], ["tiktok", "TikTok"], ["youtube", "YouTube"], ["linkedin", "LinkedIn"]];
-  return (
-    <div className="border-t border-card-border pt-3 mb-3">
-      <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">📞 Əlaqə və sosial şəbəkələr</p>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {fields.map(([k, ph]) => (
-          <input key={k} className={inputCls} placeholder={ph} value={d[k]} onChange={(e) => setD({ ...d, [k]: e.target.value })} />
-        ))}
-      </div>
-      <button onClick={save} disabled={busy} className="mt-2 px-4 py-1.5 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-semibold disabled:opacity-50">{busy ? "..." : "💾 Yadda saxla"}</button>
     </div>
   );
 }
