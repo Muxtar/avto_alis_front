@@ -138,7 +138,7 @@ export default function BusinessPage() {
   const openForm = () => { if (!showForm) { resetForm(); window.scrollTo({ top: 0, behavior: "smooth" }); } setShowForm(!showForm); };
 
   const createBusiness = async () => {
-    if (!f.name.trim() || !f.voen.trim() || !f.ownerName.trim()) { toast("Şirkət adı, VÖEN və sahibi doldurulmalıdır", "error"); return; }
+    // Şirkət adı/VÖEN/sahibi burada tələb olunmur — admin sənəddən doldurur.
     if (proofType === "TAX_DOC" && !files.taxDocImage) { toast("Vergi sənədi tələb olunur", "error"); return; }
     if (proofType === "POWER_OF_ATTORNEY" && (!files.companyDocImage || !files.powerOfAttorneyImage)) { toast("Şirkət sənədi və etibarnamə tələb olunur", "error"); return; }
     if (!identityReusable && (!files.idCardImage || !files.selfieImage)) { toast("Şəxsiyyət vəsiqəsi və selfie tələb olunur", "error"); return; }
@@ -290,16 +290,13 @@ export default function BusinessPage() {
               </>
             )}
           </div>
-          {/* Şirkət məlumatları — yalnız sənəddən oxunur, əl ilə dəyişilmir (🔒) */}
+          {/* Şirkət adı/VÖEN/sahibi/təsisçi burada GİRİLMİR — admin sənədlərdən
+              doldurur. İstifadəçi yalnız sənədləri + əlaqə/sosial göndərir. */}
           <div className="space-y-2">
-            <p className="text-[11px] text-muted">🔒 Şirkət adı, VÖEN, sahibi və təsisçi yalnız sənəddən AI ilə oxunur — əl ilə dəyişilmir.</p>
-            <input className={`${inputCls} opacity-70 cursor-not-allowed`} placeholder={t("bizName") || "Şirkət adı (sənəddən)"} value={f.name} readOnly disabled />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input className={`${inputCls} opacity-70 cursor-not-allowed`} placeholder="VÖEN (sənəddən)" value={f.voen} readOnly disabled />
-              <input className={inputCls} placeholder={t("phone") || "Telefon (əl ilə)"} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
-              <input className={`${inputCls} opacity-70 cursor-not-allowed`} placeholder={t("bizOwner") || "Şirkətin sahibi (sənəddən)"} value={f.ownerName} readOnly disabled />
-              <input className={`${inputCls} opacity-70 cursor-not-allowed`} placeholder={t("bizFounder") || "Şirkətin təsisçisi (sənəddən)"} value={f.founderName} readOnly disabled />
-            </div>
+            <p className="text-[11px] text-muted bg-blue-500/5 border border-blue-500/20 rounded-lg px-3 py-2">
+              ℹ️ <b>Şirkət adı, VÖEN, sahibi və təsisçi</b> sənədlərdən <b>admin tərəfindən</b> doldurulacaq. Siz yalnız sənədləri və aşağıdakı əlaqə məlumatlarını göndərin. Təsdiqdən sonra məlumatlar burada görünəcək.
+            </p>
+            <input className={inputCls} placeholder={t("phone") || "Telefon"} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
           </div>
           {/* Opsional: veb-sayt və sosial şəbəkələr */}
           <div>
@@ -332,14 +329,15 @@ export default function BusinessPage() {
                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 flex items-center justify-center text-xl shrink-0">🏢</div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="font-bold text-base truncate">{b.name}</h2>
+                      <h2 className="font-bold text-base truncate">{b.name || "Yeni biznes müraciəti"}</h2>
                       <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border ${statusBadge(b.status)}`}>{statusText(b.status)}</span>
-                      <span className="px-2 py-0.5 rounded-lg text-[10px] bg-input-bg border border-input-border">{b.kind === "LEGAL" ? (t("bizLegal") || "Hüquqi") : (t("bizPhysical") || "Fiziki")}</span>
+                      {b.voen && <span className="px-2 py-0.5 rounded-lg text-[10px] bg-input-bg border border-input-border">{b.kind === "LEGAL" ? (t("bizLegal") || "Hüquqi") : (t("bizPhysical") || "Fiziki")}</span>}
                     </div>
                     <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted mt-1">
-                      <span>🆔 VÖEN: <b className="text-foreground">{b.voen}</b></span>
-                      <span>👤 {b.ownerName}</span>
+                      {b.voen && <span>🆔 VÖEN: <b className="text-foreground">{b.voen}</b></span>}
+                      {b.ownerName && <span>👤 {b.ownerName}</span>}
                       {b.phone && <span>📞 {b.phone}</span>}
+                      {!b.voen && !b.ownerName && b.status === "PENDING" && <span className="text-amber-600">⏳ Məlumatlar admin təsdiqindən sonra doldurulacaq</span>}
                     </div>
                     {b.status === "REJECTED" && b.rejectionReason && <p className="text-xs text-red-500 mt-1">⚠ {b.rejectionReason}</p>}
                   </div>
