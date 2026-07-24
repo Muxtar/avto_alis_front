@@ -19,6 +19,11 @@ interface Biz {
   objects: { id: number; name: string; address: string; city: string | null; activityAreas: string[] }[];
 }
 
+// Fayl PDF-dirmi? (şəkil kimi göstərmək olmaz — belge formasında açılır)
+function isPdf(name: string | null | undefined): boolean {
+  return !!name && /\.pdf($|\?)/i.test(name);
+}
+
 // Sadə ad uyğunluğu — ən azı 2 söz (və ya hamısı) üst-üstə düşürsə "uyğun".
 function nameMatch(a: string, b: string): boolean {
   const norm = (s: string) => s.toLowerCase().replace(/[^a-zəçğıöşüА-я ]/gi, "").split(/\s+/).filter(Boolean);
@@ -319,12 +324,19 @@ export default function AdminBusinessesPage() {
               {/* KYC sənədləri — admin əllə yoxlayır (üz tanıma) */}
               <div className="flex flex-wrap gap-2 mb-3">
                 {([["taxDocImage", "Vergi"], ["companyDocImage", "Şirkət"], ["powerOfAttorneyImage", "Etibarnamə"], ["bankDocImage", "Bank sənədi"], ["idCardImage", "Vəsiqə"], ["selfieImage", "Selfie"]] as const).map(([key, label]) => {
-                  const img = (b as any)[key] as string | null;
-                  if (!img) return null;
+                  const file = (b as any)[key] as string | null;
+                  if (!file) return null;
                   return (
-                    <a key={key} href={`${imgUrl(img)}`} target="_blank" rel="noreferrer" className="block">
-                      <span className="text-[10px] text-muted block">{label}</span>
-                      <img src={`${imgUrl(img)}`} alt={label} className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+                    <a key={key} href={`${imgUrl(file)}`} target="_blank" rel="noreferrer" className="block">
+                      <span className="text-[10px] text-muted block mb-0.5">{label}</span>
+                      {isPdf(file) ? (
+                        <div className="w-20 h-20 rounded-lg border border-input-border bg-input-bg flex flex-col items-center justify-center gap-1 hover:border-orange-500/50 transition-colors">
+                          <span className="text-2xl">📄</span>
+                          <span className="text-[9px] text-orange-500 font-semibold">PDF aç</span>
+                        </div>
+                      ) : (
+                        <img src={`${imgUrl(file)}`} alt={label} className="w-20 h-20 object-cover rounded-lg border border-input-border" />
+                      )}
                     </a>
                   );
                 })}
