@@ -170,7 +170,6 @@ export default function AdminHeader({ overview, adminName, onRefresh, onLogout }
                 <button onClick={() => { setActionsOpen(false); router.push("/admin/broadcast"); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg">📢 Bildiriş göndər</button>
                 <button onClick={reactivateExpired} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg">♻️ Vaxtı bitmiş elanları uzat</button>
                 <button onClick={() => { setActionsOpen(false); router.push("/admin/promo"); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg">🎟️ Promo kodları</button>
-                <button onClick={() => { setActionsOpen(false); router.push("/admin/couriers"); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg">🚚 Kuryer əlavə et</button>
                 <button onClick={() => { setActionsOpen(false); onRefresh(); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg">🔄 Yenilə</button>
               </div>
             </>

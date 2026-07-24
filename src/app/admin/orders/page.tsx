@@ -8,7 +8,6 @@ export default function AdminOrdersPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const [orders, setOrders] = useState<any[]>([]);
-  const [couriers, setCouriers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
@@ -21,27 +20,15 @@ export default function AdminOrdersPage() {
 
   const fetchData = () => {
     setLoading(true);
-    Promise.all([
-      fetch(`${API}/admin/orders?status=${statusFilter}&page=${page}`, { headers }).then((r) => r.json()),
-      fetch(`${API}/admin/couriers`, { headers }).then((r) => r.json()),
-    ]).then(([o, c]) => {
-      setOrders(o.orders || []);
-      setTotalPages(o.totalPages || 1);
-      setCouriers(c.couriers || []);
-    }).catch(() => { toast(t('error'), 'error'); }).finally(() => setLoading(false));
+    fetch(`${API}/admin/orders?status=${statusFilter}&page=${page}`, { headers })
+      .then((r) => r.json())
+      .then((o) => {
+        setOrders(o.orders || []);
+        setTotalPages(o.totalPages || 1);
+      }).catch(() => { toast(t('error'), 'error'); }).finally(() => setLoading(false));
   };
 
   useEffect(() => { fetchData(); }, [statusFilter, page]);
-
-  const assignCourier = async (orderId: number, courierId: string) => {
-    try {
-      const res = await fetch(`${API}/admin/orders/${orderId}/assign-courier`, {
-        method: "PUT", headers, body: JSON.stringify({ courierId: courierId || null }),
-      });
-      if (!res.ok) throw new Error();
-      fetchData();
-    } catch { toast(t("error"), "error"); }
-  };
 
   const changeStatus = async (orderId: number, status: string) => {
     try {
@@ -192,26 +179,6 @@ export default function AdminOrdersPage() {
                     <option key={s} value={s}>{statusLabel(s)}</option>
                   ))}
                 </select>
-              </div>
-
-              {/* Courier Assignment */}
-              <div className="p-4 border-t border-card-border flex items-center gap-3 flex-wrap">
-                <p className="text-sm font-medium">{t("courierAssign")}:</p>
-                <select
-                  value={order.courier?.id || ""}
-                  onChange={(e) => assignCourier(order.id, e.target.value)}
-                  className="px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                >
-                  <option value="">{t("courierNone")}</option>
-                  {couriers.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.phone})</option>
-                  ))}
-                </select>
-                {order.courier && (
-                  <span className="px-2.5 py-1 bg-green-500/10 text-green-500 border border-green-500/20 rounded-lg text-xs font-medium">
-                    {order.courier.name}
-                  </span>
-                )}
               </div>
             </div>
           ))}
