@@ -51,6 +51,28 @@ export default function AdminBusinessesPage() {
     } catch { toast(t("error"), "error"); }
   };
 
+  // Biznesi sil — ona aid bütün obyektlər və elanlar da silinir.
+  const deleteBusiness = async (id: number, name: string) => {
+    if (!confirm(`"${name}" biznesini silmək istəyirsiniz?\n\n⚠️ BU BİZNESƏ AİD BÜTÜN OBYEKTLƏR VƏ ELANLAR SİLİNƏCƏK. Geri qaytarmaq mümkün deyil.`)) return;
+    try {
+      const res = await fetch(`${API}/admin/businesses/${id}`, { method: "DELETE", headers });
+      const data = await res.json();
+      if (res.ok && data.success) { toast(`Biznes silindi (${data.deletedObjects} obyekt, ${data.deletedListings} elan)`, "success"); load(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+
+  // Obyekti sil — ona aid bütün elanlar da silinir.
+  const deleteObject = async (id: number, name: string) => {
+    if (!confirm(`"${name}" obyektini silmək istəyirsiniz?\n\n⚠️ BU OBYEKTƏ AİD BÜTÜN ELANLAR SİLİNƏCƏK. Geri qaytarmaq mümkün deyil.`)) return;
+    try {
+      const res = await fetch(`${API}/admin/objects/${id}`, { method: "DELETE", headers });
+      const data = await res.json();
+      if (res.ok && data.success) { toast(`Obyekt silindi (${data.deletedListings} elan)`, "success"); load(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+
   const statuses = ["PENDING", "APPROVED", "REJECTED", "all"];
 
   return (
@@ -80,6 +102,11 @@ export default function AdminBusinessesPage() {
                 <div className="flex items-center gap-1.5">
                   {b.autoApproved && <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-green-500/10 text-green-500 border border-green-500/20">🤖 AI təsdiqi</span>}
                   <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium border bg-input-bg">{b.status}</span>
+                  <button
+                    onClick={() => deleteBusiness(b.id, b.name)}
+                    title="Biznesi sil (obyektlər + elanlar da silinir)"
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20"
+                  >🗑 Sil</button>
                 </div>
               </div>
 
@@ -132,7 +159,14 @@ export default function AdminBusinessesPage() {
                   <p className="text-xs font-semibold text-muted mb-1">{t("bizObjects") || "Obyektlər"}:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {b.objects.map((o) => (
-                      <span key={o.id} className="px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs">{o.name}{o.activityAreas?.length ? ` (${o.activityAreas.join(", ")})` : ""} — {o.city ? o.city + ", " : ""}{o.address}</span>
+                      <span key={o.id} className="inline-flex items-center gap-1.5 px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs">
+                        <span>{o.name}{o.activityAreas?.length ? ` (${o.activityAreas.join(", ")})` : ""} — {o.city ? o.city + ", " : ""}{o.address}</span>
+                        <button
+                          onClick={() => deleteObject(o.id, o.name)}
+                          title="Obyekti sil (elanları da silinir)"
+                          className="text-red-500 hover:text-red-600 font-bold leading-none"
+                        >×</button>
+                      </span>
                     ))}
                   </div>
                 </div>
