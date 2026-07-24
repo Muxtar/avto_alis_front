@@ -110,50 +110,19 @@ export default function BusinessPage() {
     return data;
   };
 
-  // Vergi/şirkət sənədi seçiləndə AI ilə şirkət adı/VÖEN/sahib/təsisçi avtomatik dolsun.
-  const onPickCompanyDoc = async (key: string, file: File | null) => {
+  // Sənəd seçiləndə YALNIZ faylı saxla — AI oxuması YOXDUR (yoxlama admin paneldə).
+  // İstifadəçi şirkət adı/VÖEN/sahib/təsisçi sahələrini əl ilə doldurur.
+  const onPickCompanyDoc = (key: string, file: File | null) => {
     setFiles((p) => ({ ...p, [key]: file }));
-    if (!file) return;
-    setBizInfoReading(true); setBizInfoFilled(false); setOwnerCheck(null);
-    try {
-      const fd = new FormData();
-      fd.append("doc", file);
-      const res = await fetch(`${API}/me/extract-business-info`, { method: "POST", headers: authH, body: fd });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setF((prev) => ({
-          ...prev,
-          name: data.companyName || prev.name,
-          voen: data.voen || prev.voen,
-          ownerName: data.ownerName || prev.ownerName,
-          founderName: data.founderName || prev.founderName,
-        }));
-        if (data.companyName || data.voen) setBizInfoFilled(true);
-        // Şəxs növünü VÖEN-in son rəqəmindən avtomatik təyin et (1→hüquqi, 2→fiziki).
-        const k = kindFromVoen(data.voen);
-        if (k) setKind(k);
-        if (typeof data.isOwner === "boolean") setOwnerCheck({ isOwner: data.isOwner, message: data.ownerMessage || "" });
-      }
-    } catch { /* səssiz keç */ } finally { setBizInfoReading(false); }
   };
 
-  // Vergi sənədi halında rəhbər uyğunsuzluğu varsa biznes yaradıla bilməz.
-  const ownerBlocked = proofType === "TAX_DOC" && ownerCheck !== null && !ownerCheck.isOwner;
+  // İstifadəçi tərəfində rəhbər bloklaması yoxdur — admin təsdiq edir.
+  const ownerBlocked = false;
 
-  // Bank sənədi əlavə et → AI ilə IBAN-ları oxu.
-  const addBankDoc = async (file: File | null) => {
+  // Bank sənədi əlavə et — AI ilə IBAN oxunmur; istifadəçi IBAN-ı əl ilə yazır.
+  const addBankDoc = (file: File | null) => {
     if (!file) return;
-    const idx = bankDocs.length;
-    setBankDocs((p) => [...p, { file, accounts: [], reading: true }]);
-    try {
-      const fd = new FormData();
-      fd.append("doc", file);
-      const res = await fetch(`${API}/me/extract-bank-doc`, { method: "POST", headers: authH, body: fd });
-      const data = await res.json();
-      setBankDocs((p) => p.map((d, i) => i === idx ? { ...d, accounts: data.accounts || [], reading: false } : d));
-    } catch {
-      setBankDocs((p) => p.map((d, i) => i === idx ? { ...d, reading: false } : d));
-    }
+    setBankDocs((p) => [...p, { file, accounts: [], reading: false }]);
   };
   const removeBankDoc = (idx: number) => {
     setBankDocs((p) => p.filter((_, i) => i !== idx));
@@ -280,21 +249,10 @@ export default function BusinessPage() {
           </div>
           {/* Sənədlər */}
           <div className="space-y-2 p-3 bg-input-bg/40 rounded-xl">
-            <p className="text-[11px] text-muted">📄 Sənədləri PDF və ya şəkil kimi yükləyin — 🤖 AI şirkət adı, VÖEN və bank hesablarını avtomatik oxuyacaq.</p>
+            <p className="text-[11px] text-muted">📄 Sənədləri PDF və ya şəkil kimi yükləyin, sonra məlumatları aşağıda əl ilə doldurun. Yoxlama və təsdiq admin tərəfindən aparılır.</p>
             {proofType === "TAX_DOC"
               ? docFileLabel("taxDocImage", "Vergi qeydiyyatı sənədi (PDF/şəkil)", (file) => onPickCompanyDoc("taxDocImage", file))
               : (<>{docFileLabel("companyDocImage", "Şirkət sənədi (PDF/şəkil)", (file) => onPickCompanyDoc("companyDocImage", file))}{docFileLabel("powerOfAttorneyImage", "Etibarnamə (PDF/şəkil)")}</>)}
-            {bizInfoReading && <p className="text-xs text-orange-500">🤖 AI sənəddən şirkət məlumatlarını oxuyur…</p>}
-            {bizInfoFilled && !bizInfoReading && <p className="text-xs text-green-500">✓ Şirkət adı / VÖEN sənəddən dolduruldu (aşağıda yoxlayın)</p>}
-            {/* Kimlik ↔ şirkət rəhbəri uyğunluğu */}
-            {ownerCheck && proofType === "TAX_DOC" && (
-              ownerCheck.isOwner
-                ? <p className="text-xs text-green-500">✓ {ownerCheck.message}</p>
-                : <div className="text-xs text-red-500 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">⚠ {ownerCheck.message}</div>
-            )}
-            {ownerCheck && proofType === "POWER_OF_ATTORNEY" && !ownerCheck.isOwner && (
-              <p className="text-[11px] text-muted">ℹ️ Siz rəhbər deyilsiniz — etibarnamə ilə səlahiyyət təsdiqlənəcək.</p>
-            )}
 
             {/* Bank hesabı sənədləri — bir neçə, biri əsas (ödəniş) seçilir */}
             <div className="pt-2 border-t border-input-border">
@@ -304,9 +262,7 @@ export default function BusinessPage() {
                   <input type="radio" name="primaryBank" checked={primaryBankIdx === i} onChange={() => setPrimaryBankIdx(i)} className="mt-1 accent-orange-500" title="Ödəniş bu hesaba" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{d.file.name}</p>
-                    {d.reading ? <p className="text-[11px] text-orange-500">🤖 IBAN oxunur…</p>
-                      : d.accounts.length ? <p className="text-[11px] text-green-500">✓ {d.accounts.map((a) => a.iban).join(", ")}</p>
-                      : <p className="text-[11px] text-amber-500">IBAN tapılmadı</p>}
+                    <p className="text-[11px] text-muted">IBAN-ı aşağıdakı «Bank hesabları» sahəsinə əl ilə yazın.</p>
                     {primaryBankIdx === i && <span className="text-[10px] text-orange-500">⬅ Ödəniş bu hesaba gedəcək</span>}
                   </div>
                   <button type="button" onClick={() => removeBankDoc(i)} className="text-muted hover:text-red-500 text-xs">✕</button>
@@ -358,21 +314,18 @@ export default function BusinessPage() {
               <input className={inputCls} placeholder="LinkedIn" value={f.linkedin} onChange={(e) => setF({ ...f, linkedin: e.target.value })} />
             </div>
           </div>
-          {/* Bank hesabları — yalnız bank sənədindən AI ilə oxunur (əl ilə girilmir) */}
-          {bankDocs.some((d) => d.accounts.length > 0) && (
-            <div>
-              <p className="text-xs font-semibold text-muted mb-1">🔒 Bank hesabları (sənəddən oxundu)</p>
-              <div className="space-y-1">
-                {bankDocs.flatMap((d, i) => d.accounts.map((a, j) => (
-                  <div key={`${i}-${j}`} className="flex items-center gap-2 text-xs bg-input-bg border border-input-border rounded-lg px-3 py-1.5">
-                    <span className="font-mono">{a.iban}</span>
-                    {a.bankName && <span className="text-muted">· {a.bankName}</span>}
-                    {primaryBankIdx === i && <span className="text-orange-500 text-[10px]">⬅ ödəniş</span>}
-                  </div>
-                )))}
+          {/* Bank hesabları — IBAN əl ilə daxil edilir (yoxlama admin paneldə) */}
+          <div>
+            <p className="text-xs font-semibold text-muted mb-1">🏦 Bank hesabları (IBAN — əl ilə yazın)</p>
+            {banks.map((bk, i) => (
+              <div key={i} className="flex items-center gap-2 mb-2">
+                <input value={bk.iban} onChange={(e) => setBanks((p) => p.map((x, j) => j === i ? { ...x, iban: e.target.value } : x))} placeholder="AZ00 XXXX 0000 ..." className={`${inputCls} flex-1 font-mono`} />
+                <input value={bk.title} onChange={(e) => setBanks((p) => p.map((x, j) => j === i ? { ...x, title: e.target.value } : x))} placeholder="Bank adı (opsional)" className={`${inputCls} w-28 sm:w-36`} />
+                {banks.length > 1 && <button type="button" onClick={() => setBanks((p) => p.filter((_, j) => j !== i))} className="text-red-500 text-sm shrink-0">✕</button>}
               </div>
-            </div>
-          )}
+            ))}
+            <button type="button" onClick={() => setBanks((p) => [...p, { iban: "", title: "" }])} className="text-xs text-orange-500 hover:text-orange-400">+ IBAN əlavə et</button>
+          </div>
           {ownerBlocked && <p className="text-xs text-red-500 text-center">Kimliyiniz şirkətin rəhbəri ilə uyğun olmadığı üçün göndərmək mümkün deyil.</p>}
           <button onClick={createBusiness} disabled={busy || ownerBlocked} className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : (t("bizSubmit") || "Təsdiq üçün göndər")}</button>
         </div>
