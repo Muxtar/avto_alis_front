@@ -122,7 +122,11 @@ export default function AdminBusinessesPage() {
           ownerName: i.ownerName || e.ownerName,
           founderName: i.founderName || e.founderName,
         } : e);
-        toast("AI sənəddən oxudu — yoxlayıb yadda saxlayın", "success");
+        // Bank sənədindən oxunan IBAN-ı da doldur (birincini input-a qoy).
+        if (Array.isArray(data.ibans) && data.ibans.length) {
+          setIbanInput((p) => ({ ...p, [id]: data.ibans[0] }));
+        }
+        toast(data.ibans?.length ? `AI oxudu — şirkət məlumatı + IBAN dolduruldu (yoxlayın)` : "AI sənəddən oxudu — yoxlayıb yadda saxlayın", "success");
       } else toast(data.message || "AI oxuya bilmədi", "error");
     } catch { toast(t("error"), "error"); } finally { setBusyId(null); }
   };
