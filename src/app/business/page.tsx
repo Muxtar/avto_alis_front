@@ -290,29 +290,16 @@ export default function BusinessPage() {
               </>
             )}
           </div>
-          {/* Şirkət adı/VÖEN/sahibi/təsisçi burada GİRİLMİR — admin sənədlərdən
-              doldurur. İstifadəçi yalnız sənədləri + əlaqə/sosial göndərir. */}
+          {/* İstifadəçi YALNIZ sənədləri göndərir. Şirkət adı/VÖEN/sahibi admin
+              tərəfindən doldurulur; telefon, sosial şəbəkə və obyektlər isə
+              biznes TƏSDİQLƏNDİKDƏN sonra əlavə edilir. */}
           <div className="space-y-2">
             <p className="text-[11px] text-muted bg-blue-500/5 border border-blue-500/20 rounded-lg px-3 py-2">
-              ℹ️ <b>Şirkət adı, VÖEN, sahibi və təsisçi</b> sənədlərdən <b>admin tərəfindən</b> doldurulacaq. Siz yalnız sənədləri və aşağıdakı əlaqə məlumatlarını göndərin. Təsdiqdən sonra məlumatlar burada görünəcək.
+              ℹ️ Yalnız <b>sənədləri</b> göndərin. <b>Şirkət adı, VÖEN, sahibi</b> sənədlərdən <b>admin tərəfindən</b> doldurulacaq. Biznes <b>təsdiqləndikdən sonra</b> telefon, sosial şəbəkələr və obyektlər (mağaza/filial) əlavə edə biləcəksiniz.
             </p>
-            <input className={inputCls} placeholder={t("phone") || "Telefon"} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
           </div>
-          {/* Opsional: veb-sayt və sosial şəbəkələr */}
-          <div>
-            <p className="text-xs font-semibold text-muted mb-1">🌐 Veb-sayt və sosial şəbəkələr <span className="font-normal text-muted-foreground">(opsional)</span></p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input className={inputCls} placeholder="Veb-sayt (məs. https://sirket.az)" value={f.website} onChange={(e) => setF({ ...f, website: e.target.value })} />
-              <input className={inputCls} placeholder="Instagram" value={f.instagram} onChange={(e) => setF({ ...f, instagram: e.target.value })} />
-              <input className={inputCls} placeholder="Facebook" value={f.facebook} onChange={(e) => setF({ ...f, facebook: e.target.value })} />
-              <input className={inputCls} placeholder="TikTok" value={f.tiktok} onChange={(e) => setF({ ...f, tiktok: e.target.value })} />
-              <input className={inputCls} placeholder="YouTube" value={f.youtube} onChange={(e) => setF({ ...f, youtube: e.target.value })} />
-              <input className={inputCls} placeholder="LinkedIn" value={f.linkedin} onChange={(e) => setF({ ...f, linkedin: e.target.value })} />
-            </div>
-          </div>
-          {/* Bank IBAN-ı burada əl ilə girilmir — admin sənədə baxıb daxil edir. */}
-          {ownerBlocked && <p className="text-xs text-red-500 text-center">Kimliyiniz şirkətin rəhbəri ilə uyğun olmadığı üçün göndərmək mümkün deyil.</p>}
-          <button onClick={createBusiness} disabled={busy || ownerBlocked} className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : (t("bizSubmit") || "Təsdiq üçün göndər")}</button>
+          {/* Bank IBAN-ı burada girilmir — admin sənədə baxıb daxil edir. */}
+          <button onClick={createBusiness} disabled={busy} className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : (t("bizSubmit") || "Sənədləri təsdiq üçün göndər")}</button>
         </div>
       )}
 
@@ -353,6 +340,11 @@ export default function BusinessPage() {
                   <button onClick={wrap(async () => { if (confirm(t("bizDeleteConfirm") || "Silinsin?")) await jsonReq(`${API}/me/businesses/${b.id}`, "DELETE"); })} className="text-red-500 text-xs">{t("delete") || "Sil"}</button>
                 </div>
               </div>
+
+              {b.status === "APPROVED" ? (
+              <>
+              {/* Əlaqə & sosial — YALNIZ təsdiqdən sonra, istifadəçi özü doldurur */}
+              <ContactSocial b={b} inputCls={inputCls} onSave={async (d: any) => { await jsonReq(`${API}/me/businesses/${b.id}`, "PUT", d); load(); }} />
 
               {/* Banklar */}
               <div className="border-t border-card-border pt-3 mb-3">
@@ -499,10 +491,36 @@ export default function BusinessPage() {
                   <button onClick={wrap(async () => { const v = memberInput[b.id]; if (!v?.publicId?.trim()) throw new Error("ID"); await jsonReq(`${API}/me/businesses/${b.id}/members`, "POST", { publicId: v.publicId.trim(), objectId: v.objectId || undefined }); setMemberInput((p) => ({ ...p, [b.id]: { publicId: "", objectId: "" } })); })} className="px-3 bg-orange-500/10 text-orange-500 rounded-lg text-xs">+ Dəvət göndər</button>
                 </div>
               </div>
+              </>
+              ) : (
+                <div className="border-t border-card-border pt-3 text-center">
+                  <p className="text-sm text-amber-600 font-medium">⏳ Bu biznes admin təsdiqini gözləyir</p>
+                  <p className="text-xs text-muted mt-1">Təsdiqdən sonra telefon/sosial şəbəkə, bank və obyekt (mağaza/filial) əlavə edə biləcəksiniz.</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Təsdiqlənmiş biznes üçün əlaqə + sosial şəbəkə redaktoru (istifadəçi özü doldurur).
+function ContactSocial({ b, inputCls, onSave }: any) {
+  const [d, setD] = useState({ phone: b.phone || "", website: b.website || "", instagram: b.instagram || "", facebook: b.facebook || "", tiktok: b.tiktok || "", youtube: b.youtube || "", linkedin: b.linkedin || "" });
+  const [busy, setBusy] = useState(false);
+  const save = async () => { setBusy(true); try { await onSave(d); } finally { setBusy(false); } };
+  const fields: [keyof typeof d, string][] = [["phone", "Telefon"], ["website", "Veb-sayt"], ["instagram", "Instagram"], ["facebook", "Facebook"], ["tiktok", "TikTok"], ["youtube", "YouTube"], ["linkedin", "LinkedIn"]];
+  return (
+    <div className="border-t border-card-border pt-3 mb-3">
+      <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">📞 Əlaqə və sosial şəbəkələr</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        {fields.map(([k, ph]) => (
+          <input key={k} className={inputCls} placeholder={ph} value={d[k]} onChange={(e) => setD({ ...d, [k]: e.target.value })} />
+        ))}
+      </div>
+      <button onClick={save} disabled={busy} className="mt-2 px-4 py-1.5 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-semibold disabled:opacity-50">{busy ? "..." : "💾 Yadda saxla"}</button>
     </div>
   );
 }
