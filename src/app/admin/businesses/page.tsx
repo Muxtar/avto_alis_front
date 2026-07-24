@@ -21,6 +21,8 @@ export default function AdminBusinessesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [rejectReason, setRejectReason] = useState<{ [id: number]: string }>({});
+  const [busyId, setBusyId] = useState<number | null>(null); // AI əməliyyatı gedən biznes
+  const [edit, setEdit] = useState<{ id: number; name: string; voen: string; ownerName: string; founderName: string; phone: string } | null>(null);
 
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
 
@@ -73,6 +75,59 @@ export default function AdminBusinessesPage() {
     } catch { toast(t("error"), "error"); }
   };
 
+  // AI ilə yenidən yoxla (saxlanmış sənədlər üzərində).
+  const aiRecheck = async (id: number) => {
+    setBusyId(id);
+    try {
+      const res = await fetch(`${API}/admin/businesses/${id}/ai-recheck`, { method: "POST", headers });
+      const data = await res.json();
+      if (res.ok && data.success) { toast(data.aiRecommendsApprove ? "AI yoxladı: təsdiq tövsiyə edir ✓" : "AI yoxladı (nəticəyə baxın)", data.aiRecommendsApprove ? "success" : "info"); load(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setBusyId(null); }
+  };
+
+  // Redaktə formasını aç + (istəyə görə) AI ilə sənəddən doldur.
+  const startEdit = (b: Biz) => setEdit({ id: b.id, name: b.name, voen: b.voen, ownerName: b.ownerName, founderName: b.founderName, phone: b.phone || "" });
+  const aiFill = async (id: number) => {
+    setBusyId(id);
+    try {
+      const res = await fetch(`${API}/admin/businesses/${id}/ai-extract`, { method: "POST", headers });
+      const data = await res.json();
+      if (res.ok && data.success && data.info) {
+        const i = data.info;
+        setEdit((e) => e && e.id === id ? {
+          ...e,
+          name: i.companyName || e.name,
+          voen: i.voen || e.voen,
+          ownerName: i.ownerName || e.ownerName,
+          founderName: i.founderName || e.founderName,
+        } : e);
+        toast("AI sənəddən oxudu — yoxlayıb yadda saxlayın", "success");
+      } else toast(data.message || "AI oxuya bilmədi", "error");
+    } catch { toast(t("error"), "error"); } finally { setBusyId(null); }
+  };
+  const saveEdit = async () => {
+    if (!edit) return;
+    setBusyId(edit.id);
+    try {
+      const res = await fetch(`${API}/admin/businesses/${edit.id}`, { method: "PUT", headers, body: JSON.stringify(edit) });
+      const data = await res.json();
+      if (res.ok && data.success) { toast("Biznes məlumatları yeniləndi ✓", "success"); setEdit(null); load(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setBusyId(null); }
+  };
+
+  // Bank hesabını sil (admin).
+  const deleteBank = async (id: number) => {
+    if (!confirm("Bu bank hesabını silmək istəyirsiniz?")) return;
+    try {
+      const res = await fetch(`${API}/admin/banks/${id}`, { method: "DELETE", headers });
+      const data = await res.json();
+      if (res.ok && data.success) { toast("Bank hesabı silindi", "success"); load(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+
   const statuses = ["PENDING", "APPROVED", "REJECTED", "all"];
 
   return (
@@ -99,9 +154,20 @@ export default function AdminBusinessesPage() {
                   <h2 className="font-bold">{b.name} <span className="text-xs font-normal text-muted">({b.kind === "LEGAL" ? "Hüquqi" : "Fiziki"} · {b.proofType === "TAX_DOC" ? "Vergi sənədi" : "Etibarnamə"})</span></h2>
                   <p className="text-xs text-muted">{b.user?.name} · {b.user?.phone}{b.user?.publicId ? ` · ID ${b.user.publicId}` : ""}</p>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  {b.autoApproved && <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-green-500/10 text-green-500 border border-green-500/20">🤖 AI təsdiqi</span>}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {b.autoApproved && <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20" title="AI təsdiq tövsiyə edir — yekun qərar sizindir">🤖 AI tövsiyə: təsdiq</span>}
                   <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium border bg-input-bg">{b.status}</span>
+                  <button
+                    onClick={() => aiRecheck(b.id)}
+                    disabled={busyId === b.id}
+                    title="Sənədləri AI ilə yenidən yoxla"
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 disabled:opacity-50"
+                  >{busyId === b.id ? "…" : "🤖 AI yoxla"}</button>
+                  <button
+                    onClick={() => (edit?.id === b.id ? setEdit(null) : startEdit(b))}
+                    title="Məlumatları əl ilə redaktə et"
+                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20 hover:bg-orange-500/20"
+                  >{edit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə"}</button>
                   <button
                     onClick={() => deleteBusiness(b.id, b.name)}
                     title="Biznesi sil (obyektlər + elanlar da silinir)"
@@ -133,12 +199,49 @@ export default function AdminBusinessesPage() {
                   {b.aiReason && <p className="text-[11px] text-muted mt-1 leading-snug">{b.aiReason}</p>}
                 </div>
               )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
-                <p><span className="text-muted text-xs">VÖEN:</span> {b.voen}</p>
-                <p><span className="text-muted text-xs">{t("phone") || "Tel"}:</span> {b.phone || "—"}</p>
-                <p><span className="text-muted text-xs">{t("bizOwner") || "Sahibi"}:</span> {b.ownerName}</p>
-                <p><span className="text-muted text-xs">{t("bizFounder") || "Təsisçi"}:</span> {b.founderName}</p>
-                <p className="sm:col-span-2"><span className="text-muted text-xs">{t("bizBank") || "Bank"}:</span> {b.banks?.map((bk) => bk.iban).join(", ") || "—"}</p>
+              {edit?.id === b.id ? (
+                /* ── Redaktə formu (əl ilə və ya AI ilə doldur) ── */
+                <div className="mb-3 p-3 bg-orange-500/5 border border-orange-500/20 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-[11px] font-semibold text-orange-500">✏️ Şirkət məlumatlarını redaktə et</p>
+                    <button onClick={() => aiFill(b.id)} disabled={busyId === b.id} className="px-2 py-1 rounded-lg text-[11px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 disabled:opacity-50">
+                      {busyId === b.id ? "AI oxuyur…" : "🤖 AI ilə sənəddən doldur"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className="text-[11px] text-muted">Ad<input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
+                    <label className="text-[11px] text-muted">VÖEN<input value={edit.voen} onChange={(e) => setEdit({ ...edit, voen: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
+                    <label className="text-[11px] text-muted">Sahibi/Rəhbər<input value={edit.ownerName} onChange={(e) => setEdit({ ...edit, ownerName: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
+                    <label className="text-[11px] text-muted">Təsisçi<input value={edit.founderName} onChange={(e) => setEdit({ ...edit, founderName: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
+                    <label className="text-[11px] text-muted sm:col-span-2">Telefon<input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={saveEdit} disabled={busyId === b.id} className="px-4 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50">Yadda saxla</button>
+                    <button onClick={() => setEdit(null)} className="px-4 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm">Ləğv et</button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
+                  <p><span className="text-muted text-xs">VÖEN:</span> {b.voen}</p>
+                  <p><span className="text-muted text-xs">{t("phone") || "Tel"}:</span> {b.phone || "—"}</p>
+                  <p><span className="text-muted text-xs">{t("bizOwner") || "Sahibi"}:</span> {b.ownerName}</p>
+                  <p><span className="text-muted text-xs">{t("bizFounder") || "Təsisçi"}:</span> {b.founderName}</p>
+                </div>
+              )}
+
+              {/* Bank hesabları — admin yoxlayır (biznes təsdiqi bankları da əhatə edir) */}
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-muted mb-1">🏦 Bank hesabları:</p>
+                {b.banks?.length ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {b.banks.map((bk) => (
+                      <span key={bk.id} className="inline-flex items-center gap-1.5 px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs font-mono">
+                        {bk.iban}{bk.title ? <span className="text-muted font-sans">({bk.title})</span> : null}
+                        <button onClick={() => deleteBank(bk.id)} title="Bank hesabını sil" className="text-red-500 hover:text-red-600 font-bold leading-none">×</button>
+                      </span>
+                    ))}
+                  </div>
+                ) : <p className="text-xs text-muted">—</p>}
               </div>
 
               {/* KYC sənədləri — admin əllə yoxlayır (üz tanıma) */}
