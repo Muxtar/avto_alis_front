@@ -47,6 +47,8 @@ export default function BusinessPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [openBizId, setOpenBizId] = useState<number | null>(null); // açıq (genişlənmiş) biznes kartı
+  const [addObjFor, setAddObjFor] = useState<number | null>(null); // obyekt əlavə forması açıq olan biznes
   const [busy, setBusy] = useState(false);
   const [idVerified, setIdVerified] = useState<boolean | null>(null); // kimlik təqdim olunub?
   const [identityReusable, setIdentityReusable] = useState(false); // kimlik+üz təsdiqlənib (>50%) → biznesdə təkrar istənilmir
@@ -201,7 +203,7 @@ export default function BusinessPage() {
   return (
     <div className="max-w-3xl mx-auto px-3 sm:px-6 py-6">
       <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-        <h1 className="text-xl sm:text-2xl font-bold">{t("bizTitle") || "Biznes hesablarım"}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold">🏢 Biznes Kabinetim</h1>
         <div className="flex items-center gap-2 flex-wrap">
           {publicId && <span className="px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs font-mono">ID: <b>{publicId}</b></span>}
           <a href="/business/sales" className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10">{t("bizSales") || "Satış pəncərəsi"}</a>
@@ -311,23 +313,30 @@ export default function BusinessPage() {
         <div className="space-y-4">
           {businesses.map((b) => (
             <div key={b.id} className={`bg-card border border-card-border rounded-xl p-4 sm:p-5 ${!b.isActive ? "opacity-60" : ""}`}>
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <div className="flex items-start gap-3 min-w-0">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 flex items-center justify-center text-xl shrink-0">🏢</div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h2 className="font-bold text-base truncate">{b.name || "Yeni biznes müraciəti"}</h2>
-                      <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border ${statusBadge(b.status)}`}>{statusText(b.status)}</span>
-                      {b.voen && <span className="px-2 py-0.5 rounded-lg text-[10px] bg-input-bg border border-input-border">{b.kind === "LEGAL" ? (t("bizLegal") || "Hüquqi") : (t("bizPhysical") || "Fiziki")}</span>}
-                    </div>
-                    <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted mt-1">
-                      {b.voen && <span>🆔 VÖEN: <b className="text-foreground">{b.voen}</b></span>}
-                      {b.ownerName && <span>👤 {b.ownerName}</span>}
-                      {b.phone && <span>📞 {b.phone}</span>}
-                      {!b.voen && !b.ownerName && b.status === "PENDING" && <span className="text-amber-600">⏳ Məlumatlar admin təsdiqindən sonra doldurulacaq</span>}
-                    </div>
-                    {b.status === "REJECTED" && b.rejectionReason && <p className="text-xs text-red-500 mt-1">⚠ {b.rejectionReason}</p>}
-                  </div>
+              {/* Kompakt başlıq — sağ üstdə status, klik detalları açır */}
+              <button onClick={() => setOpenBizId(openBizId === b.id ? null : b.id)} className="w-full flex items-center gap-3 text-left">
+                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 flex items-center justify-center text-xl shrink-0">🏢</div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-bold text-base truncate">{b.name || "Yeni biznes müraciəti"}</h2>
+                  <p className="text-[11px] text-muted truncate">
+                    {b.voen ? `VÖEN: ${b.voen}` : (b.status === "PENDING" ? "⏳ Admin təsdiqini gözləyir" : "—")}
+                    {b.status === "APPROVED" && b.objects?.length ? ` · 🏪 ${b.objects.length} obyekt` : ""}
+                  </p>
+                </div>
+                <span className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border shrink-0 ${statusBadge(b.status)}`}>{statusText(b.status)}</span>
+                <span className="text-muted text-xs shrink-0 w-4 text-center">{openBizId === b.id ? "▲" : "▼"}</span>
+              </button>
+
+              {openBizId === b.id && (
+              <div className="mt-3">
+              {/* Detal məlumat + idarəetmə */}
+              <div className="flex items-start justify-between gap-2 mb-3 pb-3 border-b border-card-border">
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted">
+                  {b.voen && <span>🆔 VÖEN: <b className="text-foreground">{b.voen}</b> ({b.kind === "LEGAL" ? "Hüquqi" : "Fiziki"})</span>}
+                  {b.ownerName && <span>👤 {b.ownerName}</span>}
+                  {b.phone && <span>📞 {b.phone}</span>}
+                  {!b.voen && b.status === "PENDING" && <span className="text-amber-600">⏳ Məlumatlar admin təsdiqindən sonra doldurulacaq</span>}
+                  {b.status === "REJECTED" && b.rejectionReason && <span className="text-red-500 w-full mt-0.5">⚠ {b.rejectionReason}</span>}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   {b.status === "APPROVED" && b.isActive && (
@@ -412,12 +421,23 @@ export default function BusinessPage() {
                     )}
                   </div>
                 ))}
-                {/* Yeni obyekt */}
-                <p className="text-[11px] font-semibold text-orange-500 mt-2 mb-0.5">＋ Yeni obyekt (mağaza / filial)</p>
-                <ObjectAdder bizId={b.id} input={objInput[b.id]} setInput={(v: any) => setObjInput((p) => ({ ...p, [b.id]: v }))} onAdd={wrap(async () => {
-                  const v = objInput[b.id]; if (!v?.name?.trim() || !v?.address?.trim()) throw new Error(t("bizObjRequired") || "Ad və ünvan");
-                  await jsonReq(`${API}/me/businesses/${b.id}/objects`, "POST", v); setObjInput((p) => ({ ...p, [b.id]: { name: "", phone: "", address: "", city: "", activityAreas: [], latitude: null, longitude: null } }));
-                })} inputCls={inputCls} t={t} />
+                {/* Yeni obyekt — belirgin buton, klik ilə form açılır */}
+                {addObjFor === b.id ? (
+                  <div className="mt-2 p-3 bg-input-bg/40 border border-orange-500/20 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-orange-500">＋ Yeni obyekt (mağaza / filial)</p>
+                      <button type="button" onClick={() => setAddObjFor(null)} className="text-muted text-xs hover:text-foreground">✕ Bağla</button>
+                    </div>
+                    <ObjectAdder bizId={b.id} input={objInput[b.id]} setInput={(v: any) => setObjInput((p) => ({ ...p, [b.id]: v }))} onAdd={wrap(async () => {
+                      const v = objInput[b.id]; if (!v?.name?.trim() || !v?.address?.trim()) throw new Error(t("bizObjRequired") || "Ad və ünvan");
+                      await jsonReq(`${API}/me/businesses/${b.id}/objects`, "POST", v); setObjInput((p) => ({ ...p, [b.id]: { name: "", phone: "", address: "", city: "", activityAreas: [], latitude: null, longitude: null } })); setAddObjFor(null);
+                    })} inputCls={inputCls} t={t} />
+                  </div>
+                ) : (
+                  <button type="button" onClick={() => setAddObjFor(b.id)} className="w-full mt-2 py-2.5 rounded-xl border-2 border-dashed border-orange-500/40 text-orange-500 text-sm font-semibold hover:bg-orange-500/5 transition-colors">
+                    ＋ Obyekt əlavə et (mağaza / filial)
+                  </button>
+                )}
               </div>
 
               {/* İşçilər — sorğu/dəvət + səlahiyyətlər */}
@@ -485,6 +505,8 @@ export default function BusinessPage() {
                   <p className="text-sm text-amber-600 font-medium">⏳ Bu biznes admin təsdiqini gözləyir</p>
                   <p className="text-xs text-muted mt-1">Təsdiqdən sonra telefon/sosial şəbəkə, bank və obyekt (mağaza/filial) əlavə edə biləcəksiniz.</p>
                 </div>
+              )}
+              </div>
               )}
             </div>
           ))}
