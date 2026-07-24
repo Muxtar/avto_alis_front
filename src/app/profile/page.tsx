@@ -129,15 +129,12 @@ export default function ProfilePage() {
   }, [isLoggedIn, authLoading]);
 
   const handleSave = async () => {
-    // Kimlik təsdiqlənibsə (şəkil var) ad/FIN/doğum/cins kilidlidir — yalnız məsləyi göndəririk.
-    // Təsdiqlənməyibsə istifadəçi bu sahələri əl ilə dəyişə bilər.
+    // FIN/doğum/cins yalnız Veriff ilə doldurulur — əl ilə göndərilmir.
+    // Kimlik təsdiqlənibsə (şəkil var) ad da kilidlidir.
     const idLocked = !!profile.idCardImage;
     const body: any = { profession: editData.profession, bio: editData.bio };
     if (!idLocked) {
       body.name = editData.name;
-      body.idNumber = editData.idNumber;
-      body.birthDate = editData.birthDate;
-      body.gender = editData.gender;
     }
     const res = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify(body) });
     const data = await res.json();
@@ -793,25 +790,7 @@ export default function ProfilePage() {
                       <label className="block text-xs font-medium text-muted mb-1">{t("fullName")}</label>
                       <input value={editData.name} onChange={(e) => setEditData((d) => ({ ...d, name: e.target.value }))} placeholder="Ad Soyad" className={inputCls} />
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-xs font-medium text-muted mb-1">FIN</label>
-                        <input value={editData.idNumber} onChange={(e) => setEditData((d) => ({ ...d, idNumber: e.target.value }))} placeholder="FIN" className={inputCls} />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-muted mb-1">Cins</label>
-                        <select value={editData.gender} onChange={(e) => setEditData((d) => ({ ...d, gender: e.target.value }))} className={inputCls}>
-                          <option value="">—</option>
-                          <option value="Kişi">Kişi</option>
-                          <option value="Qadın">Qadın</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-muted mb-1">Doğum tarixi</label>
-                      <input type="date" value={editData.birthDate} onChange={(e) => setEditData((d) => ({ ...d, birthDate: e.target.value }))} className={inputCls} />
-                    </div>
-                    <p className="text-[11px] text-amber-500">ⓘ Bu məlumatlar əl ilə girilib — profiliniz <b>təsdiqlənməmiş</b> sayılır. Təsdiq üçün aşağıdan kimlik və üz şəkillərini göndərin.</p>
+                    <p className="text-[11px] text-amber-500">ⓘ FIN, doğum tarixi və cins <b>əl ilə girilmir</b> — profiliniz <b>təsdiqlənməmiş</b> sayılır. Bu məlumatlar yalnız aşağıdakı <b>«Kimlik təsdiqi» (Veriff)</b> ilə doğrulandıqda avtomatik dolur.</p>
                   </>
                 )}
                 <div>

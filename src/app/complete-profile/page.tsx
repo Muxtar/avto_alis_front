@@ -8,6 +8,7 @@ import { API } from "@/lib/api";
 import { compareFaces, FaceResult } from "@/lib/faceMatch";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import ProfessionPicker from "@/components/ProfessionPicker";
+import IdentityVerify from "@/components/IdentityVerify";
 
 export default function CompleteProfilePage() {
   const { t } = useLanguage();
@@ -217,29 +218,6 @@ export default function CompleteProfilePage() {
               <input value={lastName} onChange={(e) => setLastName(e.target.value)} required placeholder={t("lastName") || "Soyad"} className={inputClass} />
             </div>
           </div>
-          {idReading && <p className="text-xs text-orange-500">🤖 AI vəsiqədən məlumatları oxuyur…</p>}
-          {idNameFilled && !idReading && <p className="text-xs text-green-500">✓ Məlumatlar vəsiqədən avtomatik dolduruldu (lazımsa düzəldin)</p>}
-
-          {/* Vəsiqədən oxunan əlavə məlumatlar */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Doğum tarixi</label>
-              <input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className={inputClass} />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1.5">Cins</label>
-              <select value={gender} onChange={(e) => setGender(e.target.value)} className={inputClass}>
-                <option value="">Seçin</option>
-                <option value="Kişi">Kişi</option>
-                <option value="Qadın">Qadın</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1.5">FIN (şəxsiyyət vəsiqəsi nömrəsi)</label>
-            <input value={idNumber} onChange={(e) => setIdNumber(e.target.value)} placeholder="FIN" className={inputClass} />
-          </div>
-
           <div>
             <label className="block text-sm font-medium mb-1.5">İxtisas</label>
             <ProfessionPicker value={profession} onChange={setProfession} className={inputClass} />
@@ -258,19 +236,22 @@ export default function CompleteProfilePage() {
             />
           </div>
 
-          {/* Kimlik doğrulama — Veriff ilə (profil səhifəsində) */}
-          <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl">
-            <p className="text-sm font-semibold mb-1">🛡️ Kimlik doğrulama Veriff ilə</p>
+          {/* Kimlik doğrulama — Veriff ilə (OPSİONAL). Etməsəniz profiliniz
+              "təsdiqlənməmiş" sayılır; etsəniz FIN, doğum tarixi və cins avtomatik dolur. */}
+          <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl space-y-2">
+            <p className="text-sm font-semibold">🛡️ Kimlik doğrulama <span className="text-[11px] font-normal text-muted">(opsional)</span></p>
             <p className="text-[11px] text-muted">
-              Məlumatları yadda saxladıqdan sonra profil səhifənizdən şəxsiyyət vəsiqəsi, sürücülük vəsiqəsi
-              və ya pasport ilə kimliyinizi Veriff üzərindən təsdiqləyə bilərsiniz.
+              Şəxsiyyət vəsiqəsi, sürücülük vəsiqəsi və ya pasport + video-selfie ilə kimliyinizi <b>Veriff</b> üzərindən
+              təsdiqləyin — <b>FIN, doğum tarixi və cins avtomatik dolar</b>. Etməsəniz profiliniz «təsdiqlənməmiş» sayılır
+              (profil səhifəsindən sonra da təsdiqləyə bilərsiniz).
             </p>
+            <IdentityVerify token={token} onDone={() => toast("Kimlik təsdiqi göndərildi ✓", "success")} />
           </div>
 
           <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50">
             {loading ? t("submitting") : (t("save") || "Yadda saxla")}
           </button>
-          <p className="text-[11px] text-muted text-center">Kimliyiniz Veriff ilə profil səhifəsində təsdiqlənir.</p>
+          <p className="text-[11px] text-muted text-center">Kimlik doğrulama opsionaldır — istənilən vaxt profil səhifəsindən də edə bilərsiniz.</p>
         </form>
       </div>
     </div>
