@@ -355,24 +355,12 @@ export default function BusinessPage() {
                       <span className={bk.isActive ? "" : "line-through text-muted"}>{bk.iban}{bk.title ? ` · ${bk.title}` : ""}</span>
                       {bk.isPrimary && <span className="ml-1.5 text-[10px] text-green-600 font-semibold">💳 Ödəniş</span>}
                     </span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {!bk.isPrimary && (
-                        <button onClick={wrap(() => jsonReq(`${API}/me/banks/${bk.id}/primary`, "PATCH"))} className="text-[11px] text-orange-500 hover:text-orange-400" title="Ödəniş bu IBAN-a gedəcək">Ödəniş seç</button>
-                      )}
-                      <label className="text-xs flex items-center gap-1"><input type="checkbox" checked={bk.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/banks/${bk.id}/active`, "PATCH", { isActive: e.target.checked }))()} />{t("bizActive") || "Aktiv"}</label>
-                      <button onClick={wrap(() => jsonReq(`${API}/me/banks/${bk.id}`, "DELETE"))} className="text-red-500 text-xs" title="Sil">✕</button>
-                    </div>
+                    {/* IBAN admin tərəfindən idarə olunur — istifadəçi dəyişmir (salt-oxunur) */}
                   </div>
                 ))}
-                {/* Banklar sənəddən AI ilə oxundu — əl ilə əlavə OPSIONALDIR (təkrar istənilmir). */}
-                {(showAddBank[b.id] || b.banks.length === 0) ? (
-                  <div className="flex gap-2 mt-1">
-                    <input className={inputCls} placeholder="IBAN (əl ilə, opsional)" value={bankInput[b.id]?.iban || ""} onChange={(e) => setBankInput((p) => ({ ...p, [b.id]: { ...(p[b.id] || { iban: "", title: "" }), iban: e.target.value } }))} />
-                    <button onClick={wrap(async () => { const v = bankInput[b.id]; if (!v?.iban?.trim()) throw new Error("IBAN"); await jsonReq(`${API}/me/businesses/${b.id}/banks`, "POST", v); setBankInput((p) => ({ ...p, [b.id]: { iban: "", title: "" } })); setShowAddBank((p) => ({ ...p, [b.id]: false })); })} className="px-3 bg-orange-500/10 text-orange-500 rounded-lg text-xs whitespace-nowrap">+ {t("bizAddBank") || "Bank"}</button>
-                  </div>
-                ) : (
-                  <button type="button" onClick={() => setShowAddBank((p) => ({ ...p, [b.id]: true }))} className="text-xs text-orange-500 mt-1 hover:text-orange-400">+ Başqa bank əlavə et</button>
-                )}
+                {b.banks.length === 0
+                  ? <p className="text-xs text-muted">IBAN admin tərəfindən sənəddən əlavə olunacaq.</p>
+                  : <p className="text-[11px] text-muted mt-1">🔒 IBAN admin tərəfindən idarə olunur. Dəyişiklik lazımdırsa adminlə əlaqə saxlayın — yeni IBAN admin paneldə yoxlanılıb təsdiqlənəcək.</p>}
               </div>
 
               {/* Obyektlər */}

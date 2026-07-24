@@ -43,6 +43,7 @@ export default function AdminBusinessesPage() {
   const [busyId, setBusyId] = useState<number | null>(null); // AI əməliyyatı gedən biznes
   const [edit, setEdit] = useState<{ id: number; name: string; voen: string; ownerName: string; founderName: string; phone: string } | null>(null);
   const [ibanInput, setIbanInput] = useState<{ [bizId: number]: string }>({});
+  const [openId, setOpenId] = useState<number | null>(null); // açıq (genişlənmiş) biznes kartı
 
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
 
@@ -185,31 +186,25 @@ export default function AdminBusinessesPage() {
         <div className="space-y-4">
           {items.map((b) => (
             <div key={b.id} className="bg-card border border-card-border rounded-xl p-4 sm:p-5">
-              <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
-                <div>
-                  <h2 className="font-bold">{b.name} <span className="text-xs font-normal text-muted">({b.kind === "LEGAL" ? "Hüquqi" : "Fiziki"} · {b.proofType === "TAX_DOC" ? "Vergi sənədi" : "Etibarnamə"})</span></h2>
-                  <p className="text-xs text-muted">{b.user?.name} · {b.user?.phone}{b.user?.publicId ? ` · ID ${b.user.publicId}` : ""}</p>
+              {/* Kompakt başlıq — klik detalları açır/bağlayır */}
+              <button onClick={() => setOpenId(openId === b.id ? null : b.id)} className="w-full flex items-center gap-2 text-left">
+                <span className="text-lg shrink-0">🏢</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-semibold text-sm truncate">{b.name || "Yeni biznes müraciəti"} <span className="text-[10px] font-normal text-muted">({b.kind === "LEGAL" ? "Hüquqi" : "Fiziki"})</span></p>
+                  <p className="text-[11px] text-muted truncate">{b.user?.name} · {b.user?.phone}{b.user?.publicId ? ` · ID ${b.user.publicId}` : ""}</p>
                 </div>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {b.autoApproved && <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20" title="AI təsdiq tövsiyə edir — yekun qərar sizindir">🤖 AI tövsiyə: təsdiq</span>}
-                  <span className="px-2 py-0.5 rounded-lg text-[10px] font-medium border bg-input-bg">{b.status}</span>
-                  <button
-                    onClick={() => aiRecheck(b.id)}
-                    disabled={busyId === b.id}
-                    title="Sənədləri AI ilə yenidən yoxla"
-                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 disabled:opacity-50"
-                  >{busyId === b.id ? "…" : "🤖 AI yoxla"}</button>
-                  <button
-                    onClick={() => (edit?.id === b.id ? setEdit(null) : startEdit(b))}
-                    title="Məlumatları əl ilə redaktə et"
-                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20 hover:bg-orange-500/20"
-                  >{edit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə"}</button>
-                  <button
-                    onClick={() => deleteBusiness(b.id, b.name)}
-                    title="Biznesi sil (obyektlər + elanlar da silinir)"
-                    className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20"
-                  >🗑 Sil</button>
-                </div>
+                {b.autoApproved && <span className="hidden sm:inline px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-500" title="AI təsdiq tövsiyə edir">🤖</span>}
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border ${b.status === "APPROVED" ? "bg-green-500/10 text-green-500 border-green-500/20" : b.status === "REJECTED" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"}`}>{b.status}</span>
+                <span className="text-muted text-xs shrink-0 w-4 text-center">{openId === b.id ? "▲" : "▼"}</span>
+              </button>
+
+              {openId === b.id && (
+              <div className="mt-3">
+              {/* Əməliyyatlar */}
+              <div className="flex items-center gap-1.5 flex-wrap mb-3">
+                <button onClick={() => aiRecheck(b.id)} disabled={busyId === b.id} title="Sənədləri AI ilə yenidən yoxla" className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 disabled:opacity-50">{busyId === b.id ? "…" : "🤖 AI yoxla"}</button>
+                <button onClick={() => (edit?.id === b.id ? setEdit(null) : startEdit(b))} title="Məlumatları əl ilə redaktə et" className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20 hover:bg-orange-500/20">{edit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə"}</button>
+                <button onClick={() => deleteBusiness(b.id, b.name)} title="Biznesi sil (obyektlər + elanlar da silinir)" className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20">🗑 Sil</button>
               </div>
 
               {/* Yaradanın təsdiqlənmiş kimliyi — admin sənəddəki sahiblə müqayisə etsin */}
@@ -370,6 +365,8 @@ export default function AdminBusinessesPage() {
                 </div>
               )}
               {b.status === "REJECTED" && b.rejectionReason && <p className="text-xs text-red-500 border-t border-card-border pt-2">{b.rejectionReason}</p>}
+              </div>
+              )}
             </div>
           ))}
         </div>
