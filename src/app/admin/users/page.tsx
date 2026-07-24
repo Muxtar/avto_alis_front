@@ -19,6 +19,8 @@ export default function AdminUsersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
   const [nu, setNu] = useState<any>({ name: "", phone: "", email: "", type: "CAR_OWNER", role: "USER", verified: true, password: "" });
+  const [confirmDel, setConfirmDel] = useState<any>(null); // silmə təsdiqi (ekran modalı)
+  const [deleting, setDeleting] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -41,7 +43,7 @@ export default function AdminUsersPage() {
   useEffect(() => { setPage(1); const tm = setTimeout(fetchUsers, 300); return () => clearTimeout(tm); }, [search]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm(t("adminConfirmDelete"))) return;
+    setDeleting(true);
     try {
       const res = await fetch(`${API}/admin/users/${id}`, { method: "DELETE", headers });
       const data = await res.json();
@@ -49,7 +51,8 @@ export default function AdminUsersPage() {
       setUsers(users.filter((u) => u.id !== id));
       if (detailUser?.id === id) setDetailUser(null);
       toast(t("adminDeleted") || "Silindi", "success");
-    } catch { toast(t("error"), "error"); }
+      setConfirmDel(null);
+    } catch { toast(t("error"), "error"); } finally { setDeleting(false); }
   };
 
   const toggleBlock = async (user: any) => {
@@ -171,7 +174,7 @@ export default function AdminUsersPage() {
                     <button onClick={() => openEdit(user)} className="p-2 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-colors" title={t("adminEdit")}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </button>
-                    <button onClick={() => handleDelete(user.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors" title={t("adminDelete")}>
+                    <button onClick={() => setConfirmDel(user)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors" title={t("adminDelete")}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
                   </div>
@@ -346,6 +349,40 @@ export default function AdminUsersPage() {
               </button>
               <button onClick={() => setCreateOpen(false)} className="flex-1 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:opacity-80 transition-all">
                 {t("adminCancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Silmə təsdiqi — ekran modalı (browser confirm əvəzinə) */}
+      {confirmDel && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[110] flex items-center justify-center p-4" onClick={() => !deleting && setConfirmDel(null)}>
+          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
+            <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            </div>
+            <h2 className="text-lg font-bold text-center mb-1">İstifadəçini sil?</h2>
+            <p className="text-sm text-muted text-center mb-1">
+              <b className="text-foreground">{confirmDel.name || "—"}</b>{confirmDel.phone ? ` · ${confirmDel.phone}` : ""}
+            </p>
+            <p className="text-xs text-red-500 text-center mb-5">
+              Bu istifadəçiyə aid bütün elanlar, sifarişlər və məlumatlar da silinəcək. Geri qaytarmaq mümkün deyil.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handleDelete(confirmDel.id)}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold hover:bg-red-600 transition-all disabled:opacity-60"
+              >
+                {deleting ? "Silinir…" : "Bəli, sil"}
+              </button>
+              <button
+                onClick={() => setConfirmDel(null)}
+                disabled={deleting}
+                className="flex-1 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:opacity-80 transition-all disabled:opacity-60"
+              >
+                {t("adminCancel") || "Ləğv et"}
               </button>
             </div>
           </div>

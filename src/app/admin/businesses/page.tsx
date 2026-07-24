@@ -19,7 +19,7 @@ export default function AdminBusinessesPage() {
   const { toast } = useToast();
   const [items, setItems] = useState<Biz[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("PENDING");
+  const [filter, setFilter] = useState("all");
   const [rejectReason, setRejectReason] = useState<{ [id: number]: string }>({});
 
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
