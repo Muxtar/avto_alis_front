@@ -9,9 +9,23 @@ interface Biz {
   status: string; rejectionReason: string | null; createdAt: string;
   aiAuthorized: boolean | null; aiVoenMatch: boolean | null; aiConfidence: number | null; aiFraudSignals: string[]; aiReason: string | null; autoApproved: boolean;
   taxDocImage: string | null; companyDocImage: string | null; powerOfAttorneyImage: string | null; bankDocImage: string | null; idCardImage: string | null; selfieImage: string | null;
-  user: { id: number; name: string; phone: string; publicId: string | null };
+  user: {
+    id: number; name: string; phone: string; publicId: string | null;
+    idNumber: string | null; birthDate: string | null; gender: string | null;
+    idVerifyStatus: string | null; idCardImage: string | null; selfieImage: string | null;
+    idAiNameMatch: boolean | null; idAiFaceMatch: boolean | null;
+  };
   banks: { id: number; iban: string; title: string | null; isActive: boolean }[];
   objects: { id: number; name: string; address: string; city: string | null; activityAreas: string[] }[];
+}
+
+// Sadə ad uyğunluğu — ən azı 2 söz (və ya hamısı) üst-üstə düşürsə "uyğun".
+function nameMatch(a: string, b: string): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-zəçğıöşüА-я ]/gi, "").split(/\s+/).filter(Boolean);
+  const wa = norm(a), wb = norm(b);
+  if (!wa.length || !wb.length) return false;
+  const common = wa.filter((w) => wb.includes(w)).length;
+  return common >= Math.min(2, Math.min(wa.length, wb.length));
 }
 
 export default function AdminBusinessesPage() {
@@ -187,6 +201,40 @@ export default function AdminBusinessesPage() {
                     className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20"
                   >🗑 Sil</button>
                 </div>
+              </div>
+
+              {/* Yaradanın təsdiqlənmiş kimliyi — admin sənəddəki sahiblə müqayisə etsin */}
+              <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+                  <p className="text-[11px] font-semibold text-muted">🪪 Yaradanın kimliyi (sənəddəki sahiblə müqayisə edin)</p>
+                  <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${b.user.idVerifyStatus === "APPROVED" ? "text-emerald-500 bg-emerald-500/10" : b.user.idVerifyStatus ? "text-amber-500 bg-amber-500/10" : "text-red-500 bg-red-500/10"}`}>
+                    {b.user.idVerifyStatus === "APPROVED" ? "✓ Təsdiqlənmiş kimlik" : b.user.idVerifyStatus ? "Kimlik yoxlanılır" : "Kimlik təsdiqlənməyib"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-0.5 text-xs">
+                  <p><span className="text-muted">Ad:</span> <b>{b.user.name || "—"}</b></p>
+                  <p><span className="text-muted">FIN:</span> <b>{b.user.idNumber || "—"}</b></p>
+                  <p><span className="text-muted">Doğum:</span> <b>{b.user.birthDate ? new Date(b.user.birthDate).toLocaleDateString("az-AZ") : "—"}</b></p>
+                  <p><span className="text-muted">Cins:</span> <b>{b.user.gender || "—"}</b></p>
+                </div>
+                <p className="text-[11px] mt-1.5">
+                  <span className="text-muted">Sənəddəki sahib:</span> <b>{b.ownerName || "(admin doldurmayıb)"}</b>
+                  {b.ownerName && b.user.name && (
+                    nameMatch(b.user.name, b.ownerName)
+                      ? <span className="text-emerald-500 ml-1.5">✓ ad uyğun görünür</span>
+                      : <span className="text-amber-500 ml-1.5">⚠ ad fərqlidir — yoxlayın</span>
+                  )}
+                </p>
+                {(b.user.idCardImage || b.user.selfieImage) && (
+                  <div className="flex gap-2 mt-2">
+                    {b.user.idCardImage && (
+                      <a href={`${imgUrl(b.user.idCardImage)}`} target="_blank" rel="noreferrer"><span className="text-[10px] text-muted block">Vəsiqə</span><img src={`${imgUrl(b.user.idCardImage)}`} alt="vəsiqə" className="w-24 h-16 object-cover rounded-lg border border-input-border" /></a>
+                    )}
+                    {b.user.selfieImage && (
+                      <a href={`${imgUrl(b.user.selfieImage)}`} target="_blank" rel="noreferrer"><span className="text-[10px] text-muted block">Selfie</span><img src={`${imgUrl(b.user.selfieImage)}`} alt="selfie" className="w-16 h-16 object-cover rounded-lg border border-input-border" /></a>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Claude AI sənəd yoxlaması */}
