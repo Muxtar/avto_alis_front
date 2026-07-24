@@ -22,7 +22,8 @@ interface ChannelStatus {
   otpButton?: boolean; // yalnız WhatsApp
 }
 interface OtpDiag {
-  channel: "sms" | "whatsapp";
+  channel: "vonage" | "sms" | "whatsapp";
+  vonage: ChannelStatus;
   sms: ChannelStatus;
   whatsapp: ChannelStatus;
 }
@@ -49,7 +50,7 @@ export default function AdminSettingsPage() {
       .finally(() => setLoading(false));
     fetch(`${API}/admin/whatsapp-status`, { headers })
       .then((r) => r.json())
-      .then((d) => setWa(d.channel ? { channel: d.channel, sms: d.sms, whatsapp: d.whatsapp } : null))
+      .then((d) => setWa(d.channel ? { channel: d.channel, vonage: d.vonage, sms: d.sms, whatsapp: d.whatsapp } : null))
       .catch(() => {});
   };
   useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -110,8 +111,8 @@ export default function AdminSettingsPage() {
       {/* OTP (Infobip) diaqnostikası — aktiv kanal (SMS/WhatsApp), nömrəyə kod
           gəlmirsə səbəbi burada görünür. */}
       {(() => {
-        const active = wa ? (wa.channel === "sms" ? wa.sms : wa.whatsapp) : null;
-        const chLabel = wa?.channel === "sms" ? "SMS" : "WhatsApp";
+        const active = wa ? (wa.channel === "vonage" ? wa.vonage : wa.channel === "sms" ? wa.sms : wa.whatsapp) : null;
+        const chLabel = wa?.channel === "vonage" ? "Vonage SMS" : wa?.channel === "sms" ? "SMS (Infobip)" : "WhatsApp";
         return (
           <div className="mb-6 bg-card border border-card-border rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-2 flex-wrap">
