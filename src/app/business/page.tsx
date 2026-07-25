@@ -50,6 +50,8 @@ export default function BusinessPage() {
   const [showForm, setShowForm] = useState(false);
   const [openBizId, setOpenBizId] = useState<number | null>(null); // açıq (genişlənmiş) biznes kartı
   const [addObjFor, setAddObjFor] = useState<number | null>(null); // obyekt əlavə forması açıq olan biznes
+  // Biznes redaktəsi (ad/sahib/təsisçi/telefon) — dəyişiklik admin yenidən təsdiqi tələb edir.
+  const [bizEdit, setBizEdit] = useState<{ id: number; name: string; ownerName: string; founderName: string; phone: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [idVerified, setIdVerified] = useState<boolean | null>(null); // kimlik təqdim olunub?
   const [identityReusable, setIdentityReusable] = useState(false); // kimlik+üz təsdiqlənib (>50%) → biznesdə təkrar istənilmir
@@ -347,9 +349,27 @@ export default function BusinessPage() {
                     <input type="checkbox" checked={b.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/businesses/${b.id}/active`, "PATCH", { isActive: e.target.checked }))()} />
                     {t("bizActive") || "Aktiv"}
                   </label>
+                  <button onClick={() => setBizEdit(bizEdit?.id === b.id ? null : { id: b.id, name: b.name, ownerName: b.ownerName, founderName: b.founderName, phone: b.phone || "" })} className="text-orange-500 text-xs">{bizEdit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə"}</button>
                   <button onClick={wrap(async () => { if (confirm(t("bizDeleteConfirm") || "Silinsin?")) await jsonReq(`${API}/me/businesses/${b.id}`, "DELETE"); })} className="text-red-500 text-xs">{t("delete") || "Sil"}</button>
                 </div>
               </div>
+
+              {/* Biznes redaktə formu — dəyişiklik admin YENİDƏN təsdiqini tələb edir */}
+              {bizEdit?.id === b.id && (
+                <div className="mb-3 p-3 bg-orange-500/5 border border-orange-500/20 rounded-xl space-y-2">
+                  <p className="text-[11px] text-amber-600">⚠️ Ad, sahib və ya təsisçi dəyişsəniz biznes yenidən <b>admin təsdiqinə</b> göndəriləcək. (VÖEN dəyişmək üçün biznesi silib yenidən yaradın.)</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className="text-[11px] text-muted">Ad<input value={bizEdit.name} onChange={(e) => setBizEdit({ ...bizEdit, name: e.target.value })} className={`${inputCls} mt-0.5`} /></label>
+                    <label className="text-[11px] text-muted">Telefon<input value={bizEdit.phone} onChange={(e) => setBizEdit({ ...bizEdit, phone: e.target.value })} className={`${inputCls} mt-0.5`} /></label>
+                    <label className="text-[11px] text-muted">Sahibi/Rəhbər<input value={bizEdit.ownerName} onChange={(e) => setBizEdit({ ...bizEdit, ownerName: e.target.value })} className={`${inputCls} mt-0.5`} /></label>
+                    <label className="text-[11px] text-muted">Təsisçi<input value={bizEdit.founderName} onChange={(e) => setBizEdit({ ...bizEdit, founderName: e.target.value })} className={`${inputCls} mt-0.5`} /></label>
+                  </div>
+                  <div className="flex gap-2">
+                    <button onClick={wrap(async () => { await jsonReq(`${API}/me/businesses/${b.id}`, "PUT", { name: bizEdit.name, ownerName: bizEdit.ownerName, founderName: bizEdit.founderName, phone: bizEdit.phone }); setBizEdit(null); })} className="px-4 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-semibold">Yadda saxla</button>
+                    <button type="button" onClick={() => setBizEdit(null)} className="px-4 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm">Ləğv</button>
+                  </div>
+                </div>
+              )}
 
               {b.status === "APPROVED" ? (
               <>

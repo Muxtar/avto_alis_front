@@ -397,53 +397,48 @@ function AccountPageInner() {
         if (showForm && listingMode === "voen" && !selectedObjectId && !editingId) return (
           <div className="surface p-5 sm:p-6 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold">{bizList.length > 0 ? (selectedBizId || bizList.length === 1 ? "Hansı obyekt (mağaza/filial)?" : "Hansı biznes (VÖEN)?") : "Biznes və obyekt"}</h2>
+              <h2 className="font-semibold">Biznes və obyekt seç</h2>
               <button type="button" onClick={() => { setSelectedBizId(null); setListingMode(""); }} className="text-sm text-muted hover:text-foreground">← Geri</button>
             </div>
-            {bizList.length > 0 ? (() => {
-              const curBiz = bizList.find((b) => b.id === selectedBizId) || (bizList.length === 1 ? bizList[0] : null);
-              // ADDIM 1 — biznes seç (birdən çox biznes varsa)
-              if (!curBiz) return (
-                <div className="space-y-2">
-                  <p className="text-xs text-muted mb-2">Elan hansı biznes (VÖEN) üzərindən satılacaq?</p>
-                  {bizList.map((b) => (
-                    <button key={b.id} type="button" onClick={() => setSelectedBizId(b.id)} className="w-full text-left p-4 rounded-2xl border border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all flex items-center gap-3">
-                      <div className="text-xl">🏢</div>
-                      <div><p className="font-semibold text-sm">{b.name}</p><p className="text-[11px] text-muted">{b.objects.length} obyekt — seçmək üçün toxun</p></div>
-                    </button>
-                  ))}
-                  <a href="/business" className="w-full text-left p-4 rounded-2xl border border-dashed border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all flex items-center gap-3">
-                    <div className="text-xl">➕</div>
-                    <p className="font-semibold text-sm text-orange-500">Yeni biznes / obyekt əlavə et</p>
-                  </a>
-                </div>
-              );
-              // ADDIM 2 — seçilmiş biznesin obyektini seç
-              return (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs text-muted">📍 <b className="text-foreground">{curBiz.name}</b> — hansı obyektə aiddir?</p>
-                    {bizList.length > 1 && <button type="button" onClick={() => setSelectedBizId(null)} className="text-xs text-orange-500 hover:text-orange-400">← başqa biznes</button>}
+            {bizList.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs text-muted mb-1">Bizneslərim — birinə toxun, obyektləri açılsın, obyektin qarşısındakı «Ürün əlavə et» ilə elanı ona qoy.</p>
+                {bizList.map((b) => (
+                  <div key={b.id} className="rounded-2xl border border-input-border overflow-hidden">
+                    <div className="flex items-center gap-2 p-3 bg-input-bg/40">
+                      <button type="button" onClick={() => setSelectedBizId(selectedBizId === b.id ? null : b.id)} className="flex-1 flex items-center gap-2 text-left min-w-0">
+                        <span className="text-lg shrink-0">🏢</span>
+                        <div className="min-w-0"><p className="font-semibold text-sm truncate">{b.name}</p><p className="text-[11px] text-muted">{b.objects.length} obyekt</p></div>
+                      </button>
+                      <a href="/business" title="Biznesi redaktə et" className="text-muted hover:text-orange-500 text-sm shrink-0">✏️</a>
+                      <span className="text-muted text-xs w-4 text-center shrink-0">{selectedBizId === b.id ? "▲" : "▼"}</span>
+                    </div>
+                    {selectedBizId === b.id && (
+                      <div className="p-2 space-y-1.5 border-t border-input-border bg-card">
+                        {b.objects.map((o) => (
+                          <div key={o.id} className="flex items-center justify-between gap-2 p-2.5 rounded-xl border border-input-border">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-base shrink-0">🏪</span>
+                              <p className="font-medium text-sm truncate">{o.name} <span className="text-[10px] text-muted">№{o.id}</span></p>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <a href="/business" title="Obyekti redaktə et" className="text-muted hover:text-orange-500 text-sm">✏️</a>
+                              <button type="button" onClick={() => setSelectedObjectId(String(o.id))} className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold whitespace-nowrap">＋ Ürün əlavə et</button>
+                            </div>
+                          </div>
+                        ))}
+                        <a href="/business" className="block text-center text-xs text-orange-500 py-1.5 hover:text-orange-400">＋ Bu biznesə yeni obyekt əlavə et</a>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-[11px] text-muted mb-1">Elan bu obyekt üzərindən satılır — obyekt adı və № alıcıya satıcı kimi görünür, kartla alına bilər.</p>
-                  {curBiz.objects.map((o) => (
-                    <button key={o.id} type="button" onClick={() => setSelectedObjectId(String(o.id))} className="w-full text-left p-4 rounded-2xl border border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all flex items-center gap-3">
-                      <div className="text-xl">🏪</div>
-                      <p className="font-semibold text-sm">{o.name} <span className="text-[11px] font-normal text-muted">№{o.id}</span></p>
-                    </button>
-                  ))}
-                  {/* İstifadəçi mövcud obyektə qoya bilər, VƏ YA yeni obyekt / yeni biznes əlavə edib ona qoya bilər */}
-                  <a href="/business" className="w-full text-left p-4 rounded-2xl border border-dashed border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all flex items-center gap-3">
-                    <div className="text-xl">🏪➕</div>
-                    <p className="font-semibold text-sm text-orange-500">«{curBiz.name}»-ə yeni obyekt əlavə et</p>
-                  </a>
-                  <a href="/business" className="w-full text-left p-4 rounded-2xl border border-dashed border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all flex items-center gap-3">
-                    <div className="text-xl">🏢➕</div>
-                    <p className="font-semibold text-sm text-orange-500">Yeni biznes (VÖEN) əlavə et</p>
-                  </a>
-                </div>
-              );
-            })() : approvedBizNoObj.length > 0 ? (
+                ))}
+                {/* Ən altda: yeni biznes əlavə et */}
+                <a href="/business" className="w-full text-left p-4 rounded-2xl border border-dashed border-orange-500/40 hover:bg-orange-500/5 transition-all flex items-center gap-3">
+                  <div className="text-xl">🏢➕</div>
+                  <p className="font-semibold text-sm text-orange-500">Yeni biznes (VÖEN) əlavə et</p>
+                </a>
+              </div>
+            ) : approvedBizNoObj.length > 0 ? (
               // Biznes TƏSDİQLƏNİB, amma hələ obyekti yoxdur — obyekt əlavə etməyə yönləndir.
               <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
                 <p className="font-semibold text-sm text-green-600">✓ Biznesiniz təsdiqlənib{approvedBizNoObj.length === 1 ? `: ${approvedBizNoObj[0].name}` : ""}</p>
