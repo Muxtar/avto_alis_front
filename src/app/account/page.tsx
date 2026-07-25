@@ -72,6 +72,7 @@ function AccountPageInner() {
   const [approvedBizNoObj, setApprovedBizNoObj] = useState<{ id: number; name: string }[]>([]);
   // Təsdiqlənmiş + obyekti olan bizneslər (biznes → obyekt iki addımlı seçim üçün).
   const [bizList, setBizList] = useState<{ id: number; name: string; objects: { id: number; name: string }[] }[]>([]);
+  const [bizLoading, setBizLoading] = useState(true); // /me/businesses yüklənənə qədər (görünüm sabit olsun)
   const [selectedBizId, setSelectedBizId] = useState<number | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string>("");
   // ?new=1 sorğusunun təkrar emalının qarşısını alır (bax: aşağıdakı effekt).
@@ -97,7 +98,8 @@ function AccountPageInner() {
         setApprovedBizNoObj(noObj);
         setBizList(list);
       })
-      .catch(() => undefined);
+      .catch(() => undefined)
+      .finally(() => setBizLoading(false));
     fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => {
@@ -400,7 +402,11 @@ function AccountPageInner() {
               <h2 className="font-semibold">Biznes və obyekt seç</h2>
               <button type="button" onClick={() => { setSelectedBizId(null); setListingMode(""); }} className="text-sm text-muted hover:text-foreground">← Geri</button>
             </div>
-            {bizList.length > 0 ? (
+            {bizLoading ? (
+              <div className="flex items-center gap-2 text-muted text-sm py-8 justify-center">
+                <span className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /> Yüklənir…
+              </div>
+            ) : bizList.length > 0 ? (
               <div className="space-y-2">
                 <p className="text-xs text-muted mb-1">Bizneslərim — birinə toxun, obyektləri açılsın, obyektin qarşısındakı «Ürün əlavə et» ilə elanı ona qoy.</p>
                 {bizList.map((b) => (
