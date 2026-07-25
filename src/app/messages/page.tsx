@@ -803,7 +803,7 @@ export default function MessagesPage() {
                 )}
               </div>
 
-              <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-3">
+              <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-4 space-y-3">
                 {hasMore && (
                   <div className="text-center py-2"><button onClick={loadOlderMessages} disabled={loadingMore} className="text-xs text-orange-500 hover:text-orange-400 disabled:opacity-50">{loadingMore ? "..." : "Daha köhnə mesajları yüklə"}</button></div>
                 )}
@@ -816,7 +816,7 @@ export default function MessagesPage() {
                       {isMine && !deleted && (
                         <button onClick={(e) => { e.stopPropagation(); setSelectedMsg(msg); }} title="Seçimlər" className="order-1 shrink-0 w-7 h-7 rounded-full text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">⋮</button>
                       )}
-                      <div className={`max-w-[75%] ${isMine ? "order-2" : ""}`}>
+                      <div className={`max-w-[75%] min-w-0 ${isMine ? "order-2" : ""}`}>
                         {active.type === "group" && !isMine && !deleted && (
                           <p className="text-[10px] text-muted ml-1 mb-0.5">{msg.sender?.name?.split(" ")[0]}</p>
                         )}
