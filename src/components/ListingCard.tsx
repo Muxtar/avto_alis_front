@@ -63,7 +63,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const isService = listing.type === "SERVICE";
   const isOwner = isLoggedIn && user?.id === listing.user.id;
   const outOfStock = listing.stock !== undefined && listing.stock <= 0;
-  const canBuy = !isService && isLoggedIn && !isOwner && !outOfStock;
+  // Yalnız VÖEN-li (biznes obyektinə bağlı) elanlarda kartla alış (səbət/indi al).
+  // VÖEN-siz (fərdi) elanlarda alıcı yalnız satıcı ilə əlaqə saxlayır.
+  const canBuy = !isService && isLoggedIn && !isOwner && !outOfStock && !!listing.businessObject;
 
   // Favori durumunu kontrol et
   useEffect(() => {
