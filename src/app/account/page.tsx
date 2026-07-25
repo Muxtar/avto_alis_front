@@ -432,9 +432,14 @@ function AccountPageInner() {
                       <p className="font-semibold text-sm">{o.name} <span className="text-[11px] font-normal text-muted">№{o.id}</span></p>
                     </button>
                   ))}
+                  {/* İstifadəçi mövcud obyektə qoya bilər, VƏ YA yeni obyekt / yeni biznes əlavə edib ona qoya bilər */}
                   <a href="/business" className="w-full text-left p-4 rounded-2xl border border-dashed border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all flex items-center gap-3">
-                    <div className="text-xl">➕</div>
-                    <p className="font-semibold text-sm text-orange-500">Yeni obyekt əlavə et</p>
+                    <div className="text-xl">🏪➕</div>
+                    <p className="font-semibold text-sm text-orange-500">«{curBiz.name}»-ə yeni obyekt əlavə et</p>
+                  </a>
+                  <a href="/business" className="w-full text-left p-4 rounded-2xl border border-dashed border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all flex items-center gap-3">
+                    <div className="text-xl">🏢➕</div>
+                    <p className="font-semibold text-sm text-orange-500">Yeni biznes (VÖEN) əlavə et</p>
                   </a>
                 </div>
               );
