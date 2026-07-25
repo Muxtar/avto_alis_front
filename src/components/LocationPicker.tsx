@@ -174,34 +174,66 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
 
   return (
     <div className="space-y-3">
-      {/* Ünvan/yer axtarışı — yaz, xəritədə işarələsin */}
-      <div className="relative">
-        <div className="flex gap-2">
-          {/* min-w-0 vacibdir — flex item-in intrinsic min-width-i "Axtar" düyməsini
-              konteynerdən kənara daşıyırdı. İndi input daralır, daşma olmur. */}
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } }}
-            placeholder="🔍 Ünvan və ya yer adı yaz…"
-            className="flex-1 min-w-0 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm"
-          />
-          <button type="button" onClick={doSearch} disabled={searching || !searchQuery.trim()}
-            className="shrink-0 px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium disabled:opacity-50 whitespace-nowrap">
-            {searching ? '…' : 'Axtar'}
-          </button>
-        </div>
-        {results.length > 0 && (
-          <div className="absolute z-[500] left-0 right-0 mt-1 bg-card border border-card-border rounded-xl shadow-lg max-h-52 overflow-y-auto">
-            {results.map((r, i) => (
-              <button key={i} type="button" onClick={() => pickResult(r)} className="w-full text-left px-3 py-2 text-xs hover:bg-input-bg border-b border-card-border/40 last:border-0">
-                📍 {r.display_name}
-              </button>
-            ))}
+      {/* Axtarış + xəritə BİTİŞİK: yuxarıda axtarış qutusu, altında xəritə.
+          Yazıb axtar → xəritədə işarələnir; xəritəyə klik → ünvan avtomatik dolur.
+          Yəni konumu bir dəfə verirsən (ya yazaraq, ya xəritədən). */}
+      <div>
+        <div className="relative">
+          <div className="flex gap-2 bg-input-bg border border-input-border border-b-0 rounded-t-xl p-2">
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } }}
+              placeholder="🔍 Ünvan yaz və ya xəritədən seç…"
+              className="flex-1 min-w-0 px-3 py-2 bg-card border border-input-border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm"
+            />
+            <button type="button" onClick={doSearch} disabled={searching || !searchQuery.trim()}
+              className="shrink-0 px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-medium disabled:opacity-50 whitespace-nowrap">
+              {searching ? '…' : 'Axtar'}
+            </button>
           </div>
-        )}
+          {results.length > 0 && (
+            <div className="absolute z-[500] left-0 right-0 mt-1 bg-card border border-card-border rounded-xl shadow-lg max-h-52 overflow-y-auto">
+              {results.map((r, i) => (
+                <button key={i} type="button" onClick={() => pickResult(r)} className="w-full text-left px-3 py-2 text-xs hover:bg-input-bg border-b border-card-border/40 last:border-0">
+                  📍 {r.display_name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+        <div style={{ height }} className="border border-input-border border-t-0 rounded-b-xl overflow-hidden">
+          <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }} attributionControl={false}>
+            <AttributionControl prefix={false} />
+            <TileLayer
+              attribution='&copy; OpenStreetMap contributors'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <Recenter center={center} zoom={zoom} />
+            <ClickHandler onPick={setPin} />
+            {latitude && longitude && (
+              <Marker position={[latitude, longitude]} icon={pinIcon} />
+            )}
+          </MapContainer>
+        </div>
+        <p className="text-[11px] text-muted mt-1">{t('locationPickerHint')}</p>
       </div>
 
+      {/* Cari GPS ilə avtomatik ünvan (istəyə görə) */}
+      <button
+        type="button"
+        onClick={autoFromLocation}
+        disabled={autoLoading}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+        {autoLoading ? 'Cari ünvan tapılır…' : '📍 Cari yerimi tap (GPS)'}
+      </button>
+
+      {/* Seçilmiş ünvan — avtomatik dolur (xəritə/axtarışdan). İstəsə düzəldir. */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <div>
           <label className="block text-xs font-medium text-muted mb-1">{t('cityLabel')}</label>
@@ -227,25 +259,8 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
         </div>
       </div>
 
-      {/* Bir addımlıq avtomatik: cari GPS + ünvanı doldur — ən sadə yol. */}
-      <button
-        type="button"
-        onClick={autoFromLocation}
-        disabled={autoLoading}
-        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-        </svg>
-        {autoLoading ? 'Cari ünvan tapılır…' : '📍 Xəritədən avtomatik əlavə et (cari ünvan)'}
-      </button>
-
-      {/* Pin qoyulubsa (xəritəyə klik və ya avtomatik): ünvanı doldur / pini sil.
-          Ayrıca "Mənim yerim" düyməsi legv edildi — yuxarıdakı "Cari ünvanı
-          avtomatik tap" onsuz da GPS ilə yeri tapıb ünvanı doldurur (təkrar idi). */}
       {latitude && longitude && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 items-center">
           <button
             type="button"
             onClick={reverseGeocode}
@@ -261,32 +276,8 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
           >
             {t('removePin')}
           </button>
+          <span className="text-[10px] text-muted">{t('coordinatesLabel')}: {latitude.toFixed(5)}, {longitude.toFixed(5)}</span>
         </div>
-      )}
-
-      <p className="text-[11px] text-muted">
-        {t('locationPickerHint')}
-      </p>
-
-      <div style={{ height, borderRadius: 12, overflow: 'hidden' }} className="border border-input-border">
-        <MapContainer center={center} zoom={zoom} style={{ height: '100%', width: '100%' }} attributionControl={false}>
-          <AttributionControl prefix={false} />
-          <TileLayer
-            attribution='&copy; OpenStreetMap contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          <Recenter center={center} zoom={zoom} />
-          <ClickHandler onPick={setPin} />
-          {latitude && longitude && (
-            <Marker position={[latitude, longitude]} icon={pinIcon} />
-          )}
-        </MapContainer>
-      </div>
-
-      {latitude && longitude && (
-        <p className="text-[10px] text-muted">
-          {t('coordinatesLabel')}: {latitude.toFixed(5)}, {longitude.toFixed(5)}
-        </p>
       )}
     </div>
   );
