@@ -414,14 +414,17 @@ a:focus-visible {
 @media (max-width: 639px) {
   .chat-active-mobile {
     position: fixed;
-    /* Klaviatura açılanda iOS-da görünən viewport aşağı sürüşür (offsetTop > 0).
-       top: 0 sabit qalıb overlay klaviaturanın altına düşürdü. İndi overlay
-       görünən viewport-un REAL yuxarısına (--vvt) bağlanır → input həmişə
-       klaviaturanın üstündə qalır (WhatsApp kimi). */
-    top: var(--vvt, 0px);
+    /* Overlay ekranın ən yuxarısından (top: 0) başlayır ki, navbar (sticky, z-50)
+       heç vaxt görünməsin. Klaviatura açılanda iOS görünən viewport-u aşağı
+       sürüşdürsə də (offsetTop = --vvt), fon [0 .. --vvt] boşluğunu örtür.
+       İçərik isə padding-top: --vvt ilə görünən sahəyə (--vvt .. --vvt+--vvh)
+       endirilir → input həmişə klaviaturanın üstündə, üstdə navbar yox. */
+    top: 0;
     left: 0;
     right: 0;
-    height: var(--vvh, 100dvh);
+    height: calc(var(--vvh, 100dvh) + var(--vvt, 0px));
+    padding-top: var(--vvt, 0px);
+    box-sizing: border-box;
     min-height: 0;
     width: 100%;
     max-width: none;
