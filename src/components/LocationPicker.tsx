@@ -49,6 +49,13 @@ interface Props {
   longitude: number | null;
   onChange: (next: { city: string; address: string; latitude: number | null; longitude: number | null }) => void;
   height?: string;
+  hideFields?: boolean; // true → şəhər/ünvan sahələrini gizlə (yalnız axtarış + xəritə)
+}
+
+// Nominatim addressdetails obyektindən şəhər/rayon adını çıxar.
+function cityFromAddr(a: any): string | null {
+  if (!a) return null;
+  return a.city || a.town || a.village || a.municipality || a.county || null;
 }
 
 // Recenter helper — fires when caller-controlled center changes from outside
@@ -71,7 +78,7 @@ function ClickHandler({ onPick }: { onPick: (lat: number, lng: number) => void }
   return null;
 }
 
-export default function LocationPicker({ city, address, latitude, longitude, onChange, height = '300px' }: Props) {
+export default function LocationPicker({ city, address, latitude, longitude, onChange, height = '300px', hideFields = false }: Props) {
   const { t } = useLanguage();
   const [reverseLoading, setReverseLoading] = useState(false);
   const [autoLoading, setAutoLoading] = useState(false);
@@ -88,8 +95,13 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
   const [center, setCenter] = useState<[number, number]>(initialCenter);
   const [zoom, setZoom] = useState(initialZoom);
 
-  const setPin = (lat: number, lng: number) => {
+  const setPin = async (lat: number, lng: number) => {
     onChange({ city, address, latitude: lat, longitude: lng });
+    // Yalnız xəritə rejimində (sahələr gizli) pin qoyulanda ünvanı avtomatik doldur.
+    if (hideFields) {
+      const r = await reverseGeocodeAt(lat, lng);
+      if (r.display) onChange({ city: r.city || city, address: r.display, latitude: lat, longitude: lng });
+    }
   };
 
   const handleCityChange = (next: string) => {
@@ -102,28 +114,27 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
   };
 
 
-  // Verilən koordinat üçün Nominatim reverse-geocode → ünvan mətni (və ya null).
-  const reverseGeocodeAt = async (lat: number, lng: number): Promise<string | null> => {
+  // Verilən koordinat üçün Nominatim reverse-geocode → ünvan mətni + şəhər.
+  // zoom=18 və addressdetails=1: küçə/bina səviyyəsinə qədər dəqiq ünvan.
+  const reverseGeocodeAt = async (lat: number, lng: number): Promise<{ display: string | null; city: string | null }> => {
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=az`,
+        `https://nominatim.openstreetmap.org/reverse?format=json&addressdetails=1&zoom=18&lat=${lat}&lon=${lng}&accept-language=az`,
         { headers: { 'User-Agent': 'avto-buy-sell/1.0' } }
       );
       const data = await res.json();
-      return (data.display_name as string) || null;
+      return { display: (data.display_name as string) || null, city: cityFromAddr(data.address) };
     } catch {
-      return null; // Səssiz — istifadəçi ünvanı əl ilə yaza bilər.
+      return { display: null, city: null }; // Səssiz — istifadəçi əl ilə yaza bilər.
     }
   };
 
-  // Reverse geocode using free Nominatim — fills the address field when the
-  // user explicitly clicks "Doldur". Not auto-run on every pin drop because
-  // Nominatim's usage policy caps to 1 req/sec and the user may not want it.
+  // Reverse geocode using free Nominatim — fills the address field.
   const reverseGeocode = async () => {
     if (!latitude || !longitude) return;
     setReverseLoading(true);
-    const display = await reverseGeocodeAt(latitude, longitude);
-    if (display) onChange({ city, address: display, latitude, longitude });
+    const r = await reverseGeocodeAt(latitude, longitude);
+    if (r.display) onChange({ city: r.city || city, address: r.display, latitude, longitude });
     setReverseLoading(false);
   };
 
@@ -136,8 +147,8 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
       const { latitude: lat, longitude: lng } = pos.coords;
       setCenter([lat, lng]);
       setZoom(16);
-      const display = await reverseGeocodeAt(lat, lng);
-      onChange({ city, address: display || address, latitude: lat, longitude: lng });
+      const r = await reverseGeocodeAt(lat, lng);
+      onChange({ city: r.city || city, address: r.display || address, latitude: lat, longitude: lng });
       setAutoLoading(false);
     };
     const onErrLow = (err: GeolocationPositionError) => {
@@ -156,8 +167,10 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
     if (!q) return;
     setSearching(true);
     try {
+      // addressdetails=1 + limit=10: küçə/bina/ev səviyyəsinə qədər nəticələr
+      // (kuryerin dəqiq tapması üçün). Yalnız Azərbaycan (countrycodes=az).
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&countrycodes=az&accept-language=az&limit=6&q=${encodeURIComponent(q)}`,
+        `https://nominatim.openstreetmap.org/search?format=json&countrycodes=az&addressdetails=1&dedupe=1&limit=10&accept-language=az&q=${encodeURIComponent(q)}`,
         { headers: { 'User-Agent': 'avto-buy-sell/1.0' } }
       );
       const data = await res.json();
@@ -168,8 +181,8 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
   const pickResult = (r: any) => {
     const lat = parseFloat(r.lat), lng = parseFloat(r.lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-    onChange({ city, address: r.display_name || address, latitude: lat, longitude: lng });
-    setCenter([lat, lng]); setZoom(16); setResults([]); setSearchQuery(r.display_name?.split(',')[0] || searchQuery);
+    onChange({ city: cityFromAddr(r.address) || city, address: r.display_name || address, latitude: lat, longitude: lng });
+    setCenter([lat, lng]); setZoom(17); setResults([]); setSearchQuery(r.display_name?.split(',')[0] || searchQuery);
   };
 
   return (
@@ -233,42 +246,53 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
         {autoLoading ? 'Cari ünvan tapılır…' : '📍 Cari yerimi tap (GPS)'}
       </button>
 
-      {/* Seçilmiş ünvan — avtomatik dolur (xəritə/axtarışdan). İstəsə düzəldir. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <div>
-          <label className="block text-xs font-medium text-muted mb-1">{t('cityLabel')}</label>
-          <select
-            value={city}
-            onChange={(e) => handleCityChange(e.target.value)}
-            className="w-full min-w-0 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-foreground text-sm"
-          >
-            <option value="">{t('citySelect')}</option>
-            {AZ_CITIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
+      {/* Seçilmiş ünvan — avtomatik dolur (xəritə/axtarışdan). İstəsə düzəldir.
+          hideFields rejimində sahələr gizlədilir — yalnız seçilmiş ünvan mətni göstərilir. */}
+      {hideFields ? (
+        address ? (
+          <p className="text-xs text-foreground px-1 flex items-start gap-1"><span>📍</span><span className="min-w-0">{address}</span></p>
+        ) : (
+          <p className="text-[11px] text-muted px-1">Yeri axtar və ya xəritəyə klik et — ünvan avtomatik doldurulacaq.</p>
+        )
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs font-medium text-muted mb-1">{t('cityLabel')}</label>
+            <select
+              value={city}
+              onChange={(e) => handleCityChange(e.target.value)}
+              className="w-full min-w-0 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-foreground text-sm"
+            >
+              <option value="">{t('citySelect')}</option>
+              {AZ_CITIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-muted mb-1">{t('streetAddressLabel')}</label>
+            <input
+              value={address}
+              onChange={(e) => onChange({ city, address: e.target.value, latitude, longitude })}
+              placeholder={t('addressPlaceholderShort')}
+              className="w-full min-w-0 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm"
+            />
+          </div>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-muted mb-1">{t('streetAddressLabel')}</label>
-          <input
-            value={address}
-            onChange={(e) => onChange({ city, address: e.target.value, latitude, longitude })}
-            placeholder={t('addressPlaceholderShort')}
-            className="w-full min-w-0 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm"
-          />
-        </div>
-      </div>
+      )}
 
       {latitude && longitude && (
         <div className="flex flex-wrap gap-2 items-center">
-          <button
-            type="button"
-            onClick={reverseGeocode}
-            disabled={reverseLoading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
-          >
-            {reverseLoading ? t('fillingAddress') : t('fillAddressFromPin')}
-          </button>
+          {!hideFields && (
+            <button
+              type="button"
+              onClick={reverseGeocode}
+              disabled={reverseLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+            >
+              {reverseLoading ? t('fillingAddress') : t('fillAddressFromPin')}
+            </button>
+          )}
           <button
             type="button"
             onClick={() => onChange({ city, address, latitude: null, longitude: null })}

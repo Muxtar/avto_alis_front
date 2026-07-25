@@ -538,7 +538,8 @@ function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t, saveLabel, on
           latitude={v.latitude ?? null}
           longitude={v.longitude ?? null}
           onChange={(n: any) => setInput({ ...v, ...n })}
-          height="220px"
+          height="240px"
+          hideFields
         />
       </div>
       <div>
