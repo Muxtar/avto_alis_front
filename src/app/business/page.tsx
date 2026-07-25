@@ -382,7 +382,7 @@ export default function BusinessPage() {
               <div className="border-t border-card-border pt-3 mb-3">
                 <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">🏪 {t("bizObjects") || "Obyektlər"} <span className="text-[10px] text-muted font-normal">({b.objects.length})</span></p>
                 {b.objects.length === 0 && editingObjId === null && (
-                  <p className="text-xs text-muted text-center py-2 bg-input-bg/30 rounded-lg mb-2">Hələ obyekt yoxdur — aşağıdan mağaza/filial əlavə edin.</p>
+                  <p className="text-xs text-amber-600 text-center py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg mb-2">⚠️ Hələ obyekt yoxdur. VÖEN ilə (kartla ödənişli) satış üçün ən azı bir <b>obyekt (mağaza / filial)</b> əlavə etməlisiniz — elanlar həmişə bir obyektə bağlı satılır.</p>
                 )}
                 {b.objects.map((o) => (
                   <div key={o.id} className={`rounded-xl mb-2 ${editingObjId === o.id ? "bg-input-bg/50 p-3" : `bg-input-bg/40 border border-card-border/60 p-3 ${!o.isActive ? "opacity-50" : ""}`}`}>

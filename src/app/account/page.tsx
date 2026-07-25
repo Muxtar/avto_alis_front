@@ -68,6 +68,8 @@ function AccountPageInner() {
   const [myLocation, setMyLocation] = useState<{ city: string; address: string }>({ city: "", address: "" });
   // Təsdiqlənmiş biznes obyektləri — elan kartla satıla bilsin deyə seçilir.
   const [bizObjects, setBizObjects] = useState<{ id: number; label: string }[]>([]);
+  // Təsdiqlənmiş, amma hələ obyekti olmayan bizneslər — "obyekt əlavə et" yönləndirməsi üçün.
+  const [approvedBizNoObj, setApprovedBizNoObj] = useState<{ id: number; name: string }[]>([]);
   const [selectedObjectId, setSelectedObjectId] = useState<string>("");
   // ?new=1 sorğusunun təkrar emalının qarşısını alır (bax: aşağıdakı effekt).
   const handledNewRef = useRef<string | null>(null);
@@ -80,10 +82,14 @@ function AccountPageInner() {
       .then((r) => r.json())
       .then((d) => {
         const opts: { id: number; label: string }[] = [];
+        const noObj: { id: number; name: string }[] = [];
         (d.businesses || []).filter((b: any) => b.status === "APPROVED").forEach((b: any) => {
-          (b.objects || []).forEach((o: any) => opts.push({ id: o.id, label: `${b.name} — ${o.name}` }));
+          const objs = (b.objects || []);
+          if (objs.length === 0) noObj.push({ id: b.id, name: b.name });
+          objs.forEach((o: any) => opts.push({ id: o.id, label: `${b.name} — ${o.name}` }));
         });
         setBizObjects(opts);
+        setApprovedBizNoObj(noObj);
       })
       .catch(() => undefined);
     fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } })
@@ -406,10 +412,17 @@ function AccountPageInner() {
                   </div>
                 </a>
               </div>
+            ) : approvedBizNoObj.length > 0 ? (
+              // Biznes TƏSDİQLƏNİB, amma hələ obyekti yoxdur — obyekt əlavə etməyə yönləndir.
+              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                <p className="font-semibold text-sm text-green-600">✓ Biznesiniz təsdiqlənib{approvedBizNoObj.length === 1 ? `: ${approvedBizNoObj[0].name}` : ""}</p>
+                <p className="text-xs text-muted mt-0.5">VÖEN ilə satış üçün bu biznesə ən azı bir <b>obyekt (mağaza / filial)</b> əlavə etməlisiniz. Elan həmişə bir obyektə bağlı satılır.</p>
+                <a href="/business" className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold hover:bg-orange-600">＋ Obyekt əlavə et →</a>
+              </div>
             ) : (
               <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-                <p className="font-semibold text-sm">Təsdiqlənmiş biznes obyektiniz yoxdur</p>
-                <p className="text-xs text-muted mt-0.5">VÖEN-li elan üçün əvvəlcə biznes əlavə edin, ona obyekt bağlayın və admin təsdiqini gözləyin.</p>
+                <p className="font-semibold text-sm">Təsdiqlənmiş biznesiniz yoxdur</p>
+                <p className="text-xs text-muted mt-0.5">VÖEN-li elan (kartla ödəniş) üçün əvvəlcə biznes (VÖEN) əlavə edin, admin təsdiqindən sonra ona obyekt bağlayın.</p>
                 <a href="/business" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">Biznes əlavə et →</a>
               </div>
             )}
