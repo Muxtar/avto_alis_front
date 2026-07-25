@@ -51,7 +51,9 @@ export default function BusinessPage() {
   const [openBizId, setOpenBizId] = useState<number | null>(null); // açıq (genişlənmiş) biznes kartı
   const [addObjFor, setAddObjFor] = useState<number | null>(null); // obyekt əlavə forması açıq olan biznes
   // Biznes redaktəsi (ad/sahib/təsisçi/telefon) — dəyişiklik admin yenidən təsdiqi tələb edir.
-  const [bizEdit, setBizEdit] = useState<{ id: number; name: string; ownerName: string; founderName: string; phone: string } | null>(null);
+  const [bizEdit, setBizEdit] = useState<{ id: number; name: string; ownerName: string; founderName: string; phone: string; proofType: string } | null>(null);
+  const [bizEditDoc, setBizEditDoc] = useState<File | null>(null); // yeni şirkət/vergi sənədi
+  const [bizEditBank, setBizEditBank] = useState<File | null>(null); // yeni bank sənədi
   const [busy, setBusy] = useState(false);
   const [idVerified, setIdVerified] = useState<boolean | null>(null); // kimlik təqdim olunub?
   const [identityReusable, setIdentityReusable] = useState(false); // kimlik+üz təsdiqlənib (>50%) → biznesdə təkrar istənilmir
@@ -349,7 +351,7 @@ export default function BusinessPage() {
                     <input type="checkbox" checked={b.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/businesses/${b.id}/active`, "PATCH", { isActive: e.target.checked }))()} />
                     {t("bizActive") || "Aktiv"}
                   </label>
-                  <button onClick={() => setBizEdit(bizEdit?.id === b.id ? null : { id: b.id, name: b.name, ownerName: b.ownerName, founderName: b.founderName, phone: b.phone || "" })} className="text-orange-500 text-xs">{bizEdit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə"}</button>
+                  <button onClick={() => { setBizEditDoc(null); setBizEditBank(null); setBizEdit(bizEdit?.id === b.id ? null : { id: b.id, name: b.name, ownerName: b.ownerName, founderName: b.founderName, phone: b.phone || "", proofType: b.proofType }); }} className="text-orange-500 text-xs">{bizEdit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə"}</button>
                   <button onClick={wrap(async () => { if (confirm(t("bizDeleteConfirm") || "Silinsin?")) await jsonReq(`${API}/me/businesses/${b.id}`, "DELETE"); })} className="text-red-500 text-xs">{t("delete") || "Sil"}</button>
                 </div>
               </div>
@@ -364,8 +366,29 @@ export default function BusinessPage() {
                     <label className="text-[11px] text-muted">Sahibi/Rəhbər<input value={bizEdit.ownerName} onChange={(e) => setBizEdit({ ...bizEdit, ownerName: e.target.value })} className={`${inputCls} mt-0.5`} /></label>
                     <label className="text-[11px] text-muted">Təsisçi<input value={bizEdit.founderName} onChange={(e) => setBizEdit({ ...bizEdit, founderName: e.target.value })} className={`${inputCls} mt-0.5`} /></label>
                   </div>
+                  {/* Sənədləri yenilə (opsional) — yükləsəniz yenidən admin təsdiqinə gedir */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className="text-[11px] text-muted">{bizEdit.proofType === "TAX_DOC" ? "Vergi sənədi (yenilə)" : "Şirkət sənədi (yenilə)"}
+                      <input type="file" accept=".pdf,image/*" onChange={(e) => setBizEditDoc(e.target.files?.[0] || null)} className="block mt-0.5 text-xs text-muted file:mr-2 file:px-2 file:py-1 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500" />
+                      {bizEditDoc && <span className="text-[10px] text-green-500">✓ {bizEditDoc.name}</span>}
+                    </label>
+                    <label className="text-[11px] text-muted">Bank sənədi (yenilə)
+                      <input type="file" accept=".pdf,image/*" onChange={(e) => setBizEditBank(e.target.files?.[0] || null)} className="block mt-0.5 text-xs text-muted file:mr-2 file:px-2 file:py-1 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500" />
+                      {bizEditBank && <span className="text-[10px] text-green-500">✓ {bizEditBank.name}</span>}
+                    </label>
+                  </div>
                   <div className="flex gap-2">
-                    <button onClick={wrap(async () => { await jsonReq(`${API}/me/businesses/${b.id}`, "PUT", { name: bizEdit.name, ownerName: bizEdit.ownerName, founderName: bizEdit.founderName, phone: bizEdit.phone }); setBizEdit(null); })} className="px-4 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-semibold">Yadda saxla</button>
+                    <button onClick={wrap(async () => {
+                      const fd = new FormData();
+                      fd.append("name", bizEdit.name); fd.append("ownerName", bizEdit.ownerName); fd.append("founderName", bizEdit.founderName); fd.append("phone", bizEdit.phone);
+                      if (bizEditDoc) fd.append(bizEdit.proofType === "TAX_DOC" ? "taxDocImage" : "companyDocImage", bizEditDoc);
+                      if (bizEditBank) fd.append("bankDocImage", bizEditBank);
+                      const res = await fetch(`${API}/me/businesses/${b.id}/edit`, { method: "POST", headers: authH, body: fd });
+                      const data = await res.json();
+                      if (!res.ok || !data.success) throw new Error(data.message || t("error"));
+                      toast(data.reApproval ? "Yadda saxlanıldı — biznes yenidən admin təsdiqinə göndərildi" : "Yadda saxlanıldı", "success");
+                      setBizEdit(null); setBizEditDoc(null); setBizEditBank(null); load();
+                    })} className="px-4 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-semibold">Yadda saxla</button>
                     <button type="button" onClick={() => setBizEdit(null)} className="px-4 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm">Ləğv</button>
                   </div>
                 </div>
