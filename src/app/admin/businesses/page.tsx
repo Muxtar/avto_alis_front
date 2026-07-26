@@ -116,18 +116,22 @@ export default function AdminBusinessesPage() {
       const data = await res.json();
       if (res.ok && data.success && data.info) {
         const i = data.info;
-        setEdit((e) => e && e.id === id ? {
-          ...e,
-          name: i.companyName || e.name,
-          voen: i.voen || e.voen,
-          ownerName: i.ownerName || e.ownerName,
-          founderName: i.founderName || e.founderName,
-        } : e);
-        // Bank sənədindən oxunan IBAN-ı da doldur (birincini input-a qoy).
-        if (Array.isArray(data.ibans) && data.ibans.length) {
-          setIbanInput((p) => ({ ...p, [id]: data.ibans[0] }));
+        const gotFields = !!(i.companyName || i.voen || i.ownerName || i.founderName);
+        const gotIban = Array.isArray(data.ibans) && data.ibans.length > 0;
+        if (!gotFields && !gotIban) {
+          // AI heç nə oxuya bilmədi — əsl səbəbi göstər (adətən Anthropic kredit/oxunma xətası).
+          toast(i.error || "AI sənəddən məlumat oxuya bilmədi — sahələri əl ilə doldurun (Anthropic kreditini yoxlayın)", "error");
+        } else {
+          setEdit((e) => e && e.id === id ? {
+            ...e,
+            name: i.companyName || e.name,
+            voen: i.voen || e.voen,
+            ownerName: i.ownerName || e.ownerName,
+            founderName: i.founderName || e.founderName,
+          } : e);
+          if (gotIban) setIbanInput((p) => ({ ...p, [id]: data.ibans[0] }));
+          toast(gotIban ? `AI oxudu — məlumat + IBAN dolduruldu (yoxlayın)` : "AI sənəddən oxudu — yoxlayıb yadda saxlayın", "success");
         }
-        toast(data.ibans?.length ? `AI oxudu — şirkət məlumatı + IBAN dolduruldu (yoxlayın)` : "AI sənəddən oxudu — yoxlayıb yadda saxlayın", "success");
       } else toast(data.message || "AI oxuya bilmədi", "error");
     } catch { toast(t("error"), "error"); } finally { setBusyId(null); }
   };
