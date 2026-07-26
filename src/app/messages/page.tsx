@@ -74,6 +74,20 @@ export default function MessagesPage() {
   const [editingMsg, setEditingMsg] = useState<any>(null);
   const [selectedMsg, setSelectedMsg] = useState<any>(null);
   const [partnerTyping, setPartnerTyping] = useState(false);
+  // Online/son-görülmə vəziyyəti — userId -> { online, lastSeen }.
+  const [presence, setPresence] = useState<Record<number, { online: boolean; lastSeen: string | null }>>({});
+  const lastSeenText = (ls: string | null) => {
+    if (!ls) return "";
+    const d = new Date(ls); const min = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (min < 1) return "indicə onlayn idi";
+    if (min < 60) return `${min} dəq əvvəl onlayn`;
+    const hr = Math.floor(min / 60);
+    if (hr < 24) return `${hr} saat əvvəl onlayn`;
+    const day = Math.floor(hr / 24);
+    if (day === 1) return "dünən onlayn idi";
+    if (day < 7) return `${day} gün əvvəl onlayn`;
+    return `son görülmə ${d.toLocaleDateString("az")}`;
+  };
   const [attachOpen, setAttachOpen] = useState(false);
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [sendingLocation, setSendingLocation] = useState(false);
@@ -241,6 +255,12 @@ export default function MessagesPage() {
     const onTyping = (p: { from: number }) => { const a = activeRef.current; if (a?.type === "direct" && p.from === a.id) { setPartnerTyping(true); clearTimeout(typingClearRef.current); typingClearRef.current = setTimeout(() => setPartnerTyping(false), 4000); } };
     const onStopTyping = (p: { from: number }) => { const a = activeRef.current; if (a?.type === "direct" && p.from === a.id) setPartnerTyping(false); };
     const onGroupChanged = () => fetchGroups();
+    const onPresenceList = (list: any[]) => setPresence((prev) => {
+      const cp = { ...prev };
+      for (const p of Array.isArray(list) ? list : []) if (p && typeof p.userId === "number") cp[p.userId] = { online: !!p.online, lastSeen: p.lastSeen || null };
+      return cp;
+    });
+    const onPresenceUpdate = (p: any) => { if (p && typeof p.userId === "number") setPresence((prev) => ({ ...prev, [p.userId]: { online: !!p.online, lastSeen: p.lastSeen || null } })); };
 
     socket.on("chat:message", onMessage);
     socket.on("chat:updated", onUpdated);
@@ -251,6 +271,8 @@ export default function MessagesPage() {
     socket.on("chat:typing", onTyping);
     socket.on("chat:stopTyping", onStopTyping);
     socket.on("chat:groupChanged", onGroupChanged);
+    socket.on("presence:list", onPresenceList);
+    socket.on("presence:update", onPresenceUpdate);
     return () => {
       socket.off("chat:message", onMessage);
       socket.off("chat:updated", onUpdated);
@@ -261,8 +283,24 @@ export default function MessagesPage() {
       socket.off("chat:typing", onTyping);
       socket.off("chat:stopTyping", onStopTyping);
       socket.off("chat:groupChanged", onGroupChanged);
+      socket.off("presence:list", onPresenceList);
+      socket.off("presence:update", onPresenceUpdate);
     };
   }, [isLoggedIn, token]);
+
+  // Söhbət siyahısı dəyişəndə tərəflərin online vəziyyətini soruş (təzələnir).
+  useEffect(() => {
+    if (!isLoggedIn || !token) return;
+    const ids = directConvs.map((c: any) => c?.partner?.id).filter((n: any) => typeof n === "number");
+    if (!ids.length) return;
+    getSocket(token).emit("presence:get", { ids });
+  }, [directConvs, isLoggedIn, token]);
+
+  // Açıq söhbətin (xüsusən kontaktdan yeni açılanın) statusunu dərhal soruş.
+  useEffect(() => {
+    if (!isLoggedIn || !token || active?.type !== "direct" || typeof active?.id !== "number") return;
+    getSocket(token).emit("presence:get", { ids: [active.id] });
+  }, [active, isLoggedIn, token]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -739,8 +777,13 @@ export default function MessagesPage() {
               chatList.map((chat) => (
                 <div key={`${chat.type}-${chat.id}`} role="button" tabIndex={0} onClick={() => openChat(chat)}
                   className={`group w-full flex items-center gap-3 p-3 hover:bg-input-bg/50 transition-colors text-left border-b border-card-border/30 cursor-pointer ${active?.type === chat.type && active?.id === chat.id ? "bg-input-bg" : ""}`}>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 ${chat.type === "group" ? "bg-gradient-to-br from-teal-500 to-cyan-600" : `bg-gradient-to-br ${typeColor(chat.partnerType)}`}`}>
-                    {chat.type === "group" ? "👥" : initials(chat.name)}
+                  <div className="relative shrink-0">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs ${chat.type === "group" ? "bg-gradient-to-br from-teal-500 to-cyan-600" : `bg-gradient-to-br ${typeColor(chat.partnerType)}`}`}>
+                      {chat.type === "group" ? "👥" : initials(chat.name)}
+                    </div>
+                    {chat.type === "direct" && presence[chat.id]?.online && (
+                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-card rounded-full" title="Onlayn" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
@@ -781,7 +824,7 @@ export default function MessagesPage() {
                     <button onClick={openInfo} className="text-left"><p className="font-medium text-sm">{active.name}</p><p className="text-muted text-xs">{active.memberCount} üzv · məlumat üçün toxun</p></button>
                   ) : (
                     <><Link href={`/seller/${active.id}`} className="font-medium text-sm hover:text-orange-500 transition-colors">{active.name}</Link>
-                    <p className="text-muted text-xs h-4">{partnerTyping ? <span className="text-orange-500">yazır...</span> : active.phone}</p></>
+                    <p className="text-muted text-xs h-4">{partnerTyping ? <span className="text-orange-500">yazır...</span> : presence[active.id]?.online ? <span className="text-green-500">onlayn</span> : presence[active.id]?.lastSeen ? lastSeenText(presence[active.id].lastSeen) : active.phone}</p></>
                   )}
                 </div>
                 {active.type === "direct" && (
