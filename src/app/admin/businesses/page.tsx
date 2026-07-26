@@ -47,13 +47,14 @@ export default function AdminBusinessesPage() {
 
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  // silent=true → spinner göstərmə, siyahını sakitcə yenilə (açıq kart bağlanmasın).
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`${API}/admin/businesses?status=${filter}`, { headers });
       const data = await res.json();
       setItems(data.businesses || []);
-    } catch { toast(t("error"), "error"); } finally { setLoading(false); }
+    } catch { toast(t("error"), "error"); } finally { if (!silent) setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
 
@@ -102,7 +103,7 @@ export default function AdminBusinessesPage() {
     try {
       const res = await fetch(`${API}/admin/businesses/${id}/ai-recheck`, { method: "POST", headers });
       const data = await res.json();
-      if (res.ok && data.success) { toast(data.aiRecommendsApprove ? "AI yoxladı: təsdiq tövsiyə edir ✓" : "AI yoxladı (nəticəyə baxın)", data.aiRecommendsApprove ? "success" : "info"); load(); }
+      if (res.ok && data.success) { toast(data.aiRecommendsApprove ? "AI yoxladı: təsdiq tövsiyə edir ✓" : "AI yoxladı (nəticəyə baxın)", data.aiRecommendsApprove ? "success" : "info"); load(true); }
       else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); } finally { setBusyId(null); }
   };
@@ -141,7 +142,7 @@ export default function AdminBusinessesPage() {
     try {
       const res = await fetch(`${API}/admin/businesses/${edit.id}`, { method: "PUT", headers, body: JSON.stringify(edit) });
       const data = await res.json();
-      if (res.ok && data.success) { toast("Biznes məlumatları yeniləndi ✓", "success"); setEdit(null); load(); }
+      if (res.ok && data.success) { toast("Biznes məlumatları yeniləndi ✓", "success"); setEdit(null); load(true); }
       else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); } finally { setBusyId(null); }
   };
@@ -153,7 +154,7 @@ export default function AdminBusinessesPage() {
     try {
       const res = await fetch(`${API}/admin/businesses/${bizId}/banks`, { method: "POST", headers, body: JSON.stringify({ iban }) });
       const data = await res.json();
-      if (res.ok && data.success) { toast("IBAN əlavə edildi", "success"); setIbanInput((p) => ({ ...p, [bizId]: "" })); load(); }
+      if (res.ok && data.success) { toast("IBAN əlavə edildi", "success"); setIbanInput((p) => ({ ...p, [bizId]: "" })); load(true); }
       else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); }
   };
@@ -164,7 +165,7 @@ export default function AdminBusinessesPage() {
     try {
       const res = await fetch(`${API}/admin/banks/${id}`, { method: "DELETE", headers });
       const data = await res.json();
-      if (res.ok && data.success) { toast("Bank hesabı silindi", "success"); load(); }
+      if (res.ok && data.success) { toast("Bank hesabı silindi", "success"); load(true); }
       else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); }
   };
