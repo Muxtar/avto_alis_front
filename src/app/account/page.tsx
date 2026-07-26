@@ -612,6 +612,13 @@ function AccountPageInner() {
             {/* Məhsul/Xidmət tipi əvvəlki addımda (Addım 2) seçilir — burada təkrar
                 seçim legv edildi (istifadəçi tələbi). Tip ana kateqoriyaya görə
                 onsuz da düzgün saxlanılır. */}
+            {listingMode === "voen" ? (
+              // VÖEN elan obyektə bağlıdır — şəhər/ünvan obyektdən gəlir, ayrıca soruşulmur.
+              <div className="p-3 bg-input-bg/50 border border-input-border rounded-xl text-xs text-muted flex items-start gap-2">
+                <span className="text-base leading-none">📍</span>
+                <span>Konum seçdiyiniz obyektdən (mağaza/filial) götürülür — məhsul obyektin ünvanında göstəriləcək. Şəhər/ünvan ayrıca daxil etməyə ehtiyac yoxdur.</span>
+              </div>
+            ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="sm:col-span-2">
                 <label className="block text-sm font-medium mb-1.5">{t("listingLocation")}</label>
@@ -621,6 +628,7 @@ function AccountPageInner() {
                 )}
               </div>
             </div>
+            )}
             {/* VÖEN-siz elanlar üçün elana özəl xəritə konumu — hər elanın öz yeri ola bilər (məs. ayrı-ayrı mənzil/ev) */}
             {listingMode !== "voen" && (
               <div>
@@ -699,6 +707,7 @@ function AccountPageInner() {
                 <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder={t("vehicleModelPlaceholder")} className={inputCls} />
               </div>
             )}
+            {listingMode !== "voen" && (
             <div>
               <label className="block text-sm font-medium mb-1.5">{t("city")}</label>
               <select value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className={inputCls} required>
@@ -706,6 +715,7 @@ function AccountPageInner() {
                 {AZ_CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
+            )}
             {(showField("fuel") || form.type !== "SERVICE") && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {showField("fuel") && (
