@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
-import { API } from "@/lib/api";
-import { CATEGORIES, getSubs, parseCat, buildCat } from "@/lib/categories";
+import { API, imgUrl } from "@/lib/api";
+import { CATEGORIES, getSubs, parseCat, buildCat, getCategoryAttrs } from "@/lib/categories";
 import { formatPriceShort } from "@/lib/format";
 
 export default function AdminListingsPage() {
@@ -20,6 +20,55 @@ export default function AdminListingsPage() {
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [rows, setRows] = useState<Record<string, any[]>>({});
   const [rowsLoading, setRowsLoading] = useState<string | null>(null);
+  // Bir elanın detalı (şəkillər + bütün sahələr) açıq olub-olmaması.
+  const [openListing, setOpenListing] = useState<number | null>(null);
+
+  // Elandakı bütün doldurulmuş sahələri "etiket: dəyər" cütlərinə çevirir.
+  const condLabel = (c: string) => c === "NEW" ? "Yeni" : c === "USED" ? "İşlənmiş" : c === "REFURBISHED" ? "Təmir olunmuş" : c;
+  const detailFields = (l: any): { label: string; value: string }[] => {
+    const f: { label: string; value: string }[] = [];
+    const add = (label: string, value: any, suffix = "") => {
+      if (value === null || value === undefined || String(value).trim() === "") return;
+      f.push({ label, value: `${value}${suffix ? ` ${suffix}` : ""}` });
+    };
+    add("Vəziyyət", l.condition ? condLabel(l.condition) : "");
+    add("Marka", l.brand);
+    add("Model", l.model);
+    add("İl", l.year);
+    add("Şəhər", l.city);
+    add("Ölkə", l.country);
+    add("Ünvan", l.location);
+    add("Telefon", l.phone);
+    add("Stok", l.stock);
+    add("Ölçü", l.unitValue != null ? `${l.unitValue} ${l.unit || ""}`.trim() : (l.unit || ""));
+    add("Yanacaq", l.fuelType);
+    add("Ödəniş", l.paymentType);
+    add("Çəki (kq)", l.weightKg);
+    add("Nəqliyyat üçün", l.forVehicle);
+    add("Maks. qonaq", l.maxGuests);
+    add("Açılış", l.openTime);
+    add("Bağlanış", l.closeTime);
+    add("Rezervasiya tipi", l.bookingType);
+    const attrs = l.attributes && typeof l.attributes === "object" ? l.attributes : null;
+    if (attrs) {
+      const defs = getCategoryAttrs(parseCat(l.category).main);
+      for (const [k, v] of Object.entries(attrs)) {
+        if (v === null || v === undefined || String(v).trim() === "") continue;
+        const def = defs.find((a: any) => a.key === k);
+        add(def?.label || k, String(v), def?.suffix || "");
+      }
+    }
+    return f;
+  };
+  const listingFlags = (l: any): string[] => {
+    const out: string[] = [];
+    if (l.barter) out.push("Barter");
+    if (l.forRent) out.push("İcarə/Kirayə");
+    if (l.bookable) out.push("Bron edilə bilər");
+    if (l.pickupOnly) out.push("Yalnız götürmə");
+    if (l.allowSelfDelivery) out.push("Satıcı çatdırması");
+    return out;
+  };
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -237,27 +286,41 @@ export default function AdminListingsPage() {
                       <div className="flex justify-center py-6"><div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
                     ) : !list || list.length === 0 ? (
                       <p className="text-center text-muted text-xs py-4">{t("adminNoData")}</p>
-                    ) : list.map((listing: any) => (
+                    ) : list.map((listing: any) => {
+                      const detOpen = openListing === listing.id;
+                      const imgs: string[] = Array.isArray(listing.images) ? listing.images : [];
+                      return (
                       <div key={listing.id} className="bg-card border border-card-border rounded-lg p-3">
                         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${listing.type === 'SERVICE' ? 'bg-green-500/10' : 'bg-orange-500/10'}`}>
-                            {listing.type === 'SERVICE' ? (
-                              <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z" /></svg>
+                          {/* Klik → detal (şəkillər + bütün sahələr) açılır */}
+                          <button type="button" onClick={() => setOpenListing(detOpen ? null : listing.id)}
+                            className="flex items-center gap-3 flex-1 min-w-0 basis-full sm:basis-0 text-left">
+                            {imgs.length > 0 ? (
+                              <img src={imgUrl(imgs[0])} alt="" loading="lazy"
+                                className="w-11 h-11 rounded-lg object-cover shrink-0 border border-card-border" />
                             ) : (
-                              <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${listing.type === 'SERVICE' ? 'bg-green-500/10' : 'bg-orange-500/10'}`}>
+                                {listing.type === 'SERVICE' ? (
+                                  <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z" /></svg>
+                                ) : (
+                                  <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
+                                )}
+                              </div>
                             )}
-                          </div>
 
-                          <div className="flex-1 min-w-0 basis-full sm:basis-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="font-medium text-sm truncate max-w-full break-words">{listing.title}</span>
-                              <span className="px-1.5 py-0.5 bg-input-bg border border-input-border rounded text-[10px]">{listing.category}</span>
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${listing.status === 'APPROVED' ? 'bg-green-500/10 text-green-500' : listing.status === 'REJECTED' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                                {listing.status === 'APPROVED' ? 'Təsdiqlənib' : listing.status === 'REJECTED' ? 'Rədd edilib' : 'Gözləmədə'}
-                              </span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium text-sm truncate max-w-full break-words">{listing.title}</span>
+                                <span className="px-1.5 py-0.5 bg-input-bg border border-input-border rounded text-[10px]">{listing.category}</span>
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${listing.status === 'APPROVED' ? 'bg-green-500/10 text-green-500' : listing.status === 'REJECTED' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                  {listing.status === 'APPROVED' ? 'Təsdiqlənib' : listing.status === 'REJECTED' ? 'Rədd edilib' : 'Gözləmədə'}
+                                </span>
+                                {imgs.length > 0 && <span className="px-1.5 py-0.5 bg-input-bg border border-input-border rounded text-[10px] text-muted">📷 {imgs.length}</span>}
+                              </div>
+                              <p className="text-muted text-xs mt-0.5 truncate break-all">ID: {listing.id} · {listing.description?.slice(0, 60)}...</p>
                             </div>
-                            <p className="text-muted text-xs mt-0.5 truncate break-all">ID: {listing.id} · {listing.description?.slice(0, 60)}...</p>
-                          </div>
+                            <svg className={`w-4 h-4 text-muted shrink-0 transition-transform ${detOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                          </button>
 
                           <div className="text-orange-500 font-bold text-sm shrink-0">{formatPriceShort(listing.price)} AZN</div>
 
@@ -276,8 +339,57 @@ export default function AdminListingsPage() {
                             </button>
                           </div>
                         </div>
+
+                        {/* Detal — şəkillər + istifadəçinin girdiyi bütün sahələr */}
+                        {detOpen && (
+                          <div className="mt-3 pt-3 border-t border-card-border space-y-3">
+                            {imgs.length > 0 ? (
+                              <div className="flex gap-2 overflow-x-auto pb-1">
+                                {imgs.map((img, i) => (
+                                  <a key={i} href={imgUrl(img)} target="_blank" rel="noopener noreferrer" className="shrink-0">
+                                    <img src={imgUrl(img)} alt={`${listing.title} ${i + 1}`} loading="lazy"
+                                      className="w-24 h-24 rounded-lg object-cover border border-card-border hover:opacity-80 transition-opacity" />
+                                  </a>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-muted text-xs">Şəkil əlavə edilməyib</p>
+                            )}
+
+                            {listing.description && (
+                              <div>
+                                <p className="text-muted text-[11px] mb-1">Tam təsvir</p>
+                                <p className="text-sm whitespace-pre-wrap break-words">{listing.description}</p>
+                              </div>
+                            )}
+
+                            {detailFields(listing).length > 0 && (
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
+                                {detailFields(listing).map((fd, i) => (
+                                  <div key={i} className="min-w-0">
+                                    <p className="text-muted text-[11px]">{fd.label}</p>
+                                    <p className="text-sm font-medium break-words">{fd.value}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                            {listingFlags(listing).length > 0 && (
+                              <div className="flex flex-wrap gap-1.5">
+                                {listingFlags(listing).map((fl) => (
+                                  <span key={fl} className="px-2 py-0.5 bg-input-bg border border-input-border rounded text-[11px]">{fl}</span>
+                                ))}
+                              </div>
+                            )}
+                            {listing.selfDeliveryNote && <p className="text-xs text-muted">Çatdırma qeydi: {listing.selfDeliveryNote}</p>}
+                            {listing.status === 'REJECTED' && listing.rejectReason && (
+                              <p className="text-xs text-red-500">Rədd səbəbi: {listing.rejectReason}</p>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
