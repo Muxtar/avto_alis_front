@@ -14,7 +14,7 @@ import { useLanguage } from "@/lib/LanguageContext";
  */
 export default function MobileBottomNav() {
   const pathname = usePathname();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, unreadMessages } = useAuth();
   const { t } = useLanguage();
   const [plusOpen, setPlusOpen] = useState(false);
 
@@ -113,7 +113,14 @@ export default function MobileBottomNav() {
         </button>
 
         <Link href={isLoggedIn ? "/messages" : "/"} className={isActive("/messages") ? "active" : ""}>
-          <span className="relative">{MsgIcon}</span>
+          <span className="relative">
+            {MsgIcon}
+            {isLoggedIn && unreadMessages > 0 && (
+              <span className="absolute -top-1.5 -right-2 min-w-[16px] h-4 px-1 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold">
+                {unreadMessages > 99 ? "99+" : unreadMessages}
+              </span>
+            )}
+          </span>
           <span>{t("myMessages") || "Mesajlarım"}</span>
         </Link>
 

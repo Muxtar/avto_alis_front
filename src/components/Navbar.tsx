@@ -50,7 +50,7 @@ const PINK = "#2f6bff";
 export default function Navbar() {
   const { locale, setLocale, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  const { user, token, isLoggedIn, logout } = useAuth();
+  const { user, token, isLoggedIn, logout, unreadMessages } = useAuth();
   const { cartCount } = useCart();
   const router = useRouter();
   const [langOpen, setLangOpen] = useState(false);
@@ -74,7 +74,7 @@ export default function Navbar() {
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
   const [webData, setWebData] = useState<{ summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string }[]; needLogin?: boolean } | null>(null);
-  const [unreadMessages, setUnreadMessages] = useState(0);
+  // unreadMessages artıq qlobal AuthContext-dən gəlir (real-time socket ilə).
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const langRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
@@ -82,8 +82,6 @@ export default function Navbar() {
 
   const fetchNotifications = useCallback(() => {
     if (!token || !isLoggedIn) return;
-    fetch(`${API}/messages-unread`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(r => r.json()).then(d => setUnreadMessages(d.count || 0)).catch(() => {});
     fetch(`${API}/inquiries/unread-count`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json()).then(d => setUnreadInquiries(d.count || 0)).catch(() => {});
   }, [token, isLoggedIn]);

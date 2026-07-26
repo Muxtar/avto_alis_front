@@ -1,6 +1,7 @@
 "use client";
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { API } from "@/lib/api";
+import { getSocket } from "@/lib/callSocket";
 
 interface User {
   id: number;
@@ -21,6 +22,8 @@ interface AuthContextType {
   logout: () => void;
   isLoggedIn: boolean;
   authLoading: boolean;
+  unreadMessages: number;      // oxunmamış mesaj sayı (qlobal, real-time)
+  refreshUnread: () => void;   // sayı yenidən çək (məs. söhbət açılıb oxunanda)
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -29,6 +32,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  // Oxunmamış mesaj sayını serverdən çək.
+  const refreshUnread = useCallback(() => {
+    const t = token || (typeof localStorage !== "undefined" ? localStorage.getItem("userToken") : null);
+    if (!t) { setUnreadMessages(0); return; }
+    fetch(`${API}/messages-unread`, { headers: { Authorization: `Bearer ${t}` } })
+      .then((r) => r.json()).then((d) => setUnreadMessages(d.count || 0)).catch(() => {});
+  }, [token]);
+
+  // Qlobal socket bağlantısı — istifadəçi hansı səhifədə olsa da onlayn sayılır
+  // (presence işləsin) və gələn mesaj chat badge-ini real-time yeniləsin.
+  useEffect(() => {
+    if (!token || !user) { setUnreadMessages(0); return; }
+    refreshUnread();
+    const socket = getSocket(token);           // qoşulmanı qur (singleton)
+    const bump = () => refreshUnread();
+    socket.on("chat:message", bump);
+    socket.on("chat:read", bump);
+    socket.on("chat:deleted", bump);
+    return () => {
+      socket.off("chat:message", bump);
+      socket.off("chat:read", bump);
+      socket.off("chat:deleted", bump);
+    };
+  }, [token, user, refreshUnread]);
 
   useEffect(() => {
     // Check userToken first, then fallback to adminToken for admin auto-login
@@ -97,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoggedIn: !!user, authLoading }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isLoggedIn: !!user, authLoading, unreadMessages, refreshUnread }}>
       {children}
     </AuthContext.Provider>
   );
