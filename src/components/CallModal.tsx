@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
-import { imgUrl } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { getCallSocket } from "@/lib/callSocket";
 
 // Səsli/görüntülü zəng (WebRTC P2P + socket.io signaling).
@@ -40,12 +40,33 @@ export default function CallModal({
   const kindRef = useRef<"audio" | "video">("audio");
   const ringTimeoutRef = useRef<any>(null);
   const facingRef = useRef<"user" | "environment">("user"); // ön / arxa kamera
-  phaseRef.current = phase; peerRef.current = peer; kindRef.current = kind;
+  // Zəng qeydi üçün — yalnız zəng EDƏN tərəf bir dəfə yazır.
+  const isCallerRef = useRef(false);        // bu instance zəng edəndir?
+  const activeStartRef = useRef<number | null>(null); // qoşulma vaxtı (ANSWERED üçün)
+  const loggedRef = useRef(false);          // bu zəng artıq yazılıb?
+  const tokenRef = useRef<string | null>(null);
+  phaseRef.current = phase; peerRef.current = peer; kindRef.current = kind; tokenRef.current = token;
 
   const socket = token ? getCallSocket(token) : null;
 
   // Tam təmizləmə — media + peer connection bağlanır.
   const cleanup = useCallback(() => {
+    // Zəng qeydini yaz — yalnız zəng EDƏN tərəf, bir dəfə (chat-də mesaj kimi görünsün).
+    if (isCallerRef.current && !loggedRef.current && peerRef.current) {
+      loggedRef.current = true;
+      const answered = activeStartRef.current != null;
+      const duration = answered ? Math.max(1, Math.round((Date.now() - (activeStartRef.current as number)) / 1000)) : 0;
+      const t = tokenRef.current;
+      if (t) {
+        fetch(`${API}/messages/call`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${t}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ to: peerRef.current.id, kind: kindRef.current, status: answered ? "ANSWERED" : "MISSED", duration }),
+        }).catch(() => {});
+      }
+    }
+    isCallerRef.current = false;
+    activeStartRef.current = null;
     if (ringTimeoutRef.current) { clearTimeout(ringTimeoutRef.current); ringTimeoutRef.current = null; }
     try { pcRef.current?.close(); } catch { /* boş */ }
     pcRef.current = null;
@@ -86,6 +107,7 @@ export default function CallModal({
           remoteAudioRef.current.muted = false;
           remoteAudioRef.current.play?.().catch(() => {});
         }
+        if (activeStartRef.current == null) activeStartRef.current = Date.now(); // qoşuldu → ANSWERED
         setPhase("active");
       };
       pc.onicecandidate = (e) => {
@@ -117,6 +139,7 @@ export default function CallModal({
     const onConfig = (d: any) => { if (d?.iceServers?.length) iceServersRef.current = d.iceServers; };
     const onIncoming = (d: any) => {
       if (phaseRef.current) { socket.emit("call:reject", { to: d.from?.id, busy: true }); return; } // artıq zəngdəyəm
+      isCallerRef.current = false; loggedRef.current = false; activeStartRef.current = null;
       setPeer(d.from); setKind(d.kind === "video" ? "video" : "audio"); setPhase("incoming");
     };
     const onAccepted = () => {
@@ -176,6 +199,7 @@ export default function CallModal({
   useEffect(() => {
     if (!outgoing || !socket) return;
     if (phaseRef.current) return; // artıq zəngdəyəm
+    isCallerRef.current = true; loggedRef.current = false; activeStartRef.current = null;
     setPeer(outgoing.partner); setKind(outgoing.kind); setPhase("outgoing");
     socket.emit("call:invite", { to: outgoing.partner.id, kind: outgoing.kind });
     // 45 saniyə cavab yoxdursa avtomatik dayandır.

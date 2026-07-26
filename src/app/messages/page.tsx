@@ -673,8 +673,17 @@ export default function MessagesPage() {
       case "FILE": return `📄 ${m.mediaName || "Fayl"}`;
       case "CONTACT": return `👤 ${m.mediaName || "Kontakt"}`;
       case "LOCATION": return "📍 Konum";
+      case "CALL": return `${m.callKind === "video" ? "🎥 Görüntülü" : "📞 Səsli"} zəng`;
       default: return m.content?.slice(0, 40) || "";
     }
+  };
+
+  // Zəng müddəti — "45 saniyə" / "5 dəq" / "1 dəq 30 san".
+  const callDurationText = (sec: number) => {
+    if (!sec || sec < 1) return "";
+    if (sec < 60) return `${sec} saniyə`;
+    const m = Math.floor(sec / 60), s = sec % 60;
+    return s ? `${m} dəq ${s} san` : `${m} dəq`;
   };
 
   const reactionChips = (msg: any) => {
@@ -738,6 +747,27 @@ export default function MessagesPage() {
                 : <span className="block text-[10px] opacity-70">{Number(lat).toFixed(5)}, {Number(lng).toFixed(5)}</span>}
             </span>
           </a>
+        );
+      }
+      case "CALL": {
+        const outgoing = msg.senderId === user?.id;
+        const answered = msg.callStatus === "ANSWERED";
+        const isVideo = msg.callKind === "video";
+        const missedIncoming = !answered && !outgoing;
+        const sub = answered ? callDurationText(msg.mediaDuration || 0) : (outgoing ? "Cavab verilmədi" : "Buraxılmış zəng");
+        return (
+          <div className="flex items-center gap-3 min-w-[170px]">
+            <span className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 text-lg ${missedIncoming ? "bg-red-500/20" : "bg-white/15"}`}>
+              {isVideo ? "🎥" : "📞"}
+            </span>
+            <div className="min-w-0">
+              <p className="font-semibold flex items-center gap-1">
+                <span className={`text-xs ${missedIncoming ? "text-red-500" : "opacity-70"}`}>{outgoing ? "↗" : "↙"}</span>
+                {isVideo ? "Görüntülü zəng" : "Səsli zəng"}
+              </p>
+              <p className={`text-[11px] ${missedIncoming ? "text-red-500 font-medium" : "opacity-80"}`}>{sub}</p>
+            </div>
+          </div>
         );
       }
       default: return <p className="whitespace-pre-wrap break-words">{linkify(msg.content)}</p>;
