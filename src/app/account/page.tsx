@@ -406,8 +406,10 @@ function AccountPageInner() {
               <div className="flex items-center gap-2 text-muted text-sm py-8 justify-center">
                 <span className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /> Yüklənir…
               </div>
-            ) : bizList.length > 0 ? (
+            ) : (
               <div className="space-y-2">
+                {bizList.length > 0 ? (
+                <>
                 <p className="text-xs text-muted mb-1">Bizneslərim — birinə toxun, obyektləri açılsın, obyektin qarşısındakı «Ürün əlavə et» ilə elanı ona qoy.</p>
                 {bizList.map((b) => (
                   <div key={b.id} className="rounded-2xl border border-input-border overflow-hidden">
@@ -438,24 +440,29 @@ function AccountPageInner() {
                     )}
                   </div>
                 ))}
-                {/* Ən altda: yeni biznes əlavə et */}
+                </>
+                ) : approvedBizNoObj.length > 0 ? (
+                // Biznes TƏSDİQLƏNİB, amma hələ obyekti yoxdur — obyekt əlavə etməyə yönləndir.
+                <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
+                  <p className="font-semibold text-sm text-green-600">✓ Biznesiniz təsdiqlənib{approvedBizNoObj.length === 1 ? `: ${approvedBizNoObj[0].name}` : ""}</p>
+                  <p className="text-xs text-muted mt-0.5">VÖEN ilə satış üçün bu biznesə ən azı bir <b>obyekt (mağaza / filial)</b> əlavə etməlisiniz. Elan həmişə bir obyektə bağlı satılır.</p>
+                  <a href="/business" className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold hover:bg-orange-600">＋ Obyekt əlavə et →</a>
+                </div>
+                ) : (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                  <p className="font-semibold text-sm">Təsdiqlənmiş biznesiniz yoxdur</p>
+                  <p className="text-xs text-muted mt-0.5">VÖEN-li elan (kartla ödəniş) üçün əvvəlcə biznes (VÖEN) əlavə edin, admin təsdiqindən sonra ona obyekt bağlayın.</p>
+                </div>
+                )}
+
+                {/* HƏMİŞƏ görünür: yeni biznes (VÖEN) əlavə et — biznes olsa belə */}
                 <a href="/business" className="w-full text-left p-4 rounded-2xl border border-dashed border-orange-500/40 hover:bg-orange-500/5 transition-all flex items-center gap-3">
-                  <div className="text-xl">🏢➕</div>
-                  <p className="font-semibold text-sm text-orange-500">Yeni biznes (VÖEN) əlavə et</p>
+                  <div className="text-xl shrink-0">🏢➕</div>
+                  <div>
+                    <p className="font-semibold text-sm text-orange-500">Yeni biznes (VÖEN) əlavə et</p>
+                    <p className="text-[11px] text-muted">Başqa şirkət/VÖEN əlavə et — admin təsdiqindən sonra ona obyekt və məhsul bağlaya bilərsiniz.</p>
+                  </div>
                 </a>
-              </div>
-            ) : approvedBizNoObj.length > 0 ? (
-              // Biznes TƏSDİQLƏNİB, amma hələ obyekti yoxdur — obyekt əlavə etməyə yönləndir.
-              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
-                <p className="font-semibold text-sm text-green-600">✓ Biznesiniz təsdiqlənib{approvedBizNoObj.length === 1 ? `: ${approvedBizNoObj[0].name}` : ""}</p>
-                <p className="text-xs text-muted mt-0.5">VÖEN ilə satış üçün bu biznesə ən azı bir <b>obyekt (mağaza / filial)</b> əlavə etməlisiniz. Elan həmişə bir obyektə bağlı satılır.</p>
-                <a href="/business" className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold hover:bg-orange-600">＋ Obyekt əlavə et →</a>
-              </div>
-            ) : (
-              <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
-                <p className="font-semibold text-sm">Təsdiqlənmiş biznesiniz yoxdur</p>
-                <p className="text-xs text-muted mt-0.5">VÖEN-li elan (kartla ödəniş) üçün əvvəlcə biznes (VÖEN) əlavə edin, admin təsdiqindən sonra ona obyekt bağlayın.</p>
-                <a href="/business" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">Biznes əlavə et →</a>
               </div>
             )}
           </div>
