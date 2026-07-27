@@ -22,7 +22,7 @@ interface ChannelStatus {
   otpButton?: boolean; // yalnız WhatsApp
 }
 interface OtpDiag {
-  channel: "sms" | "whatsapp";
+  channel: "sms" | "whatsapp" | "both";
   sms: ChannelStatus;
   whatsapp: ChannelStatus;
 }
@@ -34,8 +34,8 @@ export default function AdminSettingsPage() {
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [wa, setWa] = useState<OtpDiag | null>(null);
   const [testPhone, setTestPhone] = useState("");
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<any>(null);
+  const [testingCh, setTestingCh] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<{ whatsapp?: any; sms?: any }>({});
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
@@ -54,23 +54,50 @@ export default function AdminSettingsPage() {
   };
   useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const runTest = async () => {
-    if (!testPhone.trim()) return;
-    setTesting(true);
-    setTestResult(null);
+  // Bir kanalı ayrıca test et (WhatsApp və ya SMS) — provayderin real cavabı gəlir.
+  const runTest = async (channel: "whatsapp" | "sms") => {
+    if (!testPhone.trim()) { toast("Test nömrəsini yazın", "error"); return; }
+    setTestingCh(channel);
     try {
       const res = await fetch(`${API}/admin/whatsapp-test`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ phone: testPhone.trim() }),
+        body: JSON.stringify({ phone: testPhone.trim(), channel }),
       });
       const data = await res.json();
-      setTestResult(data.result || { ok: false, detail: data.message });
+      setTestResults((prev) => ({ ...prev, [channel]: data.result?.[channel] || { ok: false, detail: data.message } }));
     } catch (e: any) {
-      setTestResult({ ok: false, detail: e?.message || "Xəta" });
+      setTestResults((prev) => ({ ...prev, [channel]: { ok: false, detail: e?.message || "Xəta" } }));
     } finally {
-      setTesting(false);
+      setTestingCh(null);
     }
+  };
+
+  // Bir kanal paneli — konfiqurasiya vəziyyəti + test düyməsi + nəticə.
+  const channelPanel = (key: "whatsapp" | "sms", label: string, icon: string, st?: ChannelStatus) => {
+    const r = testResults[key];
+    return (
+      <div className="border border-card-border rounded-xl p-3">
+        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+          <span>{icon}</span>
+          <span className="font-semibold text-sm">{label}</span>
+          {st && <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${st.configured ? "text-emerald-500 bg-emerald-500/10" : "text-red-500 bg-red-500/10"}`}>{st.configured ? "OK" : "natamam"}</span>}
+        </div>
+        {st && !st.configured && <p className="text-[11px] text-red-500 mb-1.5">Çatışmayan: <b>{st.missing.join(", ")}</b></p>}
+        {st && st.configured && (
+          <p className="text-[11px] text-muted mb-1.5">Sender: <b className="text-foreground">{st.sender}</b>{key === "whatsapp" && st.templateName ? <> · Şablon: <b className="text-foreground">{st.templateName}</b> · Dil: <b className="text-foreground">{st.language}</b></> : null}</p>
+        )}
+        <button type="button" onClick={() => runTest(key)} disabled={testingCh !== null || !testPhone.trim()} className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold disabled:opacity-50">
+          {testingCh === key ? "Göndərilir…" : `${label} test et`}
+        </button>
+        {r && (
+          <div className={`mt-2 rounded-lg px-2.5 py-1.5 text-[11px] border ${r.ok ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/20" : "text-red-500 bg-red-500/10 border-red-500/20"}`}>
+            <p className="font-semibold">{r.ok ? "✓ Göndərildi" : `✗ Alınmadı${r.status ? ` (HTTP ${r.status})` : ""}`}</p>
+            {r.detail && <p className="break-words opacity-90">{r.detail}</p>}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const toggle = async (f: Flag) => {
@@ -107,66 +134,30 @@ export default function AdminSettingsPage() {
         <p className="text-muted text-sm mt-1">Xüsusiyyətləri aktiv/deaktiv edin. Dəyişikliklər dərhal tətbiq olunur.</p>
       </div>
 
-      {/* OTP (Infobip) diaqnostikası — aktiv kanal (SMS/WhatsApp), nömrəyə kod
-          gəlmirsə səbəbi burada görünür. */}
-      {(() => {
-        const active = wa ? (wa.channel === "sms" ? wa.sms : wa.whatsapp) : null;
-        const chLabel = wa?.channel === "sms" ? "SMS (Infobip)" : "WhatsApp";
-        return (
-          <div className="mb-6 bg-card border border-card-border rounded-2xl p-4">
-            <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="text-lg">{wa?.channel === "sms" ? "✉️" : "📱"}</span>
-              <p className="font-semibold text-sm">OTP diaqnostika</p>
-              {wa && <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-blue-500/10 text-blue-500">Kanal: {chLabel}</span>}
-              {active && (
-                <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${active.configured ? "text-emerald-500 bg-emerald-500/10" : "text-red-500 bg-red-500/10"}`}>
-                  {active.configured ? "Konfiqurasiya OK" : "Konfiqurasiya natamam"}
-                </span>
-              )}
-            </div>
-
-            {active && !active.configured && (
-              <div className="text-xs text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2 mb-3">
-                Çatışmayan env dəyişənləri (Railway-də təyin edin): <b>{active.missing.join(", ")}</b>
-              </div>
-            )}
-            {active && active.configured && (
-              <div className="text-[11px] text-muted mb-3 space-y-0.5">
-                {wa?.channel === "whatsapp" && (
-                  <div>Şablon: <b className="text-foreground">{active.templateName}</b> · Dil: <b className="text-foreground">{active.language}</b> · OTP düymə: <b className="text-foreground">{active.otpButton ? "bəli" : "xeyr"}</b></div>
-                )}
-                <div>Sender: <b className="text-foreground">{active.sender}</b> · Base: <b className="text-foreground">{active.baseUrl}</b></div>
-              </div>
-            )}
-
-            {/* Test göndər */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <input
-                value={testPhone}
-                onChange={(e) => setTestPhone(e.target.value)}
-                placeholder="Test nömrəsi (məs. +99450...)"
-                className="flex-1 px-3 py-2 bg-input-bg border border-input-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
-              />
-              <button
-                type="button"
-                onClick={runTest}
-                disabled={testing || !testPhone.trim()}
-                className="px-4 py-2 bg-orange-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50 whitespace-nowrap"
-              >
-                {testing ? "Göndərilir…" : `Test ${chLabel} göndər`}
-              </button>
-            </div>
-            <p className="text-[11px] text-muted mt-1.5">Bu nömrəyə test kodu (123456) {chLabel} ilə göndərilir. Nəticə/xəta aşağıda görünür.</p>
-
-            {testResult && (
-              <div className={`mt-3 rounded-lg px-3 py-2 text-xs border ${testResult.ok ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/20" : "text-red-500 bg-red-500/10 border-red-500/20"}`}>
-                <p className="font-semibold mb-0.5">{testResult.ok ? `✓ Göndərildi (${chLabel} yoxlayın)` : `✗ Alınmadı${testResult.status ? ` (HTTP ${testResult.status})` : ""}`}</p>
-                {testResult.detail && <p className="break-words opacity-90">{testResult.detail}</p>}
-              </div>
-            )}
-          </div>
-        );
-      })()}
+      {/* OTP (Infobip) — WhatsApp + SMS. Real rejimdə əvvəl WhatsApp, çatmasa SMS.
+          Hər kanalı ayrıca test et; nömrəyə kod gəlmirsə səbəbi aşağıda görünür. */}
+      <div className="mb-6 bg-card border border-card-border rounded-2xl p-4">
+        <div className="flex items-center gap-2 mb-2 flex-wrap">
+          <span className="text-lg">🔐</span>
+          <p className="font-semibold text-sm">OTP doğrulama (Infobip)</p>
+          {wa && (
+            <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 bg-blue-500/10 text-blue-500">
+              Rejim: {wa.channel === "both" ? "WhatsApp → SMS (fallback)" : wa.channel === "whatsapp" ? "yalnız WhatsApp" : "yalnız SMS"}
+            </span>
+          )}
+        </div>
+        <p className="text-[11px] text-muted mb-3">Real rejimdə əvvəl WhatsApp sınanır; çatmasa avtomatik SMS göndərilir. Aşağıdan hər kanalı ayrıca test edə bilərsiniz (kod: 123456).</p>
+        <input
+          value={testPhone}
+          onChange={(e) => setTestPhone(e.target.value)}
+          placeholder="Test nömrəsi (məs. +99450...)"
+          className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-lg text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+        />
+        <div className="grid sm:grid-cols-2 gap-3">
+          {channelPanel("whatsapp", "WhatsApp", "📱", wa?.whatsapp)}
+          {channelPanel("sms", "SMS", "✉️", wa?.sms)}
+        </div>
+      </div>
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted text-sm py-10">
