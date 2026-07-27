@@ -42,6 +42,7 @@ export default function CartPage() {
   const [buyerObjectId, setBuyerObjectId] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "WALLET">("CASH");
+  const [paymentTouched, setPaymentTouched] = useState(false); // istifadəçi ödəniş üsulunu əl ilə dəyişib?
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscount, setPromoDiscount] = useState(0);
   const [promoValidated, setPromoValidated] = useState(false);
@@ -80,6 +81,15 @@ export default function CartPage() {
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(items.map((i) => i.id)));
   const selItems = items.filter((i) => selected.has(i.id));
   const selTotal = selItems.reduce((s, i) => s + (i.listing?.price || 0) * i.quantity, 0);
+
+  // Ödəniləcək məhsullar (seçim varsa onlar, yoxsa hamısı) biznesə (VÖEN) bağlıdırsa
+  // kartla ödəniş mümkündür. VÖEN məhsulunda ödəniş üsulu avtomatik KART seçilir.
+  const checkoutItems = selItems.length ? selItems : items;
+  const cardAllowed = checkoutItems.length > 0 && checkoutItems.every((i) => !!(i.listing?.businessId || i.listing?.businessObjectId));
+  useEffect(() => {
+    if (!cardAllowed) { setPaymentMethod((m) => (m === "CARD" ? "CASH" : m)); return; }
+    if (!paymentTouched) setPaymentMethod("CARD"); // VÖEN → default kart
+  }, [cardAllowed, paymentTouched]);
 
   // Səbəti link kimi paylaş — linki yaradır və path qaytarır (paylaşım menyusu üçün).
   const shareCart = async (): Promise<string | null> => {
@@ -168,6 +178,10 @@ export default function CartPage() {
 
   const updateQty = async (id: number, qty: number) => {
     if (qty < 1) return;
+    // Stokdan çox seçməyə icazə vermə (satıcının qoyduğu say maksimumdur).
+    const it0 = items.find((it) => it.id === id);
+    const max = it0?.listing?.stock;
+    if (typeof max === "number" && qty > max) { toast(`Bu məhsuldan maksimum ${max} ədəd var`, "error"); return; }
     // Optimistik yeniləmə — səhifə yenilənmədən (spinner göstərmədən) dərhal dəyişir.
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, quantity: qty } : it)));
     try {
@@ -409,14 +423,18 @@ export default function CartPage() {
                         <div className="flex-1 min-w-0">
                           <Link href={`/marketplace/${item.listing.id}`} className="font-medium text-sm hover:text-orange-500 block truncate">{item.listing.title}</Link>
                           <div className="flex items-center gap-2 mt-2">
-                            <button onClick={() => updateQty(item.id, item.quantity - 1)} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm">−</button>
+                            <button onClick={() => updateQty(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">−</button>
                             <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
-                            <button onClick={() => updateQty(item.id, item.quantity + 1)} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm">+</button>
+                            <button onClick={() => updateQty(item.id, item.quantity + 1)} disabled={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock} title={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock ? `Maksimum ${item.listing.stock} ədəd` : ""} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">+</button>
+                            {typeof item.listing?.stock === "number" && <span className="text-[11px] text-muted ml-1">stok: {item.listing.stock}</span>}
                           </div>
                         </div>
-                        <div className="text-right flex flex-col justify-between">
+                        <div className="text-right flex flex-col justify-between items-end">
                           <p className="text-orange-500 font-bold text-sm">{(item.listing.price * item.quantity).toFixed(2)} AZN</p>
-                          <button onClick={() => removeItem(item.id)} className="text-red-500 text-xs hover:text-red-400">{t("remove")}</button>
+                          <button onClick={() => removeItem(item.id)} className="flex items-center gap-1 text-red-500 text-xs hover:text-red-400 mt-1">
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            {t("remove")}
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -577,21 +595,14 @@ export default function CartPage() {
                   {/* Payment */}
                   <div>
                     <label className="block text-xs text-muted mb-1">{t("paymentMethod")}</label>
-                    {(() => {
-                      // Kart yalnız bütün məhsullar biznesə bağlıdırsa mümkündür.
-                      const cardAllowed = items.length > 0 && items.every((i) => i.listing?.businessId);
-                      if (!cardAllowed && paymentMethod === "CARD") setTimeout(() => setPaymentMethod("CASH"), 0);
-                      return (
-                        <>
-                          <div className="grid grid-cols-3 gap-2">
-                            <button onClick={() => setPaymentMethod("CASH")} className={`py-2 rounded-lg text-xs ${paymentMethod === "CASH" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>💵 {t("cash")}</button>
-                            <button onClick={() => cardAllowed && setPaymentMethod("CARD")} disabled={!cardAllowed} title={cardAllowed ? "" : (t("cardOnlyBusiness") || "Yalnız biznes məhsulları kartla")} className={`py-2 rounded-lg text-xs ${paymentMethod === "CARD" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'} ${!cardAllowed ? 'opacity-40 cursor-not-allowed' : ''}`}>💳 {t("card")}</button>
-                            <button onClick={() => setPaymentMethod("WALLET")} className={`py-2 rounded-lg text-xs ${paymentMethod === "WALLET" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>👝 {t("wallet")}</button>
-                          </div>
-                          {!cardAllowed && <p className="text-[11px] text-muted mt-1.5">{t("cardOnlyBusinessHint") || "Bu məhsullar fərdi satıcılara aiddir — yalnız nağd/əldən. Kart yalnız biznes məhsullarında işləyir."}</p>}
-                        </>
-                      );
-                    })()}
+                    <div className="grid grid-cols-3 gap-2">
+                      <button onClick={() => { setPaymentTouched(true); setPaymentMethod("CASH"); }} className={`py-2 rounded-lg text-xs ${paymentMethod === "CASH" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>💵 {t("cash")}</button>
+                      <button onClick={() => { if (cardAllowed) { setPaymentTouched(true); setPaymentMethod("CARD"); } }} disabled={!cardAllowed} title={cardAllowed ? "" : (t("cardOnlyBusiness") || "Yalnız biznes məhsulları kartla")} className={`py-2 rounded-lg text-xs ${paymentMethod === "CARD" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'} ${!cardAllowed ? 'opacity-40 cursor-not-allowed' : ''}`}>💳 {t("card")}</button>
+                      <button onClick={() => { setPaymentTouched(true); setPaymentMethod("WALLET"); }} className={`py-2 rounded-lg text-xs ${paymentMethod === "WALLET" ? 'bg-orange-500 text-white' : 'bg-input-bg border border-input-border'}`}>👝 {t("wallet")}</button>
+                    </div>
+                    {!cardAllowed
+                      ? <p className="text-[11px] text-muted mt-1.5">{t("cardOnlyBusinessHint") || "Bu məhsullar fərdi satıcılara aiddir — yalnız nağd/əldən. Kart yalnız biznes məhsullarında işləyir."}</p>
+                      : paymentMethod === "CARD" && <p className="text-[11px] text-muted mt-1.5">💳 Kartla ödəniş — təsdiqdən sonra bankın təhlükəsiz ödəniş səhifəsi açılacaq.</p>}
                   </div>
 
                   {/* Promo Code */}
