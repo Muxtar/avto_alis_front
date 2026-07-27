@@ -7,6 +7,7 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { useToast } from '@/components/Toast';
 import { API, imgUrl } from '@/lib/api';
 import OrderMap from '@/components/OrderMapWrapper';
+import { yangoLabel } from '@/lib/yangoStatus';
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -21,17 +22,19 @@ export default function OrderDetailPage() {
   const [ratingComment, setRatingComment] = useState('');
   const [hasRated, setHasRated] = useState(false);
   const [yango, setYango] = useState<any>(null); // /yango/status cavabı: performer, status, courierPosition
+  const [redispatching, setRedispatching] = useState(false);
   const refreshTimer = useRef<NodeJS.Timeout | null>(null);
+  // Qeyd: status dəyişimi toast-ı qlobal olaraq Navbar-da (socket "order:yango")
+  // göstərilir — burada təkrar etmirik ki, dublikat olmasın.
 
-  // Yango alt-statuslarının Azərbaycanca etiketləri (çatdırılma addımları).
-  const YANGO_STATUS_AZ: Record<string, string> = {
-    new: "yaradıldı", performer_search: "kuryer axtarılır", performer_draft: "kuryer təyin olunur",
-    performer_found: "kuryer tapıldı", performer_not_found: "kuryer tapılmadı",
-    pickup_arrived: "kuryer mağazada", ready_for_pickup_confirmation: "götürməyə hazır",
-    pickuped: "götürüldü, yolda", delivery_arrived: "kuryer ünvanınızda",
-    ready_for_delivery_confirmation: "təhvilə hazır", delivered: "çatdırıldı",
-    delivered_finish: "tamamlandı", cancelled: "ləğv edildi", cancelled_by_taxi: "kuryer ləğv etdi",
-    cancelled_with_payment: "ləğv edildi", failed: "uğursuz",
+  // Satıcı: göndərmə uğursuz olubsa yenidən Yango-ya göndər.
+  const redispatch = async () => {
+    setRedispatching(true);
+    try {
+      const r = await fetch(`${API}/orders/${params.id}/yango/dispatch`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }).then((x) => x.json());
+      if (r?.success) { toast("Kuryerə göndərildi ✓", "success"); fetchOrder(true); }
+      else toast(r?.message || "Göndərilə bilmədi", "error");
+    } catch { toast(t("error"), "error"); } finally { setRedispatching(false); }
   };
 
   useEffect(() => {
@@ -147,7 +150,20 @@ export default function OrderDetailPage() {
         {yango?.dispatched && yango.status && (
           <div className="mt-3 flex items-center gap-2 text-sm">
             <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-            <span className="font-medium">🛵 {YANGO_STATUS_AZ[yango.status] || yango.status}</span>
+            <span className="font-medium">🛵 {yangoLabel(yango.status)}</span>
+          </div>
+        )}
+
+        {/* Göndərmə uğursuz olub (kuryer tapılmadı / ünvan yoxdur) — satıcıya təkrar düyməsi */}
+        {order.deliveryMethod === 'COURIER' && !order.yangoClaimId && order.yangoError && ['CONFIRMED', 'SHIPPED'].includes(order.status) && (
+          <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm">
+            <p className="text-red-500 font-medium">⚠️ Kuryerə göndərilmədi</p>
+            <p className="text-xs text-muted mt-0.5">{order.yangoError}</p>
+            {user?.id === order.sellerId && (
+              <button onClick={redispatch} disabled={redispatching} className="mt-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold disabled:opacity-50">
+                {redispatching ? '...' : '🔄 Yenidən göndər'}
+              </button>
+            )}
           </div>
         )}
 
@@ -155,12 +171,18 @@ export default function OrderDetailPage() {
           <div>
             <p className="text-xs text-muted">{t('buyer')}</p>
             <p>{order.buyer?.name}</p>
-            {order.buyer?.phone && <a href={`tel:${order.buyer.phone}`} className="text-xs text-orange-500 hover:underline">📞 {order.buyer.phone}</a>}
+            {order.buyer?.phone && <a href={`tel:${order.buyer.phone}`} className="block text-xs text-orange-500 hover:underline">📞 {order.buyer.phone}</a>}
+            {user?.id !== order.buyerId && order.buyerId && (
+              <Link href={`/messages?chat=${order.buyerId}&name=${encodeURIComponent(order.buyer?.name || '')}`} className="block text-xs text-orange-500 hover:underline mt-0.5">💬 Mesaj yaz</Link>
+            )}
           </div>
           <div>
             <p className="text-xs text-muted">{t('courierSeller')}</p>
             <p>{order.seller?.name}</p>
-            {order.seller?.phone && <a href={`tel:${order.seller.phone}`} className="text-xs text-orange-500 hover:underline">📞 {order.seller.phone}</a>}
+            {order.seller?.phone && <a href={`tel:${order.seller.phone}`} className="block text-xs text-orange-500 hover:underline">📞 {order.seller.phone}</a>}
+            {user?.id !== order.sellerId && order.sellerId && (
+              <Link href={`/messages?chat=${order.sellerId}&name=${encodeURIComponent(order.seller?.name || '')}`} className="block text-xs text-orange-500 hover:underline mt-0.5">💬 Mesaj yaz</Link>
+            )}
           </div>
           {/* Yango kuryeri — təyin olunanda ad + maşın. Kuryer alıcıya ÖZÜ zəng edir
               (telefon ona ötürülüb); Yango kuryerin nömrəsini məxfilik üçün vermir. */}

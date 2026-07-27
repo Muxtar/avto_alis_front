@@ -339,6 +339,21 @@ export default function MessagesPage() {
       .catch(() => { toast(t('error'), 'error'); });
   };
 
+  // Deep-link: /messages?chat=<userId>&name=<ad> → birbaşa həmin söhbəti aç
+  // (məs. sifariş səhifəsindən "Satıcıya mesaj" düyməsi).
+  const deepLinkedRef = useRef(false);
+  useEffect(() => {
+    if (!isLoggedIn || deepLinkedRef.current) return;
+    const sp = new URLSearchParams(window.location.search);
+    const chatId = parseInt(sp.get("chat") || "");
+    if (chatId > 0) {
+      deepLinkedRef.current = true;
+      openChat({ type: "direct", id: chatId, name: sp.get("name") || "" });
+      window.history.replaceState({}, "", "/messages"); // geri qayıdanda təkrar açılmasın
+    }
+    // eslint-disable-next-line
+  }, [isLoggedIn]);
+
   const loadOlderMessages = () => {
     if (!active || !messages.length || loadingMore) return;
     const oldestId = messages[0]?.id;

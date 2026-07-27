@@ -9,6 +9,9 @@ import { useCart } from "@/lib/CartContext";
 import { Locale } from "@/lib/translations";
 import { API } from "@/lib/api";
 import { formatPriceShort } from "@/lib/format";
+import { useToast } from "@/components/Toast";
+import { getSocket } from "@/lib/callSocket";
+import { yangoLabel } from "@/lib/yangoStatus";
 import NotificationBell from "@/components/NotificationBell";
 import { CATEGORIES, slugify } from "@/lib/categories";
 import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
@@ -52,6 +55,7 @@ export default function Navbar() {
   const { theme, toggleTheme } = useTheme();
   const { user, token, isLoggedIn, logout, unreadMessages } = useAuth();
   const { cartCount } = useCart();
+  const { toast } = useToast();
   const router = useRouter();
   const [langOpen, setLangOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
@@ -91,6 +95,20 @@ export default function Navbar() {
     const interval = setInterval(fetchNotifications, 8000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  // Qlobal çatdırılma bildirişi — Yango status dəyişəndə (kuryer tapıldı / yolda /
+  // çatdı) hansı səhifədə olsan da toast göstər.
+  useEffect(() => {
+    if (!isLoggedIn || !token) return;
+    const socket = getSocket(token);
+    const onYango = (p: any) => {
+      if (!p?.yangoStatus) return;
+      const bad = p.yangoStatus === "failed" || String(p.yangoStatus).startsWith("cancelled");
+      toast(`🛵 Sifariş #${p.orderId}: ${yangoLabel(p.yangoStatus)}`, bad ? "error" : "success");
+    };
+    socket.on("order:yango", onYango);
+    return () => { socket.off("order:yango", onYango); };
+  }, [isLoggedIn, token, toast]);
 
   const totalUnread = unreadMessages + unreadInquiries;
 
