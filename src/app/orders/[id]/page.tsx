@@ -20,7 +20,19 @@ export default function OrderDetailPage() {
   const [ratingValue, setRatingValue] = useState(0);
   const [ratingComment, setRatingComment] = useState('');
   const [hasRated, setHasRated] = useState(false);
+  const [yango, setYango] = useState<any>(null); // /yango/status cavabı: performer, status, courierPosition
   const refreshTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Yango alt-statuslarının Azərbaycanca etiketləri (çatdırılma addımları).
+  const YANGO_STATUS_AZ: Record<string, string> = {
+    new: "yaradıldı", performer_search: "kuryer axtarılır", performer_draft: "kuryer təyin olunur",
+    performer_found: "kuryer tapıldı", performer_not_found: "kuryer tapılmadı",
+    pickup_arrived: "kuryer mağazada", ready_for_pickup_confirmation: "götürməyə hazır",
+    pickuped: "götürüldü, yolda", delivery_arrived: "kuryer ünvanınızda",
+    ready_for_delivery_confirmation: "təhvilə hazır", delivered: "çatdırıldı",
+    delivered_finish: "tamamlandı", cancelled: "ləğv edildi", cancelled_by_taxi: "kuryer ləğv etdi",
+    cancelled_with_payment: "ləğv edildi", failed: "uğursuz",
+  };
 
   useEffect(() => {
     if (authLoading) return;
@@ -51,11 +63,17 @@ export default function OrderDetailPage() {
   useEffect(() => {
     if (!order?.yangoClaimId) return;
     const done = ['delivered', 'delivered_finish', 'cancelled', 'cancelled_by_taxi', 'failed'];
-    if (done.includes(order.yangoStatus)) return;
-    const id = setInterval(async () => {
-      try { await fetch(`${API}/orders/${params.id}/yango/status`, { headers: { Authorization: `Bearer ${token}` } }); } catch { /* yum */ }
+    // Kuryer məlumatı + statusu çək (performer, courierPosition) və yadda saxla.
+    const pull = async () => {
+      try {
+        const r = await fetch(`${API}/orders/${params.id}/yango/status`, { headers: { Authorization: `Bearer ${token}` } }).then((x) => x.json());
+        if (r?.success) setYango(r);
+      } catch { /* yum */ }
       fetchOrder(true);
-    }, 12000);
+    };
+    pull(); // dərhal bir dəfə (12s gözləmədən)
+    if (done.includes(order.yangoStatus)) return;
+    const id = setInterval(pull, 12000);
     return () => clearInterval(id);
     // eslint-disable-next-line
   }, [order?.yangoClaimId, order?.yangoStatus, params.id]);
@@ -125,22 +143,35 @@ export default function OrderDetailPage() {
           </span>
         </div>
 
+        {/* Canlı Yango alt-statusu (kuryer axtarılır / yolda / ünvanınızda …) */}
+        {yango?.dispatched && yango.status && (
+          <div className="mt-3 flex items-center gap-2 text-sm">
+            <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+            <span className="font-medium">🛵 {YANGO_STATUS_AZ[yango.status] || yango.status}</span>
+          </div>
+        )}
+
         <div className="mt-4 pt-4 border-t border-card-border grid grid-cols-2 gap-3 text-sm">
           <div>
             <p className="text-xs text-muted">{t('buyer')}</p>
             <p>{order.buyer?.name}</p>
-            <p className="text-xs text-muted">{order.buyer?.phone}</p>
+            {order.buyer?.phone && <a href={`tel:${order.buyer.phone}`} className="text-xs text-orange-500 hover:underline">📞 {order.buyer.phone}</a>}
           </div>
           <div>
             <p className="text-xs text-muted">{t('courierSeller')}</p>
             <p>{order.seller?.name}</p>
-            <p className="text-xs text-muted">{order.seller?.phone}</p>
+            {order.seller?.phone && <a href={`tel:${order.seller.phone}`} className="text-xs text-orange-500 hover:underline">📞 {order.seller.phone}</a>}
           </div>
-          {order.courier && (
+          {/* Yango kuryeri — təyin olunanda ad + maşın. Kuryer alıcıya ÖZÜ zəng edir
+              (telefon ona ötürülüb); Yango kuryerin nömrəsini məxfilik üçün vermir. */}
+          {yango?.performer && (
             <div className="col-span-2 pt-2 border-t border-card-border/50">
-              <p className="text-xs text-muted">🚴 Kuryer</p>
-              <p>{order.courier.name}</p>
-              <p className="text-xs text-muted">{order.courier.phone}</p>
+              <p className="text-xs text-muted">🛵 Yango kuryeri</p>
+              <p className="font-medium">
+                {yango.performer.courier_name || 'Kuryer'}
+                {yango.performer.car_model ? <span className="text-muted font-normal"> · {yango.performer.car_model} {yango.performer.car_number || ''}</span> : null}
+              </p>
+              <p className="text-[11px] text-muted mt-0.5">Kuryer çatanda sizə zəng edəcək — telefonunuz ona ötürülüb.</p>
             </div>
           )}
         </div>
