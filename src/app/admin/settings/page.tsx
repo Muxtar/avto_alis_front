@@ -33,7 +33,8 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [wa, setWa] = useState<OtpDiag | null>(null);
-  const [testPhone, setTestPhone] = useState("");
+  // Hər kanal üçün AYRI test nömrəsi (WhatsApp və SMS-i müstəqil test etmək üçün).
+  const [testPhone, setTestPhone] = useState<{ whatsapp: string; sms: string }>({ whatsapp: "", sms: "" });
   const [testingCh, setTestingCh] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<{ whatsapp?: any; sms?: any }>({});
 
@@ -56,13 +57,14 @@ export default function AdminSettingsPage() {
 
   // Bir kanalı ayrıca test et (WhatsApp və ya SMS) — provayderin real cavabı gəlir.
   const runTest = async (channel: "whatsapp" | "sms") => {
-    if (!testPhone.trim()) { toast("Test nömrəsini yazın", "error"); return; }
+    const phone = testPhone[channel].trim();
+    if (!phone) { toast("Test nömrəsini yazın", "error"); return; }
     setTestingCh(channel);
     try {
       const res = await fetch(`${API}/admin/whatsapp-test`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ phone: testPhone.trim(), channel }),
+        body: JSON.stringify({ phone, channel }),
       });
       const data = await res.json();
       setTestResults((prev) => ({ ...prev, [channel]: data.result?.[channel] || { ok: false, detail: data.message } }));
@@ -87,9 +89,17 @@ export default function AdminSettingsPage() {
         {st && st.configured && (
           <p className="text-[11px] text-muted mb-1.5">Sender: <b className="text-foreground">{st.sender}</b>{key === "whatsapp" && st.templateName ? <> · Şablon: <b className="text-foreground">{st.templateName}</b> · Dil: <b className="text-foreground">{st.language}</b></> : null}</p>
         )}
-        <button type="button" onClick={() => runTest(key)} disabled={testingCh !== null || !testPhone.trim()} className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold disabled:opacity-50">
-          {testingCh === key ? "Göndərilir…" : `${label} test et`}
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={testPhone[key]}
+            onChange={(e) => setTestPhone((p) => ({ ...p, [key]: e.target.value }))}
+            placeholder={`${label} test nömrəsi (+99450...)`}
+            className="flex-1 px-3 py-2 bg-input-bg border border-input-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+          />
+          <button type="button" onClick={() => runTest(key)} disabled={testingCh !== null || !testPhone[key].trim()} className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-semibold disabled:opacity-50 whitespace-nowrap">
+            {testingCh === key ? "Göndərilir…" : `${label} test et`}
+          </button>
+        </div>
         {r && (
           <div className={`mt-2 rounded-lg px-2.5 py-1.5 text-[11px] border ${r.ok ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/20" : "text-red-500 bg-red-500/10 border-red-500/20"}`}>
             <p className="font-semibold">{r.ok ? "✓ Göndərildi" : `✗ Alınmadı${r.status ? ` (HTTP ${r.status})` : ""}`}</p>
@@ -146,13 +156,7 @@ export default function AdminSettingsPage() {
             </span>
           )}
         </div>
-        <p className="text-[11px] text-muted mb-3">Real rejimdə əvvəl WhatsApp sınanır; çatmasa avtomatik SMS göndərilir. Aşağıdan hər kanalı ayrıca test edə bilərsiniz (kod: 123456).</p>
-        <input
-          value={testPhone}
-          onChange={(e) => setTestPhone(e.target.value)}
-          placeholder="Test nömrəsi (məs. +99450...)"
-          className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-lg text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-orange-500/30"
-        />
+        <p className="text-[11px] text-muted mb-3">Real rejimdə əvvəl WhatsApp sınanır; çatmasa avtomatik SMS göndərilir. Hər kanalın öz test nömrəsi və düyməsi var — ayrıca yoxlayın (kod: 123456).</p>
         <div className="grid sm:grid-cols-2 gap-3">
           {channelPanel("whatsapp", "WhatsApp", "📱", wa?.whatsapp)}
           {channelPanel("sms", "SMS", "✉️", wa?.sms)}
