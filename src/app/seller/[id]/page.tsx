@@ -118,8 +118,10 @@ export default function SellerProfilePage() {
               {user.idVerifyStatus === "APPROVED" && (
                 <span className="px-2.5 py-1 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium">✓ Təsdiqlənmiş</span>
               )}
-              <ShareButton title={user.name} text={`${user.name}${user.profession ? ` — ${user.profession}` : ""} · tradixai`} compact className="ml-auto shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
-              <QRShare path={`/seller/${params.id}`} title={user.name} subtitle={user.profession || "Profil"} compact className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+              {/* İxtisas profilində paylaşım İxtisas kontekstini saxlayır (?from=ixtisas) —
+                  qarşı tərəf də eyni rəy yönümlü profili görsün (telefon/məhsullar gizli). */}
+              <ShareButton title={user.name} text={`${user.name}${user.profession ? ` — ${user.profession}` : ""} · tradixai`} path={ixtisasMode ? `/seller/${params.id}?from=ixtisas` : `/seller/${params.id}`} compact className="ml-auto shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+              <QRShare path={ixtisasMode ? `/seller/${params.id}?from=ixtisas` : `/seller/${params.id}`} title={user.name} subtitle={ixtisasMode ? (user.profession ? `${user.profession} · İxtisas` : "İxtisas profili") : (user.profession || "Profil")} compact className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
             </div>
 
             <div className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted mb-4">

@@ -11,6 +11,7 @@ import SideBanners from "@/components/SideBanners";
 import TrustBar from "@/components/TrustBar";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import AddListingMenu from "@/components/AddListingMenu";
+import ShareButton from "@/components/ShareButton";
 import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
 import CategoryFilterPanel from "@/components/CategoryFilterPanel";
 import { API, imgUrl } from "@/lib/api";
@@ -636,7 +637,12 @@ function MarketplacePage() {
                     return (
                       <Link key={p.id} href={`/seller/${p.id}?from=ixtisas`} className="surface overflow-hidden hover:border-orange-500/50 hover:shadow-lg transition-all group">
                         {/* Üst yaşıl başlıq + böyük avatar */}
-                        <div className="h-16 bg-gradient-to-r from-orange-500/15 to-emerald-500/15 relative" />
+                        <div className="h-16 bg-gradient-to-r from-orange-500/15 to-emerald-500/15 relative">
+                          {/* Birbaşa paylaşma — profili açmadan İxtisas profilini paylaş (kart naviqasiyasını dayandırır) */}
+                          <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); }} className="absolute top-2 right-2 z-10">
+                            <ShareButton title={p.name || "İxtisas profili"} text={`${p.name || "İxtisas"}${p.profession ? ` — ${p.profession}` : ""} · tradixai`} path={`/seller/${p.id}?from=ixtisas`} compact className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-card/80 backdrop-blur border border-card-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all shadow-sm" />
+                          </span>
+                        </div>
                         <div className="px-4 pb-4 -mt-9">
                           <div className="w-[72px] h-[72px] rounded-2xl bg-input-bg overflow-hidden ring-4 ring-card shadow-md flex items-center justify-center text-3xl">
                             {p.avatar ? (
