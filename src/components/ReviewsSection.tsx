@@ -68,7 +68,9 @@ export default function ReviewsSection({ base, title = "Rəylər" }: { base: str
     <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 mt-4">
       <h3 className="font-semibold mb-3 flex items-center gap-2 flex-wrap">
         💬 {title} ({stats.count || comments.length})
-        {stats.percent != null && <span className="text-xs px-2 py-0.5 rounded-lg bg-green-500/10 text-green-600 font-semibold">👍 {stats.percent}% məmnun</span>}
+        {stats.avg != null && <span className="text-xs px-2 py-0.5 rounded-lg bg-amber-400/10 text-amber-600 font-semibold">★ {stats.avg}</span>}
+        {stats.likePercent != null && <span className="text-xs px-2 py-0.5 rounded-lg bg-green-500/10 text-green-600 font-semibold">👍 {stats.likePercent}% müsbət</span>}
+        {(stats.likes > 0 || stats.dislikes > 0) && <span className="text-xs text-muted">👍 {stats.likes} · 👎 {stats.dislikes}</span>}
       </h3>
 
       {!isLoggedIn ? (

@@ -98,6 +98,31 @@ export default function ObjectPage() {
             {object.business?.name && (
               <p className="text-sm text-muted mb-2">Biznes: <span className="font-medium text-foreground">{object.business.name}</span></p>
             )}
+            {/* Obyektin 5 ulduz + bəyən/bəyənmə reytinqi (eBay üslubu) — alıcılar məhsullara baxmadan etibarı görsün */}
+            {object.rating && object.rating.count > 0 ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
+                <span className="inline-flex items-center gap-1">
+                  <span className="inline-flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((n) => (
+                      <span key={n} className={`text-base leading-none ${n <= Math.round(object.rating.avg || 0) ? "text-amber-400" : "text-muted/30"}`}>★</span>
+                    ))}
+                  </span>
+                  <span className="font-bold text-foreground">{(object.rating.avg || 0).toFixed(1)}</span>
+                  <span className="text-xs text-muted">({object.rating.count} rəy)</span>
+                </span>
+                {object.rating.likePercent != null && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-500/10 text-green-600">
+                    👍 {object.rating.likePercent}% müsbət
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-2 text-xs text-muted">
+                  <span className="text-green-600 font-medium">👍 {object.rating.likes}</span>
+                  <span className="text-red-500 font-medium">👎 {object.rating.dislikes}</span>
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-muted mb-3">⭐ Hələ reytinq yoxdur — ilk rəyi siz yazın</p>
+            )}
             <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted">
               {(object.city || object.address) && (
                 <span className="flex items-center gap-1.5">
