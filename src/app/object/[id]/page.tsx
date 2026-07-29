@@ -88,59 +88,73 @@ export default function ObjectPage() {
         <div className="flex items-start gap-4">
           <div className="w-16 h-16 rounded-2xl bg-orange-500/10 flex items-center justify-center text-3xl shrink-0">🏪</div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2 mb-1">
-              <h1 className="text-xl sm:text-2xl font-bold">{object.name}</h1>
+            {/* Ad + № + biznes — bir başlıq bloku, sağda paylaş/QR */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold leading-tight">{object.name}</h1>
+                <p className="text-xs text-muted mt-0.5">
+                  Obyekt №{object.id}
+                  {object.business?.name ? <> · <span className="font-medium text-foreground">{object.business.name}</span></> : null}
+                </p>
+              </div>
               <div className="flex items-center gap-2 shrink-0">
                 <ShareButton title={object.name} text={`${object.name} — tradixai`} compact className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
                 <QRShare path={`/object/${params.id}`} title={object.name} subtitle={`Obyekt №${object.id}`} compact className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
               </div>
             </div>
-            {object.business?.name && (
-              <p className="text-sm text-muted mb-2">Biznes: <span className="font-medium text-foreground">{object.business.name}</span></p>
-            )}
-            {/* Obyektin 5 ulduz + bəyən/bəyənmə reytinqi (eBay üslubu) — alıcılar məhsullara baxmadan etibarı görsün */}
-            {object.rating && object.rating.count > 0 ? (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
-                <span className="inline-flex items-center gap-1">
-                  <span className="inline-flex items-center gap-0.5">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <span key={n} className={`text-base leading-none ${n <= Math.round(object.rating.avg || 0) ? "text-amber-400" : "text-muted/30"}`}>★</span>
-                    ))}
+
+            {/* Reytinq zolağı — bir baxışda etibar (5 ulduz + bəyən/bəyənmə %) + məhsul sayı */}
+            <div className="mt-3 rounded-xl border border-card-border bg-input-bg/40 p-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+              {object.rating && object.rating.count > 0 ? (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl font-extrabold leading-none">{(object.rating.avg || 0).toFixed(1)}</span>
+                    <div className="flex flex-col">
+                      <span className="inline-flex items-center gap-0.5">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <span key={n} className={`text-sm leading-none ${n <= Math.round(object.rating.avg || 0) ? "text-amber-400" : "text-muted/30"}`}>★</span>
+                        ))}
+                      </span>
+                      <span className="text-[11px] text-muted">{object.rating.count} rəy</span>
+                    </div>
+                  </div>
+                  {object.rating.likePercent != null && (
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-500/10 text-green-600">👍 {object.rating.likePercent}% müsbət</span>
+                  )}
+                  <span className="inline-flex items-center gap-2.5 text-xs">
+                    <span className="text-green-600 font-medium">👍 {object.rating.likes}</span>
+                    <span className="text-red-500 font-medium">👎 {object.rating.dislikes}</span>
                   </span>
-                  <span className="font-bold text-foreground">{(object.rating.avg || 0).toFixed(1)}</span>
-                  <span className="text-xs text-muted">({object.rating.count} rəy)</span>
-                </span>
-                {object.rating.likePercent != null && (
-                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-green-500/10 text-green-600">
-                    👍 {object.rating.likePercent}% müsbət
-                  </span>
-                )}
-                <span className="inline-flex items-center gap-2 text-xs text-muted">
-                  <span className="text-green-600 font-medium">👍 {object.rating.likes}</span>
-                  <span className="text-red-500 font-medium">👎 {object.rating.dislikes}</span>
-                </span>
-              </div>
-            ) : (
-              <p className="text-xs text-muted mb-3">⭐ Hələ reytinq yoxdur — ilk rəyi siz yazın</p>
-            )}
-            <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-muted">
+                </>
+              ) : (
+                <span className="text-xs text-muted">⭐ Hələ reytinq yoxdur — ilk rəyi siz yazın</span>
+              )}
+              <span className="ml-auto inline-flex items-center gap-1.5 text-xs text-muted">🛍 <b className="text-foreground">{listings?.length || 0}</b> məhsul</span>
+            </div>
+
+            {/* Əlaqə/məkan — səliqəli chip-lər */}
+            <div className="flex flex-wrap gap-2 mt-3">
               {(object.city || object.address) && (
-                <span className="flex items-center gap-1.5">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+                <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-muted">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                   {[object.city, object.address].filter(Boolean).join(", ")}
                 </span>
               )}
               {object.phone && (
-                <span className="flex items-center gap-1.5">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
+                <a href={`tel:${object.phone}`} className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-colors">
+                  <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
                   {object.phone}
-                </span>
+                </a>
               )}
               {mapHref && (
-                <a href={mapHref} target="_blank" rel="noreferrer" className="text-orange-500 hover:text-orange-400">Xəritədə aç →</a>
+                <a href={mapHref} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-orange-500 hover:border-orange-500/50 transition-colors">🗺 Xəritədə aç</a>
+              )}
+              {object.referralEnabled && (
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-orange-500/10 text-orange-500 border border-orange-500/30 rounded-lg text-xs font-semibold">🤝 Referal satış</span>
               )}
             </div>
-            {/* Opsional veb-sayt / sosial şəbəkələr */}
+
+            {/* Sosial şəbəkələr */}
             {object.business && [object.business.website, object.business.instagram, object.business.facebook, object.business.tiktok, object.business.youtube, object.business.linkedin].some(Boolean) && (
               <div className="flex flex-wrap gap-2 mt-3">
                 {[
@@ -156,18 +170,13 @@ export default function ObjectPage() {
                 ))}
               </div>
             )}
+
+            {/* Fəaliyyət sahələri */}
             {object.activityAreas?.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mt-3">
                 {object.activityAreas.map((a: string) => (
                   <span key={a} className="px-2.5 py-1 bg-input-bg border border-input-border rounded-lg text-[11px] text-muted">{a}</span>
                 ))}
-              </div>
-            )}
-            {object.referralEnabled && (
-              <div className="mt-3">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-orange-500/10 text-orange-500 border border-orange-500/30 rounded-lg text-[11px] font-semibold">
-                  🤝 Referal satışa icazə verir
-                </span>
               </div>
             )}
           </div>

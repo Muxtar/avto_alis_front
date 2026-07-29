@@ -733,6 +733,32 @@ export default function ListingDetailPage() {
                   </p>
                 </div>
               </Link>
+
+              {/* Obyektin reytinqi — obyekti açmadan burada görünür (5 ulduz + bəyən/bəyənmə %) */}
+              {listing.businessObject.rating && listing.businessObject.rating.count > 0 ? (
+                <Link href={`/object/${listing.businessObject.id}`} className="block mb-4 rounded-xl border border-card-border bg-input-bg/40 p-3 hover:border-orange-500/40 transition-colors">
+                  <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1.5">
+                    <span className="inline-flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <span key={n} className={`text-sm leading-none ${n <= Math.round(listing.businessObject.rating.avg || 0) ? "text-amber-400" : "text-muted/30"}`}>★</span>
+                      ))}
+                    </span>
+                    <span className="font-bold text-sm">{(listing.businessObject.rating.avg || 0).toFixed(1)}</span>
+                    <span className="text-xs text-muted">({listing.businessObject.rating.count} rəy)</span>
+                    {listing.businessObject.rating.likePercent != null && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-lg bg-green-500/10 text-green-600">👍 {listing.businessObject.rating.likePercent}% müsbət</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted">
+                    <span className="text-green-600 font-medium">👍 {listing.businessObject.rating.likes}</span>
+                    <span className="text-red-500 font-medium">👎 {listing.businessObject.rating.dislikes}</span>
+                    <span className="ml-auto text-orange-500">Rəyləri gör →</span>
+                  </div>
+                </Link>
+              ) : (
+                <p className="text-xs text-muted mb-4">⭐ Obyektin hələ reytinqi yoxdur</p>
+              )}
+
               {(listing.phone || listing.businessObject.phone) && (
                 <button
                   type="button"
