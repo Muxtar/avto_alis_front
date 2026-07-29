@@ -616,6 +616,57 @@ export default function ListingDetailPage() {
               })()}
               <span className="text-xs text-muted-foreground">Kod: №{listing.id}</span>
             </div>
+
+            {/* eBay üslubu satıcı/obyekt sətri — etibar məlumatı (% müsbət · digər elanları · mesaj) qiymətin üstündə */}
+            {(() => {
+              const isVoen = !!listing.businessObject;
+              const prof = isVoen ? listing.businessObject : listing.user;
+              const profHref = isVoen ? `/object/${listing.businessObject.id}` : `/seller/${listing.user.id}`;
+              const objRating = isVoen ? listing.businessObject.rating : null;
+              const posPercent = isVoen
+                ? (objRating?.likePercent ?? objRating?.percent ?? null)
+                : (listing.user.avgRating ? Math.round((listing.user.avgRating / 5) * 100) : null);
+              const ratingCount = isVoen ? (objRating?.count ?? 0) : (listing.user.ratingCount ?? 0);
+              const avatarUrl = !isVoen && listing.user.avatar ? imgUrl(listing.user.avatar) : null;
+              const initials = (prof.name || "?").split(" ").map((n: string) => n[0]).join("").slice(0, 2);
+              const canMsg = isLoggedIn && user?.id !== listing.user.id;
+              return (
+                <div className="flex items-center gap-3 mb-4 pb-4 border-b border-card-border">
+                  <Link href={profHref} className="shrink-0">
+                    {avatarUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={avatarUrl} alt={prof.name} className="w-11 h-11 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-sm font-bold">{isVoen ? "🏪" : initials}</div>
+                    )}
+                  </Link>
+                  <div className="min-w-0 flex-1">
+                    <Link href={profHref} className="font-semibold text-sm hover:text-orange-500 transition-colors truncate block">
+                      {prof.name}{isVoen ? ` (№${listing.businessObject.id})` : ""}
+                    </Link>
+                    <div className="flex items-center gap-1.5 text-xs flex-wrap mt-0.5">
+                      {posPercent != null && ratingCount > 0 ? (
+                        <span className="text-green-600 font-semibold">👍 {posPercent}% müsbət</span>
+                      ) : (
+                        <span className="text-muted">Yeni satıcı</span>
+                      )}
+                      <span className="text-muted-foreground/50">·</span>
+                      <Link href={profHref} className="text-muted hover:text-orange-500 underline-offset-2 hover:underline">Digər elanları</Link>
+                      {canMsg && (
+                        <>
+                          <span className="text-muted-foreground/50">·</span>
+                          <a href="#message" className="text-muted hover:text-orange-500 underline-offset-2 hover:underline">Mesaj</a>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <Link href={profHref} className="shrink-0 text-muted hover:text-orange-500" aria-label="Profilə bax">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                  </Link>
+                </div>
+              );
+            })()}
+
             {/* Çox böyük qiymətlər qutudan daşmasın: qısa format + tam dəyər title-da */}
             <div className="flex items-baseline flex-wrap gap-x-1.5 mb-3 min-w-0" title={`${formatPrice(listing.price)} ${t("azn")}`}>
               <span className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent break-words min-w-0">
@@ -629,6 +680,15 @@ export default function ListingDetailPage() {
                 {listing.barter && <span className="px-2.5 py-1 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-semibold">🔄 Barter (dəyiş-düş) qəbul olunur</span>}
                 {listing.bookable && <span className="px-2.5 py-1 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-semibold">📅 {listing.bookingType === "STAY" ? "Gecələmə bronu" : "Rezervasiya"}</span>}
                 {listing.weightKg ? <span className="px-2.5 py-1 bg-input-bg text-muted rounded-lg text-xs font-semibold">⚖️ {listing.weightKg} kq</span> : null}
+              </div>
+            )}
+            {/* Vəziyyət — eBay üslubu: qiymətin altında açıq göstərilir (yalnız uyğun kateqoriyalarda) */}
+            {getListingFields(parseCat(listing.category).main).includes("condition") && listing.condition && (
+              <div className="flex items-center gap-2 text-sm mb-3">
+                <span className="text-muted">{t("condition")}:</span>
+                <span className={`font-semibold ${listing.condition === 'NEW' ? 'text-green-600' : listing.condition === 'USED' ? 'text-orange-500' : 'text-blue-500'}`}>
+                  {listing.condition === 'NEW' ? t("conditionNew") : listing.condition === 'USED' ? t("conditionUsed") : t("conditionRefurbished")}
+                </span>
               </div>
             )}
             <div className="flex items-center gap-2 text-muted text-sm mb-4">
@@ -712,6 +772,12 @@ export default function ListingDetailPage() {
                       className="w-full flex items-center justify-center gap-2 py-3 bg-input-bg border border-input-border rounded-xl font-semibold text-foreground hover:border-orange-500/50 transition-all disabled:opacity-50 mb-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
                       {t("addToCart")}
+                    </button>
+                    {/* Watchlist (Seçilmişlər) — eBay üslubu üçüncü düymə */}
+                    <button onClick={toggleFavorite} disabled={favBusy}
+                      className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 ${isFavorited ? "bg-orange-500/10 text-orange-500 border border-orange-500/40" : "bg-input-bg border border-input-border text-foreground hover:border-orange-500/50"}`}>
+                      <svg className="w-5 h-5" fill={isFavorited ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                      {isFavorited ? "Seçilmişlərdədir ✓" : "Seçilmişlərə əlavə et"}
                     </button>
                   </>
                 )}
@@ -883,7 +949,7 @@ export default function ListingDetailPage() {
           )}
 
           {/* Message Card */}
-          <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
+          <div id="message" className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 scroll-mt-20">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
               <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
               {t("sendMessage")}
