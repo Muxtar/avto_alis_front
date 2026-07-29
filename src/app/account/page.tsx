@@ -418,7 +418,7 @@ function AccountPageInner() {
                         <span className="text-lg shrink-0">🏢</span>
                         <div className="min-w-0"><p className="font-semibold text-sm truncate">{b.name}</p><p className="text-[11px] text-muted">{b.objects.length} obyekt</p></div>
                       </button>
-                      <a href="/business" title="Biznesi redaktə et" className="text-muted hover:text-orange-500 text-sm shrink-0">✏️</a>
+                      <a href={`/business?edit=${b.id}`} title="Biznesi redaktə et" className="text-muted hover:text-orange-500 text-sm shrink-0">✏️</a>
                       <span className="text-muted text-xs w-4 text-center shrink-0">{selectedBizId === b.id ? "▲" : "▼"}</span>
                     </div>
                     {selectedBizId === b.id && (
@@ -435,7 +435,7 @@ function AccountPageInner() {
                             </div>
                           </div>
                         ))}
-                        <a href="/business" className="block text-center text-xs text-orange-500 py-1.5 hover:text-orange-400">＋ Bu biznesə yeni obyekt əlavə et</a>
+                        <a href={`/business?addobj=${b.id}`} className="block text-center text-xs text-orange-500 py-1.5 hover:text-orange-400">＋ Bu biznesə yeni obyekt əlavə et</a>
                       </div>
                     )}
                   </div>
@@ -446,7 +446,7 @@ function AccountPageInner() {
                 <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
                   <p className="font-semibold text-sm text-green-600">✓ Biznesiniz təsdiqlənib{approvedBizNoObj.length === 1 ? `: ${approvedBizNoObj[0].name}` : ""}</p>
                   <p className="text-xs text-muted mt-0.5">VÖEN ilə satış üçün bu biznesə ən azı bir <b>obyekt (mağaza / filial)</b> əlavə etməlisiniz. Elan həmişə bir obyektə bağlı satılır.</p>
-                  <a href="/business" className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold hover:bg-orange-600">＋ Obyekt əlavə et →</a>
+                  <a href={`/business?addobj=${approvedBizNoObj[0]?.id}`} className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold hover:bg-orange-600">＋ Obyekt əlavə et →</a>
                 </div>
                 ) : (
                 <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
@@ -456,7 +456,7 @@ function AccountPageInner() {
                 )}
 
                 {/* HƏMİŞƏ görünür: yeni biznes (VÖEN) əlavə et — biznes olsa belə */}
-                <a href="/business" className="w-full text-left p-4 rounded-2xl border border-dashed border-orange-500/40 hover:bg-orange-500/5 transition-all flex items-center gap-3">
+                <a href="/business?new=1" className="w-full text-left p-4 rounded-2xl border border-dashed border-orange-500/40 hover:bg-orange-500/5 transition-all flex items-center gap-3">
                   <div className="text-xl shrink-0">🏢➕</div>
                   <div>
                     <p className="font-semibold text-sm text-orange-500">Yeni biznes (VÖEN) əlavə et</p>

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -109,6 +109,44 @@ export default function BusinessPage() {
     if (!isLoggedIn) { router.push("/"); return; }
     load();
   }, [authLoading, isLoggedIn, load, router]);
+
+  // Deep-link: /business?new=1 → add forması açıq; /business?edit=<id> → həmin
+  // biznesin redaktə forması açıq. (Elan səhifəsindən gələndə təkrar klik olmasın.)
+  const deepLinkRef = useRef(false);
+  useEffect(() => {
+    if (loading || deepLinkRef.current) return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("new") === "1") {
+      deepLinkRef.current = true;
+      resetForm();
+      setShowForm(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.history.replaceState({}, "", "/business");
+      return;
+    }
+    const editId = parseInt(sp.get("edit") || "");
+    if (editId > 0) {
+      const b = businesses.find((x) => x.id === editId);
+      if (b) {
+        deepLinkRef.current = true;
+        setOpenBizId(editId);
+        setBizEditDoc(null); setBizEditBank(null);
+        setBizEdit({ id: b.id, name: b.name, ownerName: b.ownerName, founderName: b.founderName, phone: b.phone || "", proofType: b.proofType });
+        window.history.replaceState({}, "", "/business");
+        setTimeout(() => document.getElementById(`biz-${editId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+      }
+      return;
+    }
+    const addObjId = parseInt(sp.get("addobj") || "");
+    if (addObjId > 0 && businesses.some((x) => x.id === addObjId)) {
+      deepLinkRef.current = true;
+      setOpenBizId(addObjId);
+      setAddObjFor(addObjId);
+      window.history.replaceState({}, "", "/business");
+      setTimeout(() => document.getElementById(`biz-${addObjId}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, businesses]);
 
   const jsonReq = async (url: string, method: string, body?: any) => {
     const res = await fetch(url, { method, headers: { ...authH, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
@@ -309,7 +347,7 @@ export default function BusinessPage() {
       ) : (
         <div className="space-y-4">
           {businesses.map((b) => (
-            <div key={b.id} className={`bg-card border border-card-border rounded-xl p-4 sm:p-5 ${!b.isActive ? "opacity-60" : ""}`}>
+            <div key={b.id} id={`biz-${b.id}`} className={`bg-card border border-card-border rounded-xl p-4 sm:p-5 ${!b.isActive ? "opacity-60" : ""}`}>
               {/* Kompakt başlıq — sağ üstdə status, klik detalları açır */}
               <button onClick={() => setOpenBizId(openBizId === b.id ? null : b.id)} className="w-full flex items-center gap-3 text-left">
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 flex items-center justify-center text-xl shrink-0">🏢</div>
