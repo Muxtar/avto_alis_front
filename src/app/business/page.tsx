@@ -247,18 +247,10 @@ export default function BusinessPage() {
               <span className="text-muted-foreground">VÖEN sənəddən oxunduqda avtomatik təyin olunacaq</span>
             )}
           </div>
-          {/* Sübut növü */}
-          <div className="grid grid-cols-2 gap-2">
-            {[["TAX_DOC", t("bizTaxDoc") || "Vergi sənədi"], ["POWER_OF_ATTORNEY", t("bizPoa") || "Etibarnamə"]].map(([v, l]) => (
-              <button key={v} onClick={() => setProofType(v)} className={`py-2 rounded-lg text-sm ${proofType === v ? "bg-orange-500 text-white" : "bg-input-bg border border-input-border"}`}>{l}</button>
-            ))}
-          </div>
-          {/* Sənədlər */}
+          {/* Sənədlər — yalnız vergi qeydiyyatı sənədi (Etibarnamə seçimi ləğv edildi) */}
           <div className="space-y-2 p-3 bg-input-bg/40 rounded-xl">
             <p className="text-[11px] text-muted">📄 Sənədləri PDF və ya şəkil kimi yükləyin, sonra məlumatları aşağıda əl ilə doldurun. Yoxlama və təsdiq admin tərəfindən aparılır.</p>
-            {proofType === "TAX_DOC"
-              ? docFileLabel("taxDocImage", "Vergi qeydiyyatı sənədi (PDF/şəkil)", (file) => onPickCompanyDoc("taxDocImage", file))
-              : (<>{docFileLabel("companyDocImage", "Şirkət sənədi (PDF/şəkil)", (file) => onPickCompanyDoc("companyDocImage", file))}{docFileLabel("powerOfAttorneyImage", "Etibarnamə (PDF/şəkil)")}</>)}
+            {docFileLabel("taxDocImage", "Vergi qeydiyyatı sənədi (PDF/şəkil)", (file) => onPickCompanyDoc("taxDocImage", file))}
 
             {/* Bank hesabı sənədləri — bir neçə, biri əsas (ödəniş) seçilir */}
             <div className="pt-2 border-t border-input-border">
