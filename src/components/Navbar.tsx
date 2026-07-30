@@ -267,6 +267,7 @@ export default function Navbar() {
               <Link href="/elanlar" className="text-muted hover:text-foreground transition-colors">{t("marketplace")}</Link>
               <Link href="/locations" className="text-muted hover:text-foreground transition-colors">{t("browseByLocation")}</Link>
               {isLoggedIn && <Link href="/consultations" className="text-muted hover:text-foreground transition-colors">🗣️ Konsultasiya</Link>}
+              {isLoggedIn && <Link href="/ai" className="text-muted hover:text-orange-500 transition-colors font-medium">✨ AI Köməkçi</Link>}
               <Link href={isLoggedIn ? "/account?new=1" : "/"} className="px-2.5 py-1 rounded-md text-white font-semibold hover:opacity-90 transition-opacity" style={{ background: PINK }}>tradixai-də sat</Link>
             </div>
             <div className="flex items-center gap-3">
