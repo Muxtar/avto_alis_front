@@ -63,11 +63,17 @@ export default function CartPage() {
 
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  // Yeni məhsul əlavə olunanda avtomatik seçili; mövcud məhsulun seçimi qorunur; silinən atılır.
+  // Stokda yoxdur — kimsə axırıncı ədədi sizdən əvvəl alıb (stock<=0). Belə məhsul
+  // səbətdə qalır, amma seçilə/alına bilməz; stok bərpa olunanda yenidən alına bilər.
+  const isOut = (it: any) => typeof it?.listing?.stock === "number" && it.listing.stock <= 0;
+
+  // Yeni məhsul əlavə olunanda avtomatik seçili (stokda varsa); mövcud seçim qorunur;
+  // silinən və ya stokda qalmayan seçimdən atılır (stokda olmayan seçili qala bilməz).
   useEffect(() => {
     setSelected((prev) => {
       const next = new Set<number>();
       for (const it of items) {
+        if (isOut(it)) continue; // stokda yoxdursa seçmə/seçimi sil
         if (!prevIdsRef.current.has(it.id)) next.add(it.id);
         else if (prev.has(it.id)) next.add(it.id);
       }
@@ -76,15 +82,20 @@ export default function CartPage() {
     prevIdsRef.current = new Set(items.map((i) => i.id));
   }, [items]);
 
-  const toggleSel = (id: number) => setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const allSelected = items.length > 0 && items.every((i) => selected.has(i.id));
-  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(items.map((i) => i.id)));
-  const selItems = items.filter((i) => selected.has(i.id));
+  const toggleSel = (id: number) => {
+    const it = items.find((x) => x.id === id);
+    if (it && isOut(it)) return; // stokda olmayanı seçmək olmaz
+    setSelected((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  };
+  const inStockItems = items.filter((i) => !isOut(i));
+  const allSelected = inStockItems.length > 0 && inStockItems.every((i) => selected.has(i.id));
+  const toggleAll = () => setSelected(allSelected ? new Set() : new Set(inStockItems.map((i) => i.id)));
+  const selItems = items.filter((i) => selected.has(i.id) && !isOut(i));
   const selTotal = selItems.reduce((s, i) => s + (i.listing?.price || 0) * i.quantity, 0);
 
   // Ödəniləcək məhsullar (seçim varsa onlar, yoxsa hamısı) biznesə (VÖEN) bağlıdırsa
   // kartla ödəniş mümkündür. VÖEN məhsulunda ödəniş üsulu avtomatik KART seçilir.
-  const checkoutItems = selItems.length ? selItems : items;
+  const checkoutItems = selItems.length ? selItems : inStockItems;
   const cardAllowed = checkoutItems.length > 0 && checkoutItems.every((i) => !!(i.listing?.businessId || i.listing?.businessObjectId));
   useEffect(() => {
     if (!cardAllowed) { setPaymentMethod((m) => (m === "CARD" ? "CASH" : m)); return; }
@@ -248,7 +259,7 @@ export default function CartPage() {
   // Yango qiymət təxmini — konum/metod dəyişəndə yenilənir (limit daxilində).
   useEffect(() => {
     if (deliveryType !== "DELIVERY" || deliveryMethod !== "COURIER" || yangoBlocked || lat == null || lng == null) { setYangoFee(null); return; }
-    const base = selItems.length ? selItems : items;
+    const base = selItems.length ? selItems : inStockItems;
     const objId = base.find((i) => i.listing?.businessObjectId)?.listing?.businessObjectId;
     // Obyekt yoxdursa (fərdi satıcı) — götürmə yeri kimi satıcının konumu istifadə olunur.
     const sellerId = base[0]?.listing?.user?.id;
@@ -392,7 +403,7 @@ export default function CartPage() {
             {items.length > 0 && (
               <label className="surface px-3 py-2 flex items-center gap-2 cursor-pointer text-sm">
                 <input type="checkbox" checked={allSelected} onChange={toggleAll} className="w-4 h-4 accent-orange-500" />
-                <span>Hamısını seç <span className="text-muted">({selItems.length}/{items.length})</span></span>
+                <span>Hamısını seç <span className="text-muted">({selItems.length}/{inStockItems.length})</span></span>
               </label>
             )}
 
@@ -411,33 +422,44 @@ export default function CartPage() {
                     {g.items.length > 1 && <span className="text-[11px] text-green-500">✓ Birlikdə çatdırılır</span>}
                   </div>
                   <div className="space-y-3">
-                    {g.items.map((item) => (
-                      <div key={item.id} className="flex gap-3 sm:gap-4 items-start">
-                        <input type="checkbox" checked={selected.has(item.id)} onChange={() => toggleSel(item.id)} className="w-4 h-4 accent-orange-500 mt-1 shrink-0" />
-                        <Link href={`/marketplace/${item.listing.id}`} className="w-16 h-16 sm:w-20 sm:h-20 bg-input-bg rounded-xl shrink-0 flex items-center justify-center overflow-hidden">
+                    {g.items.map((item) => {
+                      const out = isOut(item);
+                      return (
+                      <div key={item.id} className={`flex gap-3 sm:gap-4 items-start transition-opacity ${out ? "opacity-55" : ""}`}>
+                        <input type="checkbox" checked={selected.has(item.id)} disabled={out} onChange={() => toggleSel(item.id)} className="w-4 h-4 accent-orange-500 mt-1 shrink-0 disabled:cursor-not-allowed" />
+                        <Link href={`/marketplace/${item.listing.id}`} aria-disabled={out} tabIndex={out ? -1 : undefined} className={`w-16 h-16 sm:w-20 sm:h-20 bg-input-bg rounded-xl shrink-0 flex items-center justify-center overflow-hidden ${out ? "pointer-events-none grayscale" : ""}`}>
                           {item.listing.images?.[0] ? (
                             // eslint-disable-next-line @next/next/no-img-element
                             <img src={item.listing.images[0].startsWith('http') ? item.listing.images[0] : `${imgUrl(item.listing.images[0])}`} alt={item.listing.title} loading="lazy" className="w-full h-full object-cover" />
                           ) : null}
                         </Link>
                         <div className="flex-1 min-w-0">
-                          <Link href={`/marketplace/${item.listing.id}`} className="font-medium text-sm hover:text-orange-500 block truncate">{item.listing.title}</Link>
-                          <div className="flex items-center gap-2 mt-2">
-                            <button onClick={() => updateQty(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">−</button>
-                            <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
-                            <button onClick={() => updateQty(item.id, item.quantity + 1)} disabled={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock} title={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock ? `Maksimum ${item.listing.stock} ədəd` : ""} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">+</button>
-                            {typeof item.listing?.stock === "number" && <span className="text-[11px] text-muted ml-1">stok: {item.listing.stock}</span>}
-                          </div>
+                          <Link href={`/marketplace/${item.listing.id}`} aria-disabled={out} tabIndex={out ? -1 : undefined} className={`font-medium text-sm block truncate ${out ? "pointer-events-none text-muted" : "hover:text-orange-500"}`}>{item.listing.title}</Link>
+                          {out ? (
+                            /* Stokda yoxdur — kimsə əvvəl alıb. Klik yoxdur, seçilə bilməz; stok gələndə yenidən alınar. */
+                            <div className="mt-1.5 inline-flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-500/10 text-red-600 border border-red-500/20 text-[11px] font-semibold leading-snug">
+                              <span>⚠️</span>
+                              <span>Stokda yoxdur — biri sizdən əvvəl aldı. Stok bərpa olunanda yenidən ala biləcəksiniz.</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 mt-2">
+                              <button onClick={() => updateQty(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">−</button>
+                              <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
+                              <button onClick={() => updateQty(item.id, item.quantity + 1)} disabled={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock} title={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock ? `Maksimum ${item.listing.stock} ədəd` : ""} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">+</button>
+                              {typeof item.listing?.stock === "number" && <span className="text-[11px] text-muted ml-1">stok: {item.listing.stock}</span>}
+                            </div>
+                          )}
                         </div>
                         <div className="text-right flex flex-col justify-between items-end">
-                          <p className="text-orange-500 font-bold text-sm">{(item.listing.price * item.quantity).toFixed(2)} AZN</p>
+                          <p className={`font-bold text-sm ${out ? "text-muted line-through" : "text-orange-500"}`}>{(item.listing.price * item.quantity).toFixed(2)} AZN</p>
                           <button onClick={() => removeItem(item.id)} className="flex items-center gap-1 text-red-500 text-xs hover:text-red-400 mt-1">
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                             {t("remove")}
                           </button>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               ));
