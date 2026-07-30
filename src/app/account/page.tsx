@@ -1046,7 +1046,21 @@ function AccountPageInner() {
       ) : (
         <div className="space-y-3">
           {listings.map((listing) => (
-            <div key={listing.id} className="surface p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div key={listing.id} className="surface p-4 flex flex-col sm:flex-row sm:items-center gap-3 relative">
+              {/* Moderasiya statusu — sağ yuxarı küncdə: gözləmədə / təsdiqləndi / rədd edildi */}
+              {listing.status === "PENDING" ? (
+                <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-600 border border-amber-500/30 shadow-sm backdrop-blur">
+                  ⏳ Gözləmədə
+                </span>
+              ) : listing.status === "APPROVED" ? (
+                <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-500/15 text-green-600 border border-green-500/30 shadow-sm backdrop-blur">
+                  ✓ Təsdiqləndi
+                </span>
+              ) : listing.status === "REJECTED" ? (
+                <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/15 text-red-600 border border-red-500/30 shadow-sm backdrop-blur">
+                  ✕ Rədd edildi
+                </span>
+              ) : null}
               {/* Image */}
               <div className="w-full sm:w-24 h-32 sm:h-24 shrink-0 bg-input-bg border border-input-border rounded-lg overflow-hidden flex items-center justify-center">
                 {listing.images && listing.images.length > 0 ? (
