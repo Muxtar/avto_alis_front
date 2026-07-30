@@ -277,10 +277,11 @@ export default function ListingDetailPage() {
         );
       })()}
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6">
-        {/* Şəkillər — TELEFONDA ƏN ÜSTDƏ (order-1); masaüstündə sol sütun yuxarı sıra.
-            Əvvəl şəkillər alış qutusundan sonra (aşağıda) görünürdü. */}
-        <div className="order-1 lg:col-span-3 lg:col-start-1 lg:row-start-1">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 lg:items-start">
+        {/* SOL SÜTUN: şəkillər + məhsul məlumatları TƏK sütunda təbii axınla.
+            (Əvvəl ayrı grid sıralarında idi — alış qutusu hündür olduqda sol sıralar
+            dartılıb bir şəkildə boşluq yaradırdı; indi axın təbii, boşluq yoxdur.) */}
+        <div className="order-1 lg:col-span-3 space-y-4 sm:space-y-6 min-w-0">
           <div className="bg-card border border-card-border rounded-2xl overflow-hidden">
             <div className="relative aspect-video bg-input-bg flex items-center justify-center group">
               {listing.images?.length > 0 ? (
@@ -347,11 +348,9 @@ export default function ListingDetailPage() {
               </div>
             )}
           </div>
-        </div>
 
-        {/* Məhsul məlumatları + təsvir + rəylər — TELEFONDA birbaşa şəkillərin
-            altında (order-2); masaüstündə sol sütun aşağı sıra. */}
-        <div className="order-2 lg:col-span-3 lg:col-start-1 lg:row-start-2">
+          {/* Məhsul məlumatları + təsvir + rəylər — şəkil ilə eyni sütunda (təbii axın) */}
+          <div>
           {/* Specifications */}
           {!isService && (
             <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
@@ -581,11 +580,12 @@ export default function ListingDetailPage() {
               </div>
             )}
           </div>
+          </div>
         </div>
 
-        {/* Alış qutusu — TELEFONDA məhsul məlumatından sonra (order-3).
-            Masaüstündə sağ sütunda (col 4-5) iki sıra boyu yapışıq (sticky). */}
-        <div className="order-3 lg:col-span-2 lg:col-start-4 lg:row-start-1 lg:row-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
+        {/* Alış qutusu — masaüstündə sağ sütun (col 4-5), yapışıq (sticky).
+            TELEFONDA məhsul məlumatından sonra (order-2). */}
+        <div className="order-2 lg:col-span-2 space-y-4 lg:sticky lg:top-4 lg:self-start">
           {/* Price Card */}
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
             <div className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium mb-3 ${
