@@ -21,9 +21,11 @@ function renderText(text: string) {
 
 const SUGGESTIONS = [
   "Ən ucuz telefon hansıdır?",
-  "Hansı məhsulları sifariş vermişəm?",
-  "Öz elanlarımı göstər",
-  "Səbətimdə nə var?",
+  "Son sifarişimin çatdırılması harada?",
+  "Seçilmişlərimi göstər",
+  "Öz elanlarımı və statuslarını göstər",
+  "Bildirişlərimi oxundu işarələ",
+  "Referal qazancım nə qədərdir?",
 ];
 
 export default function AIAssistantPage() {
