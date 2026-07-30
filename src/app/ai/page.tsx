@@ -19,15 +19,6 @@ function renderText(text: string) {
   );
 }
 
-const SUGGESTIONS = [
-  "Ən ucuz telefon hansıdır?",
-  "Son sifarişimin çatdırılması harada?",
-  "Seçilmişlərimi göstər",
-  "Öz elanlarımı və statuslarını göstər",
-  "Bildirişlərimi oxundu işarələ",
-  "Referal qazancım nə qədərdir?",
-];
-
 export default function AIAssistantPage() {
   const { token, isLoggedIn } = useAuth();
   const { toast } = useToast();
@@ -104,14 +95,7 @@ export default function AIAssistantPage() {
       {/* Söhbət */}
       <div className="flex-1 space-y-3 mb-3">
         {messages.length === 0 && (
-          <div className="surface p-4">
-            <p className="text-sm text-muted mb-3">Nümunə suallar:</p>
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
-                <button key={s} onClick={() => send(s)} className="px-3 py-1.5 rounded-lg bg-input-bg border border-input-border text-sm hover:border-orange-500/50 hover:text-orange-500 transition-colors">{s}</button>
-              ))}
-            </div>
-          </div>
+          <div className="surface p-4 text-sm text-muted">Salam! Mən tradixai AI köməkçisiyəm 👋 Sizə necə kömək edə bilərəm?</div>
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>

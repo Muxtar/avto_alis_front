@@ -1,41 +1,46 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
+import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { useLanguage } from '@/lib/LanguageContext';
-import { AZ_CITIES } from '@/lib/cities';
+import { useToast } from '@/components/Toast';
 import { API } from '@/lib/api';
 
-interface Message {
-  role: 'user' | 'bot';
-  text: string;
+interface Message { role: 'user' | 'assistant'; text: string }
+interface Pending { type: string; endpoint: string; method: string; body: any; summary: string }
+
+// Mətndəki daxili linkləri (/marketplace/12, /object/3, /seller/5) kliklənən edir.
+function renderText(text: string) {
+  const parts = text.split(/(\/(?:marketplace|object|seller)\/\d+)/g);
+  return parts.map((p, i) =>
+    /^\/(?:marketplace|object|seller)\/\d+$/.test(p)
+      ? <Link key={i} href={p} className="text-orange-500 underline underline-offset-2">{p}</Link>
+      : <span key={i}>{p}</span>
+  );
 }
 
+// Sağ tərəfdə üzən AI köməkçi chat paneli — Claude agent ilə işləyir.
 export default function InquiryChatbot() {
-  const { user, token } = useAuth();
+  const { token, isLoggedIn } = useAuth();
   const { t } = useLanguage();
+  const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
   const [initialized, setInitialized] = useState(false);
-  const [selectedCities, setSelectedCities] = useState<string[]>([]);
-  const [showCityFilter, setShowCityFilter] = useState(false);
+  const [pending, setPending] = useState<Pending | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const messagesEnd = useRef<HTMLDivElement>(null);
-
-  const toggleCity = (city: string) => {
-    setSelectedCities((prev) => prev.includes(city) ? prev.filter((c) => c !== city) : [...prev, city]);
-  };
 
   useEffect(() => {
     if (open && !initialized) {
-      setMessages([{ role: 'bot', text: t('chatbotWelcome') }]);
+      setMessages([{ role: 'assistant', text: 'Salam! Mən tradixai AI köməkçisiyəm 👋 Sizə necə kömək edə bilərəm?' }]);
       setInitialized(true);
     }
-  }, [open, initialized, t]);
+  }, [open, initialized]);
 
-  useEffect(() => {
-    messagesEnd.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  useEffect(() => { messagesEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, pending]);
 
   // Mobil footer-dəki mərkəzi düymə bu hadisə ilə chat-i açıb-bağlayır.
   useEffect(() => {
@@ -45,67 +50,61 @@ export default function InquiryChatbot() {
   }, []);
 
   const send = async () => {
-    if (!input.trim() || loading) return;
-
-    if (!token) {
-      setMessages(prev => [...prev, { role: 'user', text: input }, { role: 'bot', text: `⚠️ ${t('chatbotLoginRequired')}` }]);
+    const q = input.trim();
+    if (!q || loading) return;
+    if (!isLoggedIn) {
+      setMessages((prev) => [...prev, { role: 'user', text: q }, { role: 'assistant', text: '⚠️ İstifadə üçün əvvəlcə daxil olun.' }]);
       setInput('');
       return;
     }
-
-    const userMsg = input.trim();
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setPending(null);
+    const next: Message[] = [...messages.filter((m) => m.role === 'user' || m.role === 'assistant'), { role: 'user', text: q }];
+    setMessages(next);
     setInput('');
     setLoading(true);
-
     try {
-      // Akilli chat endpoint - DeepSeek karar verir: sohbet mi inquiry mi
-      const res = await fetch(`${API}/chat`, {
+      const res = await fetch(`${API}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ text: userMsg, cities: selectedCities }),
+        body: JSON.stringify({ messages: next.map((m) => ({ role: m.role, content: m.text })) }),
       });
-      const data = await res.json();
-
-      if (!data.success) {
-        setMessages(prev => [...prev, { role: 'bot', text: `⚠️ ${data.message || t('error')}` }]);
-        setLoading(false);
-        return;
+      let d: any = null;
+      try { d = await res.json(); } catch { /* qeyri-JSON */ }
+      if (res.ok && d?.success) {
+        setMessages((m) => [...m, { role: 'assistant', text: d.reply || '...' }]);
+        if (d.pendingAction) setPending(d.pendingAction);
+      } else {
+        setMessages((m) => [...m, { role: 'assistant', text: `⚠️ ${d?.message || `cavab alınmadı (HTTP ${res.status})`}` }]);
       }
+    } catch (e: any) {
+      setMessages((m) => [...m, { role: 'assistant', text: `⚠️ Şəbəkə xətası: ${e?.message || 'əlaqə yoxdur'}` }]);
+    } finally { setLoading(false); }
+  };
 
-      if (data.type === 'chat') {
-        // Normal sohbet cevabi
-        setMessages(prev => [...prev, { role: 'bot', text: data.reply }]);
-      } else if (data.type === 'no_sellers') {
-        // Inquiry ama satici bulunamadi
-        const analysis = data.aiAnalysis;
-        let botText = `🔍 ${analysis?.summary || userMsg}\n\n`;
-        botText += `⚠️ ${t('chatbotNoSellers')}`;
-        setMessages(prev => [...prev, { role: 'bot', text: botText }]);
-      } else if (data.type === 'inquiry') {
-        // Basarili inquiry
-        const analysis = data.aiAnalysis;
-        let botText = `✅ ${t('chatbotSuccess')}\n\n`;
-        botText += `🔍 ${t('chatbotAnalysis')}: ${analysis?.summary || userMsg}\n`;
-        if (analysis?.vehicleBrand) botText += `🚗 ${t('chatbotVehicle')}: ${analysis.vehicleBrand} ${analysis.vehicleModel || ''}\n`;
-        if (analysis?.productType) botText += `📦 ${t('chatbotProduct')}: ${analysis.productType}\n`;
-        if (analysis?.category) botText += `📁 ${t('chatbotCategory')}: ${analysis.category}\n`;
-        botText += `\n👥 ${data.matchedSellers} ${t('sellersMatched')}.`;
-        botText += `\n${t('chatbotViewOffers')}`;
-        setMessages(prev => [...prev, { role: 'bot', text: botText }]);
-      }
-    } catch {
-      setMessages(prev => [...prev, { role: 'bot', text: `⚠️ ${t('chatbotServerError')}` }]);
-    }
-    setLoading(false);
+  // Təsdiqlənmiş əməli MÖVCUD real endpoint ilə icra et.
+  const confirmAction = async () => {
+    if (!pending) return;
+    setConfirming(true);
+    try {
+      const res = await fetch(`${API}${pending.endpoint}`, {
+        method: pending.method || 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(pending.body),
+      });
+      const d = await res.json().catch(() => ({}));
+      if (res.ok && d.success !== false) {
+        toast('İcra olundu ✓', 'success');
+        setMessages((m) => [...m, { role: 'assistant', text: '✓ Tamamlandı.' }]);
+        setPending(null);
+      } else { toast(d.message || 'Alınmadı', 'error'); }
+    } catch { toast('Xəta baş verdi', 'error'); } finally { setConfirming(false); }
   };
 
   return (
     <>
-      {/* Floating Button — yalnız desktop-da (md+). Mobil-də chat footer-dəki
-          mərkəzi düymədən açılır, ona görə üzən düymə gizlədilir. */}
+      {/* Üzən düymə — yalnız desktop (md+). Mobil-də footer mərkəzi düymədən açılır. */}
       <button
-        onClick={() => { window.location.href = "/ai"; }}
+        onClick={() => setOpen((o) => !o)}
         aria-label="AI Köməkçi"
         className="hidden md:flex fixed md:bottom-6 md:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg hover:scale-110 transition-transform items-center justify-center"
       >
@@ -116,107 +115,72 @@ export default function InquiryChatbot() {
             <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" />
             <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" />
             <path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" />
-            <path d="M17.599 6.5a3 3 0 0 0 .399-1.375" />
-            <path d="M6.003 5.125A3 3 0 0 0 6.401 6.5" />
-            <path d="M3.477 10.896a4 4 0 0 1 .585-.396" />
-            <path d="M19.938 10.5a4 4 0 0 1 .585.396" />
-            <path d="M6 18a4 4 0 0 1-1.967-.516" />
-            <path d="M19.967 17.484A4 4 0 0 1 18 18" />
           </svg>
         )}
       </button>
 
-      {/* Chat Panel */}
+      {/* Chat paneli — desktopda sağ altda, mobil tam ekran */}
       {open && (
         <div className="fixed z-50 top-2 left-2 right-2 bottom-2 md:top-auto md:left-auto md:bottom-24 md:right-6 md:w-[440px] md:h-[78vh] md:max-h-[720px] bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
-          {/* Header */}
+          {/* Başlıq */}
           <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-white flex items-center justify-between gap-2">
-            <div>
-              <div className="font-bold text-sm">{t('chatbotTitle')}</div>
-              <div className="text-xs opacity-80">{t('chatbotSubtitle')}</div>
+            <div className="flex items-center gap-2">
+              <span className="text-lg">✨</span>
+              <div>
+                <div className="font-bold text-sm">AI Köməkçi</div>
+                <div className="text-xs opacity-80">Təbii dildə soruş — hər şeyi bacarır</div>
+              </div>
             </div>
-            <button
-              onClick={() => setOpen(false)}
-              aria-label="close"
-              className="shrink-0 w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors"
-            >
+            <button onClick={() => setOpen(false)} aria-label="close" className="shrink-0 w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
 
-          {/* Messages */}
+          {/* Mesajlar */}
           <div className="flex-1 overflow-y-auto p-3 space-y-3">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div
-                  className={`max-w-[85%] px-3 py-2 rounded-xl text-sm whitespace-pre-line ${
-                    msg.role === 'user'
-                      ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white'
-                      : 'bg-input-bg text-foreground border border-input-border'
-                  }`}
-                >
-                  {msg.text}
+                <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm whitespace-pre-line break-words ${
+                  msg.role === 'user' ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white' : 'bg-input-bg text-foreground border border-input-border'
+                }`}>
+                  {msg.role === 'assistant' ? renderText(msg.text) : msg.text}
                 </div>
               </div>
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="bg-input-bg border border-input-border px-3 py-2 rounded-xl text-sm text-muted">
-                  <span className="animate-pulse">{t('chatbotAnalyzing')}</span>
+                <div className="bg-input-bg border border-input-border px-3 py-2 rounded-xl text-sm text-muted"><span className="animate-pulse">Düşünürəm…</span></div>
+              </div>
+            )}
+            {/* Təsdiq kartı — AI əməli icra etmir, istifadəçi təsdiqləyir */}
+            {pending && (
+              <div className="rounded-xl border border-orange-500/40 bg-orange-500/[0.05] p-3">
+                <p className="text-xs font-semibold mb-1 flex items-center gap-1">⚠️ Təsdiq tələb olunur</p>
+                <p className="text-xs text-muted mb-2">{pending.summary}</p>
+                <div className="flex gap-2">
+                  <button onClick={confirmAction} disabled={confirming} className="px-3 py-1.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-xs font-semibold disabled:opacity-50">
+                    {confirming ? 'İcra olunur…' : 'Təsdiqlə'}
+                  </button>
+                  <button onClick={() => setPending(null)} disabled={confirming} className="px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs">Ləğv</button>
                 </div>
               </div>
             )}
             <div ref={messagesEnd} />
           </div>
 
-          {/* City filter */}
-          <div className="border-t border-card-border">
-            <button
-              onClick={() => setShowCityFilter((s) => !s)}
-              className="w-full px-3 py-2 text-xs text-muted hover:text-foreground flex items-center justify-between"
-            >
-              <span>📍 {t('chatbotCityFilter')} {selectedCities.length > 0 && `(${selectedCities.length})`}</span>
-              <span>{showCityFilter ? '▲' : '▼'}</span>
-            </button>
-            {showCityFilter && (
-              <div className="px-3 pb-2 max-h-32 overflow-y-auto flex flex-wrap gap-1">
-                {AZ_CITIES.map((city) => {
-                  const active = selectedCities.includes(city);
-                  return (
-                    <button
-                      key={city}
-                      onClick={() => toggleCity(city)}
-                      className={`text-[11px] px-2 py-1 rounded-full border transition-all ${
-                        active
-                          ? 'bg-orange-500 text-white border-orange-500'
-                          : 'bg-input-bg border-input-border text-muted hover:text-foreground'
-                      }`}
-                    >
-                      {city}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Input */}
+          {/* Giriş */}
           <div className="p-3 border-t border-card-border">
             <div className="flex gap-2">
               <input
                 type="text"
                 value={input}
-                onChange={e => setInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && send()}
-                placeholder={t('chatbotPlaceholder')}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && send()}
+                placeholder={t('chatbotPlaceholder') || 'Sualını yaz…'}
                 className="flex-1 bg-input-bg border border-input-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-orange-500"
                 disabled={loading}
               />
-              <button
-                onClick={send}
-                disabled={loading || !input.trim()}
-                className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition"
-              >
+              <button onClick={send} disabled={loading || !input.trim()} className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
               </button>
             </div>
