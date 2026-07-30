@@ -21,7 +21,6 @@ export default function MobileBottomNav() {
   // Hide on auth screens to avoid clutter while typing.
   if (pathname === "/" || pathname === "/verify" || pathname?.startsWith("/admin/login")) return null;
 
-  const openChat = () => window.dispatchEvent(new Event("toggle-inquiry-chat"));
   const closeMenu = () => { setPlusOpen(false); };
 
   const isActive = (href: string) => pathname === href || (href !== "/" && pathname?.startsWith(href));
@@ -104,13 +103,13 @@ export default function MobileBottomNav() {
           <span>{t("addListing") || "Əlavə"}</span>
         </button>
 
-        {/* AI Söhbət — mərkəzi böyük */}
-        <button type="button" onClick={openChat} className="flex flex-col items-center justify-center" aria-label={t("aiChatNav") || "AI Söhbət"}>
+        {/* AI Köməkçi — mərkəzi böyük (işləyən Claude agent, /ai) */}
+        <Link href="/ai" className="flex flex-col items-center justify-center" aria-label={t("aiChatNav") || "AI Söhbət"}>
           <span className="-mt-5 w-12 h-12 brand-gradient rounded-full flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
             {ChatIcon}
           </span>
           <span className="text-[10px] mt-0.5 text-muted">{t("aiChatNav") || "AI Söhbət"}</span>
-        </button>
+        </Link>
 
         <Link href={isLoggedIn ? "/messages" : "/"} className={isActive("/messages") ? "active" : ""}>
           <span className="relative">

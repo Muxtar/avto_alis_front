@@ -105,7 +105,8 @@ export default function InquiryChatbot() {
       {/* Floating Button — yalnız desktop-da (md+). Mobil-də chat footer-dəki
           mərkəzi düymədən açılır, ona görə üzən düymə gizlədilir. */}
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => { window.location.href = "/ai"; }}
+        aria-label="AI Köməkçi"
         className="hidden md:flex fixed md:bottom-6 md:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg hover:scale-110 transition-transform items-center justify-center"
       >
         {open ? (

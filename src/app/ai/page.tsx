@@ -56,15 +56,17 @@ export default function AIAssistantPage() {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next }),
       });
-      const d = await res.json();
-      if (res.ok && d.success) {
+      let d: any = null;
+      try { d = await res.json(); } catch { /* qeyri-JSON cavab (məs. 404 HTML) */ }
+      if (res.ok && d?.success) {
         setMessages((m) => [...m, { role: "assistant", content: d.reply || "..." }]);
         if (d.pendingAction) setPending(d.pendingAction);
       } else {
-        setMessages((m) => [...m, { role: "assistant", content: d.message || "AI cavab verə bilmədi." }]);
+        const detail = d?.message || `cavab alınmadı (HTTP ${res.status})`;
+        setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${detail}` }]);
       }
-    } catch {
-      setMessages((m) => [...m, { role: "assistant", content: "Şəbəkə xətası — yenidən cəhd edin." }]);
+    } catch (e: any) {
+      setMessages((m) => [...m, { role: "assistant", content: `⚠️ Şəbəkə xətası: ${e?.message || "əlaqə yoxdur"}` }]);
     } finally { setBusy(false); }
   };
 
