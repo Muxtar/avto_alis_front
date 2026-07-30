@@ -34,7 +34,7 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: number }) {
 
   return (
     <section className="mb-6">
-      <h2 className="mb-3 px-1 text-sm text-muted lowercase">əvvəl baxdıqlarınız</h2>
+      <h2 className="mb-3 px-1 text-base sm:text-lg font-bold text-foreground">əvvəl baxdıqlarınız</h2>
       <div className="flex gap-3 overflow-x-auto pb-2 -mx-1 px-1 snap-x [scrollbar-width:thin]">
         {items.map((it) => (
           <Link key={it.id} href={`/marketplace/${it.id}`} className="snap-start shrink-0 w-36 sm:w-40 surface card-hover overflow-hidden">

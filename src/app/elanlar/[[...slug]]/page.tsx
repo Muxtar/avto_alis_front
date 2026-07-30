@@ -576,7 +576,7 @@ function MarketplacePage() {
               <>
                 <RecentlyViewed />
                 {/* Bütün elanların üst başlığı — yalnız ana səhifədə */}
-                <p className="mb-3 px-1 text-sm text-muted lowercase">ən son elanlar</p>
+                <p className="mb-3 px-1 text-base sm:text-lg font-bold text-foreground">ən son elanlar</p>
               </>
             )}
 

@@ -989,7 +989,7 @@ export default function ListingDetailPage() {
           sonra. Başlıq "əvvəl baxdıqlarınız" stilində: kiçik, solğun, adsız. */}
       {sellerListings.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-3 px-1 text-sm text-muted lowercase">digər elanları</h2>
+          <h2 className="mb-3 px-1 text-base sm:text-lg font-bold text-foreground">digər elanları</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {sellerListings.map((l) => <ListingCard key={l.id} listing={l} />)}
           </div>
@@ -999,7 +999,7 @@ export default function ListingDetailPage() {
       {/* 2) Eyni kateqoriyada BAŞQA satıcıların elanları — ən altda */}
       {related.length > 0 && (
         <section className="mt-8">
-          <h2 className="mb-3 px-1 text-sm text-muted lowercase">eyni kateqoriyada başqa elanlar</h2>
+          <h2 className="mb-3 px-1 text-base sm:text-lg font-bold text-foreground">eyni kateqoriyada başqa elanlar</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {related.map((l) => <ListingCard key={l.id} listing={l} />)}
           </div>
