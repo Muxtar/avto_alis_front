@@ -120,7 +120,7 @@ export default function MobileBottomNav() {
               </span>
             )}
           </span>
-          <span>{t("myMessages") || "Mesajlarım"}</span>
+          <span>Chat</span>
         </Link>
 
         <Link href={isLoggedIn ? "/profile" : "/"} className={isActive("/profile") ? "active" : ""}>
