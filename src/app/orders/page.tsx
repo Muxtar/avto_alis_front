@@ -316,12 +316,12 @@ export default function OrdersPage() {
                 {/* Items */}
                 <div className="p-4 space-y-2">
                   {order.items.map((item: any) => (
-                    <div key={item.id} className="flex items-center justify-between text-sm">
+                    <div key={item.id} className="flex items-center justify-between text-sm gap-2">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{item.title}</p>
-                        <p className="text-muted text-xs">x{item.quantity}</p>
+                        <Link href={`/marketplace/${item.listingId}`} className="font-medium truncate block hover:text-orange-500 transition-colors">{item.title}</Link>
+                        <p className="text-muted text-xs">x{item.quantity} · <Link href={`/marketplace/${item.listingId}`} className="text-orange-500 hover:underline">məhsula bax →</Link></p>
                       </div>
-                      <span className="text-muted">{(item.price * item.quantity).toFixed(2)} AZN</span>
+                      <span className="text-muted shrink-0">{(item.price * item.quantity).toFixed(2)} AZN</span>
                     </div>
                   ))}
                 </div>
@@ -617,10 +617,13 @@ export default function OrdersPage() {
                       <p className="w-full text-[11px] text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg px-2.5 py-1.5">⚠️ Yango: {order.yangoError}</p>
                     )}
                     {order.status === "PENDING" && (
-                      <button onClick={() => updateStatus(order.id, "CONFIRMED")} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-500/20">{t("orderConfirmed")}</button>
+                      <>
+                        <button onClick={() => updateStatus(order.id, "CONFIRMED")} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20">✓ Qəbul et</button>
+                        <button onClick={() => { if (confirm("Sifarişi rədd etmək istəyirsiniz?")) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-500/20">✕ Rədd et</button>
+                      </>
                     )}
                     {order.status === "CONFIRMED" && (
-                      <button onClick={() => updateStatus(order.id, "SHIPPED")} className="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-medium hover:bg-purple-500/20">{t("orderShipped")}</button>
+                      <button onClick={() => updateStatus(order.id, "SHIPPED")} className="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-medium hover:bg-purple-500/20">📦 Göndərildi olaraq işarələ</button>
                     )}
                     {/* Yango təsdiqdə avtomatik çağırılır; claim yaranmayıbsa satıcı əl ilə çağırıb Yango cavabını görə bilər. */}
                     {!order.yangoClaimId && order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER" && (order.status === "CONFIRMED" || order.status === "SHIPPED") && (
@@ -630,9 +633,12 @@ export default function OrdersPage() {
                       <button onClick={() => cancelYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-amber-500/10 text-amber-500 rounded-lg text-xs font-medium hover:bg-amber-500/20 disabled:opacity-50">Yango ləğv</button>
                     )}
                     {order.status === "SHIPPED" && (
-                      <button onClick={() => { setDeliverCode(""); setDeliverModal(order.id); }} className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">{t("orderDelivered")}</button>
+                      <button onClick={() => { setDeliverCode(""); setDeliverModal(order.id); }} className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">✓ Çatdırıldı olaraq işarələ</button>
                     )}
-                    <button onClick={() => updateStatus(order.id, "CANCELLED")} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">{t("orderCancelled")}</button>
+                    {/* Ləğv — yalnız qəbul edilmiş/göndərilmiş sifariş üçün (PENDING-də 'Rədd et' var) */}
+                    {(order.status === "CONFIRMED" || order.status === "SHIPPED") && (
+                      <button onClick={() => { if (confirm("Sifarişi ləğv etmək istəyirsiniz?")) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 ml-auto">Ləğv et</button>
+                    )}
                   </div>
                 )}
 
