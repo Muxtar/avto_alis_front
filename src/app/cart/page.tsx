@@ -35,6 +35,7 @@ export default function CartPage() {
   const [lng, setLng] = useState<number | null>(null);
   const [city, setCity] = useState("");
   const [yangoFee, setYangoFee] = useState<number | null>(null);
+  const [yangoMsg, setYangoMsg] = useState<string | null>(null); // çatdıra bilməyəndə səbəb (koordinat yox / coverage)
   const [quoting, setQuoting] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false); // ödəniş şərtlərini qəbul (bank tələbi)
   // Biznes adına alış — canBuy səlahiyyətli işçi obyekt seçə bilər.
@@ -267,8 +268,8 @@ export default function CartPage() {
     let cancelled = false;
     setQuoting(true);
     fetch(`${API}/yango/quote`, { method: "POST", headers, body: JSON.stringify({ businessObjectId: objId || undefined, sellerId: objId ? undefined : sellerId, latitude: lat, longitude: lng, weight: cartWeight || 1 }) })
-      .then((r) => r.json()).then((d) => { if (!cancelled) setYangoFee(d?.available ? d.fee : null); })
-      .catch(() => { if (!cancelled) setYangoFee(null); }).finally(() => { if (!cancelled) setQuoting(false); });
+      .then((r) => r.json()).then((d) => { if (!cancelled) { setYangoFee(d?.available ? d.fee : null); setYangoMsg(d?.available ? null : (d?.message || null)); } })
+      .catch(() => { if (!cancelled) { setYangoFee(null); setYangoMsg("Yango xidmətinə qoşulmaq alınmadı"); } }).finally(() => { if (!cancelled) setQuoting(false); });
     return () => { cancelled = true; };
     // eslint-disable-next-line
   }, [deliveryType, deliveryMethod, lat, lng, items.length, yangoBlocked]);
@@ -515,9 +516,13 @@ export default function CartPage() {
                   <span>çatdırılma ünvanını seçin</span>
                 </div>
               ) : (
-                <div className="flex justify-between text-sm text-red-500">
-                  <span>🛵 Yango çatdırılma</span>
-                  <span>bu ünvana çatdıra bilmir</span>
+                <div className="text-sm text-red-500">
+                  <div className="flex justify-between">
+                    <span>🛵 Yango çatdırılma</span>
+                    <span>çatdıra bilmir</span>
+                  </div>
+                  {yangoMsg && <p className="text-[11px] text-red-500/80 mt-0.5">Səbəb: {yangoMsg}</p>}
+                  <p className="text-[11px] text-muted mt-0.5">Alternativ: satıcı çatdırması və ya özü götürmə seçin.</p>
                 </div>
               )}
 
