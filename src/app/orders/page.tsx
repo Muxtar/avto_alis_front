@@ -704,8 +704,9 @@ export default function OrdersPage() {
                     {order.yangoClaimId && !["delivered", "delivered_finish", "cancelled"].includes(order.yangoStatus) && (
                       <button onClick={() => refreshYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-500/20 disabled:opacity-50">{yangoBusy === order.id ? "..." : "🛵 Kuryeri izlə"}</button>
                     )}
-                    {order.status === "PENDING" && (
-                      <button onClick={() => updateStatus(order.id, "CANCELLED")} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">Ləğv et</button>
+                    {/* Alıcı: gözləyən və ya təsdiqlənib GÖNDƏRİLMƏMİŞ sifarişi ləğv edə bilər. Ödənilibsə pul geri qaytarılır. */}
+                    {(order.status === "PENDING" || order.status === "CONFIRMED") && (
+                      <button onClick={() => { if (confirm(order.paymentStatus === "PAID" ? "Sifarişi ləğv edib pulu geri almaq istəyirsiniz?" : "Sifarişi ləğv etmək istəyirsiniz?")) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">{order.paymentStatus === "PAID" ? "Ləğv et və geri al" : "Ləğv et"}</button>
                     )}
                     {order.status === "SHIPPED" && (
                       <button onClick={() => { if (confirm("Məhsulu təhvil aldığınızı təsdiqləyirsiniz?")) updateStatus(order.id, "DELIVERED"); }} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20">✓ Təhvil aldım</button>
