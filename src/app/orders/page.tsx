@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import Link from "next/link";
+import OrderMap from "@/components/OrderMapWrapper";
 
 export default function OrdersPage() {
   const { t } = useLanguage();
@@ -582,6 +583,18 @@ export default function OrdersPage() {
                           {cp && <span className="text-[11px] text-muted">☎️ {cp.phone}{cp.ext ? ` (daxili: ${cp.ext})` : ""}</span>}
                         </div>
                       )}
+
+                      {/* App-daxili canlı xəritə — kuryer + təhvil ünvanı (xarici Yango səhifəsinə ehtiyac yox) */}
+                      {(() => {
+                        const cLat = yi.courierPosition?.lat ?? order.courierLat;
+                        const cLng = yi.courierPosition?.lon ?? order.courierLng;
+                        if (cLat == null || cLng == null) return null;
+                        return (
+                          <div className="mt-2.5 rounded-lg overflow-hidden border border-card-border">
+                            <OrderMap courierLat={cLat} courierLng={cLng} buyerLat={order.latitude} buyerLng={order.longitude} courierLabel="Kuryer" buyerLabel="Çatdırılma ünvanı" height="200px" />
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                   );
