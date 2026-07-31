@@ -103,6 +103,34 @@ export default function OrdersPage() {
   // Yango (kuryer) inteqrasiyası
   const [yangoBusy, setYangoBusy] = useState<number | null>(null);
   const [yangoInfo, setYangoInfo] = useState<Record<number, any>>({});
+  const [courierPhone, setCourierPhone] = useState<Record<number, { phone: string; ext?: string | null }>>({});
+  // Kuryerə zəng — Yango müvəqqəti proksi nömrə qaytarır (gizlilik). ext varsa əl ilə daxil edilir.
+  const callCourier = async (orderId: number) => {
+    setYangoBusy(orderId);
+    const r = await fetch(`${API}/orders/${orderId}/yango/call`, { method: "POST", headers }).then((x) => x.json()).catch(() => null);
+    setYangoBusy(null);
+    if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
+    setCourierPhone((p) => ({ ...p, [orderId]: { phone: r.phone, ext: r.ext } }));
+    if (typeof window !== "undefined") window.location.href = `tel:${r.phone}${r.ext ? "," + r.ext : ""}`;
+  };
+
+  // Wolt-tipli avtomatik canlı yeniləmə — aktiv Yango sifarişləri üçün hər 30 saniyədə.
+  useEffect(() => {
+    const list = activeTab === "buying" ? buyingOrders : sellingOrders;
+    const terminal = ["delivered", "delivered_finish", "cancelled", "cancelled_by_taxi", "failed"];
+    const activeIds = list
+      .filter((o: any) => o.yangoClaimId && !terminal.includes(yangoInfo[o.id]?.status || o.yangoStatus))
+      .map((o: any) => o.id);
+    if (!token || activeIds.length === 0) return;
+    const poll = () => activeIds.forEach((id: number) => {
+      fetch(`${API}/orders/${id}/yango/status`, { headers }).then((x) => x.json()).then((r) => {
+        if (r && r.success !== false) setYangoInfo((p) => ({ ...p, [id]: r }));
+      }).catch(() => {});
+    });
+    const t = setInterval(poll, 30000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buyingOrders, sellingOrders, activeTab, token, yangoInfo]);
   const dispatchYango = async (orderId: number) => {
     setYangoBusy(orderId);
     const r = await fetch(`${API}/orders/${orderId}/yango/dispatch`, { method: "POST", headers }).then((x) => x.json()).catch(() => null);
@@ -129,12 +157,26 @@ export default function OrdersPage() {
   };
   const YANGO_LABEL: Record<string, string> = {
     new: "yaradıldı", estimating: "hesablanır", ready_for_approval: "təsdiq gözləyir",
-    accepted: "qəbul edildi", performer_search: "kuryer axtarılır", performer_found: "kuryer tapıldı",
-    performer_draft: "kuryer təyin olunur", pickup_arrived: "kuryer mağazada", pickuped: "götürüldü, yolda",
-    delivery_arrived: "ünvanda", delivered: "çatdırıldı", delivered_finish: "çatdırıldı",
+    accepted: "qəbul edildi", performer_lookup: "kuryer axtarılır", performer_search: "kuryer axtarılır", performer_found: "kuryer tapıldı",
+    performer_draft: "kuryer təyin olunur", pickup_arrived: "kuryer mağazada", ready_for_pickup_confirmation: "mağazada təsdiq gözləyir",
+    pickuped: "götürüldü, yolda", delivery_arrived: "ünvanda", ready_for_delivery_confirmation: "təhvil təsdiqi gözləyir",
+    pay_waiting: "ödəniş gözlənilir", delivered: "çatdırıldı", delivered_finish: "çatdırıldı",
     cancelled: "ləğv edildi", cancelled_by_taxi: "kuryer ləğv etdi", failed: "uğursuz",
   };
   const yangoLabel = (s?: string) => (s ? (YANGO_LABEL[s] || s) : "");
+  // Wolt-tipli izləmə addımları (0-4).
+  const YANGO_STEPS = ["Kuryer axtarılır", "Kuryer mağazaya gedir", "Mağazada", "Sizə gəlir", "Çatdırıldı"];
+  const yangoStep = (s?: string): number => {
+    switch (s) {
+      case "performer_found": return 1;
+      case "pickup_arrived": case "ready_for_pickup_confirmation": return 2;
+      case "pickuped": case "delivery_arrived": case "ready_for_delivery_confirmation": return 3;
+      case "delivered": case "delivered_finish": return 4;
+      case "cancelled": case "cancelled_by_taxi": case "failed": return -1;
+      default: return 0;
+    }
+  };
+  const etaText = (sec?: number | null) => (sec != null && sec > 0 ? (sec < 90 ? "~1 dəq" : `~${Math.round(sec / 60)} dəq`) : null);
 
   // Return actions
   const submitReturn = async (orderId: number) => {
@@ -483,21 +525,67 @@ export default function OrdersPage() {
                   </div>
                 )}
 
-                {/* Yango (kuryer) statusu — hər iki tərəf görür */}
-                {order.yangoClaimId && (
+                {/* Yango kuryer izləmə — Wolt üslubu (timeline, ETA, zəng, canlı izlə, təhvil kodu) */}
+                {order.yangoClaimId && (() => {
+                  const yi = yangoInfo[order.id] || {};
+                  const step = yangoStep(order.yangoStatus);
+                  const active = step >= 0 && step < 4;
+                  const eta = etaText(yi.etaSeconds);
+                  const cp = courierPhone[order.id];
+                  return (
                   <div className="p-4 border-t border-card-border">
                     <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium">🛵 Yango: <span className="text-blue-500">{yangoLabel(order.yangoStatus)}</span></p>
-                        <button onClick={() => refreshYango(order.id)} disabled={yangoBusy === order.id} className="text-xs text-blue-500 hover:underline disabled:opacity-50">{yangoBusy === order.id ? "..." : "Yenilə"}</button>
+                      <div className="flex items-center justify-between gap-2 mb-2">
+                        <p className="text-sm font-semibold">🛵 Yango kuryer</p>
+                        <button onClick={() => refreshYango(order.id)} disabled={yangoBusy === order.id} className="text-xs text-blue-500 hover:underline disabled:opacity-50">{yangoBusy === order.id ? "..." : "↻ Yenilə"}</button>
                       </div>
-                      {order.yangoPrice != null && <p className="text-[11px] text-muted mt-0.5">Çatdırılma haqqı: {order.yangoPrice.toFixed(2)} {order.yangoCurrency || "AZN"}</p>}
-                      {yangoInfo[order.id]?.performer && (
-                        <p className="text-xs text-muted mt-1">Kuryer: <b className="text-foreground">{yangoInfo[order.id].performer.courier_name}</b>{yangoInfo[order.id].performer.car_model ? ` · ${yangoInfo[order.id].performer.car_model} ${yangoInfo[order.id].performer.car_number || ""}` : ""}</p>
+
+                      {/* Timeline — 5 addım */}
+                      {step >= 0 ? (
+                        <div className="flex items-center gap-1 mb-2">
+                          {YANGO_STEPS.map((lbl, i) => (
+                            <div key={i} className="flex-1 flex flex-col items-center">
+                              <div className={`w-full h-1.5 rounded-full ${i <= step ? "bg-blue-500" : "bg-input-border"}`} />
+                              <span className={`mt-1 text-[9px] text-center leading-tight ${i === step ? "text-blue-500 font-semibold" : "text-muted"}`}>{lbl}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-red-500 mb-1">Ləğv edildi / uğursuz</p>
+                      )}
+
+                      <div className="flex items-center gap-2 flex-wrap text-xs">
+                        <span className="text-blue-500 font-medium">{yangoLabel(order.yangoStatus)}</span>
+                        {eta && <span className="px-2 py-0.5 rounded-lg bg-green-500/10 text-green-600 font-semibold">⏱ {eta}</span>}
+                        {order.yangoPrice != null && <span className="text-muted">· {order.yangoPrice.toFixed(2)} {order.yangoCurrency || "AZN"}</span>}
+                      </div>
+
+                      {yi.performer && (
+                        <p className="text-xs text-muted mt-1.5">👤 <b className="text-foreground">{yi.performer.courier_name}</b>{yi.performer.car_model ? ` · ${yi.performer.car_model} ${yi.performer.car_number || ""}` : ""}</p>
+                      )}
+
+                      {/* Alıcıya təhvil kodu — kuryerə deyir */}
+                      {yi.confirmationCode && (
+                        <div className="mt-2 px-3 py-2 bg-amber-400/10 border border-amber-400/30 rounded-lg">
+                          <p className="text-[11px] text-muted">Kuryerə bu kodu deyin (təhvil təsdiqi):</p>
+                          <p className="text-lg font-bold tracking-widest text-amber-600">{yi.confirmationCode}</p>
+                        </div>
+                      )}
+
+                      {/* Əməllər — zəng, canlı izlə */}
+                      {active && (
+                        <div className="flex items-center gap-2 flex-wrap mt-2.5">
+                          <button onClick={() => callCourier(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20 disabled:opacity-50">📞 Kuryerə zəng</button>
+                          {yi.trackingUrl && (
+                            <a href={yi.trackingUrl} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-semibold hover:bg-blue-500/20">🗺 Canlı izlə (xəritə)</a>
+                          )}
+                          {cp && <span className="text-[11px] text-muted">☎️ {cp.phone}{cp.ext ? ` (daxili: ${cp.ext})` : ""}</span>}
+                        </div>
                       )}
                     </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 {/* Seller actions */}
                 {activeTab === "selling" && order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
