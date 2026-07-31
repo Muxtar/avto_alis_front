@@ -488,10 +488,36 @@ export default function CartPage() {
                   <span>−{pointsDiscount.toFixed(2)} AZN</span>
                 </div>
               )}
-              {deliveryFee > 0 && (
+              {/* Çatdırılma haqqı — həmişə görünür: götürmə=Pulsuz, Yango=+haqq (məhsulun üstünə gəlir) */}
+              {deliveryType === "PICKUP" ? (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">🏪 Özü götürmə</span>
+                  <span className="text-green-600 font-medium">Pulsuz</span>
+                </div>
+              ) : deliveryMethod === "SELF" ? (
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted">🚚 Satıcı çatdırır</span>
+                  <span className="text-muted">satıcı ilə razılaşın</span>
+                </div>
+              ) : quoting ? (
                 <div className="flex justify-between text-sm text-muted">
                   <span>🛵 Yango çatdırılma</span>
-                  <span>+{deliveryFee.toFixed(2)} AZN</span>
+                  <span className="animate-pulse">hesablanır…</span>
+                </div>
+              ) : deliveryFee > 0 ? (
+                <div className="flex justify-between text-sm text-muted">
+                  <span>🛵 Yango çatdırılma</span>
+                  <span className="font-medium text-foreground">+{deliveryFee.toFixed(2)} AZN</span>
+                </div>
+              ) : (lat == null || lng == null) ? (
+                <div className="flex justify-between text-sm text-amber-600">
+                  <span>🛵 Yango çatdırılma</span>
+                  <span>çatdırılma ünvanını seçin</span>
+                </div>
+              ) : (
+                <div className="flex justify-between text-sm text-red-500">
+                  <span>🛵 Yango çatdırılma</span>
+                  <span>bu ünvana çatdıra bilmir</span>
                 </div>
               )}
 
