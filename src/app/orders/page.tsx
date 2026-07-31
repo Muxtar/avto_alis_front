@@ -78,6 +78,15 @@ export default function OrdersPage() {
     return true;
   };
 
+  // Sifarişi öz siyahından sil (yalnız tamamlanmış/ləğv olunmuş).
+  const deleteOrder = async (orderId: number) => {
+    if (!confirm("Bu sifarişi siyahınızdan silmək istəyirsiniz?")) return;
+    const r = await fetch(`${API}/orders/${orderId}`, { method: "DELETE", headers }).then((x) => x.json()).catch(() => null);
+    if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
+    toast("Sifariş silindi ✓", "success");
+    fetchOrders();
+  };
+
   // Təhvil (DELIVERED) modalı — satıcı alıcının kodunu daxil edir.
   const [deliverModal, setDeliverModal] = useState<number | null>(null);
   const [deliverCode, setDeliverCode] = useState("");
@@ -517,10 +526,32 @@ export default function OrdersPage() {
                   </div>
                 )}
 
-                {/* Alıcı: Yango izləmə düyməsi */}
-                {activeTab === "buying" && order.yangoClaimId && !["delivered", "delivered_finish", "cancelled"].includes(order.yangoStatus) && (
-                  <div className="p-3 border-t border-card-border">
-                    <button onClick={() => refreshYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-500/20 disabled:opacity-50">{yangoBusy === order.id ? "..." : "🛵 Kuryeri izlə"}</button>
+                {/* Satıcı: tamamlanmış/ləğv sifarişi siyahıdan sil */}
+                {activeTab === "selling" && (order.status === "DELIVERED" || order.status === "CANCELLED") && (
+                  <div className="p-3 border-t border-card-border flex gap-2 flex-wrap">
+                    <button onClick={() => deleteOrder(order.id)} className="px-3 py-1.5 bg-input-bg border border-input-border text-muted rounded-lg text-xs font-medium hover:text-red-500 hover:border-red-500/40">🗑 Sil</button>
+                  </div>
+                )}
+
+                {/* Alıcı əməlləri — izləmə, ləğv, təhvil təsdiqi, rəy, sil */}
+                {activeTab === "buying" && (
+                  <div className="p-3 border-t border-card-border flex gap-2 flex-wrap items-center">
+                    {order.yangoClaimId && !["delivered", "delivered_finish", "cancelled"].includes(order.yangoStatus) && (
+                      <button onClick={() => refreshYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-500/20 disabled:opacity-50">{yangoBusy === order.id ? "..." : "🛵 Kuryeri izlə"}</button>
+                    )}
+                    {order.status === "PENDING" && (
+                      <button onClick={() => updateStatus(order.id, "CANCELLED")} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">Ləğv et</button>
+                    )}
+                    {order.status === "SHIPPED" && (
+                      <button onClick={() => { if (confirm("Məhsulu təhvil aldığınızı təsdiqləyirsiniz?")) updateStatus(order.id, "DELIVERED"); }} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20">✓ Təhvil aldım</button>
+                    )}
+                    {/* Təhvil alındıqdan sonra məhsula rəy/5 ulduz (like/dislike) — hər məhsul üçün */}
+                    {order.status === "DELIVERED" && (order.items || []).map((it: any) => (
+                      <Link key={it.id} href={`/marketplace/${it.listingId}#reviews`} className="px-3 py-1.5 bg-amber-400/10 text-amber-600 rounded-lg text-xs font-medium hover:bg-amber-400/20">⭐ Rəy yaz{(order.items || []).length > 1 ? `: ${String(it.title).slice(0, 14)}` : ""}</Link>
+                    ))}
+                    {(order.status === "DELIVERED" || order.status === "CANCELLED") && (
+                      <button onClick={() => deleteOrder(order.id)} className="px-3 py-1.5 bg-input-bg border border-input-border text-muted rounded-lg text-xs font-medium hover:text-red-500 hover:border-red-500/40 ml-auto">🗑 Sil</button>
+                    )}
                   </div>
                 )}
               </div>
