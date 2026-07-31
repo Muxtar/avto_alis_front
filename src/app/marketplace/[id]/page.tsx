@@ -36,7 +36,6 @@ export default function ListingDetailPage() {
   const [cartQty, setCartQty] = useState(1);
   const [cartAdding, setCartAdding] = useState(false);
   const [cartAdded, setCartAdded] = useState(false);
-  const [showPhone, setShowPhone] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
   const [favBusy, setFavBusy] = useState(false);
@@ -87,21 +86,6 @@ export default function ListingDetailPage() {
         setIsFavorited(true);
       }
     } catch { toast(t("error"), "error"); } finally { setFavBusy(false); }
-  };
-
-  const maskPhone = (phone: string | undefined | null) => {
-    if (!phone) return "";
-    let digitCount = 0;
-    let result = "";
-    for (const ch of phone) {
-      if (/\d/.test(ch)) {
-        digitCount++;
-        result += digitCount <= 7 ? ch : "*";
-      } else {
-        result += ch;
-      }
-    }
-    return result;
   };
 
   const handleAddToCart = async () => {
@@ -825,17 +809,6 @@ export default function ListingDetailPage() {
                 <p className="text-xs text-muted mb-4">⭐ Obyektin hələ reytinqi yoxdur</p>
               )}
 
-              {(listing.phone || listing.businessObject.phone) && (
-                <button
-                  type="button"
-                  onClick={() => setShowPhone(true)}
-                  className="text-muted text-sm mb-4 hover:text-orange-500 transition-colors cursor-pointer text-left block"
-                  title={showPhone ? "" : "Nömrəni göstər"}
-                >
-                  {showPhone ? (listing.phone || listing.businessObject.phone) : maskPhone(listing.phone || listing.businessObject.phone)}
-                </button>
-              )}
-
               {(listing.businessObject.address || listing.businessObject.city) && (
                 <div className="flex items-start gap-2 text-sm text-muted mb-3">
                   <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -864,17 +837,11 @@ export default function ListingDetailPage() {
                 </div>
               )}
 
-              {(listing.phone || listing.businessObject.phone) && (
-                <a
-                  href={`tel:${listing.phone || listing.businessObject.phone}`}
-                  className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl font-semibold text-white hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg shadow-green-500/20"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-                  </svg>
-                  Obyektlə əlaqə
-                </a>
-              )}
+              {/* Əlaqə yalnız sayt daxili chat ilə — telefon nömrəsi göstərilmir. */}
+              <a href="#message" className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                Mesaj yaz
+              </a>
             </div>
           ) : (
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
@@ -893,15 +860,6 @@ export default function ListingDetailPage() {
                 <p className="text-muted text-xs">{t("sellerProfile")} &rarr;</p>
               </div>
             </Link>
-            <button
-              type="button"
-              onClick={() => setShowPhone(true)}
-              className="text-muted text-sm mb-4 hover:text-orange-500 transition-colors cursor-pointer text-left"
-              title={showPhone ? "" : "Nömrəni göstər"}
-            >
-              {showPhone ? (listing.phone || listing.user.phone) : maskPhone(listing.phone || listing.user.phone)}
-            </button>
-
             {(listing.location || listing.city || listing.user.city) && (
               <div className="flex items-start gap-2 text-sm text-muted mb-3">
                 <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -936,14 +894,10 @@ export default function ListingDetailPage() {
               </div>
             )}
 
-            <a
-              href={`tel:${listing.phone || listing.user.phone}`}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl font-semibold text-white hover:from-green-600 hover:to-emerald-700 transition-all shadow-lg shadow-green-500/20"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
-              </svg>
-              {t("contactSeller")}
+            {/* Əlaqə yalnız sayt daxili chat ilə — telefon nömrəsi göstərilmir. */}
+            <a href="#message" className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+              Mesaj yaz
             </a>
           </div>
           )}
