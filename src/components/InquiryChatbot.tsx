@@ -31,6 +31,8 @@ export default function InquiryChatbot() {
   const [initialized, setInitialized] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [confirming, setConfirming] = useState(false);
+  // Mobil klaviatura idarəetməsi — görünən viewport (top/height). Desktopda null (md: class-lar işləyir).
+  const [vp, setVp] = useState<{ top: number; height: number } | null>(null);
   const messagesEnd = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,6 +50,30 @@ export default function InquiryChatbot() {
     window.addEventListener('toggle-inquiry-chat', toggle);
     return () => window.removeEventListener('toggle-inquiry-chat', toggle);
   }, []);
+
+  // Panel açıqkən mobil görünən viewport-a uyğunlaş — klaviatura açılanda header/input
+  // itməsin, üfüqi daşma olmasın (messages səhifəsindəki kimi visualViewport ilə).
+  useEffect(() => {
+    if (!open) { setVp(null); return; }
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+    const apply = () => {
+      if (window.innerWidth >= 768) { setVp(null); return; } // desktop → md: class-lar
+      const height = vv ? vv.height : window.innerHeight;
+      const top = vv ? vv.offsetTop : 0;
+      setVp({ top: Math.round(top), height: Math.round(height) });
+    };
+    apply();
+    vv?.addEventListener('resize', apply);
+    vv?.addEventListener('scroll', apply);
+    window.addEventListener('resize', apply);
+    window.addEventListener('orientationchange', apply);
+    return () => {
+      vv?.removeEventListener('resize', apply);
+      vv?.removeEventListener('scroll', apply);
+      window.removeEventListener('resize', apply);
+      window.removeEventListener('orientationchange', apply);
+    };
+  }, [open]);
 
   const send = async () => {
     const q = input.trim();
@@ -119,11 +145,13 @@ export default function InquiryChatbot() {
         )}
       </button>
 
-      {/* Chat paneli — desktopda sağ altda, mobil tam ekran */}
+      {/* Chat paneli — desktopda sağ altda; mobil-də görünən viewport-a sığır (klaviatura təhlükəsiz) */}
       {open && (
-        <div className="fixed z-50 top-2 left-2 right-2 bottom-2 md:top-auto md:left-auto md:bottom-24 md:right-6 md:w-[440px] md:h-[78vh] md:max-h-[720px] bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div
+          style={vp ? { top: vp.top, left: 0, right: 0, height: vp.height, bottom: 'auto', maxHeight: 'none', borderRadius: 0 } : undefined}
+          className="fixed z-50 top-2 left-2 right-2 bottom-2 md:top-auto md:left-auto md:bottom-24 md:right-6 md:w-[440px] md:h-[78vh] md:max-h-[720px] bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Başlıq */}
-          <div className="bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-white flex items-center justify-between gap-2">
+          <div className="shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-white flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="text-lg">✨</span>
               <div>
@@ -137,7 +165,7 @@ export default function InquiryChatbot() {
           </div>
 
           {/* Mesajlar */}
-          <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-3 space-y-3">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm whitespace-pre-line break-words ${
@@ -169,7 +197,7 @@ export default function InquiryChatbot() {
           </div>
 
           {/* Giriş */}
-          <div className="p-3 border-t border-card-border">
+          <div className="shrink-0 p-3 border-t border-card-border">
             <div className="flex gap-2">
               <input
                 type="text"
