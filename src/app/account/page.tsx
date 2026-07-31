@@ -12,7 +12,31 @@ import LocationPicker from "@/components/LocationPickerWrapper";
 import QRShare from "@/components/QRShare";
 
 const MAX_IMAGES = 5;
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+// Bu ölçüdən böyük şəkillər avtomatik sıxılır (rədd edilmir) — istifadəçi üçün ölçü fərq etməsin.
+const COMPRESS_ABOVE = 1.8 * 1024 * 1024;
+
+// Şəkli brauzerdə avtomatik sıxır/ölçüləndirir (canvas). Böyük foto → maks tərəf 1920px,
+// JPEG keyfiyyət 0.82. Beləcə istənilən ölçülü şəkil qəbul olunur və yükləmə də yüngülləşir.
+async function compressImage(file: File, maxDim = 1920, quality = 0.82): Promise<File> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    const w = Math.max(1, Math.round(bitmap.width * scale));
+    const h = Math.max(1, Math.round(bitmap.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(bitmap, 0, 0, w, h);
+    (bitmap as any).close?.();
+    const blob: Blob | null = await new Promise((res) => canvas.toBlob(res, "image/jpeg", quality));
+    if (!blob) return file;
+    const name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+    return new File([blob], name, { type: "image/jpeg", lastModified: Date.now() });
+  } catch {
+    return file; // sıxma alınmasa orijinalı qaytar
+  }
+}
 
 const DEFAULT_MAIN = CATEGORIES[0].name;
 const DEFAULT_CATEGORY = buildCat(DEFAULT_MAIN, CATEGORIES[0].subs[0].name);
@@ -174,31 +198,34 @@ function AccountPageInner() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const handleImagePick = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const picked = Array.from(e.target.files || []);
+  const handleImagePick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputEl = e.target;
+    const picked = Array.from(inputEl.files || []);
     if (picked.length === 0) return;
     const totalAfter = images.length + existingImages.length + picked.length;
     if (totalAfter > MAX_IMAGES) {
       toast(`Maksimum ${MAX_IMAGES} şəkil əlavə edə bilərsiniz`, 'error');
-      e.target.value = "";
+      inputEl.value = "";
       return;
     }
     const valid: File[] = [];
     for (const f of picked) {
-      if (f.size > MAX_IMAGE_SIZE) {
-        toast(`${f.name} 5 MB-dan böyükdür`, 'error');
-        continue;
-      }
       if (!/^image\/(jpeg|jpg|png|webp)$/i.test(f.type)) {
         toast(`${f.name} dəstəklənməyən formatdır (yalnız jpg, png, webp)`, 'error');
         continue;
       }
-      valid.push(f);
+      // Ölçü fərq etməsin — böyük şəkli rədd etmə, avtomatik sıx.
+      let file = f;
+      if (f.size > COMPRESS_ABOVE) {
+        file = await compressImage(f);
+        if (file.size > 5 * 1024 * 1024) file = await compressImage(f, 1600, 0.7); // hələ böyükdürsə bir də sıx
+      }
+      valid.push(file);
     }
-    if (valid.length === 0) { e.target.value = ""; return; }
+    if (valid.length === 0) { inputEl.value = ""; return; }
     setImages((prev) => [...prev, ...valid]);
     setImagePreviews((prev) => [...prev, ...valid.map((f) => URL.createObjectURL(f))]);
-    e.target.value = "";
+    inputEl.value = "";
   };
 
   const removeNewImage = (idx: number) => {
