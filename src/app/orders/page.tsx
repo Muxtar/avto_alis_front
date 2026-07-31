@@ -179,6 +179,32 @@ export default function OrdersPage() {
   };
   const etaText = (sec?: number | null) => (sec != null && sec > 0 ? (sec < 90 ? "~1 dəq" : `~${Math.round(sec / 60)} dəq`) : null);
 
+  // Sifarişin tam yol xəritəsi (hər iki tərəf üçün detallı vəziyyət).
+  type JStep = { label: string; state: "done" | "current" | "pending" | "error"; detail?: string };
+  const journeySteps = (order: any, yi: any): JStep[] => {
+    const S: JStep[] = [{ label: "Sifariş verildi", state: "done" }];
+    const st = order.status;
+    const isCourier = order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER";
+    if (st === "PENDING") { S.push({ label: "Satıcının təsdiqi gözlənilir", state: "current" }); S.push({ label: "Çatdırıldı", state: "pending" }); return S; }
+    if (st === "CANCELLED") { S.push({ label: "Rədd / ləğv edildi", state: "error", detail: order.yangoError || undefined }); return S; }
+    S.push({ label: "Satıcı qəbul etdi", state: "done" });
+    if (isCourier) {
+      if (!order.yangoClaimId) {
+        S.push({ label: order.yangoError ? "Yango: kuryer tapılmadı (yenidən cəhd ediləcək)" : "Yango-ya göndərilir…", state: order.yangoError ? "error" : "current", detail: order.yangoError || undefined });
+      } else {
+        const step = yangoStep(yi.status || order.yangoStatus);
+        S.push({ label: "Yango qəbul etdi", state: "done" });
+        S.push({ label: "Kuryer tapıldı" + (yi.performer?.courier_name ? ` — ${yi.performer.courier_name}` : ""), state: step >= 1 ? "done" : "current" });
+        S.push({ label: "Kuryer məhsulu götürdü", state: step >= 3 ? "done" : (step >= 2 ? "current" : "pending") });
+        S.push({ label: "Yolda sizə" + (etaText(yi.etaSeconds) ? ` · ${etaText(yi.etaSeconds)}` : ""), state: step >= 4 ? "done" : (step >= 3 ? "current" : "pending") });
+      }
+    } else {
+      S.push({ label: "Satıcı göndərdi", state: ["SHIPPED", "DELIVERED"].includes(st) ? "done" : "current" });
+    }
+    S.push({ label: "Çatdırıldı", state: st === "DELIVERED" ? "done" : "pending" });
+    return S;
+  };
+
   // Return actions
   const submitReturn = async (orderId: number) => {
     setReturnLoading(true);
@@ -358,6 +384,29 @@ export default function OrdersPage() {
                       : `🚚 Çatdırılma · ${order.deliveryMethod === "SELF" ? "satıcı özü çatdırır" : "kuryer (Yango)"}`}
                   </p>
                 </div>
+
+                {/* Detallı sifariş vəziyyəti — hər iki tərəf (satıcı qəbul → Yango → kuryer → çatdırıldı) */}
+                {(() => {
+                  const steps = journeySteps(order, yangoInfo[order.id] || {});
+                  return (
+                    <div className="p-4 border-t border-card-border">
+                      <p className="text-xs font-semibold text-muted mb-2">📋 Sifariş vəziyyəti</p>
+                      <div className="space-y-1.5">
+                        {steps.map((s, i) => (
+                          <div key={i} className="flex items-start gap-2 text-sm">
+                            <span className={`mt-0.5 w-4 shrink-0 text-center ${s.state === "done" ? "text-green-500" : s.state === "current" ? "text-blue-500 animate-pulse" : s.state === "error" ? "text-red-500" : "text-muted/40"}`}>
+                              {s.state === "done" ? "✓" : s.state === "error" ? "⚠️" : s.state === "current" ? "●" : "○"}
+                            </span>
+                            <div className="min-w-0">
+                              <span className={s.state === "current" ? "font-semibold text-blue-500" : s.state === "error" ? "text-red-500 font-medium" : s.state === "done" ? "text-foreground" : "text-muted"}>{s.label}</span>
+                              {s.detail && activeTab === "selling" && <span className="block text-[11px] text-red-500">{s.detail}</span>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Təhvil kodu — YALNIZ alıcıya görünür (satıcı/kuryer alıcıdan soruşur). */}
                 {activeTab === "buying" && order.pickupCode && order.status !== "CANCELLED" && (
