@@ -600,6 +600,15 @@ export default function OrdersPage() {
                   );
                 })()}
 
+                {/* Alıcı: kuryer hələ təyin olunmayıb — status + Yoxla (Yango cavabını götürür) */}
+                {activeTab === "buying" && !order.yangoClaimId && order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER" && order.status !== "CANCELLED" && order.status !== "DELIVERED" && (
+                  <div className="p-3 border-t border-card-border flex items-center gap-2 flex-wrap text-xs">
+                    <span className="font-medium">🛵 Yango kuryer:</span>
+                    <span className="text-muted">kuryer təyin olunur…</span>
+                    <button onClick={() => refreshYango(order.id)} disabled={yangoBusy === order.id} className="text-blue-500 hover:underline disabled:opacity-50">{yangoBusy === order.id ? "..." : "↻ Yoxla"}</button>
+                  </div>
+                )}
+
                 {/* Seller actions */}
                 {activeTab === "selling" && order.status !== "DELIVERED" && order.status !== "CANCELLED" && (
                   <div className="p-3 border-t border-card-border flex gap-2 flex-wrap">
@@ -613,9 +622,9 @@ export default function OrdersPage() {
                     {order.status === "CONFIRMED" && (
                       <button onClick={() => updateStatus(order.id, "SHIPPED")} className="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-medium hover:bg-purple-500/20">{t("orderShipped")}</button>
                     )}
-                    {/* Yango təsdiqdə avtomatik çağırılır. Uğursuz olubsa (yangoError) satıcı təkrar cəhd edə bilər. */}
-                    {!order.yangoClaimId && order.yangoError && order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER" && (order.status === "CONFIRMED" || order.status === "SHIPPED") && (
-                      <button onClick={() => dispatchYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-amber-500/10 text-amber-600 rounded-lg text-xs font-medium hover:bg-amber-500/20 disabled:opacity-50">{yangoBusy === order.id ? "..." : "🔁 Yango təkrar cəhd"}</button>
+                    {/* Yango təsdiqdə avtomatik çağırılır; claim yaranmayıbsa satıcı əl ilə çağırıb Yango cavabını görə bilər. */}
+                    {!order.yangoClaimId && order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER" && (order.status === "CONFIRMED" || order.status === "SHIPPED") && (
+                      <button onClick={() => dispatchYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-semibold hover:bg-blue-500/20 disabled:opacity-50">{yangoBusy === order.id ? "..." : (order.yangoError ? "🔁 Yango təkrar cəhd" : "🛵 Kuryer çağır (Yango)")}</button>
                     )}
                     {order.yangoClaimId && !["delivered", "delivered_finish", "cancelled", "cancelled_by_taxi", "failed"].includes(order.yangoStatus) && (
                       <button onClick={() => cancelYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-amber-500/10 text-amber-500 rounded-lg text-xs font-medium hover:bg-amber-500/20 disabled:opacity-50">Yango ləğv</button>
