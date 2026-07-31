@@ -52,6 +52,7 @@ export default function CartPage() {
   const [userPoints, setUserPoints] = useState(0);
   // Kart ödənişi — bankın səhifəsi iframe modal-da
   const [payUrl, setPayUrl] = useState<string | null>(null);
+  const payOrderIdRef = useRef<number | null>(null); // ödəniş modalı açıq olan sifarişin id-si (qayıtmada təsdiq üçün)
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   // Səbəti göndərmə: çatdırılma alıcıya (RECIPIENT) yoxsa mənə (SENDER) — göndərən seçir.
@@ -125,12 +126,23 @@ export default function CartPage() {
 
   // Bankın iframe-i ödənişdən sonra /payment/return-dən postMessage göndərir.
   useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
+    const onMsg = async (e: MessageEvent) => {
       if (e.origin !== window.location.origin) return;
       if (e.data?.type !== "kapital-payment") return;
       setPayUrl(null);
       refreshCart();
-      router.push(`/orders?payment=${e.data.status}`);
+      // Ödənişi banka birbaşa sorğu ilə TƏSDİQLƏ + settle et (webhook geciksə/gəlməsə də
+      // sifariş PAID olsun) — "ödəniş uğurlu oldu, amma app xəta göstərir" halının qarşısı.
+      let status = e.data.status;
+      const oid = payOrderIdRef.current;
+      if (oid) {
+        try {
+          const r = await fetch(`${API}/payment/status/${oid}`, { headers }).then((x) => x.json());
+          if (r?.paymentStatus === "PAID") status = "success";
+          else if (r?.paymentStatus === "FAILED") status = "failed";
+        } catch { /* saxlanmış status ilə davam */ }
+      }
+      router.push(`/orders?payment=${status}`);
     };
     window.addEventListener("message", onMsg);
     return () => window.removeEventListener("message", onMsg);
@@ -333,6 +345,7 @@ export default function CartPage() {
       if (res.ok && data.success) {
         // Kart ödənişi: bankın səhifəsini saytda modal (iframe) içində aç.
         if (data.paymentUrl) {
+          payOrderIdRef.current = data.orders?.[0]?.id ?? null;
           setPayUrl(data.paymentUrl);
           return;
         }
