@@ -6,26 +6,15 @@ export function formatPrice(n: number | string | null | undefined): string {
   return v.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 }
 
-// Çox böyük qiymətlər tam yazılanda kartdan/qutudan daşır
-// (məs. 1.000.000.000.000). Milyondan yuxarısını qısaldırıq:
-// 1.500.000 → "1,5 mln", 2.300.000.000 → "2,3 mlrd", 1e12 → "1 trln".
-// Tam dəyər `title` atributunda göstərilə bilər — formatPrice() ilə.
+// Qiyməti TAM, nöqtə ilə minlik ayırıcı ilə göstər — istifadəçi tələbi:
+// 10000 → "10.000", 1000000 → "1.000.000" (oxunması asan olsun).
+// Yalnız astronomik böyük dəyərləri (≥ 1 trilyon) qısaldırıq ki, qutudan daşmasın.
 export function formatPriceShort(n: number | string | null | undefined): string {
   const v = typeof n === 'string' ? parseFloat(n) : n;
   if (v == null || Number.isNaN(v)) return '0';
-  const abs = Math.abs(v);
-  const units: [number, string][] = [
-    [1e12, 'trln'],
-    [1e9, 'mlrd'],
-    [1e6, 'mln'],
-  ];
-  for (const [step, label] of units) {
-    if (abs >= step) {
-      const scaled = v / step;
-      // 1 onluq rəqəm bəs edir; "1,0 mln" yerine "1 mln" yazırıq.
-      const txt = scaled.toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
-      return `${txt} ${label}`;
-    }
+  if (Math.abs(v) >= 1e12) {
+    const txt = (v / 1e12).toLocaleString('de-DE', { minimumFractionDigits: 0, maximumFractionDigits: 1 });
+    return `${txt} trln`;
   }
   return formatPrice(v);
 }
