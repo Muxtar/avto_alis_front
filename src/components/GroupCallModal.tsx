@@ -61,6 +61,8 @@ export default function GroupCallModal({
   const [minimized, setMinimized] = useState(false);
   const [peers, setPeers] = useState<Record<number, PeerInfo & { stream: MediaStream | null }>>({});
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  // Qrup üzvləri (online/offline) — zəng zamanı kimin əlçatan olduğunu göstərmək üçün.
+  const [roster, setRoster] = useState<(PeerInfo & { online: boolean })[]>([]);
 
   const pcsRef = useRef<Map<number, RTCPeerConnection>>(new Map());
   // SDP-dən əvvəl gələn ICE candidate-lər peer üzrə burada gözlədilir və
@@ -86,6 +88,8 @@ export default function GroupCallModal({
   socketRef.current = socket;
 
   const sig = (to: number, data: any) => socketRef.current?.emit("groupcall:signal", { conversationId: convRef.current, to, data });
+  // Qrup üzvlərinin siyahısını + online vəziyyətini serverdən soruş.
+  const fetchRoster = () => { if (convRef.current) socketRef.current?.emit("groupcall:roster", { conversationId: convRef.current }); };
 
   const cleanup = useCallback(() => {
     pcsRef.current.forEach((pc) => { try { pc.close(); } catch { /* boş */ } });
@@ -93,7 +97,7 @@ export default function GroupCallModal({
     pendingCandRef.current.clear();
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     localStreamRef.current = null;
-    setLocalStream(null); setPeers({}); setPhase(null); setConvId(null); setIncomingFrom(null);
+    setLocalStream(null); setPeers({}); setRoster([]); setPhase(null); setConvId(null); setIncomingFrom(null);
     setMuted(false); setCamOff(false); setMinimized(false);
     onDone?.();
     // eslint-disable-next-line
@@ -133,6 +137,7 @@ export default function GroupCallModal({
       setPhase("active"); setConvId(cid); convRef.current = cid; setKind(k); kindRef.current = k;
       if (initiator) socketRef.current?.emit("groupcall:start", { conversationId: cid, kind: k });
       else socketRef.current?.emit("groupcall:join", { conversationId: cid });
+      fetchRoster();
     } catch {
       toast("Mikrofon/kamera icazəsi verilmədi", "error"); cleanup();
     }
@@ -158,10 +163,20 @@ export default function GroupCallModal({
     const onParticipants = (d: any) => {
       if (d.conversationId !== convRef.current) return;
       (d.participants || []).forEach((pi: PeerInfo) => ensurePeer(pi, myId < pi.id));
+      fetchRoster();
     };
     const onPeerJoined = (d: any) => {
       if (d.conversationId !== convRef.current || !d.peer) return;
       ensurePeer(d.peer, myId < d.peer.id);
+      fetchRoster();
+    };
+    const onRoster = (d: any) => {
+      if (d.conversationId !== convRef.current) return;
+      setRoster(Array.isArray(d.members) ? d.members : []);
+    };
+    const onPresence = (d: any) => {
+      if (!d || typeof d.userId !== "number") return;
+      setRoster((r) => r.map((m) => (m.id === d.userId ? { ...m, online: !!d.online } : m)));
     };
     const onSignal = async (d: any) => {
       if (d.conversationId !== convRef.current) return;
@@ -182,7 +197,7 @@ export default function GroupCallModal({
         }
       } catch { /* keç */ }
     };
-    const onPeerLeft = (d: any) => { if (d.conversationId === convRef.current) removePeer(d.userId); };
+    const onPeerLeft = (d: any) => { if (d.conversationId === convRef.current) { removePeer(d.userId); fetchRoster(); } };
     // Qrup zəngi doludur (server MAX_GROUP_CALL limitini keçib).
     const onFull = (d: any) => {
       if (d.conversationId !== convRef.current) return;
@@ -197,10 +212,14 @@ export default function GroupCallModal({
     socket.on("groupcall:signal", onSignal);
     socket.on("groupcall:peer-left", onPeerLeft);
     socket.on("groupcall:full", onFull);
+    socket.on("groupcall:roster", onRoster);
+    socket.on("presence:update", onPresence);
     return () => {
       socket.off("config", onConfig); socket.off("groupcall:incoming", onIncoming); socket.off("groupcall:participants", onParticipants);
       socket.off("groupcall:peer-joined", onPeerJoined); socket.off("groupcall:signal", onSignal); socket.off("groupcall:peer-left", onPeerLeft);
       socket.off("groupcall:full", onFull);
+      socket.off("groupcall:roster", onRoster);
+      socket.off("presence:update", onPresence);
     };
     // phase-i deps-dən çıxardıq (phaseRef istifadə olunur) — listener-lər zəng
     // boyu sabit qalır, bootstrap mesajları itmir.
@@ -259,6 +278,32 @@ export default function GroupCallModal({
         </div>
         <button onClick={() => setMinimized(true)} title="Kiçilt" className="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center">🗕</button>
       </div>
+
+      {roster.length > 0 && (() => {
+        const inCall = new Set<number>([myId, ...Object.keys(peers).map(Number)]);
+        const sorted = [...roster].sort((a, b) => Number(b.online) - Number(a.online));
+        return (
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-1 shrink-0">
+            {sorted.map((m) => {
+              const joined = inCall.has(m.id);
+              return (
+                <div key={m.id} title={joined ? "Zəngdə" : m.online ? "Onlayn" : "Oflayn"} className="flex flex-col items-center gap-1 shrink-0 w-14">
+                  <div className="relative">
+                    {m.avatar ? (
+                      <img src={imgUrl(m.avatar)} alt={m.name} className={`w-10 h-10 rounded-full object-cover ${m.online ? "" : "opacity-40 grayscale"}`} />
+                    ) : (
+                      <div className={`w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-xs font-bold text-white ${m.online ? "" : "opacity-40 grayscale"}`}>{initials(m.name)}</div>
+                    )}
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-black/60 ${m.online ? "bg-green-500" : "bg-gray-500"}`} />
+                    {joined && <span className="absolute -top-1 -right-1 text-[10px]">📞</span>}
+                  </div>
+                  <span className={`text-[10px] leading-tight text-center truncate w-full ${m.online ? "text-white" : "text-white/50"}`}>{m.id === myId ? "Siz" : (m.name || "").split(" ")[0]}</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
 
       <div className={`flex-1 min-h-0 overflow-y-auto grid gap-2`} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
         <Tile name="Siz" stream={localStream} kind={kind} self muted={muted} avatar={(user as any)?.avatar} />

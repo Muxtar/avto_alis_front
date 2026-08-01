@@ -94,6 +94,7 @@ export default function MessagesPage() {
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [contactPickerOpen, setContactPickerOpen] = useState(false);
   const [pickerContacts, setPickerContacts] = useState<any[]>([]);
+  const [contactSel, setContactSel] = useState<Set<number>>(new Set()); // çoxlu kontakt seçimi (paylaşma)
   const [recording, setRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
   const [videoRecOpen, setVideoRecOpen] = useState(false);
@@ -106,6 +107,7 @@ export default function MessagesPage() {
   const [groupContacts, setGroupContacts] = useState<any[]>([]);
   const [contactDigits, setContactDigits] = useState<Set<string>>(new Set()); // öz kontaktlarımın nömrələri (rəqəmlər)
   const [contactUserIds, setContactUserIds] = useState<Set<number>>(new Set()); // kontaktlarımın istifadəçi id-ləri (chat-dan əlavə üçün)
+  const [blockedIds, setBlockedIds] = useState<Set<number>>(new Set()); // bloklağım istifadəçilər
   const [infoOpen, setInfoOpen] = useState(false);
   const [groupInfo, setGroupInfo] = useState<any>(null);
   const [addMemberMode, setAddMemberMode] = useState(false);
@@ -236,6 +238,8 @@ export default function MessagesPage() {
         setContactUserIds(new Set(list.map((c: any) => c.user?.id).filter((x: any) => typeof x === "number")));
       })
       .catch(() => {});
+    fetch(`${API}/me/blocked`, { headers }).then((r) => r.json())
+      .then((d) => { if (d.success) setBlockedIds(new Set(d.blocked || [])); }).catch(() => {});
   }, [isLoggedIn, authLoading]);
 
   // ── Real-time socket ──
@@ -303,6 +307,13 @@ export default function MessagesPage() {
     if (active?.type === "group" && token) getSocket(token).emit("groupcall:status", { conversationId: active.id });
   }, [active, token]);
 
+  // Qaralamanı saxla — göndərilməmiş mətn həmin söhbətə bağlı qalır (girəndə qaytarılır).
+  useEffect(() => {
+    if (!active || typeof window === "undefined") return;
+    const k = `draft:${active.type}:${active.id}`;
+    if (newMsg.trim()) localStorage.setItem(k, newMsg); else localStorage.removeItem(k);
+  }, [newMsg, active]);
+
   // Söhbət siyahısı dəyişəndə tərəflərin online vəziyyətini soruş (təzələnir).
   useEffect(() => {
     if (!isLoggedIn || !token) return;
@@ -340,6 +351,8 @@ export default function MessagesPage() {
 
   const openChat = (chat: any) => {
     setActive(chat);
+    // Qaralama: göndərilməmiş mətn həmin söhbətdə saxlanır — girəndə inputa qaytarılır.
+    setNewMsg(typeof window !== "undefined" ? (localStorage.getItem(`draft:${chat.type}:${chat.id}`) || "") : "");
     setHasMore(false); setReplyTo(null); setEditingMsg(null); setSelectedMsg(null); setPartnerTyping(false); setAttachOpen(false); setSideTab("chats");
     fetch(threadUrl(chat), { headers })
       .then((r) => r.json())
@@ -464,9 +477,26 @@ export default function MessagesPage() {
 
   const openContactPicker = () => {
     setAttachOpen(false);
+    setContactSel(new Set());
     fetch(`${API}/me/contacts`, { headers }).then((r) => r.json())
       .then((d) => { setPickerContacts(d.contacts || (Array.isArray(d) ? d : [])); setContactPickerOpen(true); })
       .catch(() => toast(t('error'), 'error'));
+  };
+  const toggleContactSel = (id: number) => setContactSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  // Seçilmiş bir və ya bir neçə kontaktı qarşı tərəfə göndər.
+  const sendSelectedContacts = async () => {
+    const chosen = pickerContacts.filter((c) => contactSel.has(c.id));
+    if (!chosen.length || !active) return;
+    setContactPickerOpen(false);
+    for (const c of chosen) {
+      try {
+        const res = await fetch(`${API}/messages/contact`, { method: "POST", headers, body: JSON.stringify({ ...sendTarget(), contactName: c.name, contactPhone: c.phone, contactUserId: c.user?.id || null }) });
+        const d = await res.json();
+        if (res.ok && d.success) setMessages((prev) => [...prev, d.message]);
+      } catch { /* keç */ }
+    }
+    setContactSel(new Set()); scrollToEnd(); fetchAll();
+    toast(`${chosen.length} kontakt göndərildi ✓`, "success");
   };
   const sendContact = async (c: any) => {
     setContactPickerOpen(false);
@@ -597,6 +627,19 @@ export default function MessagesPage() {
         toast(d.already ? "Artıq kontaktlarınızdadır" : "Kontaktlara əlavə edildi ✓", "success");
       } else toast(d.message || t('error'), 'error');
     } catch { toast(t('error'), 'error'); }
+  };
+  // İstifadəçini blokla / blokdan çıxar.
+  const toggleBlock = async () => {
+    if (!active || active.type !== "direct") return;
+    const blocked = blockedIds.has(active.id);
+    if (!blocked && !confirm(`${active.name} adlı istifadəçini bloklamaq istəyirsiniz? Bir-birinizə mesaj göndərə bilməyəcəksiniz.`)) return;
+    try {
+      const res = await fetch(`${API}/me/block/${active.id}`, { method: blocked ? "DELETE" : "POST", headers });
+      if (res.ok) {
+        setBlockedIds((s) => { const n = new Set(s); blocked ? n.delete(active.id) : n.add(active.id); return n; });
+        toast(blocked ? "Blokdan çıxarıldı ✓" : "Bloklandı ✓", "success");
+      } else toast(t("error"), "error");
+    } catch { toast(t("error"), "error"); }
   };
   const reactToMessage = async (msg: any, emoji: string) => {
     setSelectedMsg(null);
@@ -897,6 +940,7 @@ export default function MessagesPage() {
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button onClick={() => startCall({ id: active.id, name: active.name }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></button>
                     <button onClick={() => startCall({ id: active.id, name: active.name }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg></button>
+                    <button onClick={toggleBlock} title={blockedIds.has(active.id) ? "Blokdan çıxar" : "Blokla"} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${blockedIds.has(active.id) ? "bg-red-500/20 text-red-500" : "bg-input-bg text-muted hover:text-red-500"}`}>🚫</button>
                   </div>
                 )}
                 {active.type === "group" && (
@@ -1059,13 +1103,24 @@ export default function MessagesPage() {
       {contactPickerOpen && (
         <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40" onClick={() => setContactPickerOpen(false)}>
           <div className="bg-card border border-card-border rounded-t-2xl sm:rounded-2xl w-full sm:w-96 max-h-[70vh] overflow-y-auto p-3" onClick={(e) => e.stopPropagation()}>
-            <p className="font-semibold mb-2">Kontakt paylaş</p>
-            {pickerContacts.length === 0 ? <p className="text-muted text-sm py-6 text-center">Kontakt yoxdur</p> : pickerContacts.map((c) => (
-              <button key={c.id} onClick={() => sendContact(c)} className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-input-bg text-left">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">{initials(c.name)}</div>
-                <div className="min-w-0"><p className="text-sm font-medium truncate">{c.name}</p><p className="text-[11px] text-muted truncate">{c.phone}{c.user ? " · platformada ✓" : ""}</p></div>
+            <p className="font-semibold mb-2">Kontakt paylaş <span className="text-xs text-muted">(bir və ya bir neçəsini seç)</span></p>
+            <div className="space-y-0.5">
+              {pickerContacts.length === 0 ? <p className="text-muted text-sm py-6 text-center">Kontakt yoxdur</p> : pickerContacts.map((c) => {
+                const sel = contactSel.has(c.id);
+                return (
+                  <button key={c.id} onClick={() => toggleContactSel(c.id)} className={`w-full flex items-center gap-3 p-2 rounded-lg text-left ${sel ? "bg-orange-500/15 border border-orange-500/40" : "hover:bg-input-bg border border-transparent"}`}>
+                    <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${sel ? "bg-orange-500 border-orange-500 text-white" : "border-input-border"}`}>{sel ? "✓" : ""}</div>
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">{initials(c.name)}</div>
+                    <div className="min-w-0"><p className="text-sm font-medium truncate">{c.name}</p><p className="text-[11px] text-muted truncate">{c.user ? "platformada ✓" : "kontakt"}</p></div>
+                  </button>
+                );
+              })}
+            </div>
+            {pickerContacts.length > 0 && (
+              <button onClick={sendSelectedContacts} disabled={contactSel.size === 0} className="w-full mt-3 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold disabled:opacity-50">
+                Göndər{contactSel.size > 0 ? ` (${contactSel.size})` : ""}
               </button>
-            ))}
+            )}
           </div>
         </div>
       )}
