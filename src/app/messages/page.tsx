@@ -105,6 +105,7 @@ export default function MessagesPage() {
   const [groupSelected, setGroupSelected] = useState<number[]>([]);
   const [groupContacts, setGroupContacts] = useState<any[]>([]);
   const [contactDigits, setContactDigits] = useState<Set<string>>(new Set()); // öz kontaktlarımın nömrələri (rəqəmlər)
+  const [contactUserIds, setContactUserIds] = useState<Set<number>>(new Set()); // kontaktlarımın istifadəçi id-ləri (chat-dan əlavə üçün)
   const [infoOpen, setInfoOpen] = useState(false);
   const [groupInfo, setGroupInfo] = useState<any>(null);
   const [addMemberMode, setAddMemberMode] = useState(false);
@@ -229,7 +230,11 @@ export default function MessagesPage() {
     // Öz kontaktlarımın nömrələrini yüklə — chat-də "kontakta əlavə et" düyməsini
     // yalnız kontaktda OLMAYAN şəxsdə göstərmək üçün.
     fetch(`${API}/me/contacts`, { headers }).then((r) => r.json())
-      .then((d) => { const list = d.contacts || (Array.isArray(d) ? d : []); setContactDigits(new Set(list.map((c: any) => onlyDigits(c.phone)).filter(Boolean))); })
+      .then((d) => {
+        const list = d.contacts || (Array.isArray(d) ? d : []);
+        setContactDigits(new Set(list.map((c: any) => onlyDigits(c.phone)).filter(Boolean)));
+        setContactUserIds(new Set(list.map((c: any) => c.user?.id).filter((x: any) => typeof x === "number")));
+      })
       .catch(() => {});
   }, [isLoggedIn, authLoading]);
 
@@ -579,15 +584,17 @@ export default function MessagesPage() {
       } else toast(t('error'), 'error');
     } catch { toast(t('error'), 'error'); }
   };
-  // Söhbətdəki şəxsi kontaktlarıma əlavə et (kontaktda deyilsə).
+  // Söhbətdəki şəxsi kontaktlarıma əlavə et (userId ilə — telefon bilinməsə də işləyir, WhatsApp üslubu).
   const saveContact = async () => {
-    if (!active || active.type !== "direct" || !active.phone) return;
+    if (!active || active.type !== "direct") return;
+    const name = (prompt("Kontakt adı:", active.name) ?? active.name)?.trim() || active.name;
     try {
-      const res = await fetch(`${API}/me/contacts`, { method: "POST", headers, body: JSON.stringify({ name: active.name, phone: active.phone }) });
+      const res = await fetch(`${API}/me/contacts/from-user`, { method: "POST", headers, body: JSON.stringify({ userId: active.id, name }) });
       const d = await res.json();
       if (res.ok && d.success) {
-        setContactDigits((s) => new Set(s).add(onlyDigits(active.phone)));
-        toast("Kontaktlara əlavə edildi ✓", "success");
+        setContactUserIds((s) => new Set(s).add(active.id));
+        if (active.phone) setContactDigits((s) => new Set(s).add(onlyDigits(active.phone)));
+        toast(d.already ? "Artıq kontaktlarınızdadır" : "Kontaktlara əlavə edildi ✓", "success");
       } else toast(d.message || t('error'), 'error');
     } catch { toast(t('error'), 'error'); }
   };
@@ -879,16 +886,15 @@ export default function MessagesPage() {
                     <button onClick={openInfo} className="text-left"><p className="font-medium text-sm">{active.name}</p><p className="text-muted text-xs">{active.memberCount} üzv · məlumat üçün toxun</p></button>
                   ) : (
                     <><Link href={`/seller/${active.id}`} className="font-medium text-sm hover:text-orange-500 transition-colors">{active.name}</Link>
-                    <p className="text-muted text-xs h-4">{partnerTyping ? <span className="text-orange-500">yazır...</span> : presence[active.id]?.online ? <span className="text-green-500">onlayn</span> : presence[active.id]?.lastSeen ? lastSeenText(presence[active.id].lastSeen) : active.phone}</p></>
+                    <p className="text-muted text-xs h-4 flex items-center gap-2">
+                      {partnerTyping ? <span className="text-orange-500">yazır...</span> : presence[active.id]?.online ? <span className="text-green-500">onlayn</span> : presence[active.id]?.lastSeen ? lastSeenText(presence[active.id].lastSeen) : null}
+                      {/* Kontaktda deyilsə — adı/nömrəni bilmədən userId ilə əlavə et (WhatsApp üslubu) */}
+                      {!contactUserIds.has(active.id) && <button onClick={saveContact} className="text-orange-500 hover:underline shrink-0">➕ Kontakta əlavə et</button>}
+                    </p></>
                   )}
                 </div>
                 {active.type === "direct" && (
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {active.phone && onlyDigits(active.phone).length >= 7 && !contactDigits.has(onlyDigits(active.phone)) && (
-                      <button onClick={saveContact} title="Kontaktlara əlavə et" className="w-9 h-9 rounded-xl bg-orange-500/10 text-orange-500 flex items-center justify-center hover:bg-orange-500/20 transition-colors">
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19 7.5v5m2.5-2.5h-5M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 19.5a7.5 7.5 0 0115 0v.75H4.5v-.75z" /></svg>
-                      </button>
-                    )}
                     <button onClick={() => startCall({ id: active.id, name: active.name }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></button>
                     <button onClick={() => startCall({ id: active.id, name: active.name }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg></button>
                   </div>
