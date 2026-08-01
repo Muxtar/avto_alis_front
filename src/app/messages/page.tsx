@@ -905,8 +905,12 @@ export default function MessagesPage() {
                         <button onClick={(e) => { e.stopPropagation(); setSelectedMsg(msg); }} title="Seçimlər" className="order-1 shrink-0 w-7 h-7 rounded-full text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">⋮</button>
                       )}
                       <div className={`max-w-[75%] min-w-0 ${isMine ? "order-2" : ""}`}>
-                        {active.type === "group" && !isMine && !deleted && (
-                          <p className="text-[10px] text-muted ml-1 mb-0.5">{msg.sender?.name?.split(" ")[0]}</p>
+                        {active.type === "group" && !isMine && !deleted && msg.sender && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); openChat({ type: "direct", id: msg.senderId, name: msg.sender?.name, partnerType: msg.sender?.type }); }}
+                            className="text-[10px] text-orange-500 ml-1 mb-0.5 hover:underline"
+                            title="Şəxsi mesaj yaz"
+                          >{msg.sender?.name?.split(" ")[0]} 💬</button>
                         )}
                         <div onClick={() => !deleted && setSelectedMsg(selectedMsg?.id === msg.id ? null : msg)}
                           className={`px-3.5 py-2.5 rounded-2xl text-sm break-words cursor-pointer ${deleted ? "bg-input-bg/50 border border-input-border text-muted italic" : isMine ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-br-md" : "bg-input-bg border border-input-border text-foreground rounded-bl-md"}`}>
@@ -1096,6 +1100,10 @@ export default function MessagesPage() {
                 <div key={m.userId} className="flex items-center gap-2 p-2 rounded-lg hover:bg-input-bg">
                   <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">{initials(m.user?.name || "?")}</div>
                   <div className="flex-1 min-w-0"><p className="text-sm truncate">{m.user?.name || "İstifadəçi"} {m.userId === user?.id && "(siz)"}</p><p className="text-[10px] text-muted">{m.role === "ADMIN" ? "👑 Admin" : "Üzv"}</p></div>
+                  {/* İstənilən üzvə şəxsi mesaj (kontaktda olmasa belə) */}
+                  {m.userId !== user?.id && (
+                    <button onClick={() => { setInfoOpen(false); openChat({ type: "direct", id: m.userId, name: m.user?.name, partnerType: m.user?.type }); }} className="shrink-0 text-orange-500 text-sm px-1.5" title="Şəxsi mesaj yaz">💬</button>
+                  )}
                   {amIAdmin() && m.userId !== user?.id && (
                     <div className="flex items-center gap-2 shrink-0">
                       {m.role === "ADMIN"

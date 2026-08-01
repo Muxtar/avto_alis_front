@@ -34,6 +34,7 @@ export default function InquiryChatbot() {
   // Mobil klaviatura idarəetməsi — görünən viewport (top/height). Desktopda null (md: class-lar işləyir).
   const [vp, setVp] = useState<{ top: number; height: number } | null>(null);
   const messagesEnd = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (open && !initialized) {
@@ -42,7 +43,11 @@ export default function InquiryChatbot() {
     }
   }, [open, initialized]);
 
-  useEffect(() => { messagesEnd.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, pending]);
+  // Scroll-u YALNIZ mesaj konteyneri daxilində et (scrollIntoView səhifəni sürüşdürüb "donma" yaradırdı).
+  useEffect(() => {
+    const el = listRef.current;
+    if (el) requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  }, [messages, pending, loading]);
 
   // Mobil footer-dəki mərkəzi düymə bu hadisə ilə chat-i açıb-bağlayır.
   useEffect(() => {
@@ -165,7 +170,7 @@ export default function InquiryChatbot() {
           </div>
 
           {/* Mesajlar */}
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-3 space-y-3">
+          <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-3 space-y-3">
             {messages.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm whitespace-pre-line break-words ${
@@ -205,7 +210,7 @@ export default function InquiryChatbot() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && send()}
                 placeholder={t('chatbotPlaceholder') || 'Sualını yaz…'}
-                className="flex-1 bg-input-bg border border-input-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-orange-500"
+                className="flex-1 min-w-0 bg-input-bg border border-input-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-orange-500"
                 disabled={loading}
               />
               <button onClick={send} disabled={loading || !input.trim()} className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition">
