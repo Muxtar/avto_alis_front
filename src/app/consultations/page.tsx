@@ -7,7 +7,9 @@ import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 
 const STATUS_LABEL: Record<string, string> = {
-  REQUESTED: "Ödəniş gözlənilir",
+  REQUESTED: "Peşəkarın təsdiqi gözlənilir",
+  ACCEPTED: "Qəbul edildi — ödəniş gözlənilir",
+  REJECTED: "Rədd edildi",
   PENDING_VOEN: "VÖEN tələb olunur",
   PAID: "Ödənilib — başlanmağı gözləyir",
   ACTIVE: "Aktiv (sayğac işləyir)",
@@ -16,6 +18,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 const STATUS_CLS: Record<string, string> = {
   REQUESTED: "bg-amber-500/10 text-amber-500",
+  ACCEPTED: "bg-blue-500/10 text-blue-500",
+  REJECTED: "bg-red-500/10 text-red-500",
   PENDING_VOEN: "bg-red-500/10 text-red-500",
   PAID: "bg-blue-500/10 text-blue-500",
   ACTIVE: "bg-green-500/10 text-green-500",

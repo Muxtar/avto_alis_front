@@ -124,6 +124,14 @@ export default function ConsultationDetailPage() {
         <div className="mt-3 flex flex-wrap gap-2">
           {isPro ? (
             <>
+              {/* Yeni sorğu → peşəkar qəbul/rədd edir (alıcı ödənişindən əvvəl) */}
+              {session.status === "REQUESTED" && (
+                <>
+                  <button onClick={() => act("accept")} disabled={busy} className="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">✓ Qəbul et</button>
+                  <button onClick={() => { if (confirm("Sorğunu rədd etmək istəyirsiniz?")) act("reject"); }} disabled={busy} className="px-4 py-2 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold disabled:opacity-50">✕ Rədd et</button>
+                </>
+              )}
+              {session.status === "ACCEPTED" && <span className="text-sm text-blue-500 self-center">Qəbul edildi — alıcının ödənişi gözlənilir</span>}
               {(session.status === "PAID" || session.status === "PAUSED") && localRemaining > 0 && (
                 <button onClick={() => act("start")} disabled={busy} className="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">▶ Başlat / Davam</button>
               )}
@@ -136,9 +144,12 @@ export default function ConsultationDetailPage() {
             </>
           ) : (
             <>
-              {(session.status === "REQUESTED" || session.status === "ENDED") && session.status !== "PENDING_VOEN" && (
+              {session.status === "REQUESTED" && <span className="text-sm text-amber-500 self-center">⏳ Peşəkarın təsdiqi gözlənilir</span>}
+              {session.status === "REJECTED" && <span className="text-sm text-red-500 self-center">Peşəkar sorğunu rədd etdi</span>}
+              {/* Ödəniş yalnız peşəkar qəbul edəndən sonra (ACCEPTED) və ya vaxt artırmada (ENDED) */}
+              {(session.status === "ACCEPTED" || session.status === "ENDED") && session.status !== "PENDING_VOEN" && (
                 <button onClick={() => act("pay")} disabled={busy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
-                  {session.status === "ENDED" ? "Yenidən ödə (vaxt artır)" : `Ödə — ${session.price} AZN`}
+                  {session.status === "ENDED" ? "Yenidən ödə (vaxt artır)" : `✓ Qəbul edildi — Ödə ${session.price} AZN`}
                 </button>
               )}
               {session.status === "PAID" && <span className="text-sm text-blue-500 self-center">Ödənilib — peşəkarın başlatmasını gözləyin</span>}
