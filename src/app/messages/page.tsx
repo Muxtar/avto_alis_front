@@ -108,6 +108,8 @@ export default function MessagesPage() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [groupInfo, setGroupInfo] = useState<any>(null);
   const [addMemberMode, setAddMemberMode] = useState(false);
+  // Qrupda aktiv səsli/görüntülü zəng — conversationId üzrə (gec qoşulma bannerı üçün).
+  const [groupCallState, setGroupCallState] = useState<Record<number, { active: boolean; count: number; kind: string }>>({});
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -273,6 +275,8 @@ export default function MessagesPage() {
     socket.on("chat:groupChanged", onGroupChanged);
     socket.on("presence:list", onPresenceList);
     socket.on("presence:update", onPresenceUpdate);
+    const onGroupCallState = (p: any) => setGroupCallState((m) => ({ ...m, [p.conversationId]: { active: !!p.active, count: p.count || 0, kind: p.kind || "audio" } }));
+    socket.on("groupcall:state", onGroupCallState);
     return () => {
       socket.off("chat:message", onMessage);
       socket.off("chat:updated", onUpdated);
@@ -285,8 +289,14 @@ export default function MessagesPage() {
       socket.off("chat:groupChanged", onGroupChanged);
       socket.off("presence:list", onPresenceList);
       socket.off("presence:update", onPresenceUpdate);
+      socket.off("groupcall:state", onGroupCallState);
     };
   }, [isLoggedIn, token]);
+
+  // Qrup açılanda aktiv zəng olub-olmadığını soruş (gec qoşulma bannerı üçün).
+  useEffect(() => {
+    if (active?.type === "group" && token) getSocket(token).emit("groupcall:status", { conversationId: active.id });
+  }, [active, token]);
 
   // Söhbət siyahısı dəyişəndə tərəflərin online vəziyyətini soruş (təzələnir).
   useEffect(() => {
@@ -890,6 +900,17 @@ export default function MessagesPage() {
                   </div>
                 )}
               </div>
+
+              {/* Aktiv qrup zəngi — qrupa girən istənilən üzv qoşula bilər (gec qoşulma) */}
+              {active?.type === "group" && groupCallState[active.id]?.active && (
+                <button
+                  onClick={() => startGroupCall(active.id, active.name, groupCallState[active.id].kind === "video" ? "video" : "audio")}
+                  className="shrink-0 w-full flex items-center justify-between gap-2 px-4 py-2.5 bg-green-500/10 border-y border-green-500/20 text-green-600 text-sm font-medium hover:bg-green-500/20 transition-colors animate-pulse"
+                >
+                  <span className="flex items-center gap-2">{groupCallState[active.id].kind === "video" ? "🎥" : "📞"} Qrup {groupCallState[active.id].kind === "video" ? "görüntülü" : "səsli"} zəngi aktiv · {groupCallState[active.id].count} nəfər</span>
+                  <span className="px-3 py-1 rounded-lg bg-green-500 text-white text-xs font-semibold">Qoşul</span>
+                </button>
+              )}
 
               <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-4 space-y-3">
                 {hasMore && (
