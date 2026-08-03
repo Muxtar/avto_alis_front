@@ -87,6 +87,10 @@ export default function Navbar() {
   const langRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
   const catRef = useRef<HTMLDivElement>(null);
+  // Alt-kateqoriya flyout-u siyahıdan çıxıb ayrıca render olunur (backdrop-blur +
+  // overflow onu kəsməsin). Kursor siyahıdan flyout-a keçəndə bağlanmasın deyə
+  // kiçik gecikmə ilə bağlanır (flyout-a girəndə ləğv olunur).
+  const catCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchNotifications = useCallback(() => {
     if (!token || !isLoggedIn) return;
@@ -377,12 +381,15 @@ export default function Navbar() {
                 <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {catOpen && (
-                <div className="absolute left-0 mt-2 w-64 bg-card border border-card-border rounded-xl shadow-xl z-50 py-1 max-h-[70vh] overflow-y-auto" onMouseLeave={() => setCatHover(null)}>
+                <>
+                <div className="absolute left-0 mt-2 w-64 bg-card border border-card-border rounded-xl shadow-xl z-50 py-1 max-h-[70vh] overflow-y-auto"
+                  onMouseLeave={() => { catCloseTimer.current = setTimeout(() => setCatHover(null), 180); }}>
                   {CATEGORIES.map((c) => {
                     const hasSubs = c.subs && c.subs.length > 0;
                     return (
                       <Link key={c.name} href={`/elanlar/${slugify(c.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
                         onMouseEnter={(e) => {
+                          if (catCloseTimer.current) clearTimeout(catCloseTimer.current);
                           if (!hasSubs) { setCatHover(null); return; }
                           const r = e.currentTarget.getBoundingClientRect();
                           const vh = window.innerHeight;
@@ -400,25 +407,29 @@ export default function Navbar() {
                   <Link href="/elanlar" onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-t border-card-border mt-1" style={{ color: PINK }}>
                     Bütün kateqoriyalar →
                   </Link>
-
-                  {/* Alt-kateqoriya flyout-u — fixed (klamplanmış, ekrandan çıxmır) */}
-                  {catHover && (
-                    <div style={{ position: "fixed", top: catHover.top, left: catHover.left }}
-                      className="z-[60] w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5">
-                      <Link href={`/elanlar/${slugify(catHover.cat.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-input-bg" style={{ color: PINK }}>
-                        <CategoryIcon name={catHover.cat.name} className="w-[18px] h-[18px]" /> {catHover.cat.name} — hamısı
-                      </Link>
-                      <div className="border-t border-card-border my-1" />
-                      {catHover.cat.subs.map((s: any) => (
-                        <Link key={s.name} href={`/elanlar/${slugify(catHover.cat.name)}/${slugify(s.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
-                          className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors">
-                          <SubCategoryIcon name={s.name} parent={catHover.cat.name} className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
-                          <span className="truncate">{s.name}</span>
-                        </Link>
-                      ))}
-                    </div>
-                  )}
                 </div>
+
+                {/* Alt-kateqoriya flyout-u — siyahıdan AYRICA (backdrop-blur + overflow
+                    kəsməsin). fixed koordinatlarla sağda açılır. */}
+                {catHover && (
+                  <div style={{ position: "fixed", top: catHover.top, left: catHover.left }}
+                    onMouseEnter={() => { if (catCloseTimer.current) clearTimeout(catCloseTimer.current); }}
+                    onMouseLeave={() => setCatHover(null)}
+                    className="z-[60] w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5">
+                    <Link href={`/elanlar/${slugify(catHover.cat.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-input-bg" style={{ color: PINK }}>
+                      <CategoryIcon name={catHover.cat.name} className="w-[18px] h-[18px]" /> {catHover.cat.name} — hamısı
+                    </Link>
+                    <div className="border-t border-card-border my-1" />
+                    {catHover.cat.subs.map((s: any) => (
+                      <Link key={s.name} href={`/elanlar/${slugify(catHover.cat.name)}/${slugify(s.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors">
+                        <SubCategoryIcon name={s.name} parent={catHover.cat.name} className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                        <span className="truncate">{s.name}</span>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                </>
               )}
             </div>
             </div>{/* sol qrup sonu */}
