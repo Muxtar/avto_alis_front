@@ -7,7 +7,7 @@ import { useTheme } from "@/lib/ThemeContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { Locale } from "@/lib/translations";
-import { API } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { formatPriceShort } from "@/lib/format";
 import { useToast } from "@/components/Toast";
 import { getSocket } from "@/lib/callSocket";
@@ -77,7 +77,11 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
-  const [webData, setWebData] = useState<{ summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string }[]; needLogin?: boolean } | null>(null);
+  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string; kind?: "product" | "social"; platform?: string; seller?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
+  // Sayt daxili (tradixai) nəticələr — internetdən ƏVVƏL göstərilir.
+  // Məhsul: elanlar; şəxs: peşəkar profillər (ada görə).
+  const [siteListings, setSiteListings] = useState<{ id: number; title: string; price: number; images?: string[]; user?: { name?: string } }[]>([]);
+  const [sitePeople, setSitePeople] = useState<{ id: number; name: string; profession?: string | null; avatar?: string | null; publicId?: string | null }[]>([]);
   // unreadMessages artıq qlobal AuthContext-dən gəlir (real-time socket ilə).
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const langRef = useRef<HTMLDivElement>(null);
@@ -128,31 +132,67 @@ export default function Navbar() {
   // axtarışı işə düşür və nəticələr axtarış sahəsinin altında açılır.
   const submitSearch = (e?: React.FormEvent) => { e?.preventDefault(); runSearch(search); };
 
+  // Sorğu ad-soyada bənzəyirmi? (backend ilə eyni məntiq) — şəxs axtarışı üçün.
+  const looksLikePerson = (q: string) => {
+    if (/\d/.test(q)) return false;
+    const w = q.trim().split(/\s+/).filter(Boolean);
+    return w.length >= 2 && w.length <= 3 && w.every((x) => /^[a-zâçəğıöşüi̇'’-]{2,}$/i.test(x));
+  };
+
   const runSearch = async (raw: string) => {
     const q = raw.trim();
     setSearchFocused(false);
     setWebOpen(false);
     setWebData(null);
+    setSiteListings([]);
+    setSitePeople([]);
     if (q) addRecentSearch(q);
     router.push(`/elanlar${q ? `?search=${encodeURIComponent(q)}` : ""}`);
     if (!q) return;
 
+    const person = looksLikePerson(q);
+
+    // ── 1) ƏVVƏLCƏ SAYTDAN (tradixai) ──
+    // Elanlar həm başlıq, həm satıcı adı üzrə uyğunlaşır (şəxs adında da işləyir).
+    // Şəxs sorğusunda əlavə olaraq peşəkar profilləri də çəkirik.
+    let siteCount = 0;
     try {
-      const r = await fetch(`${API}/listings?search=${encodeURIComponent(q)}&limit=1`);
-      const d = await r.json();
-      const found = (d?.listings?.length ?? 0) > 0 || (d?.total ?? 0) > 0;
-      if (found) return;
+      const reqs: Promise<Response>[] = [fetch(`${API}/listings?search=${encodeURIComponent(q)}&limit=6`)];
+      if (person) reqs.push(fetch(`${API}/professionals?q=${encodeURIComponent(q)}`));
+      const [lr, pr] = await Promise.all(reqs);
+      const ld = await lr.json();
+      const listings = Array.isArray(ld?.listings) ? ld.listings : [];
+      setSiteListings(listings);
+      siteCount = listings.length || ld?.total || 0;
+      if (pr) {
+        const pd = await pr.json().catch(() => null);
+        setSitePeople(Array.isArray(pd?.professionals) ? pd.professionals.slice(0, 6) : []);
+      }
     } catch {
       // Sayt axtarışı alınmadısa da internetə keçirik — istifadəçi nəticəsiz qalmasın.
     }
 
-    // Saytda tapılmadı — pəncərə HƏR HALDA açılır ki, istifadəçi nə baş
-    // verdiyini görsün (əvvəl daxil olmayanda səssizcə heç nə olmurdu).
+    // ── 2) SONRA İNTERNETDƏN ──
+    // Şəxs axtarışında HƏMİŞƏ (sosial hesablar üçün); məhsulda saytda heç nəticə
+    // olmadıqda avtomatik. Panel hər halda açılır ki, istifadəçi görsün.
     setWebQuery(q);
+    setWebOpen(true);
+    const autoWeb = person || siteCount === 0;
+    if (!autoWeb) {
+      // Saytda kifayət qədər nəticə var — internet axtarışını istifadəçinin
+      // istəyinə buraxırıq (kredit qənaəti). "İnternetdə axtar" düyməsi ilə işə düşür.
+      setWebData({ mode: "product", summary: "", results: [], notRun: true });
+      return;
+    }
+    await runWebSearch(q, person);
+  };
+
+  // İnternet axtarışını işə salır (avtomatik və ya "İnternetdə axtar" düyməsindən).
+  const runWebSearch = async (q: string, person: boolean) => {
     setWebOpen(true);
     if (!isLoggedIn || !token) {
       setWebLoading(false);
-      setWebData({ summary: "", results: [], needLogin: true });
+      setWebData({ mode: person ? "person" : "product", summary: "", results: [], needLogin: true });
       return;
     }
     setWebLoading(true);
@@ -163,10 +203,10 @@ export default function Navbar() {
         body: JSON.stringify({ query: q }),
       });
       const data = await res.json();
-      if (!res.ok || !data.success) setWebData({ summary: data.message || "Azərbaycanda uyğun nəticə tapılmadı.", results: [] });
-      else setWebData({ summary: data.summary || "", results: data.results || [] });
+      if (!res.ok || !data.success) setWebData({ mode: data.mode || (person ? "person" : "product"), summary: data.message || "Uyğun nəticə tapılmadı.", results: [] });
+      else setWebData({ mode: data.mode || (person ? "person" : "product"), summary: data.summary || "", results: data.results || [] });
     } catch {
-      setWebData({ summary: "İnternet axtarışı alınmadı.", results: [] });
+      setWebData({ mode: person ? "person" : "product", summary: "İnternet axtarışı alınmadı.", results: [] });
     } finally {
       setWebLoading(false);
     }
@@ -442,16 +482,25 @@ export default function Navbar() {
               </div>
             )}
 
-            {/* Saytda tapılmadı → internet nəticələri (Claude web search) */}
-            {webOpen && (
+            {/* Axtarış nəticələri: ƏVVƏLCƏ saytdan (tradixai), SONRA internetdən */}
+            {webOpen && (() => {
+              const person = webData?.mode === "person";
+              const hasSite = siteListings.length > 0 || sitePeople.length > 0;
+              const platMeta: Record<string, { icon: string; label: string }> = {
+                instagram: { icon: "📷", label: "Instagram" }, facebook: { icon: "📘", label: "Facebook" },
+                linkedin: { icon: "💼", label: "LinkedIn" }, tiktok: { icon: "🎵", label: "TikTok" },
+                youtube: { icon: "▶️", label: "YouTube" }, x: { icon: "𝕏", label: "X (Twitter)" },
+                telegram: { icon: "✈️", label: "Telegram" },
+              };
+              return (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setWebOpen(false)} />
-                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card border border-card-border shadow-2xl max-h-[70vh] overflow-y-auto">
+                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card border border-card-border shadow-2xl max-h-[75vh] overflow-y-auto">
                   <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-card-border">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold">İnternet nəticələri</p>
+                      <p className="text-sm font-bold">{person ? "Şəxs axtarışı" : "Axtarış nəticələri"}</p>
                       <p className="text-xs text-muted mt-0.5 truncate">
-                        «{webQuery}» saytda tapılmadı — Azərbaycan üzrə internetdən, ucuzdan bahaya
+                        «{webQuery}» — {person ? "əvvəl tradixai, sonra sosial media hesabları" : "əvvəl tradixai, sonra internet"}
                       </p>
                     </div>
                     <button onClick={() => setWebOpen(false)} aria-label="Bağla" className="shrink-0 p-1 text-muted hover:text-foreground transition-colors">
@@ -459,29 +508,82 @@ export default function Navbar() {
                     </button>
                   </div>
 
+                  {/* ── SAYTDAN (tradixai) ── */}
+                  {hasSite && (
+                    <div className="border-b border-card-border">
+                      <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-orange-500">tradixai · saytdan</p>
+                      {sitePeople.map((u) => (
+                        <Link key={`u${u.id}`} href={`/seller/${u.id}?from=ixtisas`} onClick={() => setWebOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-input-bg transition-colors">
+                          {u.avatar ? <img src={imgUrl(u.avatar)} alt={u.name} className="w-9 h-9 rounded-full object-cover shrink-0" /> : <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center text-xs font-bold shrink-0">{(u.name || "?").slice(0, 1).toUpperCase()}</div>}
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold truncate">{u.name}</p>
+                            {u.profession && <p className="text-xs text-muted truncate">{u.profession}</p>}
+                          </div>
+                          <span className="ml-auto text-[10px] text-teal-500 font-semibold shrink-0">Profil →</span>
+                        </Link>
+                      ))}
+                      {siteListings.map((l) => (
+                        <Link key={`l${l.id}`} href={`/marketplace/${l.id}`} onClick={() => setWebOpen(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 hover:bg-input-bg transition-colors">
+                          {l.images?.[0] ? <img src={imgUrl(l.images[0])} alt={l.title} className="w-11 h-11 rounded object-cover shrink-0" /> : <div className="w-11 h-11 rounded bg-input-bg shrink-0" />}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold line-clamp-1">{l.title}</p>
+                            {l.user?.name && <p className="text-xs text-muted truncate">Satıcı: {l.user.name}</p>}
+                          </div>
+                          <span className="shrink-0 text-sm font-bold whitespace-nowrap">{formatPriceShort(l.price)} <span className="text-[10px] text-muted font-semibold">AZN</span></span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ── İNTERNETDƏN ── */}
+                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted">{person ? "sosial media" : "internetdən"}</p>
                   {webLoading ? (
                     <div className="flex items-center gap-3 px-4 py-6 text-sm text-muted">
                       <svg className="w-5 h-5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" /></svg>
-                      İnternetdə axtarılır...
+                      {person ? "Sosial media hesabları axtarılır..." : "İnternetdə axtarılır..."}
+                    </div>
+                  ) : webData?.needLogin ? (
+                    <div className="px-4 py-5">
+                      <p className="text-sm text-foreground/90">İnternetdən axtarış üçün hesabınıza daxil olun.</p>
+                      <Link href="/" onClick={() => setWebOpen(false)}
+                        className="inline-block mt-3 px-4 py-2 text-white text-sm font-semibold" style={{ background: PINK }}>
+                        Daxil ol
+                      </Link>
+                    </div>
+                  ) : webData?.notRun ? (
+                    <div className="px-4 py-4">
+                      <button onClick={() => runWebSearch(webQuery, false)}
+                        className="w-full px-4 py-2.5 rounded-lg bg-input-bg border border-input-border text-sm font-semibold hover:border-orange-500 transition-colors">
+                        🌐 İnternetdə də axtar
+                      </button>
                     </div>
                   ) : (
                     <>
-                      {webData?.needLogin ? (
-                        <div className="px-4 py-5">
-                          <p className="text-sm text-foreground/90">Saytda uyğun elan tapılmadı.</p>
-                          <p className="text-xs text-muted mt-1">İnternetdən axtarış üçün hesabınıza daxil olun.</p>
-                          <Link href="/" onClick={() => setWebOpen(false)}
-                            className="inline-block mt-3 px-4 py-2 text-white text-sm font-semibold" style={{ background: PINK }}>
-                            Daxil ol
-                          </Link>
-                        </div>
-                      ) : (
-                      <>
                       {webData?.summary && (
-                        <p className="px-4 py-3 text-sm text-foreground/90 border-b border-card-border">{webData.summary}</p>
+                        <p className="px-4 py-2 text-sm text-foreground/90">{webData.summary}</p>
                       )}
                       {(webData?.results?.length ?? 0) === 0 ? (
-                        <p className="px-4 py-6 text-sm text-muted">Azərbaycanda uyğun nəticə tapılmadı.</p>
+                        <p className="px-4 py-5 text-sm text-muted">{person ? "Açıq sosial media hesabı tapılmadı." : "İnternetdə uyğun nəticə tapılmadı."}</p>
+                      ) : person ? (
+                        <ul className="grid grid-cols-2 gap-2 px-4 pb-4 pt-1">
+                          {webData!.results.map((r) => {
+                            const m = platMeta[r.platform || ""] || { icon: "🔗", label: r.site || "Profil" };
+                            return (
+                              <li key={r.url}>
+                                <a href={r.url} target="_blank" rel="noopener noreferrer"
+                                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-input-bg border border-input-border hover:border-orange-500 transition-colors">
+                                  <span className="text-lg shrink-0">{m.icon}</span>
+                                  <div className="min-w-0">
+                                    <p className="text-sm font-semibold truncate">{m.label}</p>
+                                    <p className="text-[11px] text-muted truncate">{r.title}</p>
+                                  </div>
+                                </a>
+                              </li>
+                            );
+                          })}
+                        </ul>
                       ) : (
                         <ul className="divide-y divide-card-border">
                           {webData!.results.map((r) => {
@@ -499,11 +601,10 @@ export default function Navbar() {
                                       </span>
                                     )}
                                   </div>
-                                  <p className="mt-1">
-                                    <span className="inline-block px-1.5 py-0.5 bg-input-bg border border-input-border text-[10px] font-semibold text-muted">
-                                      {host}
-                                    </span>
-                                  </p>
+                                  <div className="mt-1 flex items-center gap-2 flex-wrap">
+                                    <span className="inline-block px-1.5 py-0.5 bg-input-bg border border-input-border text-[10px] font-semibold text-muted">{host}</span>
+                                    {r.seller && <span className="text-[11px] text-muted">Satıcı: <span className="font-semibold text-foreground">{r.seller}</span></span>}
+                                  </div>
                                   {r.snippet && <p className="text-xs text-muted mt-1 line-clamp-2">{r.snippet}</p>}
                                 </a>
                               </li>
@@ -511,13 +612,12 @@ export default function Navbar() {
                           })}
                         </ul>
                       )}
-                      </>
-                      )}
                     </>
                   )}
                 </div>
               </>
-            )}
+              );
+            })()}
             </div>
 
             {/* Sağ: bildiriş / seçilmişlər / səbət / istifadəçi.
