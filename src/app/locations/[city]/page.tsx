@@ -9,6 +9,7 @@ interface Seller {
   id: number;
   name: string;
   type: string;
+  avatar?: string | null;
   phone: string;
   avgRating: number | null;
   ratingCount: number;
@@ -112,16 +113,23 @@ export default function CityDetailPage() {
                 href={`/seller/${s.id}`}
                 className="surface p-4 hover:border-orange-500/40 transition-colors group flex gap-3"
               >
-                <div className={`w-14 h-14 bg-gradient-to-br ${typeColor(s.type)} rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0`}>
-                  {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
-                </div>
+                {s.avatar ? (
+                  <img src={imgUrl(s.avatar)} alt={s.name} className="w-14 h-14 rounded-xl object-cover shrink-0" />
+                ) : (
+                  <div className={`w-14 h-14 bg-gradient-to-br ${typeColor(s.type)} rounded-xl flex items-center justify-center text-white font-bold text-lg shrink-0`}>
+                    {s.name.split(" ").map((n) => n[0]).join("").slice(0, 2)}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold truncate group-hover:text-orange-500 transition-colors">{s.name}</h3>
                   </div>
-                  <span className={`inline-block px-2 py-0.5 bg-gradient-to-r ${typeColor(s.type)} rounded text-[10px] font-medium text-white mb-1`}>
-                    {typeLabel(s.type)}
-                  </span>
+                  {/* "Avtomobil sahibi" ümumi etiketi gizlədilir — yalnız usta/satıcı göstərilir. */}
+                  {s.type !== "CAR_OWNER" && (
+                    <span className={`inline-block px-2 py-0.5 bg-gradient-to-r ${typeColor(s.type)} rounded text-[10px] font-medium text-white mb-1`}>
+                      {typeLabel(s.type)}
+                    </span>
+                  )}
                   {s.address && (
                     <p className="text-xs text-muted truncate">{s.address}</p>
                   )}

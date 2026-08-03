@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
-import { API } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 
@@ -95,9 +95,14 @@ export default function ReviewsSection({ base, title = "Rəylər" }: { base: str
             const isMine = c.user?.id === user?.id;
             return (
               <div key={c.id} className={`flex gap-3 p-3.5 rounded-2xl border ${isMine ? "bg-orange-500/[0.04] border-orange-500/15" : "bg-input-bg/50 border-transparent"}`}>
-                <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0">
-                  {(c.user?.name || "?").split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
-                </div>
+                {c.user?.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`${imgUrl(c.user.avatar)}`} alt={c.user?.name || ""} className="w-10 h-10 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0">
+                    {(c.user?.name || "?").split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-0.5">
                     <span className="font-semibold text-sm truncate">{c.user?.name}</span>

@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import { getSocket } from "@/lib/callSocket";
 import ContactsPanel from "@/components/ContactsPanel";
+import Avatar from "@/components/Avatar";
 import { useCall } from "@/lib/CallContext";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
@@ -340,8 +341,8 @@ export default function MessagesPage() {
 
   // Birləşmiş siyahı (1:1 + qruplar), son fəaliyyətə görə sıralı
   const chatList: any[] = [
-    ...directConvs.map((c) => ({ type: "direct", id: c.partner.id, name: c.partner.name, partnerType: c.partner.type, phone: c.partner.phone, lastMessage: c.lastMessage, unreadCount: c.unreadCount, lastAt: c.lastMessage?.createdAt })),
-    ...groups.map((g) => ({ type: "group", id: g.id, name: g.name, memberCount: g.memberCount, lastMessage: g.lastMessage, unreadCount: g.unreadCount, lastAt: g.lastAt })),
+    ...directConvs.map((c) => ({ type: "direct", id: c.partner.id, name: c.partner.name, partnerType: c.partner.type, avatar: c.partner.avatar, phone: c.partner.phone, lastMessage: c.lastMessage, unreadCount: c.unreadCount, lastAt: c.lastMessage?.createdAt })),
+    ...groups.map((g) => ({ type: "group", id: g.id, name: g.name, avatar: g.avatar, memberCount: g.memberCount, lastMessage: g.lastMessage, unreadCount: g.unreadCount, lastAt: g.lastAt })),
   ].sort((a, b) => new Date(b.lastAt || 0).getTime() - new Date(a.lastAt || 0).getTime());
 
   const threadUrl = (chat: any, before?: number) =>
@@ -359,7 +360,7 @@ export default function MessagesPage() {
       .then((d) => {
         setMessages(d.messages || []);
         setHasMore(d.hasMore || false);
-        if (chat.type === "direct" && d.partner) setActive((a: any) => a && a.id === chat.id ? { ...a, phone: d.partner.phone } : a);
+        if (chat.type === "direct" && d.partner) setActive((a: any) => a && a.id === chat.id ? { ...a, phone: d.partner.phone, avatar: a.avatar ?? d.partner.avatar } : a);
         scrollToEnd(false);
         if (chat.type === "direct") setDirectConvs((prev) => prev.map((c) => c.partner.id === chat.id ? { ...c, unreadCount: 0 } : c));
         else setGroups((prev) => prev.map((g) => g.id === chat.id ? { ...g, unreadCount: 0 } : g));
@@ -730,7 +731,6 @@ export default function MessagesPage() {
   }
 
   const typeColor = (type: string) => type === "MECHANIC" ? "from-green-500 to-emerald-600" : type === "PARTS_SELLER" ? "from-purple-500 to-violet-600" : "from-blue-500 to-blue-600";
-  const initials = (n: string) => (n || "?").split(" ").map((x) => x[0]).join("").slice(0, 2);
 
   const ticks = (msg: any) => {
     if (msg.read) return <span className="text-sky-300" title="Oxundu">✓✓</span>;
@@ -883,9 +883,11 @@ export default function MessagesPage() {
                 <div key={`${chat.type}-${chat.id}`} role="button" tabIndex={0} onClick={() => openChat(chat)}
                   className={`group w-full flex items-center gap-3 p-3 hover:bg-input-bg/50 transition-colors text-left border-b border-card-border/30 cursor-pointer ${active?.type === chat.type && active?.id === chat.id ? "bg-input-bg" : ""}`}>
                   <div className="relative shrink-0">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs ${chat.type === "group" ? "bg-gradient-to-br from-teal-500 to-cyan-600" : `bg-gradient-to-br ${typeColor(chat.partnerType)}`}`}>
-                      {chat.type === "group" ? "👥" : initials(chat.name)}
-                    </div>
+                    {chat.type === "group"
+                      ? (chat.avatar
+                          ? <Avatar name={chat.name} src={chat.avatar} className="w-10 h-10" />
+                          : <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs bg-gradient-to-br from-teal-500 to-cyan-600">👥</div>)
+                      : <Avatar name={chat.name} src={chat.avatar} className="w-10 h-10" gradient={typeColor(chat.partnerType)} />}
                     {chat.type === "direct" && presence[chat.id]?.online && (
                       <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-card rounded-full" title="Onlayn" />
                     )}
@@ -921,9 +923,11 @@ export default function MessagesPage() {
                 <button onClick={() => setActive(null)} className="sm:hidden p-1 text-muted hover:text-foreground">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 </button>
-                <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 ${active.type === "group" ? "bg-gradient-to-br from-teal-500 to-cyan-600" : `bg-gradient-to-br ${typeColor(active.partnerType)}`}`}>
-                  {active.type === "group" ? "👥" : initials(active.name)}
-                </div>
+                {active.type === "group"
+                  ? (active.avatar
+                      ? <Avatar name={active.name} src={active.avatar} className="w-9 h-9" />
+                      : <div className="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0 bg-gradient-to-br from-teal-500 to-cyan-600">👥</div>)
+                  : <Avatar name={active.name} src={active.avatar} className="w-9 h-9" gradient={typeColor(active.partnerType)} />}
                 <div className="flex-1 min-w-0">
                   {active.type === "group" ? (
                     <button onClick={openInfo} className="text-left"><p className="font-medium text-sm">{active.name}</p><p className="text-muted text-xs">{active.memberCount} üzv · məlumat üçün toxun</p></button>
@@ -938,8 +942,8 @@ export default function MessagesPage() {
                 </div>
                 {active.type === "direct" && (
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => startCall({ id: active.id, name: active.name }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></button>
-                    <button onClick={() => startCall({ id: active.id, name: active.name }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg></button>
+                    <button onClick={() => startCall({ id: active.id, name: active.name, avatar: active.avatar }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></button>
+                    <button onClick={() => startCall({ id: active.id, name: active.name, avatar: active.avatar }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg></button>
                     <button onClick={toggleBlock} title={blockedIds.has(active.id) ? "Blokdan çıxar" : "Blokla"} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${blockedIds.has(active.id) ? "bg-red-500/20 text-red-500" : "bg-input-bg text-muted hover:text-red-500"}`}>🚫</button>
                   </div>
                 )}
@@ -1110,7 +1114,7 @@ export default function MessagesPage() {
                 return (
                   <button key={c.id} onClick={() => toggleContactSel(c.id)} className={`w-full flex items-center gap-3 p-2 rounded-lg text-left ${sel ? "bg-orange-500/15 border border-orange-500/40" : "hover:bg-input-bg border border-transparent"}`}>
                     <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 ${sel ? "bg-orange-500 border-orange-500 text-white" : "border-input-border"}`}>{sel ? "✓" : ""}</div>
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-xs font-bold shrink-0">{initials(c.name)}</div>
+                    <Avatar name={c.name} src={c.user?.avatar} className="w-9 h-9" />
                     <div className="min-w-0"><p className="text-sm font-medium truncate">{c.name}</p><p className="text-[11px] text-muted truncate">{c.user ? "platformada ✓" : "kontakt"}</p></div>
                   </button>
                 );
@@ -1135,7 +1139,7 @@ export default function MessagesPage() {
             <div className="max-h-52 overflow-y-auto space-y-1 mb-3">
               {groupContacts.length === 0 ? <p className="text-muted text-xs py-3 text-center">Qeydiyyatlı kontakt yoxdur</p> : groupContacts.map((c) => (
                 <button key={c.id} onClick={() => toggleGroupMember(c.user.id)} className={`w-full flex items-center gap-2 p-2 rounded-lg text-left ${groupSelected.includes(c.user.id) ? "bg-orange-500/15 border border-orange-500/40" : "hover:bg-input-bg"}`}>
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-[10px] font-bold">{initials(c.name)}</div>
+                  <Avatar name={c.name} src={c.user?.avatar} className="w-8 h-8" textClassName="text-[10px]" />
                   <span className="text-sm flex-1 truncate">{c.name}</span>
                   {groupSelected.includes(c.user.id) && <span className="text-orange-500">✓</span>}
                 </button>
@@ -1154,7 +1158,9 @@ export default function MessagesPage() {
         <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40" onClick={() => setInfoOpen(false)}>
           <div className="bg-card border border-card-border rounded-t-2xl sm:rounded-2xl w-full sm:w-96 max-h-[80vh] overflow-y-auto p-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center text-lg shrink-0">👥</div>
+              {groupInfo.avatar
+                ? <Avatar name={groupInfo.name} src={groupInfo.avatar} className="w-11 h-11" />
+                : <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center text-lg shrink-0">👥</div>}
               <div className="flex-1 min-w-0"><p className="font-semibold truncate">{groupInfo.name}</p><p className="text-xs text-muted">{groupInfo.members.length} üzv</p></div>
               {amIAdmin() && <button onClick={renameGroup} className="text-xs text-orange-500">✏️ Ad</button>}
             </div>
@@ -1169,7 +1175,7 @@ export default function MessagesPage() {
                     <p className="text-xs text-muted text-center py-3">Əlavə ediləcək qeydiyyatlı kontakt yoxdur.</p>
                   ) : addable.map((c) => (
                     <button key={c.id} onClick={() => addMember(c.user.id)} className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-input-bg text-left">
-                      <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-[10px] font-bold">{initials(c.name)}</div>
+                      <Avatar name={c.name} src={c.user?.avatar} className="w-7 h-7" textClassName="text-[10px]" rounded="rounded-lg" />
                       <span className="text-sm flex-1 truncate">{c.name}</span><span className="text-orange-500 text-xs">əlavə et</span>
                     </button>
                   ))}
@@ -1180,7 +1186,7 @@ export default function MessagesPage() {
             <div className="space-y-1 mb-3">
               {groupInfo.members.map((m: any) => (
                 <div key={m.userId} className="flex items-center gap-2 p-2 rounded-lg hover:bg-input-bg">
-                  <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">{initials(m.user?.name || "?")}</div>
+                  <Avatar name={m.user?.name} src={m.user?.avatar} className="w-8 h-8" textClassName="text-[10px]" />
                   <div className="flex-1 min-w-0"><p className="text-sm truncate">{m.user?.name || "İstifadəçi"} {m.userId === user?.id && "(siz)"}</p><p className="text-[10px] text-muted">{m.role === "ADMIN" ? "👑 Admin" : "Üzv"}</p></div>
                   {/* İstənilən üzvə şəxsi mesaj (kontaktda olmasa belə) */}
                   {m.userId !== user?.id && (
