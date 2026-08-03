@@ -29,6 +29,7 @@ interface Admin {
   avatar?: string | null;
   isSuperAdmin: boolean;
   isBlocked: boolean;
+  unconfigured?: boolean;   // boş icazə → köhnə/konfiqurasiya olunmamış (tam giriş)
   permissions: string[];
 }
 
@@ -166,6 +167,7 @@ export default function AdminAdminsPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold">{a.name}</span>
                     {a.isSuperAdmin && <span className="px-2 py-0.5 bg-red-500/15 text-red-500 rounded text-[10px] font-bold">SUPER ADMIN</span>}
+                    {a.unconfigured && <span className="px-2 py-0.5 bg-amber-500/15 text-amber-600 rounded text-[10px] font-bold" title="İcazə təyin edilməyib — hər şeyə girişi var. Aşağıdan modul seçib 'Yadda saxla' etsəniz məhdudlaşacaq.">TAM GİRİŞ (KONFİQ YOX)</span>}
                     {a.isBlocked && <span className="px-2 py-0.5 bg-gray-500/15 text-gray-500 rounded text-[10px] font-bold">BLOKLU</span>}
                   </div>
                   <p className="text-[11px] text-muted">{a.phone}</p>
@@ -179,6 +181,11 @@ export default function AdminAdminsPage() {
                 <p className="text-sm text-muted">Bütün bölmələrə icazəlidir (ADMIN_PHONES).</p>
               ) : (
                 <>
+                  {a.unconfigured && (
+                    <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mb-2">
+                      Bu adminin icazəsi təyin edilməyib — hazırda <b>hər şeyə girişi var</b>. Aşağıdan modul seçib «Yadda saxla» etsəniz yalnız seçilənlərə məhdudlaşacaq.
+                    </p>
+                  )}
                   {/* Rol şablonları */}
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     <span className="text-[11px] text-muted self-center">Şablon:</span>
