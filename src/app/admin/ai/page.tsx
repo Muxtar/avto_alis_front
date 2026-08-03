@@ -31,12 +31,26 @@ const GROUPS: { title: string; hint: string; keys: string[] }[] = [
   { title: "Doğrulama / KYC", hint: "Profil və biznes təsdiqi zamanı avtomatik sənəd yoxlaması", keys: ["ai_identity", "ai_business_docs"] },
 ];
 
+interface ServiceHealth {
+  id: string;
+  name: string;
+  category: string;
+  configured: boolean;
+  live: boolean;
+  status: "ok" | "error" | "configured" | "not_configured";
+  detail: string;
+  meta?: { balance?: number | null; currency?: string };
+}
+
 export default function AdminAiPage() {
   const { toast } = useToast();
   const [flags, setFlags] = useState<AiFlag[]>([]);
   const [env, setEnv] = useState<{ anthropic: boolean; tavily: boolean }>({ anthropic: false, tavily: false });
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  // Servis sağlamlıq yoxlaması — yalnız düyməyə basanda (kredit qənaəti).
+  const [services, setServices] = useState<ServiceHealth[] | null>(null);
+  const [checking, setChecking] = useState(false);
 
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
 
@@ -71,6 +85,23 @@ export default function AdminAiPage() {
       setFlags((prev) => prev.map((x) => (x.key === f.key ? { ...x, value: f.value } : x)));
       toast("Xəta", "error");
     } finally { setBusy(null); }
+  };
+
+  const checkHealth = async () => {
+    setChecking(true);
+    try {
+      const res = await fetch(`${API}/admin/service-health`, { headers: { Authorization: `Bearer ${token()}` } });
+      const d = await res.json();
+      if (!res.ok || !d.success) { toast(d.message || "Xəta", "error"); return; }
+      setServices(d.services || []);
+    } catch { toast("Xəta", "error"); } finally { setChecking(false); }
+  };
+
+  const statusStyle: Record<string, { cls: string; label: string }> = {
+    ok: { cls: "bg-green-500/15 text-green-600", label: "İŞLƏYİR" },
+    error: { cls: "bg-red-500/15 text-red-500", label: "XƏTA" },
+    configured: { cls: "bg-blue-500/15 text-blue-600", label: "QURAŞDIRILIB" },
+    not_configured: { cls: "bg-gray-500/15 text-gray-500", label: "YOXDUR" },
   };
 
   const byKey = (k: string) => flags.find((f) => f.key === k);
@@ -120,6 +151,39 @@ export default function AdminAiPage() {
         <span className={`px-2.5 py-1 rounded-lg font-medium ${env.tavily ? "bg-green-500/10 text-green-600" : "bg-red-500/10 text-red-500"}`}>
           Tavily (TAVILY_API_KEY): {env.tavily ? "quraşdırılıb ✓" : "yoxdur ✕"}
         </span>
+      </div>
+
+      {/* ── Servis statusu (canlı yoxlama) ── */}
+      <div className="bg-card border border-card-border rounded-xl p-4 mb-6">
+        <div className="flex items-center justify-between gap-3 mb-1">
+          <div>
+            <h2 className="font-semibold">Servis statusu</h2>
+            <p className="text-[11px] text-muted">Hər xarici servisin canlı işləyib-işləmədiyini yoxlayır (Claude kredit vəziyyəti, Tavily, Infobip balans və s.).</p>
+          </div>
+          <button onClick={checkHealth} disabled={checking}
+            className="shrink-0 px-4 py-2 text-sm font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50">
+            {checking ? "Yoxlanılır..." : "🔄 Yoxla"}
+          </button>
+        </div>
+        {services === null ? (
+          <p className="text-xs text-muted mt-2">«Yoxla» düyməsinə basın. Qeyd: canlı yoxlama az miqdar token/kredit istifadə edə bilər (Claude sınaq çağırışı, Tavily 1 kredit).</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+            {services.map((s) => {
+              const st = statusStyle[s.status] || statusStyle.not_configured;
+              return (
+                <div key={s.id} className="flex items-start justify-between gap-2 p-3 rounded-lg bg-input-bg">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{s.name}</p>
+                    <p className="text-[11px] text-muted mt-0.5">{s.detail}</p>
+                    {!s.live && s.configured && <p className="text-[10px] text-muted/70 mt-0.5">canlı sınaq edilmir — yalnız konfiqurasiya</p>}
+                  </div>
+                  <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${st.cls}`}>{st.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {loading ? (
