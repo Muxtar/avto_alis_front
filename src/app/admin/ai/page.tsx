@@ -51,6 +51,9 @@ export default function AdminAiPage() {
   // Servis sağlamlıq yoxlaması — yalnız düyməyə basanda (kredit qənaəti).
   const [services, setServices] = useState<ServiceHealth[] | null>(null);
   const [checking, setChecking] = useState(false);
+  // Hər AI-ın ayrıca testi.
+  const [testing, setTesting] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<Record<string, { ok?: boolean; manual?: boolean; output: string; query?: string }>>({});
 
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
 
@@ -104,36 +107,73 @@ export default function AdminAiPage() {
     not_configured: { cls: "bg-gray-500/15 text-gray-500", label: "YOXDUR" },
   };
 
+  const testAi = async (key: string) => {
+    setTesting(key);
+    try {
+      const res = await fetch(`${API}/admin/ai/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ id: key }),
+      });
+      const d = await res.json();
+      if (!res.ok || !d.success) { toast(d.message || "Test alınmadı", "error"); return; }
+      setTestResult((prev) => ({ ...prev, [key]: { ok: d.ok, manual: d.manual, output: d.output || "", query: d.query } }));
+    } catch { toast("Test alınmadı", "error"); } finally { setTesting(null); }
+  };
+
   const byKey = (k: string) => flags.find((f) => f.key === k);
 
   const Row = ({ f }: { f: AiFlag }) => {
     const needs = NEEDS_ENV[f.key];
     const envOk = !needs || (needs === "tavily" ? env.tavily : env.anthropic);
+    const tr = testResult[f.key];
     return (
-      <div className="flex items-start justify-between gap-4 py-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium text-sm">{f.label}</span>
-            {f.value ? (
-              <span className="px-1.5 py-0.5 bg-green-500/15 text-green-600 rounded text-[10px] font-bold">AKTİV</span>
-            ) : (
-              <span className="px-1.5 py-0.5 bg-gray-500/15 text-gray-500 rounded text-[10px] font-bold">SÖNÜLÜ</span>
-            )}
-            {f.value && !envOk && (
-              <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-600 rounded text-[10px] font-bold" title={`${needs === "tavily" ? "TAVILY_API_KEY" : "ANTHROPIC_API_KEY"} açarı Railway-də yoxdur`}>AÇAR YOXDUR</span>
-            )}
+      <div className="py-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-medium text-sm">{f.label}</span>
+              {f.value ? (
+                <span className="px-1.5 py-0.5 bg-green-500/15 text-green-600 rounded text-[10px] font-bold">AKTİV</span>
+              ) : (
+                <span className="px-1.5 py-0.5 bg-gray-500/15 text-gray-500 rounded text-[10px] font-bold">SÖNÜLÜ</span>
+              )}
+              {f.value && !envOk && (
+                <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-600 rounded text-[10px] font-bold" title={`${needs === "tavily" ? "TAVILY_API_KEY" : "ANTHROPIC_API_KEY"} açarı Railway-də yoxdur`}>AÇAR YOXDUR</span>
+              )}
+            </div>
+            <p className="text-xs text-muted mt-0.5">{f.description}</p>
           </div>
-          <p className="text-xs text-muted mt-0.5">{f.description}</p>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Ayrıca test */}
+            <button
+              onClick={() => testAi(f.key)}
+              disabled={testing === f.key}
+              className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-input-bg border border-input-border hover:border-orange-500 disabled:opacity-50"
+              title="Bu AI-ı sınaqdan keçir">
+              {testing === f.key ? "..." : "🧪 Test"}
+            </button>
+            {/* Toggle */}
+            <button
+              onClick={() => toggle(f)}
+              disabled={busy === f.key}
+              className={`relative w-12 h-7 rounded-full transition-colors disabled:opacity-50 ${f.value ? "bg-green-500" : "bg-input-border"}`}
+              title={f.value ? "Söndür" : "Aktiv et"}>
+              <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${f.value ? "translate-x-5" : ""}`} />
+            </button>
+          </div>
         </div>
-        {/* Toggle */}
-        <button
-          onClick={() => toggle(f)}
-          disabled={busy === f.key}
-          className={`shrink-0 relative w-12 h-7 rounded-full transition-colors disabled:opacity-50 ${f.value ? "bg-green-500" : "bg-input-border"}`}
-          title={f.value ? "Söndür" : "Aktiv et"}
-        >
-          <span className={`absolute top-0.5 left-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform ${f.value ? "translate-x-5" : ""}`} />
-        </button>
+        {tr && (
+          <div className={`mt-2 rounded-lg p-2.5 text-xs whitespace-pre-wrap break-words border ${tr.manual ? "bg-blue-500/5 border-blue-500/20 text-foreground" : tr.ok ? "bg-green-500/5 border-green-500/20 text-foreground" : "bg-red-500/5 border-red-500/20 text-foreground"}`}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${tr.manual ? "bg-blue-500/15 text-blue-600" : tr.ok ? "bg-green-500/15 text-green-600" : "bg-red-500/15 text-red-500"}`}>
+                {tr.manual ? "ƏL İLƏ" : tr.ok ? "İŞLƏDİ ✓" : "XƏTA ✕"}
+              </span>
+              {tr.query && <span className="text-muted">Sorğu: «{tr.query}»</span>}
+            </div>
+            {tr.output}
+          </div>
+        )}
       </div>
     );
   };
