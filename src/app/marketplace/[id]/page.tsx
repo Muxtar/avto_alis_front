@@ -13,6 +13,7 @@ import { getCategoryAttrs, parseCat, getListingFields, catToSlugs } from "@/lib/
 import OrderMap from "@/components/OrderMapWrapper";
 import ShareButton from "@/components/ShareButton";
 import ListingCard from "@/components/ListingCard";
+import ComplaintButton from "@/components/ComplaintButton";
 import { recordView } from "@/lib/recentlyViewed";
 
 
@@ -865,6 +866,11 @@ export default function ListingDetailPage() {
                 <p className="text-muted text-xs">{t("sellerProfile")} &rarr;</p>
               </div>
             </Link>
+            {isLoggedIn && user?.id !== listing.user.id && (
+              <div className="mb-3">
+                <ComplaintButton listingId={listing.id} label="⚠ Bu məhsul haqqında şikayət et" className="text-xs text-red-500 hover:underline" />
+              </div>
+            )}
             {(listing.location || listing.city || listing.user.city) && (
               <div className="flex items-start gap-2 text-sm text-muted mb-3">
                 <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">

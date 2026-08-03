@@ -1,12 +1,13 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/Toast";
-import { API } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 
 const CAT_LABEL: Record<string, string> = {
   TIME_WASTED: "Vaxtı boşa xərclədi", FRAUD: "Fırıldaq", RUDE: "Kobud davranış", FAKE_INFO: "Saxta məlumat", OTHER: "Başqa",
+  DEFECTIVE: "Qüsurlu / işləmir", DAMAGED: "Zədəli gəldi", NOT_AS_DESCRIBED: "Təsvirə uyğun deyil", WRONG_ITEM: "Yanlış məhsul",
 };
-const STATUS_LABEL: Record<string, string> = { OPEN: "Açıq", REVIEWING: "Baxılır", RESOLVED: "Həll olundu", REJECTED: "Rədd edildi" };
+const STATUS_LABEL: Record<string, string> = { OPEN: "Açıq", REVIEWING: "Baxılır", EVIDENCE_REQUESTED: "Sübut gözlənir", RESOLVED: "Həll olundu", REJECTED: "Rədd edildi" };
 
 function fmt(sec: number) { const m = Math.floor(sec / 60), s = sec % 60; return `${m}:${String(s).padStart(2, "0")}`; }
 
@@ -17,7 +18,10 @@ export default function AdminComplaintsPage() {
   const [filter, setFilter] = useState("OPEN");
   const [sel, setSel] = useState<any>(null);
   const [evidence, setEvidence] = useState<any>(null);
+  const [listing, setListing] = useState<any>(null);
+  const [order, setOrder] = useState<any>(null);
   const [note, setNote] = useState("");
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const [refund, setRefund] = useState(false);
   const [suspend, setSuspend] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -35,11 +39,23 @@ export default function AdminComplaintsPage() {
   useEffect(() => { load(); }, [load]);
 
   const openDetail = async (id: number) => {
-    setSel(null); setEvidence(null); setNote(""); setRefund(false); setSuspend(false);
+    setSel(null); setEvidence(null); setListing(null); setOrder(null); setNote(""); setRefund(false); setSuspend(false);
     try {
       const r = await fetch(`${API}/admin/complaints/${id}`, { headers }).then((x) => x.json());
-      if (r.success) { setSel(r.complaint); setEvidence(r.evidence); }
+      if (r.success) { setSel(r.complaint); setEvidence(r.evidence); setListing(r.listing); setOrder(r.order); }
     } catch { toast("Xəta", "error"); }
+  };
+
+  const requestEvidence = async () => {
+    if (!sel) return;
+    setBusy(true);
+    try {
+      const r = await fetch(`${API}/admin/complaints/${sel.id}/request-evidence`, {
+        method: "POST", headers, body: JSON.stringify({ note }),
+      }).then((x) => x.json());
+      if (r.success) { toast("Şikayətçidən əlavə foto/sübut istənildi", "success"); setSel(null); await load(); }
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); } finally { setBusy(false); }
   };
 
   const resolve = async (status: "RESOLVED" | "REJECTED") => {
@@ -59,7 +75,7 @@ export default function AdminComplaintsPage() {
     <div className="p-3 sm:p-6">
       <h1 className="text-xl font-bold mb-4">Şikayətlər</h1>
       <div className="flex gap-1 bg-input-bg border border-input-border rounded-xl p-1 mb-4 w-fit">
-        {["OPEN", "RESOLVED", "REJECTED", ""].map((s) => (
+        {["OPEN", "EVIDENCE_REQUESTED", "RESOLVED", "REJECTED", ""].map((s) => (
           <button key={s || "all"} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? "bg-orange-500 text-white" : "text-muted"}`}>
             {s ? STATUS_LABEL[s] : "Hamısı"}
           </button>
@@ -95,6 +111,41 @@ export default function AdminComplaintsPage() {
             <p className="text-xs text-muted mb-2">Şikayətçi: {sel.complainant?.name}{sel.target?.consultationSuspended && <span className="text-red-500"> · peşəkar dayandırılıb</span>}</p>
             <p className="text-sm bg-input-bg rounded-xl p-3 mb-3">{sel.description}</p>
 
+            {/* Şikayət olunan MƏHSUL / SİFARİŞ (eBay üslubu) */}
+            {listing && (
+              <a href={`/marketplace/${listing.id}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2.5 mb-3 rounded-xl bg-input-bg border border-input-border hover:border-orange-500/50">
+                {listing.images?.[0]
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={imgUrl(listing.images[0])} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                  : <div className="w-12 h-12 rounded-lg bg-card shrink-0" />}
+                <div className="min-w-0">
+                  <p className="text-sm font-medium line-clamp-1">{listing.title}</p>
+                  <p className="text-xs text-muted">{listing.price} AZN{listing.condition ? ` · ${listing.condition}` : ""} · Satıcı: {listing.user?.name}</p>
+                </div>
+              </a>
+            )}
+            {order && (
+              <div className="p-2.5 mb-3 rounded-xl bg-input-bg border border-input-border text-xs">
+                <p className="font-medium mb-1">Sifariş #{order.id} · {order.status} · {order.total} AZN · {order.paymentStatus}</p>
+                {order.items?.map((it: any, i: number) => (
+                  <p key={i} className="text-muted">• {it.title} × {it.quantity} — {it.price} AZN</p>
+                ))}
+              </div>
+            )}
+
+            {/* SÜBUT ŞƏKİLLƏRİ — istifadəçinin yüklədiyi (qüsurlu məhsul və s.) */}
+            {sel.images?.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-muted mb-1.5">📷 Sübut şəkilləri ({sel.images.length})</p>
+                <div className="flex flex-wrap gap-2">
+                  {sel.images.map((img: string, i: number) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={i} src={imgUrl(img)} alt="" onClick={() => setLightbox(imgUrl(img))} className="w-20 h-20 rounded-lg object-cover cursor-pointer border border-input-border hover:border-orange-500" />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* DƏLİL siqnalları */}
             {evidence && (
               <div className="mb-3 p-3 bg-input-bg/50 border border-input-border rounded-xl">
@@ -118,15 +169,18 @@ export default function AdminComplaintsPage() {
               </div>
             )}
 
-            {sel.status === "OPEN" ? (
+            {sel.status !== "RESOLVED" && sel.status !== "REJECTED" ? (
               <>
-                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Admin qeydi (istəyə bağlı)" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-2" />
+                {sel.status === "EVIDENCE_REQUESTED" && <p className="text-xs text-amber-600 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mb-2">Şikayətçidən əlavə sübut istənilib — cavab gözlənir.</p>}
+                <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="Admin qeydi / şikayətçiyə mesaj (sübut istəyəndə göndərilir)" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-2" />
                 <div className="flex flex-col gap-1.5 mb-3 text-sm">
                   {evidence?.refundable && (
                     <label className="flex items-center gap-2"><input type="checkbox" checked={refund} onChange={(e) => setRefund(e.target.checked)} className="w-4 h-4 accent-orange-500" /> Alıcıya geri ödəniş et ({evidence.price} AZN)</label>
                   )}
                   <label className="flex items-center gap-2"><input type="checkbox" checked={suspend} onChange={(e) => setSuspend(e.target.checked)} className="w-4 h-4 accent-orange-500" /> Peşəkarın Rəy təkliflərini dayandır</label>
                 </div>
+                {/* eBay üslubu: qərardan əvvəl əlavə foto/sübut istə */}
+                <button onClick={requestEvidence} disabled={busy} className="w-full mb-2 px-4 py-2 bg-blue-500/10 text-blue-600 rounded-xl text-sm font-semibold disabled:opacity-50">📷 Şikayətçidən əlavə foto/sübut istə</button>
                 <div className="flex gap-2">
                   <button onClick={() => resolve("RESOLVED")} disabled={busy} className="flex-1 px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Təsdiqlə (haqlı)</button>
                   <button onClick={() => resolve("REJECTED")} disabled={busy} className="flex-1 px-4 py-2 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold disabled:opacity-50">Rədd et</button>
@@ -141,6 +195,14 @@ export default function AdminComplaintsPage() {
           </div>
         )}
       </div>
+
+      {/* Şəkil böyüdücü */}
+      {lightbox && (
+        <div className="fixed inset-0 z-[3000] bg-black/80 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-lg" />
+        </div>
+      )}
     </div>
   );
 }
