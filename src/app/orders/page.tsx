@@ -185,7 +185,16 @@ export default function OrdersPage() {
     const S: JStep[] = [{ label: "Sifariş verildi", state: "done" }];
     const st = order.status;
     const isCourier = order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER";
-    if (st === "PENDING") { S.push({ label: "Satıcının təsdiqi gözlənilir", state: "current" }); S.push({ label: "Çatdırıldı", state: "pending" }); return S; }
+    if (st === "PENDING") {
+      const paid = order.paymentStatus === "PAID";
+      const dl = order.confirmDeadline ? new Date(order.confirmDeadline) : null;
+      const detail = paid
+        ? `Ödəniş alındı. Satıcı ${dl ? dl.toLocaleString("az-AZ", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) + "-ə qədər" : "vaxtında"} təsdiqləməzsə pul avtomatik geri qaytarılır.`
+        : undefined;
+      S.push({ label: "Satıcının təsdiqi gözlənilir", state: "current", detail });
+      S.push({ label: "Çatdırıldı", state: "pending" });
+      return S;
+    }
     if (st === "CANCELLED") { S.push({ label: "Rədd / ləğv edildi", state: "error", detail: order.yangoError || undefined }); return S; }
     S.push({ label: "Satıcı qəbul etdi", state: "done" });
     if (isCourier) {
