@@ -131,16 +131,21 @@ export default function CartPage() {
       if (e.data?.type !== "kapital-payment") return;
       setPayUrl(null);
       refreshCart();
-      // Ödənişi banka birbaşa sorğu ilə TƏSDİQLƏ + settle et (webhook geciksə/gəlməsə də
-      // sifariş PAID olsun) — "ödəniş uğurlu oldu, amma app xəta göstərir" halının qarşısı.
+      // YIĞIM tələbi: get-payment yalnız CALLBACK gəldikdən sonra işləməlidir. Ona görə
+      // burada birbaşa təsdiq etmirik — server callback-i gözləyib statusu POLL edirik.
+      // Callback sifarişi settle edən kimi status PAID/FAILED olur; ~24s gözləyirik.
       let status = e.data.status;
       const oid = payOrderIdRef.current;
       if (oid) {
-        try {
-          const r = await fetch(`${API}/payment/status/${oid}`, { headers }).then((x) => x.json());
-          if (r?.paymentStatus === "PAID") status = "success";
-          else if (r?.paymentStatus === "FAILED") status = "failed";
-        } catch { /* saxlanmış status ilə davam */ }
+        for (let i = 0; i < 12; i++) {
+          try {
+            const r = await fetch(`${API}/payment/status/${oid}`, { headers }).then((x) => x.json());
+            if (r?.paymentStatus === "PAID") { status = "success"; break; }
+            if (r?.paymentStatus === "FAILED") { status = "failed"; break; }
+          } catch { /* keç */ }
+          // Hələ PENDING — YIĞIM callback-inin gəlməsini gözlə.
+          await new Promise((res) => setTimeout(res, 2000));
+        }
       }
       router.push(`/orders?payment=${status}`);
     };
