@@ -11,7 +11,7 @@ import LocationPicker from "@/components/LocationPickerWrapper";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
 import IdentityVerify from "@/components/IdentityVerify";
-import ProfessionPicker from "@/components/ProfessionPicker";
+import ProfessionMultiPicker from "@/components/ProfessionMultiPicker";
 import EmploymentSection from "@/components/EmploymentSection";
 import ConnectedDevices from "@/components/ConnectedDevices";
 import QRShare from "@/components/QRShare";
@@ -26,7 +26,7 @@ export default function ProfilePage() {
   const [listingTab, setListingTab] = useState<"active" | "expired">("active");
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [editData, setEditData] = useState({ name: "", profession: "", bio: "", idNumber: "", birthDate: "", gender: "" });
+  const [editData, setEditData] = useState<{ name: string; professions: string[]; bio: string; idNumber: string; birthDate: string; gender: string }>({ name: "", professions: [], bio: "", idNumber: "", birthDate: "", gender: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
   const [showIdentity, setShowIdentity] = useState(false);
 
@@ -117,7 +117,7 @@ export default function ProfilePage() {
       fetch(`${API}/me/listings`, { headers }).then((r) => r.json()),
     ]).then(([p, l]) => {
       setProfile(p.user);
-      setEditData({ name: p.user.name, profession: p.user.profession || "", bio: p.user.bio || "", idNumber: p.user.idNumber || "", birthDate: p.user.birthDate ? String(p.user.birthDate).slice(0, 10) : "", gender: p.user.gender || "" });
+      setEditData({ name: p.user.name, professions: p.user.professions?.length ? p.user.professions : (p.user.profession ? [p.user.profession] : []), bio: p.user.bio || "", idNumber: p.user.idNumber || "", birthDate: p.user.birthDate ? String(p.user.birthDate).slice(0, 10) : "", gender: p.user.gender || "" });
       setListings(l.listings || []);
       setLocationDraft({
         city: p.user.city || "",
@@ -132,7 +132,7 @@ export default function ProfilePage() {
     // FIN/doğum/cins yalnız Veriff ilə doldurulur — əl ilə göndərilmir.
     // Kimlik təsdiqlənibsə (şəkil var) ad da kilidlidir.
     const idLocked = !!profile.idCardImage;
-    const body: any = { profession: editData.profession, bio: editData.bio };
+    const body: any = { professions: editData.professions, bio: editData.bio };
     if (!idLocked) {
       body.name = editData.name;
     }
@@ -153,7 +153,7 @@ export default function ProfilePage() {
       const u = res.user;
       setProfile(u);
       // Veriff təsdiqindən sonra ad/FIN/doğum/cins serverdə yenilənir — input sahələrini də doldur.
-      setEditData({ name: u.name || "", profession: u.profession || "", bio: u.bio || "", idNumber: u.idNumber || "", birthDate: u.birthDate ? String(u.birthDate).slice(0, 10) : "", gender: u.gender || "" });
+      setEditData({ name: u.name || "", professions: u.professions?.length ? u.professions : (u.profession ? [u.profession] : []), bio: u.bio || "", idNumber: u.idNumber || "", birthDate: u.birthDate ? String(u.birthDate).slice(0, 10) : "", gender: u.gender || "" });
     }
   };
 
@@ -794,8 +794,8 @@ export default function ProfilePage() {
                   </>
                 )}
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">İxtisas</label>
-                  <ProfessionPicker value={editData.profession} onChange={(v) => setEditData((d) => ({ ...d, profession: v }))} className={inputCls} />
+                  <label className="block text-xs font-medium text-muted mb-1">İxtisas (3-ə qədər seçə bilərsiniz)</label>
+                  <ProfessionMultiPicker values={editData.professions} onChange={(v) => setEditData((d) => ({ ...d, professions: v }))} max={3} className={inputCls} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">Qeyd</label>
@@ -838,10 +838,12 @@ export default function ProfilePage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
                     {t("memberSince")}: {memberDate}
                   </span>
-                  {profile.profession && (
-                    <span className="flex items-center gap-1.5">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z" /></svg>
-                      {profile.profession}
+                  {(profile.professions?.length ? profile.professions : (profile.profession ? [profile.profession] : [])).length > 0 && (
+                    <span className="flex items-center gap-1.5 flex-wrap">
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z" /></svg>
+                      {(profile.professions?.length ? profile.professions : [profile.profession]).map((pr: string) => (
+                        <span key={pr} className="px-2 py-0.5 rounded-lg text-xs font-semibold bg-orange-500/10 text-orange-500">{pr}</span>
+                      ))}
                     </span>
                   )}
                 </div>
@@ -849,7 +851,7 @@ export default function ProfilePage() {
                   <p className="text-sm text-foreground/80 mb-3 whitespace-pre-line max-w-prose text-center sm:text-left">{profile.bio}</p>
                 )}
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                  <button onClick={() => { setEditData({ name: profile.name, profession: profile.profession || "", bio: profile.bio || "", idNumber: profile.idNumber || "", birthDate: profile.birthDate ? String(profile.birthDate).slice(0, 10) : "", gender: profile.gender || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
+                  <button onClick={() => { setEditData({ name: profile.name, professions: profile.professions?.length ? profile.professions : (profile.profession ? [profile.profession] : []), bio: profile.bio || "", idNumber: profile.idNumber || "", birthDate: profile.birthDate ? String(profile.birthDate).slice(0, 10) : "", gender: profile.gender || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     {t("editProfile")}
                   </button>

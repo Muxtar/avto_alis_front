@@ -595,7 +595,9 @@ function MarketplacePage() {
                       </div>
                       <div className="min-w-0">
                         <p className="font-semibold text-sm truncate">{p.name || "İstifadəçi"}</p>
-                        {p.profession && <p className="text-[11px] text-orange-500 font-medium truncate">{p.profession}</p>}
+                        {(p.professions?.length ? p.professions : (p.profession ? [p.profession] : [])).length > 0 && (
+                          <p className="text-[11px] text-orange-500 font-medium truncate">{(p.professions?.length ? p.professions : [p.profession]).join(" · ")}</p>
+                        )}
                         {p.city && <p className="text-[10px] text-muted truncate">📍 {p.city}</p>}
                       </div>
                     </Link>
@@ -656,8 +658,12 @@ function MarketplacePage() {
                               <svg viewBox="0 0 24 24" className="w-4 h-4 text-orange-500 shrink-0" fill="currentColor"><path d="M12 2l2.39 1.74 2.95-.02 1.13 2.72 2.46 1.62-.62 2.88.62 2.88-2.46 1.62-1.13 2.72-2.95-.02L12 22l-2.39-1.74-2.95.02-1.13-2.72-2.46-1.62.62-2.88-.62-2.88 2.46-1.62 1.13-2.72 2.95.02L12 2z"/><path d="M10.6 14.6l-2.2-2.2-1.2 1.2 3.4 3.4 6-6-1.2-1.2-4.8 4.8z" fill="#fff"/></svg>
                             )}
                           </div>
-                          {p.profession && (
-                            <span className="inline-block mt-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-orange-500/10 text-orange-500">{p.profession}</span>
+                          {(p.professions?.length ? p.professions : (p.profession ? [p.profession] : [])).length > 0 && (
+                            <span className="flex flex-wrap gap-1 mt-1">
+                              {(p.professions?.length ? p.professions : [p.profession]).map((pr: string) => (
+                                <span key={pr} className="inline-block px-2.5 py-1 rounded-lg text-xs font-semibold bg-orange-500/10 text-orange-500">{pr}</span>
+                              ))}
+                            </span>
                           )}
                           {p.bio && <p className="text-xs text-muted mt-2 line-clamp-2">{p.bio}</p>}
                           <div className="flex items-center gap-3 mt-2.5 text-xs text-muted">
