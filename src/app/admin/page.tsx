@@ -9,6 +9,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const [data, setData] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
+  const [adv, setAdv] = useState<any>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("adminToken");
@@ -20,7 +21,13 @@ export default function AdminDashboard() {
       .then((r) => r.json())
       .then(setAnalytics)
       .catch(() => {});
+    fetch(`${API}/admin/analytics/advanced`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setAdv(d); })
+      .catch(() => {});
   }, []);
+
+  const azn = (n: number) => (n || 0).toLocaleString("az-AZ", { maximumFractionDigits: 0 });
 
   if (!data) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -98,6 +105,88 @@ export default function AdminDashboard() {
                 })()}
               </div>
               <p className="text-[10px] text-muted mt-1 text-right">{t("adminLast30Days")}</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Genişləndirilmiş analitika */}
+      {adv && (
+        <div className="mb-8">
+          {/* KPI-lar */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4">
+            <div className="bg-card border border-card-border rounded-xl p-4">
+              <p className="text-muted text-xs">Orta sifariş dəyəri</p>
+              <p className="text-2xl font-bold">{azn(adv.avgOrderValue)} ₼</p>
+            </div>
+            <div className="bg-card border border-card-border rounded-xl p-4">
+              <p className="text-muted text-xs">Konversiya (alıcı/istifadəçi)</p>
+              <p className="text-2xl font-bold text-blue-500">{adv.conversionPercent}%</p>
+              <p className="text-[10px] text-muted mt-0.5">{adv.buyersOrdered} / {adv.totalUsers}</p>
+            </div>
+            <div className="bg-card border border-card-border rounded-xl p-4">
+              <p className="text-muted text-xs">Təkrar alıcı</p>
+              <p className="text-2xl font-bold text-green-500">{adv.returningPercent}%</p>
+              <p className="text-[10px] text-muted mt-0.5">{adv.returningBuyers} nəfər</p>
+            </div>
+            <div className="bg-card border border-card-border rounded-xl p-4">
+              <p className="text-muted text-xs">Ödənilmiş sifariş</p>
+              <p className="text-2xl font-bold">{adv.paidOrders}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Ən çox satan satıcılar */}
+            <div className="bg-card border border-card-border rounded-xl p-4 sm:p-5">
+              <h2 className="font-semibold mb-3 text-sm">🏆 Ən çox satan satıcılar</h2>
+              {adv.topSellers?.length ? (
+                <div className="space-y-1.5">
+                  {adv.topSellers.map((s: any, i: number) => (
+                    <div key={s.sellerId} className="flex items-center gap-3 text-sm">
+                      <span className="w-5 text-muted text-xs">{i + 1}.</span>
+                      <span className="flex-1 truncate">{s.name}</span>
+                      <span className="text-muted text-xs">{s.orders} sif.</span>
+                      <span className="font-bold text-green-600 w-24 text-right">{azn(s.revenue)} ₼</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="text-muted text-sm">Məlumat yoxdur.</p>}
+            </div>
+
+            {/* Ən çox satan məhsullar */}
+            <div className="bg-card border border-card-border rounded-xl p-4 sm:p-5">
+              <h2 className="font-semibold mb-3 text-sm">📦 Ən çox satan məhsullar</h2>
+              {adv.topProducts?.length ? (
+                <div className="space-y-1.5">
+                  {adv.topProducts.map((p: any, i: number) => (
+                    <div key={p.listingId} className="flex items-center gap-3 text-sm">
+                      <span className="w-5 text-muted text-xs">{i + 1}.</span>
+                      <span className="flex-1 truncate">{p.title}</span>
+                      <span className="text-muted text-xs">{p.units} əd.</span>
+                      <span className="font-bold w-24 text-right">{azn(p.revenue)} ₼</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="text-muted text-sm">Məlumat yoxdur.</p>}
+            </div>
+          </div>
+
+          {/* Kateqoriya üzrə satış */}
+          {adv.categorySales?.length > 0 && (
+            <div className="bg-card border border-card-border rounded-xl p-4 sm:p-5 mt-4">
+              <h2 className="font-semibold mb-3 text-sm">Kateqoriya üzrə gəlir</h2>
+              <div className="space-y-2">
+                {(() => {
+                  const max = Math.max(...adv.categorySales.map((c: any) => c.revenue), 1);
+                  return adv.categorySales.map((c: any) => (
+                    <div key={c.category} className="flex items-center gap-3 text-xs">
+                      <span className="w-32 truncate shrink-0">{c.category}</span>
+                      <div className="flex-1 bg-input-bg rounded-full h-2.5 overflow-hidden"><div className="h-full bg-gradient-to-r from-orange-500 to-red-500" style={{ width: `${(c.revenue / max) * 100}%` }} /></div>
+                      <span className="w-24 text-right font-semibold">{azn(c.revenue)} ₼</span>
+                    </div>
+                  ));
+                })()}
+              </div>
             </div>
           )}
         </div>

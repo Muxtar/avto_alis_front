@@ -21,9 +21,31 @@ export default function AdminUsersPage() {
   const [nu, setNu] = useState<any>({ name: "", phone: "", email: "", type: "CAR_OWNER", role: "USER", verified: true, password: "" });
   const [confirmDel, setConfirmDel] = useState<any>(null); // silmə təsdiqi (ekran modalı)
   const [deleting, setDeleting] = useState(false);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+
+  const toggleSel = (id: number) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const bulkAction = async (action: "block" | "unblock" | "delete") => {
+    if (selected.size === 0) return;
+    if (action === "delete" && !confirm(`${selected.size} istifadəçi silinsin? (admin/özünüz xaric)`)) return;
+    setBulkBusy(true);
+    try {
+      const r = await fetch(`${API}/admin/users/bulk`, { method: "POST", headers, body: JSON.stringify({ ids: Array.from(selected), action }) }).then((x) => x.json());
+      if (r.success) { toast(`${r.count} istifadəçi ${action === "delete" ? "silindi" : action === "block" ? "bloklandı" : "blok açıldı"}`, "success"); setSelected(new Set()); fetchUsers(); }
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); } finally { setBulkBusy(false); }
+  };
+  const exportUsers = async () => {
+    try {
+      const res = await fetch(`${API}/admin/export/users.csv`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) { toast("Export alınmadı", "error"); return; }
+      const blob = await res.blob(); const url = URL.createObjectURL(blob);
+      const a = document.createElement("a"); a.href = url; a.download = "users.csv"; a.click(); URL.revokeObjectURL(url);
+    } catch { toast("Export alınmadı", "error"); }
+  };
 
   const fetchUsers = () => {
     setLoading(true);
@@ -132,6 +154,24 @@ export default function AdminUsersPage() {
         </div>
       </div>
 
+      {/* Toplu əməliyyat paneli + export */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        {users.length > 0 && (
+          <button onClick={() => setSelected(selected.size === users.length ? new Set() : new Set(users.map((u) => u.id)))} className="text-xs px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border">
+            {selected.size === users.length && users.length > 0 ? "Seçimi ləğv et" : "Hamısını seç"}
+          </button>
+        )}
+        {selected.size > 0 && (
+          <>
+            <span className="text-xs text-muted">{selected.size} seçildi:</span>
+            <button onClick={() => bulkAction("block")} disabled={bulkBusy} className="text-xs px-2.5 py-1.5 rounded-lg bg-yellow-500/10 text-yellow-600 font-semibold disabled:opacity-50">Blokla</button>
+            <button onClick={() => bulkAction("unblock")} disabled={bulkBusy} className="text-xs px-2.5 py-1.5 rounded-lg bg-green-500/10 text-green-600 font-semibold disabled:opacity-50">Blok aç</button>
+            <button onClick={() => bulkAction("delete")} disabled={bulkBusy} className="text-xs px-2.5 py-1.5 rounded-lg bg-red-500/10 text-red-500 font-semibold disabled:opacity-50">Sil</button>
+          </>
+        )}
+        <button onClick={exportUsers} className="ml-auto text-xs px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border hover:border-orange-500">⬇ CSV</button>
+      </div>
+
       {loading ? (
         <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : users.length === 0 ? (
@@ -143,6 +183,8 @@ export default function AdminUsersPage() {
             return (
               <div key={user.id} className="bg-card border border-card-border rounded-xl p-4 hover:border-orange-500/20 transition-colors">
                 <div className="flex items-center gap-4">
+                  {/* Toplu seçim */}
+                  <input type="checkbox" checked={selected.has(user.id)} onChange={() => toggleSel(user.id)} className="w-4 h-4 accent-orange-500 shrink-0" onClick={(e) => e.stopPropagation()} />
                   {/* Avatar */}
                   <div className="w-10 h-10 bg-gradient-to-br from-orange-500/80 to-red-600/80 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0">
                     {user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
