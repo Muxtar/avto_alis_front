@@ -306,9 +306,10 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50">
 
-      {/* ── Əsas başlıq (Amazon üslubu — tünd) ── */}
-      <div className="relative z-10 text-white" style={{ background: NAV_DARK }}>
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+      {/* ── Əsas başlıq (Amazon üslubu — tünd) ──
+          z-30: Kataloq menyusu alt naviqasiya sətrinin (z-20) ÜSTÜNDƏ açılsın. */}
+      <div className="relative z-30 text-white" style={{ background: NAV_DARK }}>
+        <div className="w-full px-3 sm:px-5 lg:px-8">
           {/* Telefonda iki sətir (flex-wrap): üstdə logo/kataloq/ikonlar,
               altda tam enli axtarış (order-last + basis-full). Masaüstündə
               tək sətir (sm:flex-nowrap). */}
@@ -339,15 +340,21 @@ export default function Navbar() {
 
             {/* Kataloq — kateqoriya menyusu (telefonda da görünür, kompakt) */}
             <div ref={catRef} className="order-2 relative shrink-0">
-              <button onClick={() => { setCatOpen((v) => !v); setCatHover(null); }} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 h-11 sm:h-13 rounded-xl text-white font-semibold text-sm sm:text-[15px] hover:opacity-90 transition-opacity" style={{ background: PINK }}>
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+              {/* Amazon üslubu: şəffaf, ağ mətnli — açılanda vurğu rəngi ilə işıqlanır */}
+              <button onClick={() => { setCatOpen((v) => !v); setCatHover(null); }}
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 h-11 rounded-md text-white font-bold text-sm sm:text-[15px] ring-1 transition-colors ${catOpen ? "ring-white/60 bg-white/10" : "ring-transparent hover:ring-white/40"}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                 <span className="hidden xs:inline">{t("navCatalog")}</span>
                 <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {catOpen && (
                 <>
-                <div className="absolute left-0 mt-2 w-64 bg-card border border-card-border rounded-xl shadow-xl z-50 py-1 max-h-[70vh] overflow-y-auto"
+                <div className="absolute left-0 mt-2 w-72 bg-card border border-card-border rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[72vh] overflow-y-auto"
                   onMouseLeave={() => { catCloseTimer.current = setTimeout(() => setCatHover(null), 180); }}>
+                  {/* Başlıq zolağı — header ilə eyni tünd ton */}
+                  <div className="sticky top-0 z-10 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: NAV_DARK }}>
+                    {t("navCatalog")}
+                  </div>
                   {CATEGORIES.map((c) => {
                     const hasSubs = c.subs && c.subs.length > 0;
                     return (
@@ -361,14 +368,14 @@ export default function Navbar() {
                           const top = Math.max(8, Math.min(r.top, vh - est - 8));
                           setCatHover({ cat: c, top, left: r.right });
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
-                        <span className="w-8 h-8 rounded-lg bg-input-bg text-muted flex items-center justify-center shrink-0"><CategoryIcon name={c.name} className="w-[18px] h-[18px]" /></span>
-                        <span className="truncate flex-1">{c.name}</span>
-                        {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+                        className="group/cat flex items-center gap-3 px-3.5 py-2.5 mx-1.5 my-0.5 rounded-xl text-sm hover:bg-[var(--brand-soft)] transition-colors text-foreground">
+                        <span className="w-9 h-9 rounded-xl bg-input-bg text-muted group-hover/cat:bg-[var(--brand-to)] group-hover/cat:text-white flex items-center justify-center shrink-0 transition-colors"><CategoryIcon name={c.name} className="w-[18px] h-[18px]" /></span>
+                        <span className="truncate flex-1 font-medium group-hover/cat:text-[var(--brand-to)]">{c.name}</span>
+                        {hasSubs && <svg className="w-4 h-4 text-muted shrink-0 group-hover/cat:text-[var(--brand-to)] group-hover/cat:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                       </Link>
                     );
                   })}
-                  <Link href="/elanlar" onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold border-t border-card-border mt-1" style={{ color: PINK }}>
+                  <Link href="/elanlar" onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-4 py-3 text-sm font-bold border-t border-card-border mt-1 hover:bg-[var(--brand-soft)] transition-colors" style={{ color: PINK }}>
                     Bütün kateqoriyalar →
                   </Link>
                 </div>
@@ -379,14 +386,14 @@ export default function Navbar() {
                   <div style={{ position: "fixed", top: catHover.top, left: catHover.left }}
                     onMouseEnter={() => { if (catCloseTimer.current) clearTimeout(catCloseTimer.current); }}
                     onMouseLeave={() => setCatHover(null)}
-                    className="z-[60] w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5">
-                    <Link href={`/elanlar/${slugify(catHover.cat.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold hover:bg-input-bg" style={{ color: PINK }}>
+                    className="z-[60] w-72 max-h-[72vh] overflow-y-auto bg-card border border-card-border rounded-2xl shadow-2xl p-2">
+                    <Link href={`/elanlar/${slugify(catHover.cat.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold hover:bg-[var(--brand-soft)]" style={{ color: PINK }}>
                       <CategoryIcon name={catHover.cat.name} className="w-[18px] h-[18px]" /> {catHover.cat.name} — hamısı
                     </Link>
                     <div className="border-t border-card-border my-1" />
                     {catHover.cat.subs.map((s: any) => (
                       <Link key={s.name} href={`/elanlar/${slugify(catHover.cat.name)}/${slugify(s.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors">
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-foreground hover:bg-[var(--brand-soft)] hover:text-[var(--brand-to)] transition-colors">
                         <SubCategoryIcon name={s.name} parent={catHover.cat.name} className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
                         <span className="truncate">{s.name}</span>
                       </Link>
@@ -781,7 +788,7 @@ export default function Navbar() {
       </div>
       {/* ── Alt naviqasiya sətri (Amazon üslubu) ── */}
       <div className="hidden md:block relative z-20 text-white/90 shadow-sm" style={{ background: NAV_DARK2 }}>
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+        <div className="w-full px-3 sm:px-5 lg:px-8">
           <div className="flex items-center justify-between h-10 text-[13px]">
             <div className="flex items-center gap-4">
               <Link href="/elanlar" className="text-white/85 hover:text-white transition-colors">{t("marketplace")}</Link>
