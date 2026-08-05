@@ -330,13 +330,6 @@ export default function Navbar() {
 
             {/* Şəhər — yalnız çox geniş ekranda; həm də search-ə minməsin deyə
                 shrink oluna bilər (min-w-0), yer azalanda gizlənir. */}
-            <Link href="/locations" className="order-2 hidden xl:flex items-end gap-1.5 px-2 py-1.5 rounded-md hover:ring-1 hover:ring-white/40 transition-shadow min-w-0 overflow-hidden whitespace-nowrap">
-              <svg className="w-5 h-5 mb-0.5 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-              <span className="leading-tight">
-                <span className="block text-[11px] text-white/60">Çatdırılma</span>
-                <span className="block text-[13px] font-bold text-white">Azərbaycan</span>
-              </span>
-            </Link>
 
             {/* Kataloq — kateqoriya menyusu (telefonda da görünür, kompakt) */}
             <div ref={catRef} className="order-2 relative shrink-0">
@@ -791,11 +784,9 @@ export default function Navbar() {
         <div className="w-full px-3 sm:px-5 lg:px-8">
           <div className="flex items-center justify-between h-10 text-[13px]">
             <div className="flex items-center gap-4">
-              <Link href="/elanlar" className="text-white/85 hover:text-white transition-colors">{t("marketplace")}</Link>
               <Link href="/locations" className="text-white/85 hover:text-white transition-colors">{t("browseByLocation")}</Link>
               {isLoggedIn && <Link href="/consultations" className="text-white/85 hover:text-white transition-colors">🗣️ Konsultasiya</Link>}
               {isLoggedIn && <button type="button" onClick={() => window.dispatchEvent(new Event("toggle-inquiry-chat"))} className="text-white/85 hover:text-white transition-colors font-medium">✨ AI Köməkçi</button>}
-              <Link href={isLoggedIn ? "/account?new=1" : "/"} className="px-2.5 py-1 rounded-md text-white font-semibold hover:opacity-90 transition-opacity" style={{ background: PINK }}>tradixai-də sat</Link>
             </div>
             <div className="flex items-center gap-3">
               {/* Theme */}
