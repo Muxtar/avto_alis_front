@@ -502,7 +502,13 @@ function MarketplacePage() {
                 activeCount={activeFilterCount}
               />
             ) : (
-            <div className="sticky top-20 z-30 bg-card border border-card-border rounded-2xl overflow-hidden" onMouseLeave={() => setHoverCat(null)}>
+            /* Kateqoriya paneli — header ilə eyni tünd üslub */
+            <div className="sticky top-20 z-30 rounded-2xl overflow-hidden text-white shadow-lg" style={{ background: "var(--nav-dark)" }} onMouseLeave={() => setHoverCat(null)}>
+              {/* Başlıq zolağı — bir ton açıq (header-in alt sətri kimi) */}
+              <div className="px-4 py-3 text-[13px] font-bold tracking-wide flex items-center gap-2" style={{ background: "var(--nav-dark2)" }}>
+                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+                Kateqoriyalar
+              </div>
               <nav className="py-2 max-h-[62vh] overflow-y-auto">
                 {CATEGORIES.map((c) => {
                   const active = selectedCategory ? parseCat(selectedCategory).main === c.name : false;
@@ -519,38 +525,40 @@ function MarketplacePage() {
                         const top = Math.max(8, Math.min(r.top, vh - est - 8));
                         setHoverCat({ cat: c, top, left: r.right });
                       }}
-                      className={`group/c flex items-center gap-3 px-4 py-2.5 text-[13px] leading-snug transition-colors ${active ? "text-[var(--brand-to)] font-semibold" : "text-foreground hover:text-[var(--brand-to)]"}`}
+                      className={`group/c relative flex items-center gap-3 px-4 py-2.5 text-[13px] leading-snug transition-colors ${active ? "bg-white/10 text-white font-semibold" : "text-white/85 hover:bg-white/[0.07] hover:text-white"}`}
                     >
-                      <CategoryIcon name={c.name} className={`w-[20px] h-[20px] shrink-0 transition-colors ${active ? "text-[var(--brand-to)]" : "text-muted group-hover/c:text-[var(--brand-to)]"}`} />
+                      {/* Aktiv bölmədə sol vurğu zolağı (header menyusu ilə eyni) */}
+                      {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full" style={{ background: "var(--brand-from)" }} />}
+                      <CategoryIcon name={c.name} className={`w-[20px] h-[20px] shrink-0 transition-colors ${active ? "text-white" : "text-white/60 group-hover/c:text-white"}`} />
                       <span className="flex-1 line-clamp-2">{c.name}</span>
-                      {hasSubs && <svg className="w-3.5 h-3.5 text-muted-foreground shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+                      {hasSubs && <svg className="w-3.5 h-3.5 text-white/40 shrink-0 group-hover/c:text-white/80 group-hover/c:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                     </Link>
                   );
                 })}
               </nav>
-              {/* Bütün kateqoriyalar — referansdakı kimi altda vurğu rəngi ilə */}
-              <Link href="/elanlar" className="flex items-center gap-2 px-4 py-3 text-[13px] font-bold border-t border-card-border text-[var(--brand-to)] hover:bg-[var(--brand-soft)] transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+              {/* Bütün kateqoriyalar — altda vurğu rəngi ilə */}
+              <Link href="/elanlar" className="flex items-center gap-2 px-4 py-3 text-[13px] font-bold border-t border-white/10 text-white hover:bg-white/10 transition-colors">
+                <svg className="w-4 h-4" style={{ color: "var(--brand-from)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 Bütün kateqoriyalar
               </Link>
 
               {/* Alt-kateqoriya flyout-u — fixed (scroll konteynerindən kənar, kəsilmir) */}
               {hoverCat && (
                 <div
-                  style={{ position: "fixed", top: hoverCat.top, left: hoverCat.left }}
-                  className="z-[60] w-72 max-h-[72vh] overflow-y-auto bg-card border border-card-border rounded-2xl shadow-2xl p-2"
+                  style={{ position: "fixed", top: hoverCat.top, left: hoverCat.left, background: "var(--nav-dark)" }}
+                  className="z-[60] w-72 max-h-[72vh] overflow-y-auto rounded-2xl shadow-2xl p-2 text-white border border-white/10"
                 >
-                  <Link href={`/elanlar/${catToSlugs(hoverCat.cat.name).join("/")}`} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold text-[var(--brand-to)] hover:bg-[var(--brand-soft)]">
+                  <Link href={`/elanlar/${catToSlugs(hoverCat.cat.name).join("/")}`} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold text-white hover:bg-white/10">
                     <CategoryIcon name={hoverCat.cat.name} className="w-[18px] h-[18px]" /> {hoverCat.cat.name} — hamısı
                   </Link>
-                  <div className="border-t border-card-border my-1" />
+                  <div className="border-t border-white/10 my-1" />
                   {hoverCat.cat.subs.map((s: any) => (
                     <Link
                       key={s.name}
                       href={`/elanlar/${catToSlugs(buildCat(hoverCat.cat.name, s.name)).join("/")}`}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-foreground hover:bg-[var(--brand-soft)] hover:text-[var(--brand-to)] transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-white/85 hover:bg-white/10 hover:text-white transition-colors"
                     >
-                      <SubCategoryIcon name={s.name} parent={hoverCat.cat.name} className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                      <SubCategoryIcon name={s.name} parent={hoverCat.cat.name} className="w-[18px] h-[18px] text-white/50 shrink-0" />
                       <span className="truncate">{s.name}</span>
                     </Link>
                   ))}

@@ -49,8 +49,8 @@ function addRecentSearch(q: string) {
 
 // Vahid brend rəngi (globals.css orange-* remap ilə eyni — logo mavisi (#2f6bff)).
 const PINK = "#4348f8";           // əsas vurğu (istifadəçi seçimi)
-const NAV_DARK = "#111a2e";       // başlıq — tünd (Amazon üslubu)
-const NAV_DARK2 = "#1b2540";      // alt naviqasiya sətri
+const NAV_DARK = "var(--nav-dark)";   // başlıq — tünd (globals.css-də təyin olunub)
+const NAV_DARK2 = "var(--nav-dark2)"; // alt naviqasiya sətri
 
 export default function Navbar() {
   const { locale, setLocale, t } = useLanguage();

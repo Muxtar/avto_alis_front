@@ -28,6 +28,9 @@
   --tile-to: #e2e6ff;
   --cta-from: #2563eb;
   --cta-to: #22b8cf;
+  /* Başlıq tonları — həm header, həm kateqoriya paneli eyni rəngi işlədir */
+  --nav-dark: #111a2e;
+  --nav-dark2: #1b2540;
 }
 
 /* Dark theme — activated via .dark class on <html> */
@@ -51,6 +54,9 @@
   --tile-to: rgba(79, 70, 229, 0.08);
   --cta-from: #3b82f6;
   --cta-to: #22b8cf;
+  /* Qaranlıq temada başlıq tonu bir az daha dərin */
+  --nav-dark: #0d1424;
+  --nav-dark2: #16203a;
 }
 
 @theme inline {
