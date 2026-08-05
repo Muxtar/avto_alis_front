@@ -37,17 +37,6 @@ interface Listing {
   _count?: { comments: number; favorites?: number };
 }
 
-function timeAgo(dateStr: string, t: any): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return t("justNow");
-  if (mins < 60) return `${mins} ${t("minutesAgo")} ${t("timeAgo")}`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} ${t("hoursAgo")} ${t("timeAgo")}`;
-  const days = Math.floor(hours / 24);
-  return `${days} ${t("daysAgo")} ${t("timeAgo")}`;
-}
-
 function isNew(dateStr: string): boolean {
   return Date.now() - new Date(dateStr).getTime() < 3 * 24 * 60 * 60 * 1000;
 }
@@ -133,7 +122,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
     <Link href={`/marketplace/${listing.id}`} className="block group">
       <div className="surface card-hover overflow-hidden h-full flex flex-col">
         {/* Image */}
-        <div className="aspect-square sm:aspect-[4/3] bg-input-bg overflow-hidden relative">
+        <div className="aspect-square sm:aspect-[4/3] tile-soft overflow-hidden relative">
           {/* Favori butonu */}
           {!isOwner && (
             <button
@@ -152,20 +141,23 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             <img src={listing.images[0].startsWith('http') ? listing.images[0] : `${imgUrl(listing.images[0])}`} alt={listing.title} loading="lazy"
               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-out" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center">
-              <svg className="w-12 h-12 text-muted-foreground/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-full h-full flex flex-col items-center justify-center gap-2 px-3">
+              <svg className="w-12 h-12 text-[var(--brand-to)]/60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 {isService ? (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z" />
                 ) : (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
                 )}
               </svg>
+              {/* Şəkil yoxdursa başlıq lavanda sahədə göstərilir (referans dizayn) */}
+              <span className="text-center text-[13px] font-bold text-foreground/75 line-clamp-2 leading-snug">{listing.title}</span>
             </div>
           )}
 
           {/* Top Badges — ürək düyməsi üçün sağda yer saxla + daşarsa alt sətrə keç */}
           <div className="absolute top-2 left-2 right-12 flex flex-wrap gap-1.5">
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm ${isService ? "bg-emerald-500/95 text-white" : "bg-orange-500/95 text-white"}`}>
+            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-md ${isService ? "bg-emerald-500 text-white shadow-emerald-500/25" : "cta-gradient shadow-[var(--cta-from)]/25"}`}>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12A1.125 1.125 0 0119.75 21.75H4.25a1.125 1.125 0 01-1.119-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" /></svg>
               {isService ? t("service") : t("product")}
             </span>
             {listing.createdAt && isNew(listing.createdAt) && (
@@ -194,13 +186,6 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </div>
           )}
 
-          {/* View count */}
-          {listing.viewCount !== undefined && listing.viewCount > 0 && (
-            <div className="absolute bottom-2 right-2 flex items-center gap-1 px-1.5 py-0.5 bg-black/50 backdrop-blur-sm rounded-md text-white text-[10px]">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-              {listing.viewCount}
-            </div>
-          )}
         </div>
 
         {/* Content */}
@@ -233,7 +218,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </div>
           )}
 
-          <h3 className="font-semibold text-sm sm:text-[15px] mb-1 line-clamp-1 group-hover:text-orange-500 transition-colors">{listing.title}</h3>
+          <h3 className="font-semibold text-sm sm:text-[15px] mb-1 line-clamp-1 group-hover:text-[var(--brand-to)] transition-colors">{listing.title}</h3>
 
           {/* Reytinq ulduzları — məhsul kartına canlılıq verir (birmarket üslubu) */}
           {listing.user.avgRating ? (
@@ -256,7 +241,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
                 </span>
               )}
               {listing.unit && listing.unitValue && (
-                <span className="px-1.5 py-0.5 bg-orange-500/10 text-orange-500 rounded text-[10px] font-medium">
+                <span className="px-1.5 py-0.5 bg-[var(--brand-soft)] text-[var(--brand-to)] rounded text-[10px] font-medium">
                   {listing.unitValue} {listing.unit === 'LITER' ? t("unitLiter") : listing.unit === 'KG' ? t("unitKg") : listing.unit === 'ML' ? t("unitMl") : listing.unit === 'PIECE' ? t("unitPiece") : listing.unit === 'METER' ? t("unitMeter") : listing.unit}
                 </span>
               )}
@@ -274,24 +259,21 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               <span className="brand-text font-extrabold text-xl sm:text-[22px] leading-none whitespace-nowrap">{formatPriceShort(listing.price)}</span>
               <span className="text-muted-foreground text-xs font-semibold ml-0.5 shrink-0">{t("azn")}</span>
             </div>
-            <div className="flex items-center gap-2 text-muted-foreground text-[10px] shrink-0">
-              {listing._count && listing._count.comments > 0 && (
-                <span className="flex items-center gap-0.5">
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                  {listing._count.comments}
-                </span>
-              )}
-              {listing.createdAt && <span>{timeAgo(listing.createdAt, t)}</span>}
-            </div>
+            {/* Kateqoriya çipi — referans dizayn */}
+            {listing.category && (
+              <span className="shrink-0 px-2.5 py-1 rounded-full bg-input-bg text-muted text-[10px] font-semibold max-w-[45%] truncate" title={listing.category}>
+                {listing.category.split(">").pop()?.trim()}
+              </span>
+            )}
           </div>
 
-          {/* Seller + Add to cart */}
-          <div className="flex items-center justify-between gap-2">
+          {/* Seller + statistika (referans dizayn: üst ayırıcı + avatar dairəsi) */}
+          <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-card-border">
             {listing.businessObject ? (
               /* VÖEN elan — məhsul obyektin adına satılır: şəxs yox, obyekt göstərilir */
               <span
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.location.href = `/object/${listing.businessObject!.id}`; }}
-                className="text-muted-foreground text-xs flex items-center gap-1 hover:text-orange-500 transition-colors cursor-pointer truncate"
+                className="text-muted-foreground text-xs flex items-center gap-1 hover:text-[var(--brand-to)] transition-colors cursor-pointer truncate"
               >
                 <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5" /></svg>
                 <span className="truncate">{listing.businessObject.name}</span>
@@ -300,38 +282,56 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             ) : (
               <span
                 onClick={(e) => { if (listing.user.id) { e.preventDefault(); e.stopPropagation(); window.location.href = `/seller/${listing.user.id}`; } }}
-                className="text-muted-foreground text-xs flex items-center gap-1 hover:text-orange-500 transition-colors cursor-pointer truncate"
+                className="text-foreground/80 text-xs flex items-center gap-2 hover:text-[var(--brand-to)] transition-colors cursor-pointer truncate min-w-0"
               >
-                <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                <span className="truncate">{listing.user.name}</span>
+                <span className="w-7 h-7 rounded-full bg-[var(--brand-soft)] text-[var(--brand-to)] flex items-center justify-center text-[11px] font-bold shrink-0">
+                  {(listing.user.name || "?").charAt(0).toUpperCase()}
+                </span>
+                <span className="truncate font-medium">{listing.user.name}</span>
               </span>
             )}
-            {canBuy && (
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  onClick={buyNow}
-                  disabled={adding}
-                  className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-semibold hover:opacity-90 active:scale-95 transition-all disabled:opacity-50 whitespace-nowrap"
-                >
-                  ⚡ İndi al
-                </button>
-                <button
-                  onClick={handleAddToCart}
-                  disabled={adding}
-                  title={t("addToCart")}
-                  className={`p-2 rounded-lg transition-all active:scale-95 ${
-                    added ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25' : 'bg-orange-500/10 text-orange-500 hover:bg-orange-500 hover:text-white hover:shadow-md hover:shadow-orange-500/25'
-                  } disabled:opacity-50`}
-                >
-                  {added ? (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
-                  ) : (
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
-                  )}
-                </button>
-              </div>
-            )}
+            {/* Bəyənmə / baxış sayı — referans dizayndakı kimi sağda */}
+            <div className="flex items-center gap-2.5 text-muted-foreground text-[11px] shrink-0">
+              <span className="inline-flex items-center gap-1">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                {listing._count?.favorites ?? 0}
+              </span>
+              {listing.viewCount !== undefined && (
+                <span className="inline-flex items-center gap-1">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  {listing.viewCount}
+                </span>
+              )}
+            </div>
           </div>
+
+          {/* Tam enli CTA — referans dizayn */}
+          {canBuy && (
+            <div className="flex items-center gap-2 mt-3">
+              <button
+                onClick={buyNow}
+                disabled={adding}
+                className="flex-1 inline-flex items-center justify-center gap-2 py-2.5 rounded-xl cta-gradient text-sm font-bold shadow-lg shadow-[var(--cta-from)]/20"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12A1.125 1.125 0 0119.75 21.75H4.25a1.125 1.125 0 01-1.119-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" /></svg>
+                İndi al
+              </button>
+              <button
+                onClick={handleAddToCart}
+                disabled={adding}
+                title={t("addToCart")}
+                className={`p-2.5 rounded-xl transition-all active:scale-95 shrink-0 ${
+                  added ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/25' : 'bg-[var(--brand-soft)] text-[var(--brand-to)] hover:brightness-95'
+                } disabled:opacity-50`}
+              >
+                {added ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </Link>

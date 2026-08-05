@@ -230,7 +230,7 @@ export default function ListingDetailPage() {
   if (loading) {
     return (
       <div className="min-h-[calc(100vh-64px)] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[var(--brand-to)] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -254,10 +254,10 @@ export default function ListingDetailPage() {
         if (!main) return null;
         return (
           <nav className="flex items-center gap-1.5 text-xs text-muted mb-3 flex-wrap">
-            <Link href="/elanlar" className="hover:text-orange-500 transition-colors">Ana səhifə</Link>
+            <Link href="/elanlar" className="hover:text-[var(--brand-to)] transition-colors">Ana səhifə</Link>
             <span className="text-muted-foreground/50">›</span>
-            <Link href={`/elanlar/${slugs[0]}`} className="hover:text-orange-500 transition-colors">{main}</Link>
-            {sub && (<><span className="text-muted-foreground/50">›</span><Link href={`/elanlar/${slugs[0]}/${slugs[1]}`} className="hover:text-orange-500 transition-colors">{sub}</Link></>)}
+            <Link href={`/elanlar/${slugs[0]}`} className="hover:text-[var(--brand-to)] transition-colors">{main}</Link>
+            {sub && (<><span className="text-muted-foreground/50">›</span><Link href={`/elanlar/${slugs[0]}/${slugs[1]}`} className="hover:text-[var(--brand-to)] transition-colors">{sub}</Link></>)}
           </nav>
         );
       })()}
@@ -268,7 +268,7 @@ export default function ListingDetailPage() {
             dartılıb bir şəkildə boşluq yaradırdı; indi axın təbii, boşluq yoxdur.) */}
         <div className="order-1 lg:col-span-3 space-y-4 sm:space-y-6 min-w-0">
           <div className="bg-card border border-card-border rounded-2xl overflow-hidden">
-            <div className="relative aspect-video bg-input-bg flex items-center justify-center group">
+            <div className="relative aspect-video tile-soft flex items-center justify-center group">
               {listing.images?.length > 0 ? (
                 <>
                 <img
@@ -322,7 +322,7 @@ export default function ListingDetailPage() {
                       type="button"
                       onClick={() => setActiveImageIdx(idx)}
                       className={`relative shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border-2 transition-all ${
-                        isActive ? "border-orange-500 shadow-md shadow-orange-500/25" : "border-transparent opacity-70 hover:opacity-100"
+                        isActive ? "border-[var(--brand-to)] shadow-md shadow-[var(--brand-to)]/25" : "border-transparent opacity-70 hover:opacity-100"
                       }`}
                       aria-label={`Şəkil ${idx + 1}`}
                     >
@@ -355,7 +355,7 @@ export default function ListingDetailPage() {
                 {getListingFields(parseCat(listing.category).main).includes("condition") && listing.condition && (
                   <div>
                     <p className="text-muted text-xs mb-1">{t("condition")}</p>
-                    <p className={`font-medium ${listing.condition === 'NEW' ? 'text-green-500' : listing.condition === 'USED' ? 'text-orange-500' : 'text-blue-500'}`}>
+                    <p className={`font-medium ${listing.condition === 'NEW' ? 'text-green-500' : listing.condition === 'USED' ? 'text-[var(--brand-to)]' : 'text-blue-500'}`}>
                       {listing.condition === 'NEW' ? t("conditionNew") : listing.condition === 'USED' ? t("conditionUsed") : t("conditionRefurbished")}
                     </p>
                   </div>
@@ -406,7 +406,7 @@ export default function ListingDetailPage() {
                   <div className="col-span-2 sm:col-span-3">
                     <p className="text-muted text-xs mb-1">{t("forVehicle")}</p>
                     <p className="font-medium flex items-center gap-1.5">
-                      <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125v-3.375" /></svg>
+                      <svg className="w-4 h-4 text-[var(--brand-to)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125v-3.375" /></svg>
                       {listing.forVehicle}
                     </p>
                   </div>
@@ -414,7 +414,7 @@ export default function ListingDetailPage() {
                 {listing.unit && listing.unitValue && (
                   <div>
                     <p className="text-muted text-xs mb-1">{t("unitValue")}</p>
-                    <p className="font-medium text-orange-500">
+                    <p className="font-medium text-[var(--brand-to)]">
                       {listing.unitValue} {listing.unit === 'LITER' ? t("unitLiter") : listing.unit === 'KG' ? t("unitKg") : listing.unit === 'ML' ? t("unitMl") : listing.unit === 'PIECE' ? t("unitPiece") : listing.unit === 'METER' ? t("unitMeter") : listing.unit}
                     </p>
                   </div>
@@ -466,7 +466,7 @@ export default function ListingDetailPage() {
           {/* Comments */}
           <div id="reviews" className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 mt-4 scroll-mt-20">
             <h3 className="font-semibold mb-4 flex items-center gap-2 flex-wrap">
-              <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+              <svg className="w-5 h-5 text-[var(--brand-to)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
               {t("comments")} ({listing.comments?.length || 0})
               {(() => {
                 const rs = (listing.comments || []).map((c: any) => c.rating).filter((r: number) => r >= 1 && r <= 5);
@@ -478,7 +478,7 @@ export default function ListingDetailPage() {
 
             {!isLoggedIn ? (
               <div className="mb-4 text-center py-3 bg-input-bg border border-input-border rounded-xl text-muted text-sm">
-                <Link href="/" className="text-orange-500 hover:text-orange-400">{t("loginToComment")}</Link>
+                <Link href="/" className="text-[var(--brand-to)] hover:opacity-80">{t("loginToComment")}</Link>
               </div>
             ) : (listing.comments || []).some((c: any) => c.user?.id === user?.id) ? (
               <div className="mb-4 text-center py-2.5 bg-input-bg border border-input-border rounded-xl text-muted text-xs">Bu məhsula rəyinizi yazmısınız — aşağıdan dəyişə/silə bilərsiniz</div>
@@ -489,7 +489,7 @@ export default function ListingDetailPage() {
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((n) => (
                     <button key={n} type="button" onClick={() => setCommentRating(n)} className="text-2xl leading-none">
-                      <span className={n <= commentRating ? "text-orange-500" : "text-muted/40"}>★</span>
+                      <span className={n <= commentRating ? "text-[var(--brand-to)]" : "text-muted/40"}>★</span>
                     </button>
                   ))}
                   <span className="text-xs text-muted ml-1">{commentRating ? `${commentRating}/5` : "reytinq (istəyə bağlı)"}</span>
@@ -497,9 +497,9 @@ export default function ListingDetailPage() {
                 <div className="flex gap-2">
                   <input type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)}
                     placeholder={t("commentPlaceholder")}
-                    className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
+                    className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--brand-to)]/50 placeholder-muted-foreground" />
                   <button onClick={handleAddComment} disabled={!commentText.trim() || commentSending}
-                    className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50">
+                    className="px-4 py-2.5 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl text-white text-sm font-medium hover:brightness-110 transition-all disabled:opacity-50">
                     {t("addComment")}
                   </button>
                 </div>
@@ -509,7 +509,7 @@ export default function ListingDetailPage() {
               // Ayrıca "Satıcıdan soruş" inputu YOXDUR — aşağıda "Mesaj yaz"
               // kartı onsuz da mövcuddur (istifadəçi tələbi).
               <div className="mb-4 flex items-center gap-2 text-xs text-muted bg-input-bg border border-input-border rounded-xl px-3 py-2.5">
-                <svg className="w-4 h-4 text-orange-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <svg className="w-4 h-4 text-[var(--brand-to)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                 Rəyi məhsulu aldıqdan sonra yaza bilərsiniz. Sualınız varsa aşağıdan satıcıya mesaj yazın.
               </div>
             )}
@@ -525,28 +525,28 @@ export default function ListingDetailPage() {
                   const isMine = isLoggedIn && user?.id === c.user.id;
                   const isEditing = editingCommentId === c.id;
                   return (
-                    <div key={c.id} className={`flex gap-3 p-3.5 rounded-2xl border transition-colors ${isMine ? "bg-orange-500/[0.04] border-orange-500/15" : "bg-input-bg/50 border-transparent"}`}>
+                    <div key={c.id} className={`flex gap-3 p-3.5 rounded-2xl border transition-colors ${isMine ? "bg-[var(--brand-soft)] border-[var(--brand-to)]/15" : "bg-input-bg/50 border-transparent"}`}>
                       {c.user.avatar ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={`${imgUrl(c.user.avatar)}`} alt={c.user.name} className="w-10 h-10 rounded-full object-cover shrink-0 shadow-sm" />
                       ) : (
-                        <div className="w-10 h-10 bg-gradient-to-br from-orange-500 to-orange-600 rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
+                        <div className="w-10 h-10 bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)] rounded-full flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
                           {c.user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <Link href={`/seller/${c.user.id}`} className="font-semibold text-sm hover:text-orange-500 transition-colors truncate">{c.user.name}</Link>
-                          {isMine && <span className="px-1.5 py-0.5 bg-orange-500/10 text-orange-500 rounded text-[9px] font-bold shrink-0">SİZ</span>}
+                          <Link href={`/seller/${c.user.id}`} className="font-semibold text-sm hover:text-[var(--brand-to)] transition-colors truncate">{c.user.name}</Link>
+                          {isMine && <span className="px-1.5 py-0.5 bg-[var(--brand-soft)] text-[var(--brand-to)] rounded text-[9px] font-bold shrink-0">SİZ</span>}
                           <span className="text-muted text-[11px] shrink-0 ml-auto">{new Date(c.createdAt).toLocaleDateString("az-AZ", { day: "numeric", month: "short" })}</span>
                         </div>
                         {isEditing ? (
                           <div className="mt-1.5 space-y-2">
                             <textarea value={editingText} onChange={(e) => setEditingText(e.target.value)} rows={2} autoFocus
-                              className="w-full px-3 py-2 bg-card border border-orange-500/40 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-orange-500/40" />
+                              className="w-full px-3 py-2 bg-card border border-[var(--brand-to)]/40 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[var(--brand-to)]/40" />
                             <div className="flex gap-2">
                               <button onClick={saveEditedComment} disabled={commentBusy || !editingText.trim()}
-                                className="px-3.5 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold disabled:opacity-50">{commentBusy ? "..." : "Yadda saxla"}</button>
+                                className="px-3.5 py-1.5 bg-[var(--brand-to)] text-white rounded-lg text-xs font-semibold disabled:opacity-50">{commentBusy ? "..." : "Yadda saxla"}</button>
                               <button onClick={() => { setEditingCommentId(null); setEditingText(""); }}
                                 className="px-3.5 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs">İmtina</button>
                             </div>
@@ -558,7 +558,7 @@ export default function ListingDetailPage() {
                         {isMine && !isEditing && (
                           <div className="flex gap-3 mt-1.5">
                             <button onClick={() => { setEditingCommentId(c.id); setEditingText(c.content); }}
-                              className="text-[11px] text-muted hover:text-orange-500 font-medium transition-colors">✎ Dəyiş</button>
+                              className="text-[11px] text-muted hover:text-[var(--brand-to)] font-medium transition-colors">✎ Dəyiş</button>
                             <button onClick={() => deleteComment(c.id)} disabled={commentBusy}
                               className="text-[11px] text-muted hover:text-red-500 font-medium transition-colors disabled:opacity-50">✕ Sil</button>
                           </div>
@@ -579,13 +579,13 @@ export default function ListingDetailPage() {
           {/* Price Card */}
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
             <div className={`inline-block px-2.5 py-1 rounded-lg text-xs font-medium mb-3 ${
-              isService ? "bg-green-500/10 text-green-500" : "bg-orange-500/10 text-orange-500"
+              isService ? "bg-green-500/10 text-green-500" : "bg-[var(--brand-soft)] text-[var(--brand-to)]"
             }`}>
               {isService ? t("service") : t("product")}
             </div>
             <div className="flex items-start justify-between gap-2 mb-2">
               <h1 className="text-xl sm:text-2xl font-bold">{listing.title}</h1>
-              <ShareButton title={listing.title} text={`${listing.title} — tradixai`} path={`/marketplace/${listing.id}`} listingId={listing.id} compact className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+              <ShareButton title={listing.title} text={`${listing.title} — tradixai`} path={`/marketplace/${listing.id}`} listingId={listing.id} compact className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-[var(--brand-to)] hover:border-[var(--brand-to)]/50 transition-all" />
             </div>
             {/* Reytinq + məhsulun kodu (birmarket üslubu) */}
             <div className="flex items-center gap-3 mb-3 flex-wrap">
@@ -627,11 +627,11 @@ export default function ListingDetailPage() {
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={avatarUrl} alt={prof.name} className="w-11 h-11 rounded-full object-cover" />
                     ) : (
-                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white text-sm font-bold">{isVoen ? "🏪" : initials}</div>
+                      <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)] flex items-center justify-center text-white text-sm font-bold">{isVoen ? "🏪" : initials}</div>
                     )}
                   </Link>
                   <div className="min-w-0 flex-1">
-                    <Link href={profHref} className="font-semibold text-sm hover:text-orange-500 transition-colors truncate block">
+                    <Link href={profHref} className="font-semibold text-sm hover:text-[var(--brand-to)] transition-colors truncate block">
                       {prof.name}{isVoen ? ` (№${listing.businessObject.id})` : ""}
                     </Link>
                     <div className="flex items-center gap-1.5 text-xs flex-wrap mt-0.5">
@@ -641,16 +641,16 @@ export default function ListingDetailPage() {
                         <span className="text-muted">Yeni satıcı</span>
                       )}
                       <span className="text-muted-foreground/50">·</span>
-                      <Link href={profHref} className="text-muted hover:text-orange-500 underline-offset-2 hover:underline">Digər elanları</Link>
+                      <Link href={profHref} className="text-muted hover:text-[var(--brand-to)] underline-offset-2 hover:underline">Digər elanları</Link>
                       {canMsg && (
                         <>
                           <span className="text-muted-foreground/50">·</span>
-                          <a href="#message" className="text-muted hover:text-orange-500 underline-offset-2 hover:underline">Mesaj</a>
+                          <a href="#message" className="text-muted hover:text-[var(--brand-to)] underline-offset-2 hover:underline">Mesaj</a>
                         </>
                       )}
                     </div>
                   </div>
-                  <Link href={profHref} className="shrink-0 text-muted hover:text-orange-500" aria-label="Profilə bax">
+                  <Link href={profHref} className="shrink-0 text-muted hover:text-[var(--brand-to)]" aria-label="Profilə bax">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
                   </Link>
                 </div>
@@ -659,7 +659,7 @@ export default function ListingDetailPage() {
 
             {/* Çox böyük qiymətlər qutudan daşmasın: qısa format + tam dəyər title-da */}
             <div className="flex items-baseline flex-wrap gap-x-1.5 mb-3 min-w-0" title={`${formatPrice(listing.price)} ${t("azn")}`}>
-              <span className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-orange-500 to-orange-600 bg-clip-text text-transparent break-words min-w-0">
+              <span className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] bg-clip-text text-transparent break-words min-w-0">
                 {formatPriceShort(listing.price)}
               </span>
               <span className="text-foreground/70 text-base font-semibold">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
@@ -668,7 +668,7 @@ export default function ListingDetailPage() {
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 {listing.forRent && <span className="px-2.5 py-1 bg-indigo-500/10 text-indigo-500 rounded-lg text-xs font-semibold">🔑 İcarəyə verilir</span>}
                 {listing.barter && <span className="px-2.5 py-1 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-semibold">🔄 Barter (dəyiş-düş) qəbul olunur</span>}
-                {listing.bookable && <span className="px-2.5 py-1 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-semibold">📅 {listing.bookingType === "STAY" ? "Gecələmə bronu" : "Rezervasiya"}</span>}
+                {listing.bookable && <span className="px-2.5 py-1 bg-[var(--brand-soft)] text-[var(--brand-to)] rounded-lg text-xs font-semibold">📅 {listing.bookingType === "STAY" ? "Gecələmə bronu" : "Rezervasiya"}</span>}
                 {listing.weightKg ? <span className="px-2.5 py-1 bg-input-bg text-muted rounded-lg text-xs font-semibold">⚖️ {listing.weightKg} kq</span> : null}
               </div>
             )}
@@ -676,7 +676,7 @@ export default function ListingDetailPage() {
             {getListingFields(parseCat(listing.category).main).includes("condition") && listing.condition && (
               <div className="flex items-center gap-2 text-sm mb-3">
                 <span className="text-muted">{t("condition")}:</span>
-                <span className={`font-semibold ${listing.condition === 'NEW' ? 'text-green-600' : listing.condition === 'USED' ? 'text-orange-500' : 'text-blue-500'}`}>
+                <span className={`font-semibold ${listing.condition === 'NEW' ? 'text-green-600' : listing.condition === 'USED' ? 'text-[var(--brand-to)]' : 'text-blue-500'}`}>
                   {listing.condition === 'NEW' ? t("conditionNew") : listing.condition === 'USED' ? t("conditionUsed") : t("conditionRefurbished")}
                 </span>
               </div>
@@ -693,7 +693,7 @@ export default function ListingDetailPage() {
               <div className="flex gap-2 mb-3">
                 <Link
                   href={`/account?edit=${listing.id}`}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-[var(--brand-to)]/20"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -716,7 +716,7 @@ export default function ListingDetailPage() {
             {/* Bron / rezervasiya — sahib olmayanlar üçün */}
             {listing.bookable && user?.id !== listing.user.id && (
               <button onClick={() => { if (!isLoggedIn) { router.push("/"); return; } setBk((p) => ({ ...p, contactPhone: p.contactPhone || (user?.phone || "") })); setBookingOpen(true); }}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20 mb-3">
+                className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-[var(--brand-to)]/20 mb-3">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                 {listing.bookingType === "STAY" ? "Otağı bron et" : "Bron et / Rezervasiya"}
               </button>
@@ -738,13 +738,27 @@ export default function ListingDetailPage() {
                     </div>
                     {user?.id !== listing.user.id && (
                       <button onClick={toggleFavorite} disabled={favBusy}
-                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all mb-2 disabled:opacity-50 ${isFavorited ? "bg-orange-500/10 text-orange-500 border border-orange-500/40" : "bg-input-bg border border-input-border text-foreground hover:border-orange-500/50"}`}>
+                        className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all mb-2 disabled:opacity-50 ${isFavorited ? "bg-[var(--brand-soft)] text-[var(--brand-to)] border border-[var(--brand-to)]/40" : "bg-input-bg border border-input-border text-foreground hover:border-[var(--brand-to)]/50"}`}>
                         <svg className="w-5 h-5" fill={isFavorited ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                         {isFavorited ? "Seçilmişlərdədir ✓" : "Seçilmişlərə əlavə et"}
                       </button>
                     )}
                   </>
                 )}
+                {/* Etibar plitələri — referans dizayn */}
+                <div className="grid grid-cols-3 gap-2 mb-3">
+                  {[
+                    { icon: "🛡️", label: "Təhlükəsiz ödəniş", cls: "bg-emerald-500/10 text-emerald-600" },
+                    { icon: "🚚", label: "Tez göndərmə", cls: "bg-sky-500/10 text-sky-600" },
+                    { icon: "↩️", label: "Alıcı qoruması", cls: "bg-[var(--brand-soft)] text-[var(--brand-to)]" },
+                  ].map((f) => (
+                    <div key={f.label} className={`rounded-xl px-2 py-2.5 text-center ${f.cls}`}>
+                      <div className="text-base leading-none mb-1">{f.icon}</div>
+                      <div className="text-[10px] font-semibold leading-tight">{f.label}</div>
+                    </div>
+                  ))}
+                </div>
+
                 {listing.businessId && isLoggedIn && user?.id !== listing.user.id && listing.stock > 0 && (
                   <>
                     {cartAdded && <div className="mb-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg text-green-500 text-xs text-center">{t("addedToCart")}</div>}
@@ -754,18 +768,18 @@ export default function ListingDetailPage() {
                       <button onClick={() => setCartQty(Math.min(listing.stock, cartQty + 1))} className="w-8 h-8 bg-input-bg border border-input-border rounded-lg flex items-center justify-center hover:opacity-80">+</button>
                     </div>
                     <button onClick={handleBuyNow} disabled={cartAdding}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50 mb-2">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                      {t("buyNow")}
+                      className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl cta-gradient font-bold text-[15px] shadow-lg shadow-[var(--cta-from)]/25 mb-2">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12A1.125 1.125 0 0119.75 21.75H4.25a1.125 1.125 0 01-1.119-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" /></svg>
+                      {t("buyNow")} — {formatPrice(listing.price * cartQty)} {t("azn")}
                     </button>
                     <button onClick={handleAddToCart} disabled={cartAdding}
-                      className="w-full flex items-center justify-center gap-2 py-3 bg-input-bg border border-input-border rounded-xl font-semibold text-foreground hover:border-orange-500/50 transition-all disabled:opacity-50 mb-2">
+                      className="w-full flex items-center justify-center gap-2 py-3 bg-input-bg border border-input-border rounded-xl font-semibold text-foreground hover:border-[var(--brand-to)]/50 transition-all disabled:opacity-50 mb-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
                       {t("addToCart")}
                     </button>
                     {/* Watchlist (Seçilmişlər) — eBay üslubu üçüncü düymə */}
                     <button onClick={toggleFavorite} disabled={favBusy}
-                      className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 ${isFavorited ? "bg-orange-500/10 text-orange-500 border border-orange-500/40" : "bg-input-bg border border-input-border text-foreground hover:border-orange-500/50"}`}>
+                      className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all disabled:opacity-50 ${isFavorited ? "bg-[var(--brand-soft)] text-[var(--brand-to)] border border-[var(--brand-to)]/40" : "bg-input-bg border border-input-border text-foreground hover:border-[var(--brand-to)]/50"}`}>
                       <svg className="w-5 h-5" fill={isFavorited ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                       {isFavorited ? "Seçilmişlərdədir ✓" : "Seçilmişlərə əlavə et"}
                     </button>
@@ -781,9 +795,9 @@ export default function ListingDetailPage() {
             <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
               <h3 className="font-semibold mb-4">Obyekt məlumatı</h3>
               <Link href={`/object/${listing.businessObject.id}`} className="flex items-center gap-3 mb-4 group">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white text-xl shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all">🏪</div>
+                <div className="w-12 h-12 bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl flex items-center justify-center text-white text-xl shrink-0 group-hover:shadow-lg group-hover:shadow-[var(--brand-to)]/20 transition-all">🏪</div>
                 <div className="min-w-0">
-                  <p className="font-medium group-hover:text-orange-500 transition-colors truncate">{listing.businessObject.name}</p>
+                  <p className="font-medium group-hover:text-[var(--brand-to)] transition-colors truncate">{listing.businessObject.name}</p>
                   <p className="text-muted text-xs truncate">
                     Obyekt №{listing.businessObject.id}{listing.businessObject.business?.name ? ` · ${listing.businessObject.business.name}` : ""}
                   </p>
@@ -792,7 +806,7 @@ export default function ListingDetailPage() {
 
               {/* Obyektin reytinqi — obyekti açmadan burada görünür (5 ulduz + bəyən/bəyənmə %) */}
               {listing.businessObject.rating && listing.businessObject.rating.count > 0 ? (
-                <Link href={`/object/${listing.businessObject.id}`} className="block mb-4 rounded-xl border border-card-border bg-input-bg/40 p-3 hover:border-orange-500/40 transition-colors">
+                <Link href={`/object/${listing.businessObject.id}`} className="block mb-4 rounded-xl border border-card-border bg-input-bg/40 p-3 hover:border-[var(--brand-to)]/40 transition-colors">
                   <div className="flex items-center flex-wrap gap-x-2.5 gap-y-1.5">
                     <span className="inline-flex items-center gap-0.5">
                       {[1, 2, 3, 4, 5].map((n) => (
@@ -808,7 +822,7 @@ export default function ListingDetailPage() {
                   <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted">
                     <span className="text-green-600 font-medium">👍 {listing.businessObject.rating.likes}</span>
                     <span className="text-red-500 font-medium">👎 {listing.businessObject.rating.dislikes}</span>
-                    <span className="ml-auto text-orange-500">Rəyləri gör →</span>
+                    <span className="ml-auto text-[var(--brand-to)]">Rəyləri gör →</span>
                   </div>
                 </Link>
               ) : (
@@ -823,7 +837,7 @@ export default function ListingDetailPage() {
                   </svg>
                   <div className="flex-1">
                     {listing.businessObject.city && (
-                      <Link href={`/locations/${encodeURIComponent(listing.businessObject.city)}`} className="font-medium text-foreground hover:text-orange-500 transition-colors">
+                      <Link href={`/locations/${encodeURIComponent(listing.businessObject.city)}`} className="font-medium text-foreground hover:text-[var(--brand-to)] transition-colors">
                         {listing.businessObject.city}
                       </Link>
                     )}
@@ -844,7 +858,7 @@ export default function ListingDetailPage() {
               )}
 
               {/* Əlaqə yalnız sayt daxili chat ilə — telefon nömrəsi göstərilmir. */}
-              <a href="#message" className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20">
+              <a href="#message" className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-[var(--brand-to)]/20">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
                 Mesaj yaz
               </a>
@@ -855,14 +869,14 @@ export default function ListingDetailPage() {
             <Link href={`/seller/${listing.user.id}`} className="flex items-center gap-3 mb-4 group">
               {listing.user.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${imgUrl(listing.user.avatar)}`} alt={listing.user.name} className="w-12 h-12 rounded-xl object-cover shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all" />
+                <img src={`${imgUrl(listing.user.avatar)}`} alt={listing.user.name} className="w-12 h-12 rounded-xl object-cover shrink-0 group-hover:shadow-lg group-hover:shadow-[var(--brand-to)]/20 transition-all" />
               ) : (
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:shadow-lg group-hover:shadow-orange-500/20 transition-all">
+                <div className="w-12 h-12 bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl flex items-center justify-center text-white font-bold text-sm shrink-0 group-hover:shadow-lg group-hover:shadow-[var(--brand-to)]/20 transition-all">
                   {listing.user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
                 </div>
               )}
               <div>
-                <p className="font-medium group-hover:text-orange-500 transition-colors">{listing.user.name}</p>
+                <p className="font-medium group-hover:text-[var(--brand-to)] transition-colors">{listing.user.name}</p>
                 <p className="text-muted text-xs">{t("sellerProfile")} &rarr;</p>
               </div>
             </Link>
@@ -881,7 +895,7 @@ export default function ListingDetailPage() {
                   {(listing.city || listing.user.city) && (
                     <Link
                       href={`/locations/${encodeURIComponent(listing.city || listing.user.city)}`}
-                      className="font-medium text-foreground hover:text-orange-500 transition-colors"
+                      className="font-medium text-foreground hover:text-[var(--brand-to)] transition-colors"
                     >
                       {listing.city || listing.user.city}
                     </Link>
@@ -906,7 +920,7 @@ export default function ListingDetailPage() {
             )}
 
             {/* Əlaqə yalnız sayt daxili chat ilə — telefon nömrəsi göstərilmir. */}
-            <a href="#message" className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-orange-500/20">
+            <a href="#message" className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-[var(--brand-to)]/20">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
               Mesaj yaz
             </a>
@@ -916,7 +930,7 @@ export default function ListingDetailPage() {
           {/* Message Card */}
           <div id="message" className="bg-card border border-card-border rounded-2xl p-4 sm:p-6 scroll-mt-20">
             <h3 className="font-semibold mb-3 flex items-center gap-2">
-              <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
+              <svg className="w-5 h-5 text-[var(--brand-to)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
               {t("sendMessage")}
             </h3>
             {isLoggedIn && user?.id !== listing.user.id ? (
@@ -931,12 +945,12 @@ export default function ListingDetailPage() {
                   value={msgText}
                   onChange={(e) => setMsgText(e.target.value)}
                   placeholder={t("messagePlaceholder")}
-                  className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground resize-none mb-3"
+                  className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--brand-to)]/50 placeholder-muted-foreground resize-none mb-3"
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={msgSending || !msgText.trim()}
-                  className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-medium text-white text-sm hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50"
+                  className="w-full py-2.5 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl font-medium text-white text-sm hover:brightness-110 transition-all disabled:opacity-50"
                 >
                   {msgSending ? "..." : t("sendMessage")}
                 </button>
@@ -1039,7 +1053,7 @@ export default function ListingDetailPage() {
               <div className="px-3 py-2 bg-input-bg rounded-xl text-[11px] text-muted">ℹ️ Bu, bron sorğusudur — sahib təsdiqlədikdən sonra qüvvəyə minir. Ödəniş yerində olur.</div>
 
               <button onClick={submitBooking} disabled={bookingBusy}
-                className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold disabled:opacity-50">
+                className="w-full py-3 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] text-white rounded-xl font-semibold disabled:opacity-50">
                 {bookingBusy ? "..." : "Bron sorğusu göndər"}
               </button>
             </div>
