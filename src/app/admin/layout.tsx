@@ -187,11 +187,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <aside className="h-full w-16 sm:w-56 bg-card border-r border-card-border flex flex-col shrink-0 transition-colors">
         <div className="p-3 sm:p-4 border-b border-card-border">
           <div className="hidden sm:flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center font-bold text-xs text-white">A</div>
+            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-sm shadow-teal-500/30">A</div>
             <span className="font-semibold text-sm">{t("adminPanel")}</span>
           </div>
           <div className="sm:hidden flex justify-center">
-            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center font-bold text-xs text-white">A</div>
+            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-sm shadow-teal-500/30">A</div>
           </div>
         </div>
 
@@ -202,14 +202,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             return (
               <Link key={link.href} href={link.href}
                 className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive ? "bg-orange-500/10 text-orange-500" : "text-muted hover:text-foreground hover:bg-input-bg"
+                  isActive
+                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 font-semibold"
+                    : "text-muted hover:text-foreground hover:bg-teal-500/[0.06]"
                 }`}>
+                {/* Titan üslubu — aktiv bölmədə sol yuvarlaq vurğu zolağı */}
+                {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-teal-500" />}
                 <span className="relative shrink-0">
                   {link.icon}
-                  {badge > 0 && <span className="sm:hidden absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-1 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{badge}</span>}
+                  {badge > 0 && <span className="sm:hidden absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-1 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{badge}</span>}
                 </span>
                 <span className="hidden sm:inline flex-1">{link.label}</span>
-                {badge > 0 && <span className="hidden sm:flex min-w-[20px] h-5 px-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full items-center justify-center">{badge}</span>}
+                {badge > 0 && <span className="hidden sm:flex min-w-[20px] h-5 px-1.5 bg-rose-500 text-white text-[10px] font-bold rounded-full items-center justify-center">{badge}</span>}
               </Link>
             );
           })}
