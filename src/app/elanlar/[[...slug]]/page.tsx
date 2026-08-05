@@ -502,9 +502,8 @@ function MarketplacePage() {
                 activeCount={activeFilterCount}
               />
             ) : (
-            <div className="sticky top-20 z-30 surface" onMouseLeave={() => setHoverCat(null)}>
-              <p className="px-4 py-3 text-sm font-bold border-b border-card-border">Kateqoriyalar</p>
-              <nav className="py-1 max-h-[60vh] overflow-y-auto">
+            <div className="sticky top-20 z-30 bg-card border border-card-border rounded-2xl overflow-hidden" onMouseLeave={() => setHoverCat(null)}>
+              <nav className="py-2 max-h-[62vh] overflow-y-auto">
                 {CATEGORIES.map((c) => {
                   const active = selectedCategory ? parseCat(selectedCategory).main === c.name : false;
                   const hasSubs = c.subs && c.subs.length > 0;
@@ -520,23 +519,28 @@ function MarketplacePage() {
                         const top = Math.max(8, Math.min(r.top, vh - est - 8));
                         setHoverCat({ cat: c, top, left: r.right });
                       }}
-                      className={`flex items-center gap-2.5 px-3 py-2 text-sm transition-colors ${active ? "text-orange-500 font-semibold bg-orange-500/10" : "text-foreground hover:bg-input-bg"}`}
+                      className={`group/c flex items-center gap-3 px-4 py-2.5 text-[13px] leading-snug transition-colors ${active ? "text-[var(--brand-to)] font-semibold" : "text-foreground hover:text-[var(--brand-to)]"}`}
                     >
-                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${active ? "bg-orange-500/15 text-orange-500" : "bg-input-bg text-muted"}`}><CategoryIcon name={c.name} className="w-[18px] h-[18px]" /></span>
-                      <span className="truncate flex-1">{c.name}</span>
-                      {hasSubs && <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+                      <CategoryIcon name={c.name} className={`w-[20px] h-[20px] shrink-0 transition-colors ${active ? "text-[var(--brand-to)]" : "text-muted group-hover/c:text-[var(--brand-to)]"}`} />
+                      <span className="flex-1 line-clamp-2">{c.name}</span>
+                      {hasSubs && <svg className="w-3.5 h-3.5 text-muted-foreground shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                     </Link>
                   );
                 })}
               </nav>
+              {/* Bütün kateqoriyalar — referansdakı kimi altda vurğu rəngi ilə */}
+              <Link href="/elanlar" className="flex items-center gap-2 px-4 py-3 text-[13px] font-bold border-t border-card-border text-[var(--brand-to)] hover:bg-[var(--brand-soft)] transition-colors">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                Bütün kateqoriyalar
+              </Link>
 
               {/* Alt-kateqoriya flyout-u — fixed (scroll konteynerindən kənar, kəsilmir) */}
               {hoverCat && (
                 <div
                   style={{ position: "fixed", top: hoverCat.top, left: hoverCat.left }}
-                  className="z-[60] w-64 max-h-[70vh] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl p-1.5"
+                  className="z-[60] w-72 max-h-[72vh] overflow-y-auto bg-card border border-card-border rounded-2xl shadow-2xl p-2"
                 >
-                  <Link href={`/elanlar/${catToSlugs(hoverCat.cat.name).join("/")}`} className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-orange-500 hover:bg-orange-500/10">
+                  <Link href={`/elanlar/${catToSlugs(hoverCat.cat.name).join("/")}`} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold text-[var(--brand-to)] hover:bg-[var(--brand-soft)]">
                     <CategoryIcon name={hoverCat.cat.name} className="w-[18px] h-[18px]" /> {hoverCat.cat.name} — hamısı
                   </Link>
                   <div className="border-t border-card-border my-1" />
@@ -544,7 +548,7 @@ function MarketplacePage() {
                     <Link
                       key={s.name}
                       href={`/elanlar/${catToSlugs(buildCat(hoverCat.cat.name, s.name)).join("/")}`}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-foreground hover:bg-input-bg transition-colors"
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-foreground hover:bg-[var(--brand-soft)] hover:text-[var(--brand-to)] transition-colors"
                     >
                       <SubCategoryIcon name={s.name} parent={hoverCat.cat.name} className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
                       <span className="truncate">{s.name}</span>
