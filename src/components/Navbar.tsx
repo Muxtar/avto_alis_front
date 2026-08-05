@@ -48,7 +48,9 @@ function addRecentSearch(q: string) {
 }
 
 // Vahid brend rəngi (globals.css orange-* remap ilə eyni — logo mavisi (#2f6bff)).
-const PINK = "#2f6bff";
+const PINK = "#4348f8";           // əsas vurğu (istifadəçi seçimi)
+const NAV_DARK = "#111a2e";       // başlıq — tünd (Amazon üslubu)
+const NAV_DARK2 = "#1b2540";      // alt naviqasiya sətri
 
 export default function Navbar() {
   const { locale, setLocale, t } = useLanguage();
@@ -303,50 +305,9 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50">
-      {/* ── Yuxarı utility bar ── */}
-      <div className="hidden md:block relative z-20 bg-input-bg/80 backdrop-blur border-b border-card-border">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-9 text-xs">
-            <div className="flex items-center gap-4">
-              <Link href="/elanlar" className="text-muted hover:text-foreground transition-colors">{t("marketplace")}</Link>
-              <Link href="/locations" className="text-muted hover:text-foreground transition-colors">{t("browseByLocation")}</Link>
-              {isLoggedIn && <Link href="/consultations" className="text-muted hover:text-foreground transition-colors">🗣️ Konsultasiya</Link>}
-              {isLoggedIn && <button type="button" onClick={() => window.dispatchEvent(new Event("toggle-inquiry-chat"))} className="text-muted hover:text-orange-500 transition-colors font-medium">✨ AI Köməkçi</button>}
-              <Link href={isLoggedIn ? "/account?new=1" : "/"} className="px-2.5 py-1 rounded-md text-white font-semibold hover:opacity-90 transition-opacity" style={{ background: PINK }}>tradixai-də sat</Link>
-            </div>
-            <div className="flex items-center gap-3">
-              {/* Theme */}
-              <button onClick={toggleTheme} suppressHydrationWarning className="text-muted hover:text-foreground transition-colors" title={mounted ? (theme === "dark" ? "Light" : "Dark") : ""}>
-                {!mounted ? null : theme === "dark" ? (
-                  <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
-                )}
-              </button>
-              {/* Language */}
-              <div ref={langRef} className="relative">
-                <button onClick={() => setLangOpen(!langOpen)} className="flex items-center gap-1.5 text-muted hover:text-foreground transition-colors">
-                  <span>{current.flag}</span><span className="font-medium">{current.label}</span>
-                  <svg className={`w-3 h-3 transition-transform ${langOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                </button>
-                {langOpen && (
-                  <div className="absolute right-0 mt-2 w-32 bg-card border border-card-border rounded-xl shadow-xl overflow-hidden z-50">
-                    {languages.map((lang) => (
-                      <button key={lang.code} onClick={() => { setLocale(lang.code); setLangOpen(false); }}
-                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${locale === lang.code ? "bg-input-bg text-foreground" : "hover:bg-input-bg text-foreground"}`}>
-                        <span>{lang.flag}</span><span className="font-medium">{lang.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      {/* ── Əsas başlıq ── */}
-      <div className="relative z-10 bg-card border-b border-card-border">
+      {/* ── Əsas başlıq (Amazon üslubu — tünd) ── */}
+      <div className="relative z-10 text-white" style={{ background: NAV_DARK }}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           {/* Telefonda iki sətir (flex-wrap): üstdə logo/kataloq/ikonlar,
               altda tam enli axtarış (order-last + basis-full). Masaüstündə
@@ -363,14 +324,17 @@ export default function Navbar() {
               <img src="/tradixai-icon.svg" alt="tradixai" className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0" />
               {/* Telefon ölçüsündə yalnız ikon — ana səhifəyə qayıtmaq üçün kifayətdir,
                   qalan yer axtarış sahəsinə verilir. */}
-              <span className="hidden sm:inline text-2xl sm:text-3xl font-extrabold tracking-tight" style={{ color: PINK }}>tradixai</span>
+              <span className="hidden sm:inline text-2xl sm:text-3xl font-extrabold tracking-tight text-white">tradixai</span>
             </Link>
 
             {/* Şəhər — yalnız çox geniş ekranda; həm də search-ə minməsin deyə
                 shrink oluna bilər (min-w-0), yer azalanda gizlənir. */}
-            <Link href="/locations" className="order-2 hidden 2xl:flex items-center gap-1.5 text-sm text-muted hover:text-foreground transition-colors min-w-0 overflow-hidden whitespace-nowrap">
-              <svg className="w-4 h-4" style={{ color: PINK }} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-              <span>Şəhər: <b className="text-foreground">Bakı</b></span>
+            <Link href="/locations" className="order-2 hidden xl:flex items-end gap-1.5 px-2 py-1.5 rounded-md hover:ring-1 hover:ring-white/40 transition-shadow min-w-0 overflow-hidden whitespace-nowrap">
+              <svg className="w-5 h-5 mb-0.5 text-white/90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+              <span className="leading-tight">
+                <span className="block text-[11px] text-white/60">Çatdırılma</span>
+                <span className="block text-[13px] font-bold text-white">Azərbaycan</span>
+              </span>
             </Link>
 
             {/* Kataloq — kateqoriya menyusu (telefonda da görünür, kompakt) */}
@@ -438,7 +402,13 @@ export default function Navbar() {
                 masaüstündə flex-1 ilə BÖYÜYÜB boş yeri tutur (əvvəl sabit max-w
                 ilə ortada kiçik qalıb ikonlardan uzaq idi). İncə kənar + bulanıq fon. */}
             <div ref={searchBoxRef} className="order-last basis-full w-full sm:order-none sm:basis-auto sm:flex-1 sm:w-auto relative min-w-0 sm:min-w-[160px]">
-            <form onSubmit={submitSearch} className="w-full flex items-stretch h-12 sm:h-13 overflow-hidden border transition-colors" style={{ borderColor: PINK }}>
+            <form onSubmit={submitSearch} className="w-full flex items-stretch h-11 sm:h-12 overflow-hidden rounded-lg bg-white shadow-sm focus-within:ring-2" style={{ boxShadow: "0 0 0 0px transparent" }}>
+              {/* Kateqoriya seçici — Amazon üslubu "Hamısı" */}
+              <button type="button" onClick={() => { setCatOpen((v) => !v); setCatHover(null); }}
+                className="hidden sm:flex items-center gap-1 px-3 bg-[#eef0f5] text-[#0f172a] text-xs font-semibold border-r border-[#d5d9e0] hover:bg-[#e3e7ee] transition-colors shrink-0">
+                Hamısı
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+              </button>
               <input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setSearchFocused(true); }}
@@ -446,7 +416,7 @@ export default function Navbar() {
                 onKeyDown={onSearchKeyDown}
                 autoComplete="off"
                 placeholder="Məhsul, xidmət, ad-soyad, şirkət — hər şeyi axtar"
-                className="flex-1 min-w-0 px-4 bg-card/70 backdrop-blur-md text-foreground text-sm sm:text-[15px] focus:outline-none placeholder-muted-foreground"
+                className="flex-1 min-w-0 px-3.5 bg-white text-[#0f172a] text-sm sm:text-[15px] focus:outline-none placeholder-[#8a94a6]"
               />
 
               {/* Şəkillə axtarış — axtarış sahəsinin içində */}
@@ -458,7 +428,7 @@ export default function Navbar() {
                 disabled={imgBusy}
                 title="Şəkil ilə axtar"
                 aria-label="Şəkil ilə axtar"
-                className="px-3 flex items-center justify-center bg-card/70 backdrop-blur-md text-muted hover:text-foreground disabled:opacity-60 transition-colors border-l border-card-border"
+                className="px-3 flex items-center justify-center bg-white text-[#64748b] hover:text-[#0f172a] disabled:opacity-60 transition-colors border-l border-[#e2e6ee]"
               >
                 {imgBusy ? (
                   <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" /></svg>
@@ -638,18 +608,26 @@ export default function Navbar() {
             <div className="order-3 ml-auto sm:ml-0 flex items-center justify-end gap-1.5 sm:gap-3 shrink-0">
               {isLoggedIn && <NotificationBell />}
 
-              <Link href="/favorites" className="flex flex-col items-center text-muted hover:text-foreground transition-colors" title={t("favorites")}>
+              <Link href="/favorites" className="flex flex-col items-center text-white/85 hover:text-white transition-colors px-1.5 py-1 rounded-md hover:ring-1 hover:ring-white/40" title={t("favorites")}>
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                 <span className="text-[10px] mt-0.5 hidden lg:inline">{t("favorites")}</span>
               </Link>
 
+              {/* Sifarişlər — Amazon üslubu iki sətirli blok */}
               {isLoggedIn && (
-                <Link href="/cart" className="relative flex flex-col items-center text-muted hover:text-foreground transition-colors" title={t("cart")}>
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
-                  <span className="text-[10px] mt-0.5 hidden sm:inline">{t("cart")}</span>
-                  {cartCount > 0 && (
-                    <span className="absolute -top-1 right-1 sm:right-2 w-4 h-4 text-white text-[10px] font-bold rounded-full flex items-center justify-center" style={{ background: PINK }}>{cartCount}</span>
-                  )}
+                <Link href="/orders" className="hidden lg:block px-2 py-1.5 rounded-md hover:ring-1 hover:ring-white/40 transition-shadow leading-tight whitespace-nowrap">
+                  <span className="block text-[11px] text-white/60">Qaytarma</span>
+                  <span className="block text-[13px] font-bold text-white">və Sifarişlər</span>
+                </Link>
+              )}
+
+              {isLoggedIn && (
+                <Link href="/cart" className="relative flex items-end gap-1 text-white/90 hover:text-white transition-colors px-1.5 py-1 rounded-md hover:ring-1 hover:ring-white/40" title={t("cart")}>
+                  <span className="relative">
+                    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
+                    <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 min-w-[18px] h-[18px] px-1 text-white text-[11px] font-extrabold rounded-full flex items-center justify-center" style={{ background: PINK }}>{cartCount}</span>
+                  </span>
+                  <span className="text-[13px] font-bold mb-0.5 hidden sm:inline">{t("cart")}</span>
                 </Link>
               )}
 
@@ -797,6 +775,47 @@ export default function Navbar() {
                   {t("loginRequired")}
                 </Link>
               )}
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* ── Alt naviqasiya sətri (Amazon üslubu) ── */}
+      <div className="hidden md:block relative z-20 text-white/90 shadow-sm" style={{ background: NAV_DARK2 }}>
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-10 text-[13px]">
+            <div className="flex items-center gap-4">
+              <Link href="/elanlar" className="text-white/85 hover:text-white transition-colors">{t("marketplace")}</Link>
+              <Link href="/locations" className="text-white/85 hover:text-white transition-colors">{t("browseByLocation")}</Link>
+              {isLoggedIn && <Link href="/consultations" className="text-white/85 hover:text-white transition-colors">🗣️ Konsultasiya</Link>}
+              {isLoggedIn && <button type="button" onClick={() => window.dispatchEvent(new Event("toggle-inquiry-chat"))} className="text-white/85 hover:text-white transition-colors font-medium">✨ AI Köməkçi</button>}
+              <Link href={isLoggedIn ? "/account?new=1" : "/"} className="px-2.5 py-1 rounded-md text-white font-semibold hover:opacity-90 transition-opacity" style={{ background: PINK }}>tradixai-də sat</Link>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Theme */}
+              <button onClick={toggleTheme} suppressHydrationWarning className="text-white/85 hover:text-white transition-colors" title={mounted ? (theme === "dark" ? "Light" : "Dark") : ""}>
+                {!mounted ? null : theme === "dark" ? (
+                  <svg className="w-4 h-4 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>
+                )}
+              </button>
+              {/* Language */}
+              <div ref={langRef} className="relative">
+                <button onClick={() => setLangOpen(!langOpen)} className="flex items-center gap-1.5 text-white/85 hover:text-white transition-colors">
+                  <span>{current.flag}</span><span className="font-medium">{current.label}</span>
+                  <svg className={`w-3 h-3 transition-transform ${langOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {langOpen && (
+                  <div className="absolute right-0 mt-2 w-32 bg-card border border-card-border rounded-xl shadow-xl overflow-hidden z-50">
+                    {languages.map((lang) => (
+                      <button key={lang.code} onClick={() => { setLocale(lang.code); setLangOpen(false); }}
+                        className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${locale === lang.code ? "bg-input-bg text-foreground" : "hover:bg-input-bg text-foreground"}`}>
+                        <span>{lang.flag}</span><span className="font-medium">{lang.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
