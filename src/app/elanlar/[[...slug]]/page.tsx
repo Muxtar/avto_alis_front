@@ -486,7 +486,7 @@ function MarketplacePage() {
 
       {/* Listings Grid with side ads */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
-        <div className="lg:grid lg:grid-cols-[230px_1fr] lg:gap-6">
+        <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-4">
           {/* Sol kateqoriya paneli (umico üslubu) — sabit hündürlük + scroll, hover-da sağda alt-kateqoriyalar */}
           <aside className="hidden lg:block">
             {selectedCategory ? (
@@ -565,7 +565,7 @@ function MarketplacePage() {
             {/* Ana səhifə hero: mərkəzdə karusel + sağda promo bannerlər (kateqoriyalar solda) */}
             {!selectedCategory && !searchQuery.trim() && (
               <>
-                <div className="grid lg:grid-cols-[1fr_300px] gap-3 sm:gap-4 mb-5 sm:mb-6">
+                <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-3 sm:gap-4 mb-3 sm:mb-4">
                   <HomeCarousel />
                   <SideBanners />
                 </div>

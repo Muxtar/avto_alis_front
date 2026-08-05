@@ -15,14 +15,34 @@ export default function SideBanners() {
       .catch(() => {});
   }, []);
 
-  if (items.length === 0) return null;
+  // Admin banner qoymayıbsa sahə boş qalmasın — saytın öz bölmələrinə aparan
+  // 3 plitə göstərilir (uydurma promo yox, real daxili linklər).
+  if (items.length === 0) {
+    const tiles = [
+      { href: "/elanlar?sort=newest", title: "Ən son elanlar", sub: "Yeni əlavə olunanlar", cls: "from-indigo-500 to-violet-600" },
+      { href: "/elanlar?type=PROFESSION", title: "İxtisas sahibləri", sub: "Peşəkardan onlayn rəy", cls: "from-sky-500 to-cyan-500" },
+      { href: "/locations", title: "Yer üzrə axtar", sub: "Yaxınlıqdakı elanlar", cls: "from-fuchsia-500 to-pink-500" },
+    ];
+    return (
+      <div className="hidden lg:flex flex-col gap-2 h-full">
+        {tiles.map((tl) => (
+          <a key={tl.href} href={tl.href}
+            className={`relative flex-1 min-h-[122px] rounded-xl overflow-hidden bg-gradient-to-br ${tl.cls} p-4 flex flex-col justify-center text-white hover:brightness-110 transition-all`}>
+            <span className="absolute -right-6 -bottom-8 w-28 h-28 rounded-full bg-white/15" />
+            <p className="text-[17px] font-extrabold leading-tight relative">{tl.title}</p>
+            <p className="text-[12px] text-white/85 mt-0.5 relative">{tl.sub}</p>
+          </a>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <motion.div className="hidden lg:flex flex-col gap-3 h-full" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}>
+    <motion.div className="hidden lg:flex flex-col gap-2 h-full" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}>
       {items.map((b) => {
         const src = /^(https?:|data:)/.test(b.image) ? b.image : imgUrl(b.image);
         const inner = (
-          <div className="relative flex-1 min-h-[110px] rounded-2xl overflow-hidden ring-1 ring-black/10 bg-black group/side">
+          <div className="relative flex-1 min-h-[122px] rounded-xl overflow-hidden ring-1 ring-black/10 bg-black group/side">
             {/* Bulanıq arxa fon — şəkil kəsilmir */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover blur-xl brightness-[0.6] scale-110" />
