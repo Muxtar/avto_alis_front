@@ -305,6 +305,15 @@ a:focus-visible {
   animation: fade-in 0.3s ease-out;
 }
 
+/* Ana səhifə dekor blob-u üçün yumşaq üzən hərəkət */
+@keyframes float-slow {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(18px, -22px) scale(1.06); }
+}
+.animate-float-slow {
+  animation: float-slow 14s ease-in-out infinite;
+}
+
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
