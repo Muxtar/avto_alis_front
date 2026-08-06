@@ -183,13 +183,10 @@ export default function Navbar() {
     // olmadıqda avtomatik. Panel hər halda açılır ki, istifadəçi görsün.
     setWebQuery(q);
     setWebOpen(true);
-    const autoWeb = person || siteCount === 0;
-    if (!autoWeb) {
-      // Saytda kifayət qədər nəticə var — internet axtarışını istifadəçinin
-      // istəyinə buraxırıq (kredit qənaəti). "İnternetdə axtar" düyməsi ilə işə düşür.
-      setWebData({ mode: "product", summary: "", results: [], notRun: true });
-      return;
-    }
+    // İnternet axtarışı HƏMİŞƏ işə düşür — həm məhsul, həm şəxs üçün.
+    // (Əvvəl yalnız saytda nəticə olmayanda işləyirdi; ona görə məhsul axtaranda
+    // internet nəticələri — link/qiymət/satıcı — görünmürdü.)
+    // Xərc üçün narahatlıq yoxdur: eyni sorğu 12 saat keşdə saxlanılır.
     await runWebSearch(q, person);
   };
 
