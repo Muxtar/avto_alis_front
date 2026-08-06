@@ -79,7 +79,7 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
-  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
+  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
   // Sayt daxili (tradixai) nəticələr — internetdən ƏVVƏL göstərilir.
   // Məhsul: elanlar; şəxs: peşəkar profillər (ada görə).
   const [siteListings, setSiteListings] = useState<{ id: number; title: string; price: number; images?: string[]; user?: { name?: string } }[]>([]);
@@ -566,11 +566,15 @@ export default function Navbar() {
                             const m = platMeta[r.platform || ""] || { icon: "🔗", label: r.site || "Profil", cls: "bg-input-bg text-muted" };
                             // Profil şəkli — unavatar (açıq avatar xidməti). Alınmasa
                             // onError ilə platforma ikonuna qayıdır.
-                            const avatarSrc = r.handle && avatarPlatform[r.platform || ""]
-                              ? `https://unavatar.io/${avatarPlatform[r.platform || ""]}/${encodeURIComponent(r.handle)}?fallback=false`
-                              : null;
+                            // Saytda qeydiyyatlıdırsa öz avatarımızı işlədirik (etibarlı),
+                            // əks halda açıq avatar xidmətini sınayırıq.
+                            const avatarSrc = r.siteUser?.avatar
+                              ? imgUrl(r.siteUser.avatar)
+                              : (r.handle && avatarPlatform[r.platform || ""]
+                                  ? `https://unavatar.io/${avatarPlatform[r.platform || ""]}/${encodeURIComponent(r.handle)}?fallback=false`
+                                  : null);
                             return (
-                              <li key={r.url}>
+                              <li key={r.url} className={r.siteUser ? "bg-[var(--brand-soft)]" : ""}>
                                 <a href={r.url} target="_blank" rel="noopener noreferrer"
                                   className="flex items-center gap-3 px-4 py-3 hover:bg-input-bg transition-colors">
                                   <span className="relative shrink-0">
@@ -588,10 +592,22 @@ export default function Navbar() {
                                     <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-card border border-card-border flex items-center justify-center text-[10px]">{m.icon}</span>
                                   </span>
                                   <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-semibold truncate">{r.handle || r.title}</p>
-                                    <p className="text-[11px] text-muted truncate">{m.label}{r.snippet ? ` · ${r.snippet}` : ""}</p>
+                                    <p className="text-sm font-semibold truncate">{r.siteUser?.name || r.handle || r.title}</p>
+                                    <p className="text-[11px] text-muted truncate">
+                                      {r.handle ? `@${r.handle} · ` : ""}{m.label}
+                                    </p>
+                                    {r.siteUser && (
+                                      <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--brand-to)] text-white">
+                                        ✓ tradixai istifadəçisi
+                                      </span>
+                                    )}
                                   </div>
-                                  <span className="shrink-0 text-[11px] font-semibold text-[var(--brand-to)]">Bax →</span>
+                                  {r.siteUser ? (
+                                    <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWebOpen(false); router.push(`/seller/${r.siteUser!.id}`); }}
+                                      className="shrink-0 text-[11px] font-semibold text-[var(--brand-to)] hover:underline">Profilə bax →</span>
+                                  ) : (
+                                    <span className="shrink-0 text-[11px] font-semibold text-[var(--brand-to)]">Bax →</span>
+                                  )}
                                 </a>
                               </li>
                             );
