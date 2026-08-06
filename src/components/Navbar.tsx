@@ -342,7 +342,7 @@ export default function Navbar() {
               </button>
               {catOpen && (
                 <>
-                <div className="absolute left-0 mt-2 w-72 bg-card border border-card-border rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[72vh] overflow-y-auto"
+                <div className="absolute left-0 mt-1 w-72 bg-card border border-card-border shadow-2xl z-50 max-h-[72vh] overflow-y-auto"
                   onMouseLeave={() => { catCloseTimer.current = setTimeout(() => setCatHover(null), 180); }}>
                   {/* Başlıq zolağı — header ilə eyni tünd ton */}
                   <div className="sticky top-0 z-10 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: NAV_DARK }}>
@@ -361,14 +361,14 @@ export default function Navbar() {
                           const top = Math.max(8, Math.min(r.top, vh - est - 8));
                           setCatHover({ cat: c, top, left: r.right });
                         }}
-                        className="group/cat flex items-center gap-3 px-3.5 py-2.5 mx-1.5 my-0.5 rounded-xl text-sm hover:bg-[var(--brand-soft)] transition-colors text-foreground">
-                        <span className="w-9 h-9 rounded-xl bg-input-bg text-muted group-hover/cat:bg-[var(--brand-to)] group-hover/cat:text-white flex items-center justify-center shrink-0 transition-colors"><CategoryIcon name={c.name} className="w-[18px] h-[18px]" /></span>
+                        className="group/cat flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[var(--brand-soft)] transition-colors text-foreground">
+                        <span className="w-8 h-8 rounded-lg bg-input-bg text-muted group-hover/cat:bg-[var(--brand-to)] group-hover/cat:text-white flex items-center justify-center shrink-0 transition-colors"><CategoryIcon name={c.name} className="w-[18px] h-[18px]" /></span>
                         <span className="truncate flex-1 font-medium group-hover/cat:text-[var(--brand-to)]">{c.name}</span>
                         {hasSubs && <svg className="w-4 h-4 text-muted shrink-0 group-hover/cat:text-[var(--brand-to)] group-hover/cat:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
                       </Link>
                     );
                   })}
-                  <Link href="/elanlar" onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-4 py-3 text-sm font-bold border-t border-card-border mt-1 hover:bg-[var(--brand-soft)] transition-colors" style={{ color: PINK }}>
+                  <Link href="/elanlar" onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-4 py-3 text-sm font-bold border-t border-card-border hover:bg-[var(--brand-soft)] transition-colors" style={{ color: PINK }}>
                     Bütün kateqoriyalar →
                   </Link>
                 </div>
@@ -379,15 +379,20 @@ export default function Navbar() {
                   <div style={{ position: "fixed", top: catHover.top, left: catHover.left }}
                     onMouseEnter={() => { if (catCloseTimer.current) clearTimeout(catCloseTimer.current); }}
                     onMouseLeave={() => setCatHover(null)}
-                    className="z-[60] w-72 max-h-[72vh] overflow-y-auto bg-card border border-card-border rounded-2xl shadow-2xl p-2">
-                    <Link href={`/elanlar/${slugify(catHover.cat.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-bold hover:bg-[var(--brand-soft)]" style={{ color: PINK }}>
-                      <CategoryIcon name={catHover.cat.name} className="w-[18px] h-[18px]" /> {catHover.cat.name} — hamısı
+                    className="z-[60] w-72 max-h-[72vh] overflow-y-auto bg-card border border-card-border border-l-0 shadow-2xl">
+                    {/* Başlıq zolağı — ana menyu ilə eyni tünd ton (bitişik görünsün) */}
+                    <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: NAV_DARK }}>
+                      <CategoryIcon name={catHover.cat.name} className="w-[18px] h-[18px] shrink-0" />
+                      <span className="truncate">{catHover.cat.name}</span>
+                    </div>
+                    <Link href={`/elanlar/${slugify(catHover.cat.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
+                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b border-card-border hover:bg-[var(--brand-soft)] transition-colors" style={{ color: PINK }}>
+                      Hamısına bax →
                     </Link>
-                    <div className="border-t border-card-border my-1" />
                     {catHover.cat.subs.map((s: any) => (
                       <Link key={s.name} href={`/elanlar/${slugify(catHover.cat.name)}/${slugify(s.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
-                        className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm text-foreground hover:bg-[var(--brand-soft)] hover:text-[var(--brand-to)] transition-colors">
-                        <SubCategoryIcon name={s.name} parent={catHover.cat.name} className="w-[18px] h-[18px] text-muted-foreground shrink-0" />
+                        className="group/sub flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-[var(--brand-soft)] hover:text-[var(--brand-to)] transition-colors">
+                        <SubCategoryIcon name={s.name} parent={catHover.cat.name} className="w-[18px] h-[18px] text-muted-foreground group-hover/sub:text-[var(--brand-to)] shrink-0 transition-colors" />
                         <span className="truncate">{s.name}</span>
                       </Link>
                     ))}
