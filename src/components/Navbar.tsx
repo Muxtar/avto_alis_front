@@ -79,7 +79,11 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
-  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
+  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
+  // Sosial profilə mesaj göndərmə (admin əl ilə çatdırır).
+  const [msgTarget, setMsgTarget] = useState<any>(null);
+  const [msgText, setMsgText] = useState("");
+  const [msgBusy, setMsgBusy] = useState(false);
   // Sayt daxili (tradixai) nəticələr — internetdən ƏVVƏL göstərilir.
   // Məhsul: elanlar; şəxs: peşəkar profillər (ada görə).
   const [siteListings, setSiteListings] = useState<{ id: number; title: string; price: number; images?: string[]; user?: { name?: string } }[]>([]);
@@ -137,6 +141,29 @@ export default function Navbar() {
   // Axtarış: əvvəlcə sayt daxili. Saytda heç nə tapılmasa, Claude-un internet
   // axtarışı işə düşür və nəticələr axtarış sahəsinin altında açılır.
   const submitSearch = (e?: React.FormEvent) => { e?.preventDefault(); runSearch(search); };
+
+  // Sosial profilə mesaj göndər — admin panelə düşür, admin əl ilə çatdırır.
+  const sendOutreach = async () => {
+    if (!msgTarget || msgText.trim().length < 5) { toast("Mesaj ən azı 5 simvol olmalıdır", "error"); return; }
+    setMsgBusy(true);
+    try {
+      const r = await fetch(`${API}/social-outreach`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          targetUrl: msgTarget.url,
+          targetPlatform: msgTarget.platform,
+          targetHandle: msgTarget.handle,
+          targetName: msgTarget.siteUser?.name || msgTarget.displayName || msgTarget.handle,
+          targetAvatar: msgTarget.siteUser?.avatar || msgTarget.avatarUrl || null,
+          matchedUserId: msgTarget.siteUser?.id || null,
+          message: msgText.trim(),
+        }),
+      }).then((x) => x.json());
+      if (r.success) { toast("Mesaj göndərildi — admin çatdıracaq ✓", "success"); setMsgTarget(null); setMsgText(""); }
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); } finally { setMsgBusy(false); }
+  };
 
   // Sorğu ad-soyada bənzəyirmi? (backend ilə eyni məntiq) — şəxs axtarışı üçün.
   const looksLikePerson = (q: string) => {
@@ -568,11 +595,14 @@ export default function Navbar() {
                             // onError ilə platforma ikonuna qayıdır.
                             // Saytda qeydiyyatlıdırsa öz avatarımızı işlədirik (etibarlı),
                             // əks halda açıq avatar xidmətini sınayırıq.
+                            // Prioritet: saytdakı avatar → Apify şəkli → açıq avatar xidməti
                             const avatarSrc = r.siteUser?.avatar
                               ? imgUrl(r.siteUser.avatar)
-                              : (r.handle && avatarPlatform[r.platform || ""]
-                                  ? `https://unavatar.io/${avatarPlatform[r.platform || ""]}/${encodeURIComponent(r.handle)}?fallback=false`
-                                  : null);
+                              : (r.avatarUrl
+                                  || (r.handle && avatarPlatform[r.platform || ""]
+                                      ? `https://unavatar.io/${avatarPlatform[r.platform || ""]}/${encodeURIComponent(r.handle)}?fallback=false`
+                                      : null));
+                            const shownName = r.siteUser?.name || r.displayName || r.handle || r.title;
                             return (
                               <li key={r.url} className={r.siteUser ? "bg-[var(--brand-soft)]" : ""}>
                                 <a href={r.url} target="_blank" rel="noopener noreferrer"
@@ -592,9 +622,13 @@ export default function Navbar() {
                                     <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-card border border-card-border flex items-center justify-center text-[10px]">{m.icon}</span>
                                   </span>
                                   <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-semibold truncate">{r.siteUser?.name || r.handle || r.title}</p>
+                                    <p className="text-sm font-semibold truncate flex items-center gap-1">
+                                      {shownName}
+                                      {r.verifiedBadge && <span title="Təsdiqlənmiş hesab" className="text-[var(--brand-to)] text-xs">✔︎</span>}
+                                    </p>
                                     <p className="text-[11px] text-muted truncate">
                                       {r.handle ? `@${r.handle} · ` : ""}{m.label}
+                                      {typeof r.followers === "number" ? ` · ${r.followers.toLocaleString("az-AZ")} izləyici` : ""}
                                     </p>
                                     {r.siteUser && (
                                       <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--brand-to)] text-white">
@@ -602,12 +636,24 @@ export default function Navbar() {
                                       </span>
                                     )}
                                   </div>
-                                  {r.siteUser ? (
-                                    <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWebOpen(false); router.push(`/seller/${r.siteUser!.id}`); }}
-                                      className="shrink-0 text-[11px] font-semibold text-[var(--brand-to)] hover:underline">Profilə bax →</span>
-                                  ) : (
-                                    <span className="shrink-0 text-[11px] font-semibold text-[var(--brand-to)]">Bax →</span>
-                                  )}
+                                  <div className="shrink-0 flex items-center gap-2">
+                                    {/* Mesaj — admin panelə düşür, admin əl ilə çatdırır */}
+                                    <button type="button"
+                                      onClick={(e) => {
+                                        e.preventDefault(); e.stopPropagation();
+                                        if (!isLoggedIn) { toast("Mesaj göndərmək üçün daxil olun", "error"); return; }
+                                        setMsgTarget(r); setMsgText("");
+                                      }}
+                                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white cta-gradient whitespace-nowrap">
+                                      ✉️ Mesaj
+                                    </button>
+                                    {r.siteUser ? (
+                                      <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWebOpen(false); router.push(`/seller/${r.siteUser!.id}`); }}
+                                        className="text-[11px] font-semibold text-[var(--brand-to)] hover:underline">Profil →</span>
+                                    ) : (
+                                      <span className="text-[11px] font-semibold text-[var(--brand-to)]">Bax →</span>
+                                    )}
+                                  </div>
                                 </a>
                               </li>
                             );
@@ -858,6 +904,41 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+
+      {/* Sosial profilə mesaj — admin panelə düşür, admin əl ilə çatdırır */}
+      {msgTarget && (
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => setMsgTarget(null)}>
+          <div className="bg-card border border-card-border rounded-2xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-3 mb-3">
+              {(msgTarget.siteUser?.avatar || msgTarget.avatarUrl) ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={msgTarget.siteUser?.avatar ? imgUrl(msgTarget.siteUser.avatar) : msgTarget.avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover" />
+              ) : (
+                <span className="w-12 h-12 rounded-full bg-input-bg flex items-center justify-center text-xl">👤</span>
+              )}
+              <div className="min-w-0">
+                <p className="font-semibold truncate">{msgTarget.siteUser?.name || msgTarget.displayName || msgTarget.handle}</p>
+                <p className="text-[11px] text-muted truncate">@{msgTarget.handle} · {msgTarget.platform}</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted mb-3">
+              Mesajınız <b>tradixai komandasına</b> göndərilir — biz onu həmin sosial media hesabına
+              sizin adınızla çatdıracağıq. Nəticə barədə bildiriş alacaqsınız.
+            </p>
+            <textarea value={msgText} onChange={(e) => setMsgText(e.target.value)} rows={5} maxLength={1000}
+              placeholder="Mesajınızı yazın — nə üçün əlaqə saxlayırsınız?"
+              className="w-full px-3.5 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-1" />
+            <p className="text-[11px] text-muted mb-3 text-right">{msgText.length}/1000</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setMsgTarget(null)} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv</button>
+              <button onClick={sendOutreach} disabled={msgBusy || msgText.trim().length < 5}
+                className="px-4 py-2 rounded-xl text-sm font-semibold cta-gradient disabled:opacity-50">
+                {msgBusy ? "Göndərilir..." : "Göndər"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }
