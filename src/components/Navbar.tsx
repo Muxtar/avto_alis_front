@@ -79,7 +79,7 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
-  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string; kind?: "product" | "social"; platform?: string; seller?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
+  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
   // Sayt daxili (tradixai) nəticələr — internetdən ƏVVƏL göstərilir.
   // Məhsul: elanlar; şəxs: peşəkar profillər (ada görə).
   const [siteListings, setSiteListings] = useState<{ id: number; title: string; price: number; images?: string[]; user?: { name?: string } }[]>([]);
@@ -471,11 +471,19 @@ export default function Navbar() {
             {webOpen && (() => {
               const person = webData?.mode === "person";
               const hasSite = siteListings.length > 0 || sitePeople.length > 0;
-              const platMeta: Record<string, { icon: string; label: string }> = {
-                instagram: { icon: "📷", label: "Instagram" }, facebook: { icon: "📘", label: "Facebook" },
-                linkedin: { icon: "💼", label: "LinkedIn" }, tiktok: { icon: "🎵", label: "TikTok" },
-                youtube: { icon: "▶️", label: "YouTube" }, x: { icon: "𝕏", label: "X (Twitter)" },
-                telegram: { icon: "✈️", label: "Telegram" },
+              const platMeta: Record<string, { icon: string; label: string; cls?: string }> = {
+                instagram: { icon: "📷", label: "Instagram", cls: "bg-gradient-to-br from-fuchsia-500 to-orange-400 text-white" },
+                facebook: { icon: "📘", label: "Facebook", cls: "bg-blue-600 text-white" },
+                linkedin: { icon: "💼", label: "LinkedIn", cls: "bg-sky-700 text-white" },
+                tiktok: { icon: "🎵", label: "TikTok", cls: "bg-neutral-900 text-white" },
+                youtube: { icon: "▶️", label: "YouTube", cls: "bg-red-600 text-white" },
+                x: { icon: "𝕏", label: "X (Twitter)", cls: "bg-neutral-900 text-white" },
+                telegram: { icon: "✈️", label: "Telegram", cls: "bg-sky-500 text-white" },
+              };
+              // unavatar.io platforma adları (profil şəkli üçün).
+              const avatarPlatform: Record<string, string> = {
+                instagram: "instagram", x: "twitter", telegram: "telegram",
+                youtube: "youtube", tiktok: "tiktok",
               };
               return (
               <>
@@ -552,18 +560,38 @@ export default function Navbar() {
                       {(webData?.results?.length ?? 0) === 0 ? (
                         <p className="px-4 py-5 text-sm text-muted">{person ? "Açıq sosial media hesabı tapılmadı." : "İnternetdə uyğun nəticə tapılmadı."}</p>
                       ) : person ? (
-                        <ul className="grid grid-cols-2 gap-2 px-4 pb-4 pt-1">
+                        /* Tapılan hər profil ayrıca sətirdə — profil şəkli + platforma + istifadəçi adı */
+                        <ul className="divide-y divide-card-border">
                           {webData!.results.map((r) => {
-                            const m = platMeta[r.platform || ""] || { icon: "🔗", label: r.site || "Profil" };
+                            const m = platMeta[r.platform || ""] || { icon: "🔗", label: r.site || "Profil", cls: "bg-input-bg text-muted" };
+                            // Profil şəkli — unavatar (açıq avatar xidməti). Alınmasa
+                            // onError ilə platforma ikonuna qayıdır.
+                            const avatarSrc = r.handle && avatarPlatform[r.platform || ""]
+                              ? `https://unavatar.io/${avatarPlatform[r.platform || ""]}/${encodeURIComponent(r.handle)}?fallback=false`
+                              : null;
                             return (
                               <li key={r.url}>
                                 <a href={r.url} target="_blank" rel="noopener noreferrer"
-                                  className="flex items-center gap-2 px-3 py-2.5 rounded-lg bg-input-bg border border-input-border hover:border-orange-500 transition-colors">
-                                  <span className="text-lg shrink-0">{m.icon}</span>
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-semibold truncate">{m.label}</p>
-                                    <p className="text-[11px] text-muted truncate">{r.title}</p>
+                                  className="flex items-center gap-3 px-4 py-3 hover:bg-input-bg transition-colors">
+                                  <span className="relative shrink-0">
+                                    {avatarSrc ? (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img src={avatarSrc} alt="" loading="lazy"
+                                        className="w-11 h-11 rounded-full object-cover bg-input-bg"
+                                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; const s = e.currentTarget.nextElementSibling as HTMLElement | null; if (s) s.style.display = "flex"; }} />
+                                    ) : null}
+                                    <span style={{ display: avatarSrc ? "none" : "flex" }}
+                                      className={`w-11 h-11 rounded-full items-center justify-center text-lg ${m.cls || "bg-input-bg"}`}>
+                                      {m.icon}
+                                    </span>
+                                    {/* Platforma nişanı — avatarın küncündə */}
+                                    <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-card border border-card-border flex items-center justify-center text-[10px]">{m.icon}</span>
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-semibold truncate">{r.handle || r.title}</p>
+                                    <p className="text-[11px] text-muted truncate">{m.label}{r.snippet ? ` · ${r.snippet}` : ""}</p>
                                   </div>
+                                  <span className="shrink-0 text-[11px] font-semibold text-[var(--brand-to)]">Bax →</span>
                                 </a>
                               </li>
                             );
