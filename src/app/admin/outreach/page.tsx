@@ -89,7 +89,7 @@ export default function AdminOutreachPage() {
               <div className="flex items-start gap-3 mb-3">
                 {it.targetAvatar ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={it.targetAvatar.startsWith("http") ? it.targetAvatar : imgUrl(it.targetAvatar)} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
+                  <img src={it.targetAvatar.startsWith("http") ? `${API}/avatar-proxy?url=${encodeURIComponent(it.targetAvatar)}` : imgUrl(it.targetAvatar)} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
                 ) : (
                   <span className="w-12 h-12 rounded-full bg-input-bg flex items-center justify-center text-xl shrink-0">👤</span>
                 )}

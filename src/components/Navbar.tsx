@@ -22,6 +22,10 @@ const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "en", label: "EN", flag: "🇬🇧" },
 ];
 
+// Xarici profil şəkillərini öz serverimizdən keçir — sosial CDN-lər başqa
+// domendən gələn birbaşa sorğunu bloklayır (hotlink qorunması).
+const proxyImg = (url: string) => `${API}/avatar-proxy?url=${encodeURIComponent(url)}`;
+
 // ── Axtarış avtomatik-tamamlama (Google kimi) ──
 // Statik kateqoriya/alt-kateqoriya indeksi — ani, şəbəkəsiz təkliflər.
 type Suggest = { kind: "recent" | "cat" | "text"; label: string; context?: string; href?: string };
@@ -595,12 +599,15 @@ export default function Navbar() {
                             // onError ilə platforma ikonuna qayıdır.
                             // Saytda qeydiyyatlıdırsa öz avatarımızı işlədirik (etibarlı),
                             // əks halda açıq avatar xidmətini sınayırıq.
-                            // Prioritet: saytdakı avatar → Apify şəkli → açıq avatar xidməti
+                            // Prioritet: saytdakı avatar → Apify şəkli → açıq avatar xidməti.
+                            // Xarici şəkillər proxy-dən keçir — Instagram/TikTok CDN-ləri
+                            // birbaşa hotlink-i bloklayır, proxy bunu həll edir.
                             const avatarSrc = r.siteUser?.avatar
                               ? imgUrl(r.siteUser.avatar)
                               : (r.avatarUrl
-                                  || (r.handle && avatarPlatform[r.platform || ""]
-                                      ? `https://unavatar.io/${avatarPlatform[r.platform || ""]}/${encodeURIComponent(r.handle)}?fallback=false`
+                                  ? proxyImg(r.avatarUrl)
+                                  : (r.handle && avatarPlatform[r.platform || ""]
+                                      ? proxyImg(`https://unavatar.io/${avatarPlatform[r.platform || ""]}/${encodeURIComponent(r.handle)}?fallback=false`)
                                       : null));
                             const shownName = r.siteUser?.name || r.displayName || r.handle || r.title;
                             return (
@@ -912,7 +919,7 @@ export default function Navbar() {
             <div className="flex items-center gap-3 mb-3">
               {(msgTarget.siteUser?.avatar || msgTarget.avatarUrl) ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={msgTarget.siteUser?.avatar ? imgUrl(msgTarget.siteUser.avatar) : msgTarget.avatarUrl} alt="" className="w-12 h-12 rounded-full object-cover" />
+                <img src={msgTarget.siteUser?.avatar ? imgUrl(msgTarget.siteUser.avatar) : proxyImg(msgTarget.avatarUrl)} alt="" className="w-12 h-12 rounded-full object-cover" />
               ) : (
                 <span className="w-12 h-12 rounded-full bg-input-bg flex items-center justify-center text-xl">👤</span>
               )}
