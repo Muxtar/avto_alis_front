@@ -613,14 +613,6 @@ export default function Navbar() {
                 <span className="text-[10px] mt-0.5 hidden lg:inline">{t("favorites")}</span>
               </Link>
 
-              {/* Sifarişlər — Amazon üslubu iki sətirli blok */}
-              {isLoggedIn && (
-                <Link href="/orders" className="hidden lg:block px-2 py-1.5 rounded-md hover:ring-1 hover:ring-white/40 transition-shadow leading-tight whitespace-nowrap">
-                  <span className="block text-[11px] text-white/60">Qaytarma</span>
-                  <span className="block text-[13px] font-bold text-white">və Sifarişlər</span>
-                </Link>
-              )}
-
               {isLoggedIn && (
                 <Link href="/cart" className="relative flex items-end gap-1 text-white/90 hover:text-white transition-colors px-1.5 py-1 rounded-md hover:ring-1 hover:ring-white/40" title={t("cart")}>
                   <span className="relative">
