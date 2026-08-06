@@ -399,7 +399,7 @@ export default function CartPage() {
               {/* Çatdırılma kimə? — göndərən seçir */}
               <div className="grid grid-cols-2 gap-1 bg-input-bg/60 rounded-xl p-1 mt-2">
                 <button onClick={() => setShareMode("RECIPIENT")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "RECIPIENT" ? "bg-orange-500 text-white" : "text-muted"}`}>👤 Alıcı öz ünvanına alsın</button>
-                <button onClick={() => setShareMode("SENDER")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "SENDER" ? "bg-orange-500 text-white" : "text-muted"}`}>🏠 Mənə gəlsin (o ödəsin)</button>
+                <button onClick={() => setShareMode("SENDER")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "SENDER" ? "bg-orange-500 text-white" : "text-muted"}`}>🏠 Paylaş digər şəxs ödəsin</button>
               </div>
               {shareMode === "SENDER" ? (
                 <div className="mt-2 space-y-2">
