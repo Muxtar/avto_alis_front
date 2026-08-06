@@ -521,8 +521,11 @@ function MarketplacePage() {
                         if (!hasSubs) { setHoverCat(null); return; }
                         const r = e.currentTarget.getBoundingClientRect();
                         const vh = window.innerHeight;
-                        const est = Math.min((c.subs.length + 2) * 38, vh * 0.7);
-                        const top = Math.max(8, Math.min(r.top, vh - est - 8));
+                        // Başlıq + "Hamısına bax" + alt-kateqoriyalar (hər sətir ~42px).
+                        // Panel ekrandan aşağı çıxmasın deyə yuxarı sürüşdürülür; qalan
+                        // hündürlük maxHeight ilə məhdudlaşır (içəri scroll olur).
+                        const est = Math.min((c.subs.length + 2) * 42, vh * 0.8);
+                        const top = Math.max(8, Math.min(r.top, vh - est - 12));
                         setHoverCat({ cat: c, top, left: r.right });
                       }}
                       className={`group/c relative flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${active ? "bg-[var(--brand-soft)] text-[var(--brand-to)] font-semibold" : "text-foreground hover:bg-[var(--brand-soft)]"}`}
@@ -547,8 +550,8 @@ function MarketplacePage() {
               {/* Alt-kateqoriya flyout-u — fixed (scroll konteynerindən kənar, kəsilmir) */}
               {hoverCat && (
                 <div
-                  style={{ position: "fixed", top: hoverCat.top, left: hoverCat.left }}
-                  className="z-[60] w-72 max-h-[72vh] overflow-y-auto shadow-2xl bg-card border border-card-border border-l-0"
+                  style={{ position: "fixed", top: hoverCat.top, left: hoverCat.left, maxHeight: `calc(100vh - ${hoverCat.top}px - 12px)` }}
+                  className="z-[60] w-72 overflow-y-auto shadow-2xl bg-card border border-card-border border-l-0"
                 >
                   {/* Başlıq zolağı — panel ilə eyni tünd ton (bitişik görünsün) */}
                   <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: "var(--nav-dark)" }}>
@@ -563,10 +566,12 @@ function MarketplacePage() {
                     <Link
                       key={s.name}
                       href={`/elanlar/${catToSlugs(buildCat(hoverCat.cat.name, s.name)).join("/")}`}
-                      className="group/sub flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-[var(--brand-soft)] hover:text-[var(--brand-to)] transition-colors"
+                      className="group/sub flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-[var(--brand-soft)] transition-colors"
                     >
-                      <SubCategoryIcon name={s.name} parent={hoverCat.cat.name} className="w-[18px] h-[18px] text-muted-foreground group-hover/sub:text-[var(--brand-to)] shrink-0 transition-colors" />
-                      <span className="truncate">{s.name}</span>
+                      <span className="w-8 h-8 rounded-lg bg-input-bg text-muted group-hover/sub:bg-[var(--brand-to)] group-hover/sub:text-white flex items-center justify-center shrink-0 transition-colors">
+                        <SubCategoryIcon name={s.name} parent={hoverCat.cat.name} className="w-[18px] h-[18px]" />
+                      </span>
+                      <span className="truncate flex-1 font-medium group-hover/sub:text-[var(--brand-to)]">{s.name}</span>
                     </Link>
                   ))}
                 </div>

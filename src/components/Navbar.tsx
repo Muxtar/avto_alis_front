@@ -357,8 +357,8 @@ export default function Navbar() {
                           if (!hasSubs) { setCatHover(null); return; }
                           const r = e.currentTarget.getBoundingClientRect();
                           const vh = window.innerHeight;
-                          const est = Math.min((c.subs.length + 2) * 38, vh * 0.7);
-                          const top = Math.max(8, Math.min(r.top, vh - est - 8));
+                          const est = Math.min((c.subs.length + 2) * 42, vh * 0.8);
+                          const top = Math.max(8, Math.min(r.top, vh - est - 12));
                           setCatHover({ cat: c, top, left: r.right });
                         }}
                         className="group/cat flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[var(--brand-soft)] transition-colors text-foreground">
@@ -376,10 +376,10 @@ export default function Navbar() {
                 {/* Alt-kateqoriya flyout-u — siyahıdan AYRICA (backdrop-blur + overflow
                     kəsməsin). fixed koordinatlarla sağda açılır. */}
                 {catHover && (
-                  <div style={{ position: "fixed", top: catHover.top, left: catHover.left }}
+                  <div style={{ position: "fixed", top: catHover.top, left: catHover.left, maxHeight: `calc(100vh - ${catHover.top}px - 12px)` }}
                     onMouseEnter={() => { if (catCloseTimer.current) clearTimeout(catCloseTimer.current); }}
                     onMouseLeave={() => setCatHover(null)}
-                    className="z-[60] w-72 max-h-[72vh] overflow-y-auto bg-card border border-card-border border-l-0 shadow-2xl">
+                    className="z-[60] w-72 overflow-y-auto bg-card border border-card-border border-l-0 shadow-2xl">
                     {/* Başlıq zolağı — ana menyu ilə eyni tünd ton (bitişik görünsün) */}
                     <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: NAV_DARK }}>
                       <CategoryIcon name={catHover.cat.name} className="w-[18px] h-[18px] shrink-0" />
@@ -391,9 +391,11 @@ export default function Navbar() {
                     </Link>
                     {catHover.cat.subs.map((s: any) => (
                       <Link key={s.name} href={`/elanlar/${slugify(catHover.cat.name)}/${slugify(s.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
-                        className="group/sub flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-[var(--brand-soft)] hover:text-[var(--brand-to)] transition-colors">
-                        <SubCategoryIcon name={s.name} parent={catHover.cat.name} className="w-[18px] h-[18px] text-muted-foreground group-hover/sub:text-[var(--brand-to)] shrink-0 transition-colors" />
-                        <span className="truncate">{s.name}</span>
+                        className="group/sub flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-[var(--brand-soft)] transition-colors">
+                        <span className="w-8 h-8 rounded-lg bg-input-bg text-muted group-hover/sub:bg-[var(--brand-to)] group-hover/sub:text-white flex items-center justify-center shrink-0 transition-colors">
+                          <SubCategoryIcon name={s.name} parent={catHover.cat.name} className="w-[18px] h-[18px]" />
+                        </span>
+                        <span className="truncate flex-1 font-medium group-hover/sub:text-[var(--brand-to)]">{s.name}</span>
                       </Link>
                     ))}
                   </div>
