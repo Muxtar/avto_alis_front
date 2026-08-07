@@ -127,7 +127,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           {!isOwner && (
             <button
               onClick={toggleFavorite}
-              className="absolute top-2 right-2 z-10 p-1.5 bg-black/40 backdrop-blur-sm rounded-full hover:bg-black/60 transition-colors"
+              className="absolute top-2 right-2 z-10 p-1.5 bg-black/55 rounded-full hover:bg-black/70 transition-colors"
               aria-label="favorite"
             >
               {isFavorited ? (
@@ -161,18 +161,18 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               {isService ? t("service") : t("product")}
             </span>
             {listing.createdAt && isNew(listing.createdAt) && (
-              <span className="px-2 py-0.5 bg-sky-500/95 text-white rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm">{t("newBadge")}</span>
+              <span className="px-2 py-0.5 bg-sky-500 text-white rounded-full text-[10px] font-semibold shadow-sm">{t("newBadge")}</span>
             )}
             {listing.forRent && (
-              <span className="px-2 py-0.5 bg-indigo-500/95 text-white rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm">🔑 İcarə</span>
+              <span className="px-2 py-0.5 bg-indigo-500 text-white rounded-full text-[10px] font-semibold shadow-sm">🔑 İcarə</span>
             )}
             {listing.barter && (
-              <span className="px-2 py-0.5 bg-purple-500/95 text-white rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm">🔄 Barter</span>
+              <span className="px-2 py-0.5 bg-purple-500 text-white rounded-full text-[10px] font-semibold shadow-sm">🔄 Barter</span>
             )}
             {/* Vəziyyət badge-i yalnız YENİ olmayanlarda — "Yeni" təkrarını aradan qaldırır */}
             {listing.condition && listing.condition !== 'NEW' && !isService && (
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm ${
-                listing.condition === 'USED' ? 'bg-amber-600/95 text-white' : 'bg-sky-600/95 text-white'
+              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-sm ${
+                listing.condition === 'USED' ? 'bg-amber-600 text-white' : 'bg-sky-600 text-white'
               }`}>
                 {listing.condition === 'USED' ? t("conditionUsed") : t("conditionRefurbished")}
               </span>

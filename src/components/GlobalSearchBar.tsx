@@ -106,7 +106,7 @@ export default function GlobalSearchBar() {
   };
 
   return (
-    <div className="border-b border-card-border bg-background/60 backdrop-blur-sm">
+    <div className="border-b border-card-border bg-background">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3">
         <form onSubmit={submit} className="flex flex-wrap items-center gap-2">
           {/* Main text input */}

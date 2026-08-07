@@ -1076,15 +1076,15 @@ function AccountPageInner() {
             <div key={listing.id} className="surface p-4 flex flex-col sm:flex-row sm:items-center gap-3 relative">
               {/* Moderasiya statusu — sağ yuxarı küncdə: gözləmədə / təsdiqləndi / rədd edildi */}
               {listing.status === "PENDING" ? (
-                <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/15 text-amber-600 border border-amber-500/30 shadow-sm backdrop-blur">
+                <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-600 border border-amber-500/30 shadow-sm">
                   ⏳ Gözləmədə
                 </span>
               ) : listing.status === "APPROVED" ? (
-                <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-500/15 text-green-600 border border-green-500/30 shadow-sm backdrop-blur">
+                <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-500/20 text-green-600 border border-green-500/30 shadow-sm">
                   ✓ Təsdiqləndi
                 </span>
               ) : listing.status === "REJECTED" ? (
-                <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/15 text-red-600 border border-red-500/30 shadow-sm backdrop-blur">
+                <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-600 border border-red-500/30 shadow-sm">
                   ✕ Rədd edildi
                 </span>
               ) : null}

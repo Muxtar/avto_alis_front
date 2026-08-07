@@ -170,7 +170,7 @@ export default function CityDetailPage() {
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-muted">—</div>
                 )}
-                <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-md ${l.type === "SERVICE" ? "bg-emerald-500/95 text-white" : "bg-orange-500/95 text-white"}`}>
+                <span className={`absolute top-2 left-2 px-2 py-0.5 rounded-full text-[10px] font-semibold ${l.type === "SERVICE" ? "bg-emerald-500 text-white" : "bg-orange-500 text-white"}`}>
                   {l.type === "SERVICE" ? t('service') : t('product')}
                 </span>
               </div>

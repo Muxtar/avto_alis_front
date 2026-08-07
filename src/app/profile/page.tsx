@@ -1697,22 +1697,22 @@ export default function ProfilePage() {
                     </div>
                   )}
                   <div className="absolute top-2 left-2 flex flex-col gap-1.5">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold backdrop-blur-md shadow-sm ${l.type === "SERVICE" ? "bg-emerald-500/95 text-white" : "bg-orange-500/95 text-white"}`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold shadow-sm ${l.type === "SERVICE" ? "bg-emerald-500 text-white" : "bg-orange-500 text-white"}`}>
                       {l.type === "SERVICE" ? t("service") : t("product")}
                     </span>
                     {expired && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500/95 text-white backdrop-blur-md shadow-sm">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-500 text-white shadow-sm">
                         {t("expiredBadge")}
                       </span>
                     )}
                     {/* Moderasiya vəziyyəti — yalnız sahibi görür */}
                     {l.status === "PENDING" && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/95 text-white backdrop-blur-md shadow-sm">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500 text-white shadow-sm">
                         ⏳ Gözləmədə
                       </span>
                     )}
                     {l.status === "REJECTED" && (
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-600/95 text-white backdrop-blur-md shadow-sm">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-red-600 text-white shadow-sm">
                         Rədd edildi
                       </span>
                     )}

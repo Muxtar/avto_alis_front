@@ -341,14 +341,12 @@ export default function Navbar() {
       className="sticky top-0 z-50 isolate shadow-sm"
       style={{
         background: NAV_DARK,
-        // Qatı kompozitora ver ki, scroll zamanı sticky mövqe hər kadrda
-        // yenidən RƏSM edilmədən sürüşsün (əks halda kompozitor/əsas axın
-        // desinxronu qısa "flash" verir).
-        // `opacity` seçilib, `transform` YOX: will-change:transform (eləcə də
-        // filter/perspective/contain) `position: fixed` uşaqlar üçün containing
-        // block yaradır və kataloq flyout-unu ekranın yerinə header-ə bağlayır.
-        // will-change:opacity isə yalnız stacking context yaradır — flyout sağlam qalır.
-        willChange: 'opacity',
+        // QEYD: burada `will-change` / `transform` YOXDUR və olmamalıdır.
+        // Məcburi qat promosyonu sticky-ni kompozitora verir; rasterı gecikəndə
+        // ağ sıçrayış görünür. Header adi axında rəsm olunanda məzmunla həmişə
+        // sinxrondur. Ayrıca, transform/filter/perspective/contain
+        // `position: fixed` uşaqlar (kataloq flyout-u) üçün containing block
+        // yaradıb menyunu sındırır.
       }}
     >
 
