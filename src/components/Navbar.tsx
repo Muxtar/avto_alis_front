@@ -388,7 +388,7 @@ export default function Navbar() {
               </button>
               {catOpen && (
                 <>
-                <div className="absolute left-0 mt-1 w-72 bg-card border border-card-border shadow-2xl z-50 max-h-[72vh] overflow-y-auto"
+                <div className="absolute left-0 mt-1 w-72 bg-card text-foreground border border-card-border shadow-2xl z-50 max-h-[72vh] overflow-y-auto"
                   onMouseLeave={() => { catCloseTimer.current = setTimeout(() => setCatHover(null), 180); }}>
                   {/* Başlıq zolağı — header ilə eyni tünd ton */}
                   <div className="sticky top-0 z-10 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: NAV_DARK }}>
@@ -425,7 +425,7 @@ export default function Navbar() {
                   <div style={{ position: "fixed", top: catHover.top, left: catHover.left, maxHeight: `calc(100vh - ${catHover.top}px - 12px)` }}
                     onMouseEnter={() => { if (catCloseTimer.current) clearTimeout(catCloseTimer.current); }}
                     onMouseLeave={() => setCatHover(null)}
-                    className="z-[60] w-72 overflow-y-auto bg-card border border-card-border border-l-0 shadow-2xl">
+                    className="z-[60] w-72 overflow-y-auto bg-card text-foreground border border-card-border border-l-0 shadow-2xl">
                     {/* Başlıq zolağı — ana menyu ilə eyni tünd ton (bitişik görünsün) */}
                     <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: NAV_DARK }}>
                       <CategoryIcon name={catHover.cat.name} className="w-[18px] h-[18px] shrink-0" />
@@ -499,7 +499,7 @@ export default function Navbar() {
             {/* Avtomatik-tamamlama təklifləri (Google kimi) — yazıldıqca açılır.
                 İnternet nəticələri açıqdırsa göstərilmir. */}
             {searchFocused && !webOpen && suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card border border-card-border rounded-b-xl shadow-2xl max-h-[60vh] overflow-y-auto">
+              <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card text-foreground border border-card-border rounded-b-xl shadow-2xl max-h-[60vh] overflow-y-auto">
                 {suggestions.map((s, i) => (
                   <button
                     key={`${s.kind}-${i}-${s.label}`}
@@ -532,7 +532,7 @@ export default function Navbar() {
               return (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setWebOpen(false)} />
-                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card border border-card-border shadow-2xl max-h-[75vh] overflow-y-auto">
+                <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card text-foreground border border-card-border shadow-2xl max-h-[75vh] overflow-y-auto">
                   <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-card-border">
                     <div className="min-w-0">
                       <p className="text-sm font-bold">{person ? "Şəxs axtarışı" : "Axtarış nəticələri"}</p>
@@ -761,7 +761,7 @@ export default function Navbar() {
                     )}
                   </button>
                   {userOpen && (
-                    <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-1.5rem)] bg-card border border-card-border rounded-xl shadow-xl overflow-hidden z-50 max-h-[calc(100vh-5rem)] overflow-y-auto">
+                    <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-1.5rem)] bg-card text-foreground border border-card-border rounded-xl shadow-xl overflow-hidden z-50 max-h-[calc(100vh-5rem)] overflow-y-auto">
                       <div className="px-4 py-3 border-b border-card-border">
                         <p className="font-medium text-sm truncate">{user?.name}</p>
                         <p className="text-muted text-xs">{user?.phone}</p>
@@ -921,7 +921,7 @@ export default function Navbar() {
                   <svg className={`w-3 h-3 transition-transform ${langOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </button>
                 {langOpen && (
-                  <div className="absolute right-0 mt-2 w-32 bg-card border border-card-border rounded-xl shadow-xl overflow-hidden z-50">
+                  <div className="absolute right-0 mt-2 w-32 bg-card text-foreground border border-card-border rounded-xl shadow-xl overflow-hidden z-50">
                     {languages.map((lang) => (
                       <button key={lang.code} onClick={() => { setLocale(lang.code); setLangOpen(false); }}
                         className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${locale === lang.code ? "bg-input-bg text-foreground" : "hover:bg-input-bg text-foreground"}`}>
@@ -939,7 +939,7 @@ export default function Navbar() {
       {/* Sosial profilə mesaj — admin panelə düşür, admin əl ilə çatdırır */}
       {msgTarget && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => setMsgTarget(null)}>
-          <div className="bg-card border border-card-border rounded-2xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-card text-foreground border border-card-border rounded-2xl p-5 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-3 mb-3">
               {(msgTarget.siteUser?.avatar || msgTarget.avatarUrl) ? (
                 // eslint-disable-next-line @next/next/no-img-element
