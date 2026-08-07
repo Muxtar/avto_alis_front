@@ -91,7 +91,7 @@ export default function Navbar() {
   // Sayt daxili (tradixai) nəticələr — internetdən ƏVVƏL göstərilir.
   // Məhsul: elanlar; şəxs: peşəkar profillər (ada görə).
   const [siteListings, setSiteListings] = useState<{ id: number; title: string; price: number; images?: string[]; user?: { name?: string } }[]>([]);
-  const [sitePeople, setSitePeople] = useState<{ id: number; name: string; profession?: string | null; avatar?: string | null; publicId?: string | null }[]>([]);
+  const [sitePeople, setSitePeople] = useState<{ id: number; name: string; profession?: string | null; professions?: string[]; avatar?: string | null; publicId?: string | null }[]>([]);
   // unreadMessages artıq qlobal AuthContext-dən gəlir (real-time socket ilə).
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const langRef = useRef<HTMLDivElement>(null);
@@ -190,21 +190,18 @@ export default function Navbar() {
     const person = looksLikePerson(q);
 
     // ── 1) ƏVVƏLCƏ SAYTDAN (tradixai) ──
-    // Elanlar həm başlıq, həm satıcı adı üzrə uyğunlaşır (şəxs adında da işləyir).
-    // Şəxs sorğusunda əlavə olaraq peşəkar profilləri də çəkirik.
-    let siteCount = 0;
+    // HƏR axtarışda hər ikisi paralel gedir: ELANLAR (məhsul) + İXTİSAS (peşəkarlar).
+    // Sorğunun məhsul, yoxsa ad olmasından asılı deyil — istifadəçi bir axtarış
+    // qutusundan hər şeyi tapsın. Ad axtarışında ixtisas nəticələri ƏN BAŞDA göstərilir.
     try {
-      const reqs: Promise<Response>[] = [fetch(`${API}/listings?search=${encodeURIComponent(q)}&limit=6`)];
-      if (person) reqs.push(fetch(`${API}/professionals?q=${encodeURIComponent(q)}`));
-      const [lr, pr] = await Promise.all(reqs);
+      const [lr, pr] = await Promise.all([
+        fetch(`${API}/listings?search=${encodeURIComponent(q)}&limit=6`),
+        fetch(`${API}/professionals?q=${encodeURIComponent(q)}`),
+      ]);
       const ld = await lr.json();
-      const listings = Array.isArray(ld?.listings) ? ld.listings : [];
-      setSiteListings(listings);
-      siteCount = listings.length || ld?.total || 0;
-      if (pr) {
-        const pd = await pr.json().catch(() => null);
-        setSitePeople(Array.isArray(pd?.professionals) ? pd.professionals.slice(0, 6) : []);
-      }
+      setSiteListings(Array.isArray(ld?.listings) ? ld.listings : []);
+      const pd = await pr.json().catch(() => null);
+      setSitePeople(Array.isArray(pd?.professionals) ? pd.professionals.slice(0, 6) : []);
     } catch {
       // Sayt axtarışı alınmadısa da internetə keçirik — istifadəçi nəticəsiz qalmasın.
     }
@@ -501,20 +498,15 @@ export default function Navbar() {
             {/* Axtarış nəticələri: ƏVVƏLCƏ saytdan (tradixai), SONRA internetdən */}
             {webOpen && (() => {
               const person = webData?.mode === "person";
-              const hasSite = siteListings.length > 0 || sitePeople.length > 0;
               const platMeta: Record<string, { icon: string; label: string; cls?: string }> = {
                 instagram: { icon: "📷", label: "Instagram", cls: "bg-gradient-to-br from-fuchsia-500 to-orange-400 text-white" },
                 facebook: { icon: "📘", label: "Facebook", cls: "bg-blue-600 text-white" },
                 linkedin: { icon: "💼", label: "LinkedIn", cls: "bg-sky-700 text-white" },
-                tiktok: { icon: "🎵", label: "TikTok", cls: "bg-neutral-900 text-white" },
-                youtube: { icon: "▶️", label: "YouTube", cls: "bg-red-600 text-white" },
                 x: { icon: "𝕏", label: "X (Twitter)", cls: "bg-neutral-900 text-white" },
-                telegram: { icon: "✈️", label: "Telegram", cls: "bg-sky-500 text-white" },
               };
               // unavatar.io platforma adları (profil şəkli üçün).
               const avatarPlatform: Record<string, string> = {
-                instagram: "instagram", x: "twitter", telegram: "telegram",
-                youtube: "youtube", tiktok: "tiktok",
+                instagram: "instagram", x: "twitter",
               };
               return (
               <>
@@ -524,7 +516,7 @@ export default function Navbar() {
                     <div className="min-w-0">
                       <p className="text-sm font-bold">{person ? "Şəxs axtarışı" : "Axtarış nəticələri"}</p>
                       <p className="text-xs text-muted mt-0.5 truncate">
-                        «{webQuery}» — {person ? "əvvəl tradixai, sonra sosial media hesabları" : "əvvəl tradixai, sonra internet"}
+                        «{webQuery}» — {person ? "əvvəl tradixai ixtisas, sonra sosial media" : "tradixai (elan + ixtisas), sonra internet"}
                       </p>
                     </div>
                     <button onClick={() => setWebOpen(false)} aria-label="Bağla" className="shrink-0 p-1 text-muted hover:text-foreground transition-colors">
@@ -532,21 +524,32 @@ export default function Navbar() {
                     </button>
                   </div>
 
-                  {/* ── SAYTDAN (tradixai) ── */}
-                  {hasSite && (
+                  {/* ── 1) SAYTDAN · İXTİSAS (ƏN BAŞDA) ──
+                      Ad axtarılanda əvvəlcə saytda qeydiyyatlı mütəxəssis varsa o çıxır,
+                      yalnız sonra sosial media hesabları. */}
+                  {sitePeople.length > 0 && (
                     <div className="border-b border-card-border">
-                      <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-orange-500">tradixai · saytdan</p>
+                      <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-teal-600">tradixai · ixtisas</p>
                       {sitePeople.map((u) => (
                         <Link key={`u${u.id}`} href={`/seller/${u.id}?from=ixtisas`} onClick={() => setWebOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 hover:bg-input-bg transition-colors">
                           {u.avatar ? <img src={imgUrl(u.avatar)} alt={u.name} className="w-9 h-9 rounded-full object-cover shrink-0" /> : <div className="w-9 h-9 rounded-full bg-gradient-to-br from-teal-500 to-cyan-600 text-white flex items-center justify-center text-xs font-bold shrink-0">{(u.name || "?").slice(0, 1).toUpperCase()}</div>}
                           <div className="min-w-0">
                             <p className="text-sm font-semibold truncate">{u.name}</p>
-                            {u.profession && <p className="text-xs text-muted truncate">{u.profession}</p>}
+                            {(u.professions?.length ? u.professions.join(" · ") : u.profession) && (
+                              <p className="text-xs text-muted truncate">{u.professions?.length ? u.professions.join(" · ") : u.profession}</p>
+                            )}
                           </div>
                           <span className="ml-auto text-[10px] text-teal-500 font-semibold shrink-0">Profil →</span>
                         </Link>
                       ))}
+                    </div>
+                  )}
+
+                  {/* ── 2) SAYTDAN · ELANLAR ── */}
+                  {siteListings.length > 0 && (
+                    <div className="border-b border-card-border">
+                      <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-orange-500">tradixai · elanlar</p>
                       {siteListings.map((l) => (
                         <Link key={`l${l.id}`} href={`/marketplace/${l.id}`} onClick={() => setWebOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 hover:bg-input-bg transition-colors">
@@ -562,7 +565,7 @@ export default function Navbar() {
                   )}
 
                   {/* ── İNTERNETDƏN ── */}
-                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted">{person ? "sosial media" : "internetdən"}</p>
+                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted">{person ? "sosial media (Instagram · Facebook · X · LinkedIn)" : "internetdən"}</p>
                   {webLoading ? (
                     <div className="flex items-center gap-3 px-4 py-6 text-sm text-muted">
                       <svg className="w-5 h-5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" /></svg>

@@ -18,10 +18,24 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   SENT: { label: "Göndərildi", cls: "bg-green-500/10 text-green-600" },
   REJECTED: { label: "Rədd edildi", cls: "bg-red-500/10 text-red-500" },
 };
+// Yalnız 4 platforma (websearch da yalnız bunları qaytarır).
 const PLAT: Record<string, string> = {
   instagram: "📷 Instagram", facebook: "📘 Facebook", linkedin: "💼 LinkedIn",
-  tiktok: "🎵 TikTok", x: "𝕏 X", twitter: "𝕏 X", youtube: "▶️ YouTube", telegram: "✈️ Telegram",
+  x: "𝕏 X (Twitter)", twitter: "𝕏 X (Twitter)",
 };
+
+// Adminin öz sosial hesabından olduğu kimi göndərəcəyi mətn.
+// Kimin adından yazıldığı mütləq görünür — istifadəçi tələbi.
+function outgoing(it: Item): string {
+  const from = it.requester?.name || "tradixai istifadəçisi";
+  return `Salam${it.targetName ? ", " + it.targetName : ""}!
+
+tradixai.io saytindan ${from} sizə mesaj göndərir:
+
+"${it.message}"
+
+Cavab vermək üçün: tradixai.io`;
+}
 
 export default function AdminOutreachPage() {
   const { toast } = useToast();
@@ -114,9 +128,17 @@ export default function AdminOutreachPage() {
                   {it.requester?.phone ? ` · ${it.requester.phone}` : ""} · {new Date(it.createdAt).toLocaleString("az-AZ")}
                 </p>
                 <p className="text-sm whitespace-pre-wrap">{it.message}</p>
-                <button onClick={() => copy(`${it.requester?.name || "tradixai istifadəçisi"}: ${it.message}`)}
-                  className="mt-2 text-xs font-semibold text-[var(--brand-to)] hover:underline">
-                  📋 Mesajı adla birlikdə kopyala
+              </div>
+
+              {/* Hazır mesaj — admin bunu olduğu kimi kopyalayıb öz hesabından göndərir */}
+              <div className="border border-dashed border-card-border rounded-xl p-3 mb-3">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-muted mb-1.5">
+                  Göndəriləcək mesaj — {PLAT[it.targetPlatform] || it.targetPlatform} · @{it.targetHandle}
+                </p>
+                <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed">{outgoing(it)}</pre>
+                <button onClick={() => copy(outgoing(it))}
+                  className="mt-2 px-3 py-1.5 rounded-lg bg-[var(--brand-to)] text-white text-xs font-semibold">
+                  📋 Hazır mesajı kopyala
                 </button>
               </div>
 
