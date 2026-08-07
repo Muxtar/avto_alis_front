@@ -97,9 +97,12 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false }: P
               const inner = hero ? (
                 <div className="relative w-full aspect-[16/9] max-h-[560px] overflow-hidden bg-input-bg">
                   {/* Bulanıq arxa fon — yalnız şəkil çərçivəni doldurmayanda lazımdır */}
+                  {/* Öz kompozit qatı (translateZ): blur BİR DƏFƏ rasterləşir, hər
+                      scroll kadrında yenidən hesablanmır — sticky header-də flash səbəbi. */}
                   {!fill && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={it.image} alt="" aria-hidden
+                      style={{ willChange: "transform", transform: "translateZ(0)" }}
                       className="absolute inset-0 w-full h-full object-cover blur-2xl brightness-90 scale-125" />
                   )}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -116,12 +119,13 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false }: P
                       <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
                       <div className="absolute inset-x-0 bottom-0 p-5 sm:p-8 lg:p-10">
                         {it.title && (
-                          <h2 className="text-white font-black text-lg sm:text-3xl lg:text-4xl leading-[1.1] tracking-tight drop-shadow-2xl max-w-2xl">
+                          <h2 className="text-white font-black text-lg sm:text-3xl lg:text-4xl leading-[1.1] tracking-tight max-w-2xl"
+                            style={{ textShadow: "0 2px 12px rgba(0,0,0,.45)" }}>
                             {it.title}
                           </h2>
                         )}
                         {it.subtitle && (
-                          <p className="text-white/85 text-xs sm:text-base mt-1.5 max-w-xl drop-shadow-lg">{it.subtitle}</p>
+                          <p className="text-white/85 text-xs sm:text-base mt-1.5 max-w-xl" style={{ textShadow: "0 1px 6px rgba(0,0,0,.4)" }}>{it.subtitle}</p>
                         )}
                         {it.href && (
                           <span className="mt-3 sm:mt-5 inline-flex items-center gap-2 bg-white text-gray-900 rounded-full px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold shadow-lg">
@@ -185,7 +189,7 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false }: P
 
         {/* Hero-da nöqtələr şəklin üstündə olsun ki, yer tutmasın */}
         {hero && snaps.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-2 rounded-full bg-black/45 backdrop-blur-md ring-1 ring-white/20">
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-2 rounded-full bg-black/60 ring-1 ring-white/20">
             {snaps.map((_, i) => (
               <button key={i} type="button" onClick={() => scrollTo(i)} aria-label={`Slayd ${i + 1}`} aria-current={i === selected}
                 className={cn("h-2 rounded-full transition-all duration-300", i === selected ? "w-6 bg-white" : "w-2 bg-white/50 hover:bg-white/80")} />

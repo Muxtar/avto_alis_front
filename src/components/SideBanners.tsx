@@ -45,13 +45,13 @@ export default function SideBanners() {
           <div className="relative flex-1 min-h-[122px] rounded overflow-hidden ring-1 ring-black/10 bg-black group/side">
             {/* Bulanıq arxa fon — şəkil kəsilmir */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover blur-xl brightness-[0.6] scale-110" />
+            <img src={src} alt="" aria-hidden="true" style={{ willChange: "transform", transform: "translateZ(0)" }} className="absolute inset-0 w-full h-full object-cover blur-xl brightness-[0.6] scale-110" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt={b.title || "banner"} className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover/side:scale-105" />
             {b.title && (
               <>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                <p className="absolute left-3 right-3 bottom-2.5 text-white font-bold text-sm leading-tight drop-shadow-lg line-clamp-2">{b.title}</p>
+                <p className="absolute left-3 right-3 bottom-2.5 text-white font-bold text-sm leading-tight line-clamp-2" style={{ textShadow: "0 1px 6px rgba(0,0,0,.5)" }}>{b.title}</p>
               </>
             )}
           </div>
