@@ -21,6 +21,96 @@ import { IXTISAS_SECTORS } from "@/lib/ixtisas";
 
 type TypeFilter = "all" | "PRODUCT" | "SERVICE" | "PROFESSION";
 
+// Kateqoriya menyusu — ana səhifə hero blokunda və axtarış görünüşündə istifadə olunur.
+// `fill=true` → hero blokunda: absolute inset-0 ilə karuselin hündürlüyünə TAM oturur
+// (öz məzmunu sətri uzatmır, daxildə scroll olur). `fill=false` → adi yan panel.
+function CategoryMenu({
+  fill, selectedCategory, hoverCat, setHoverCat,
+}: {
+  fill: boolean;
+  selectedCategory: string | null;
+  hoverCat: { cat: any; top: number; left: number } | null;
+  setHoverCat: (v: { cat: any; top: number; left: number } | null) => void;
+}) {
+  return (
+    <div
+      onMouseLeave={() => setHoverCat(null)}
+      className={fill
+        ? "absolute inset-0 flex flex-col bg-card border border-card-border"
+        : "sticky top-20 z-30 flex flex-col bg-card border border-card-border shadow-sm"}
+    >
+      {/* Başlıq zolağı — header ilə eyni tünd ton */}
+      <div className="shrink-0 px-3.5 py-2 text-white text-[12.5px] font-bold tracking-wide flex items-center gap-2" style={{ background: "var(--nav-dark)" }}>
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+        Kateqoriyalar
+      </div>
+      <nav className={fill ? "flex-1 min-h-0 overflow-y-auto" : "max-h-[62vh] overflow-y-auto"}>
+        {CATEGORIES.map((c) => {
+          const active = selectedCategory ? parseCat(selectedCategory).main === c.name : false;
+          const hasSubs = c.subs && c.subs.length > 0;
+          return (
+            <Link
+              key={c.name}
+              href={`/elanlar/${catToSlugs(c.name).join("/")}`}
+              onMouseEnter={(e) => {
+                if (!hasSubs) { setHoverCat(null); return; }
+                const r = e.currentTarget.getBoundingClientRect();
+                const vh = window.innerHeight;
+                // Panel ekrandan aşağı çıxmasın deyə yuxarı sürüşdürülür; qalan
+                // hündürlük maxHeight ilə məhdudlaşır (içəri scroll olur).
+                const est = Math.min((c.subs.length + 2) * 42, vh * 0.8);
+                const top = Math.max(8, Math.min(r.top, vh - est - 12));
+                setHoverCat({ cat: c, top, left: r.right });
+              }}
+              className={`group/c relative flex items-center gap-2.5 px-3 py-[7px] text-[13px] transition-colors ${active ? "bg-[var(--brand-soft)] text-[var(--brand-to)] font-semibold" : "text-foreground hover:bg-[var(--brand-soft)]"}`}
+            >
+              {active && <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: "var(--brand-to)" }} />}
+              <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${active ? "bg-[var(--brand-to)] text-white" : "bg-input-bg text-muted group-hover/c:bg-[var(--brand-to)] group-hover/c:text-white"}`}>
+                <CategoryIcon name={c.name} className="w-4 h-4" />
+              </span>
+              <span className={`flex-1 line-clamp-2 font-medium leading-tight ${active ? "" : "group-hover/c:text-[var(--brand-to)]"}`}>{c.name}</span>
+              {hasSubs && <svg className="w-3.5 h-3.5 text-muted shrink-0 group-hover/c:text-[var(--brand-to)] group-hover/c:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+            </Link>
+          );
+        })}
+      </nav>
+      <Link href="/elanlar" className="shrink-0 flex items-center gap-2 px-3.5 py-2.5 text-[12.5px] font-bold border-t border-card-border text-[var(--brand-to)] hover:bg-[var(--brand-soft)] transition-colors">
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+        Bütün kateqoriyalar
+      </Link>
+
+      {/* Alt-kateqoriya flyout-u — fixed (scroll konteynerindən kənar, kəsilmir) */}
+      {hoverCat && (
+        <div
+          style={{ position: "fixed", top: hoverCat.top, left: hoverCat.left, maxHeight: `calc(100vh - ${hoverCat.top}px - 12px)` }}
+          className="z-[60] w-72 overflow-y-auto shadow-2xl bg-card border border-card-border border-l-0"
+        >
+          <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: "var(--nav-dark)" }}>
+            <CategoryIcon name={hoverCat.cat.name} className="w-[18px] h-[18px] shrink-0" />
+            <span className="truncate">{hoverCat.cat.name}</span>
+          </div>
+          <Link href={`/elanlar/${catToSlugs(hoverCat.cat.name).join("/")}`}
+            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b border-card-border text-[var(--brand-to)] hover:bg-[var(--brand-soft)] transition-colors">
+            Hamısına bax →
+          </Link>
+          {hoverCat.cat.subs.map((s: any) => (
+            <Link
+              key={s.name}
+              href={`/elanlar/${catToSlugs(buildCat(hoverCat.cat.name, s.name)).join("/")}`}
+              className="group/sub flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-[var(--brand-soft)] transition-colors"
+            >
+              <span className="w-8 h-8 rounded-lg bg-input-bg text-muted group-hover/sub:bg-[var(--brand-to)] group-hover/sub:text-white flex items-center justify-center shrink-0 transition-colors">
+                <SubCategoryIcon name={s.name} parent={hoverCat.cat.name} className="w-[18px] h-[18px]" />
+              </span>
+              <span className="truncate flex-1 font-medium group-hover/sub:text-[var(--brand-to)]">{s.name}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MarketplacePageWrapper() {
   return (
     <Suspense fallback={<div className="min-h-[60vh] flex items-center justify-center"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
@@ -103,6 +193,8 @@ function MarketplacePage() {
   const SHOW_TAPAZ_GRID: boolean = false; // tap.az grid söndürülüb — kateqoriyalar sol paneldədir
   // Sol panel scroll edəndə flyout kəsilməsin deyə alt-kateqoriya menyusu fixed render olunur.
   const [hoverCat, setHoverCat] = useState<{ cat: any; top: number; left: number } | null>(null);
+  // Ana səhifə = kateqoriya seçilməyib və axtarış yoxdur.
+  const isHome = !selectedCategory && !searchQuery.trim();
   // Filterler
   const [conditionFilter, setConditionFilter] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>("");
@@ -486,117 +578,56 @@ function MarketplacePage() {
 
       {/* Listings Grid with side ads */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
-        <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-4">
-          {/* Sol kateqoriya paneli (umico üslubu) — sabit hündürlük + scroll, hover-da sağda alt-kateqoriyalar */}
-          <aside className="hidden lg:block">
-            {selectedCategory ? (
-              <CategoryFilterPanel
-                category={selectedCategory}
-                type={activeType}
-                minPrice={minPrice} setMinPrice={setMinPrice}
-                maxPrice={maxPrice} setMaxPrice={setMaxPrice}
-                city={cityFilter} setCity={setCityFilter}
-                brand={brandFilter} setBrand={setBrandFilter}
-                condition={conditionFilter} setCondition={setConditionFilter}
-                onReset={resetFilters}
-                activeCount={activeFilterCount}
-              />
-            ) : (
-            /* Kateqoriya paneli — header kataloq menyusu ilə eyni üslub */
-            <div className="sticky top-20 z-30 bg-card border border-card-border shadow-sm" onMouseLeave={() => setHoverCat(null)}>
-              {/* Başlıq zolağı — header ilə eyni tünd ton */}
-              <div className="px-4 py-2.5 text-white text-[13px] font-bold tracking-wide flex items-center gap-2" style={{ background: "var(--nav-dark)" }}>
-                <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-                Kateqoriyalar
+        {/* ── ANA SƏHİFƏ HERO BLOKU (umico/birmarket üslubu) ──
+            Kateqoriyalar + karusel + promo bannerlər TƏK komponentin içindədir.
+            `sticky` YOXDUR: səhifə aşağı sürüşdürüləndə hamısı birlikdə yuxarı qalxır,
+            sol kateqoriya sütunu ekranda qalmır. Sol sütun `relative` + panel
+            `absolute inset-0` olduğuna görə sətrin hündürlüyünü uzatmır — yəni
+            karusellə DƏQİQ eyni hizada bitir və içəridə scroll olur.
+            Arxa fon ağ (bg-card) — istifadəçi tələbi. */}
+        {isHome && (
+          <div className="mb-3 sm:mb-4 bg-card border border-card-border p-2 sm:p-2.5">
+            <div className="lg:grid lg:grid-cols-[228px_minmax(0,1fr)_268px] lg:gap-2.5">
+              <div className="hidden lg:block relative">
+                <CategoryMenu fill selectedCategory={selectedCategory} hoverCat={hoverCat} setHoverCat={setHoverCat} />
               </div>
-              <nav className="max-h-[62vh] overflow-y-auto">
-                {CATEGORIES.map((c) => {
-                  const active = selectedCategory ? parseCat(selectedCategory).main === c.name : false;
-                  const hasSubs = c.subs && c.subs.length > 0;
-                  return (
-                    <Link
-                      key={c.name}
-                      href={`/elanlar/${catToSlugs(c.name).join("/")}`}
-                      onMouseEnter={(e) => {
-                        if (!hasSubs) { setHoverCat(null); return; }
-                        const r = e.currentTarget.getBoundingClientRect();
-                        const vh = window.innerHeight;
-                        // Başlıq + "Hamısına bax" + alt-kateqoriyalar (hər sətir ~42px).
-                        // Panel ekrandan aşağı çıxmasın deyə yuxarı sürüşdürülür; qalan
-                        // hündürlük maxHeight ilə məhdudlaşır (içəri scroll olur).
-                        const est = Math.min((c.subs.length + 2) * 42, vh * 0.8);
-                        const top = Math.max(8, Math.min(r.top, vh - est - 12));
-                        setHoverCat({ cat: c, top, left: r.right });
-                      }}
-                      className={`group/c relative flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${active ? "bg-[var(--brand-soft)] text-[var(--brand-to)] font-semibold" : "text-foreground hover:bg-[var(--brand-soft)]"}`}
-                    >
-                      {/* Aktiv bölmədə sol vurğu zolağı */}
-                      {active && <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: "var(--brand-to)" }} />}
-                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${active ? "bg-[var(--brand-to)] text-white" : "bg-input-bg text-muted group-hover/c:bg-[var(--brand-to)] group-hover/c:text-white"}`}>
-                        <CategoryIcon name={c.name} className="w-[18px] h-[18px]" />
-                      </span>
-                      <span className={`flex-1 line-clamp-2 font-medium ${active ? "" : "group-hover/c:text-[var(--brand-to)]"}`}>{c.name}</span>
-                      {hasSubs && <svg className="w-4 h-4 text-muted shrink-0 group-hover/c:text-[var(--brand-to)] group-hover/c:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
-                    </Link>
-                  );
-                })}
-              </nav>
-              {/* Bütün kateqoriyalar — altda vurğu rəngi ilə */}
-              <Link href="/elanlar" className="flex items-center gap-2 px-4 py-3 text-[13px] font-bold border-t border-card-border text-[var(--brand-to)] hover:bg-[var(--brand-soft)] transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                Bütün kateqoriyalar
-              </Link>
-
-              {/* Alt-kateqoriya flyout-u — fixed (scroll konteynerindən kənar, kəsilmir) */}
-              {hoverCat && (
-                <div
-                  style={{ position: "fixed", top: hoverCat.top, left: hoverCat.left, maxHeight: `calc(100vh - ${hoverCat.top}px - 12px)` }}
-                  className="z-[60] w-72 overflow-y-auto shadow-2xl bg-card border border-card-border border-l-0"
-                >
-                  {/* Başlıq zolağı — panel ilə eyni tünd ton (bitişik görünsün) */}
-                  <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: "var(--nav-dark)" }}>
-                    <CategoryIcon name={hoverCat.cat.name} className="w-[18px] h-[18px] shrink-0" />
-                    <span className="truncate">{hoverCat.cat.name}</span>
-                  </div>
-                  <Link href={`/elanlar/${catToSlugs(hoverCat.cat.name).join("/")}`}
-                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b border-card-border text-[var(--brand-to)] hover:bg-[var(--brand-soft)] transition-colors">
-                    Hamısına bax →
-                  </Link>
-                  {hoverCat.cat.subs.map((s: any) => (
-                    <Link
-                      key={s.name}
-                      href={`/elanlar/${catToSlugs(buildCat(hoverCat.cat.name, s.name)).join("/")}`}
-                      className="group/sub flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-[var(--brand-soft)] transition-colors"
-                    >
-                      <span className="w-8 h-8 rounded-lg bg-input-bg text-muted group-hover/sub:bg-[var(--brand-to)] group-hover/sub:text-white flex items-center justify-center shrink-0 transition-colors">
-                        <SubCategoryIcon name={s.name} parent={hoverCat.cat.name} className="w-[18px] h-[18px]" />
-                      </span>
-                      <span className="truncate flex-1 font-medium group-hover/sub:text-[var(--brand-to)]">{s.name}</span>
-                    </Link>
-                  ))}
-                </div>
-              )}
+              <HomeCarousel />
+              <SideBanners />
             </div>
-            )}
-          </aside>
+          </div>
+        )}
+
+        {/* Ana səhifədə məzmun TAM ENDƏ (sol sütun yoxdur — o, yuxarıdakı hero blokundadır).
+            Kateqoriya/axtarış görünüşündə isə solda filtr/kateqoriya paneli qalır. */}
+        <div className={isHome ? "" : "lg:grid lg:grid-cols-[280px_1fr] lg:gap-4"}>
+          {!isHome && (
+            <aside className="hidden lg:block">
+              {selectedCategory ? (
+                <CategoryFilterPanel
+                  category={selectedCategory}
+                  type={activeType}
+                  minPrice={minPrice} setMinPrice={setMinPrice}
+                  maxPrice={maxPrice} setMaxPrice={setMaxPrice}
+                  city={cityFilter} setCity={setCityFilter}
+                  brand={brandFilter} setBrand={setBrandFilter}
+                  condition={conditionFilter} setCondition={setConditionFilter}
+                  onReset={resetFilters}
+                  activeCount={activeFilterCount}
+                />
+              ) : (
+                <CategoryMenu fill={false} selectedCategory={selectedCategory} hoverCat={hoverCat} setHoverCat={setHoverCat} />
+              )}
+            </aside>
+          )}
 
           {/* Center column - listings */}
           <div className="min-w-0">
-            {/* Ana səhifə hero: mərkəzdə karusel + sağda promo bannerlər (kateqoriyalar solda) */}
-            {!selectedCategory && !searchQuery.trim() && (
-              <>
-                <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-3 sm:gap-4 mb-3 sm:mb-4">
-                  <HomeCarousel />
-                  <SideBanners />
-                </div>
-                <TrustBar />
-              </>
-            )}
+            {isHome && <TrustBar />}
             {/* Hero promo banner ("Hər şey bir platformada") legv edildi —
                 kateqoriya/axtarış görünüşündə lazımsızdır (istifadəçi tələbi). */}
 
             {/* Ana səhifə: əvvəl baxdıqlarınız */}
-            {!selectedCategory && !searchQuery.trim() && (
+            {isHome && (
               <>
                 <RecentlyViewed />
                 {/* Bütün elanların üst başlığı — yalnız ana səhifədə */}
