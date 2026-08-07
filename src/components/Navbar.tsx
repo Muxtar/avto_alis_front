@@ -329,7 +329,28 @@ export default function Navbar() {
   const current = languages.find((l) => l.code === locale)!;
 
   return (
-    <header className="sticky top-0 z-50">
+    /* `sticky` qatın ÖZ arxa fonu opak olmalıdır.
+       Əvvəl header şəffaf idi, rəng yalnız içindəki iki div-də idi (z-30 / z-20).
+       Scroll zamanı Chrome sticky qatı yenidən rasterləşdirəndə bir kadr üçün
+       altdakı açıq səhifə fonu (#f5f7fb) görünürdü → başlıqda "flash" effekti.
+       `isolate` iki uşaq stacking-context-i tək qata yığır (ayrı-ayrı rəsm
+       qatları qalmasın). DİQQƏT: transform / filter / will-change:transform
+       BURAYA QOYULMAMALIDIR — onlar `position: fixed` uşaqlar (kataloq flyout-u,
+       overlay) üçün containing block yaradır və menyunu sındırır. */
+    <header
+      className="sticky top-0 z-50 isolate shadow-sm"
+      style={{
+        background: NAV_DARK,
+        // Qatı kompozitora ver ki, scroll zamanı sticky mövqe hər kadrda
+        // yenidən RƏSM edilmədən sürüşsün (əks halda kompozitor/əsas axın
+        // desinxronu qısa "flash" verir).
+        // `opacity` seçilib, `transform` YOX: will-change:transform (eləcə də
+        // filter/perspective/contain) `position: fixed` uşaqlar üçün containing
+        // block yaradır və kataloq flyout-unu ekranın yerinə header-ə bağlayır.
+        // will-change:opacity isə yalnız stacking context yaradır — flyout sağlam qalır.
+        willChange: 'opacity',
+      }}
+    >
 
       {/* ── Əsas başlıq (Amazon üslubu — tünd) ──
           z-30: Kataloq menyusu alt naviqasiya sətrinin (z-20) ÜSTÜNDƏ açılsın. */}
@@ -876,7 +897,7 @@ export default function Navbar() {
         </div>
       </div>
       {/* ── Alt naviqasiya sətri (Amazon üslubu) ── */}
-      <div className="hidden md:block relative z-20 text-white/90 shadow-sm" style={{ background: NAV_DARK2 }}>
+      <div className="hidden md:block relative z-20 text-white/90" style={{ background: NAV_DARK2 }}>
         <div className="w-full px-3 sm:px-5 lg:px-8">
           <div className="flex items-center justify-between h-10 text-[13px]">
             <div className="flex items-center gap-4">
