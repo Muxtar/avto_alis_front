@@ -38,10 +38,12 @@ const ITEMS = [
   },
 ];
 
-export default function TrustBar() {
+// `embedded` — ana səhifə landing blokunun içində göstərilir: öz kartı/kənar
+// boşluğu olmur, umico-dakı "MPLandingIconBadges" zolağı kimi düz oturur.
+export default function TrustBar({ embedded = false }: { embedded?: boolean }) {
   return (
     <motion.div
-      className="surface px-3 sm:px-5 py-3 sm:py-4 mb-6"
+      className={embedded ? "py-3 sm:py-3.5" : "surface px-3 sm:px-5 py-3 sm:py-4 mb-6"}
       initial="hidden"
       whileInView="show"
       viewport={{ once: true, amount: 0.3 }}

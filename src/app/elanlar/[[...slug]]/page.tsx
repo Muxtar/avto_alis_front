@@ -35,9 +35,10 @@ function CategoryMenu({
   return (
     <div
       onMouseLeave={() => setHoverCat(null)}
+      style={{ background: "var(--landing-tile)", borderColor: "var(--landing-line)" }}
       className={fill
-        ? "absolute inset-0 flex flex-col bg-card border border-card-border"
-        : "sticky top-20 z-30 flex flex-col bg-card border border-card-border shadow-sm"}
+        ? "absolute inset-0 flex flex-col border"
+        : "sticky top-20 z-30 flex flex-col border shadow-sm"}
     >
       {/* Başlıq zolağı — header ilə eyni tünd ton */}
       <div className="shrink-0 px-3.5 py-2 text-white text-[12.5px] font-bold tracking-wide flex items-center gap-2" style={{ background: "var(--nav-dark)" }}>
@@ -62,19 +63,22 @@ function CategoryMenu({
                 const top = Math.max(8, Math.min(r.top, vh - est - 12));
                 setHoverCat({ cat: c, top, left: r.right });
               }}
-              className={`group/c relative flex items-center gap-2.5 px-3 py-[7px] text-[13px] transition-colors ${active ? "bg-[var(--brand-soft)] text-[var(--brand-to)] font-semibold" : "text-foreground hover:bg-[var(--brand-soft)]"}`}
+              className={`group/c relative flex items-center gap-3 px-3.5 py-2 text-[13px] leading-tight transition-colors ${active ? "text-[var(--brand-to)] font-semibold" : "text-foreground"} hover:bg-[var(--landing-bg)] hover:text-[var(--brand-to)]`}
             >
-              {active && <span className="absolute left-0 top-0 bottom-0 w-1" style={{ background: "var(--brand-to)" }} />}
-              <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${active ? "bg-[var(--brand-to)] text-white" : "bg-input-bg text-muted group-hover/c:bg-[var(--brand-to)] group-hover/c:text-white"}`}>
-                <CategoryIcon name={c.name} className="w-4 h-4" />
+              {active && <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: "var(--brand-to)" }} />}
+              {/* umico: 24px ikon, mətndən 40px-lik sabit sütun məsafəsi */}
+              <span className={`w-6 h-6 flex items-center justify-center shrink-0 transition-colors ${active ? "text-[var(--brand-to)]" : "text-muted group-hover/c:text-[var(--brand-to)]"}`}>
+                <CategoryIcon name={c.name} className="w-[18px] h-[18px]" />
               </span>
-              <span className={`flex-1 line-clamp-2 font-medium leading-tight ${active ? "" : "group-hover/c:text-[var(--brand-to)]"}`}>{c.name}</span>
-              {hasSubs && <svg className="w-3.5 h-3.5 text-muted shrink-0 group-hover/c:text-[var(--brand-to)] group-hover/c:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
+              <span className="flex-1 line-clamp-2 font-medium">{c.name}</span>
+              {/* umico "TurningArrowIcon" — 10px chevron, sağa döndərilmiş */}
+              {hasSubs && <svg className="w-2.5 h-2.5 shrink-0 text-[#bdbfcd] group-hover/c:text-[var(--brand-to)] transition-colors" viewBox="0 0 9 6" fill="currentColor" style={{ transform: "rotate(270deg)" }}><path fillRule="evenodd" clipRule="evenodd" d="M7.06 0L4 3.05333L0.94 0L0 0.94L4 4.94L8 0.94L7.06 0Z" /></svg>}
             </Link>
           );
         })}
       </nav>
-      <Link href="/elanlar" className="shrink-0 flex items-center gap-2 px-3.5 py-2.5 text-[12.5px] font-bold border-t border-card-border text-[var(--brand-to)] hover:bg-[var(--brand-soft)] transition-colors">
+      <Link href="/elanlar" style={{ borderColor: "var(--landing-line)" }}
+        className="shrink-0 flex items-center gap-2 px-3.5 py-2.5 text-[12.5px] font-bold border-t text-[var(--brand-to)] hover:bg-[var(--landing-bg)] transition-colors">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
         Bütün kateqoriyalar
       </Link>
@@ -586,13 +590,28 @@ function MarketplacePage() {
             karusellə DƏQİQ eyni hizada bitir və içəridə scroll olur.
             Arxa fon ağ (bg-card) — istifadəçi tələbi. */}
         {isHome && (
-          <div className="mb-3 sm:mb-4 bg-card border border-card-border p-2 sm:p-2.5">
-            <div className="lg:grid lg:grid-cols-[228px_minmax(0,1fr)_268px] lg:gap-2.5">
-              <div className="hidden lg:block relative">
-                <CategoryMenu fill selectedCategory={selectedCategory} hoverCat={hoverCat} setHoverCat={setHoverCat} />
+          /* umico/birmarket "MPLandingHeader" quruluşu:
+               Left   → kateqoriya menyusu
+               Middle → karusel + sağda 3 promo plitəsi
+               Bottom → güvən zolağı (onların "MPLandingIconBadges"-i)
+             Ağ çərçivə (--landing-bg), içəri boşluq 16px, plitələr --landing-tile.
+             `sticky` YOXDUR — scroll edəndə hamısı birlikdə yuxarı qalxır. */
+          <div className="mb-3 sm:mb-4 border" style={{ background: "var(--landing-bg)", borderColor: "var(--landing-line)" }}>
+            <div className="p-3 sm:p-4">
+              <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)_280px] lg:gap-4">
+                {/* Left — kateqoriyalar (sətri uzatmasın deyə absolute) */}
+                <div className="hidden lg:block relative">
+                  <CategoryMenu fill selectedCategory={selectedCategory} hoverCat={hoverCat} setHoverCat={setHoverCat} />
+                </div>
+                {/* Middle — karusel */}
+                <HomeCarousel />
+                {/* Middle sağ — promo plitələri */}
+                <SideBanners />
               </div>
-              <HomeCarousel />
-              <SideBanners />
+            </div>
+            {/* Bottom — güvən zolağı, eyni çərçivənin içində */}
+            <div className="border-t px-3 sm:px-4" style={{ borderColor: "var(--landing-line)" }}>
+              <TrustBar embedded />
             </div>
           </div>
         )}
@@ -622,7 +641,6 @@ function MarketplacePage() {
 
           {/* Center column - listings */}
           <div className="min-w-0">
-            {isHome && <TrustBar />}
             {/* Hero promo banner ("Hər şey bir platformada") legv edildi —
                 kateqoriya/axtarış görünüşündə lazımsızdır (istifadəçi tələbi). */}
 

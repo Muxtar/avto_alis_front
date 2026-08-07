@@ -31,6 +31,12 @@
   /* Başlıq tonları — həm header, həm kateqoriya paneli eyni rəngi işlədir */
   --nav-dark: #111a2e;
   --nav-dark2: #1b2540;
+  /* Ana səhifə landing bloku (umico/birmarket "MPLandingHeader" üslubu):
+     ağ çərçivə + içindəki plitələr üçün bir ton açıq boz-mavi.
+     Qeyd: aşağıdakı `.hero-bg` KLASI başqa şeydir (qradiyent fon) — qarışdırma. */
+  --landing-bg: #ffffff;
+  --landing-tile: #fafbff;
+  --landing-line: #eef0f6;
 }
 
 /* Dark theme — activated via .dark class on <html> */
@@ -57,6 +63,10 @@
   /* Qaranlıq temada başlıq tonu bir az daha dərin */
   --nav-dark: #0d1424;
   --nav-dark2: #16203a;
+  /* Landing bloku — qaranlıq temada kart tonları */
+  --landing-bg: #162033;
+  --landing-tile: rgba(255, 255, 255, 0.04);
+  --landing-line: rgba(71, 85, 105, 0.3);
 }
 
 @theme inline {
