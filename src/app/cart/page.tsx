@@ -56,9 +56,16 @@ export default function CartPage() {
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   // Səbəti göndərmə: çatdırılma alıcıya (RECIPIENT) yoxsa mənə (SENDER) — göndərən seçir.
-  const [shareMode, setShareMode] = useState<"RECIPIENT" | "SENDER">("RECIPIENT");
+  const [shareMode, setShareMode] = useState<"RECIPIENT" | "SENDER">("SENDER");
   const [shareLoc, setShareLoc] = useState<{ city: string; address: string; latitude: number | null; longitude: number | null }>({ city: "", address: "", latitude: null, longitude: null });
   const [sharePhone, setSharePhone] = useState("");
+  // Məhsul KİMƏ gedəcək: "ME" — özümə, "FRIEND" — seçdiyim QEYDİYYATLI dosta.
+  // (Ödəyən istənilən şəxs ola bilər və qeydiyyat tələb olunmur — o, ayrı məsələdir.)
+  const [shareTo, setShareTo] = useState<"ME" | "FRIEND">("ME");
+  const [friend, setFriend] = useState<{ id: number; name: string; avatar?: string | null } | null>(null);
+  const [friendQuery, setFriendQuery] = useState("");
+  const [contacts, setContacts] = useState<{ id: number; name: string; user: { id: number; name: string; avatar: string | null } | null }[]>([]);
+  const [contactsLoaded, setContactsLoaded] = useState(false);
   // Məhsul seçimi (checkbox) — seçilənləri al və ya faktura göndər
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const prevIdsRef = useRef<Set<number>>(new Set());
@@ -104,14 +111,36 @@ export default function CartPage() {
     if (!paymentTouched) setPaymentMethod("CARD"); // VÖEN → default kart
   }, [cardAllowed, paymentTouched]);
 
+  // Kontaktlardan yalnız saytda QEYDİYYATLI olanlar — alıcı yalnız qeydiyyatlı
+  // şəxs ola bilər (sifariş, bildiriş və ünvan hesaba bağlanır).
+  const loadContacts = async () => {
+    try {
+      const d = await fetch(`${API}/me/contacts`, { headers }).then((r) => r.json());
+      if (d?.success) setContacts(d.contacts || []);
+    } catch { /* kontakt yoxdur */ } finally { setContactsLoaded(true); }
+  };
+  const registeredContacts = contacts
+    .filter((c) => c.user)
+    .filter((c) => {
+      const q = friendQuery.trim().toLowerCase();
+      return !q || (c.user!.name || c.name || "").toLowerCase().includes(q);
+    })
+    .slice(0, 30);
+
   // Səbəti link kimi paylaş — linki yaradır və path qaytarır (paylaşım menyusu üçün).
   const shareCart = async (): Promise<string | null> => {
     if (selItems.length === 0) { toast("Ən azı bir məhsul seçin", "error"); return null; }
-    if (shareMode === "SENDER" && !shareLoc.address.trim()) { toast("Öz çatdırılma ünvanınızı seçin", "error"); return null; }
+    if (shareMode === "SENDER" && !shareLoc.address.trim()) { toast("Çatdırılma ünvanını seçin", "error"); return null; }
+    if (shareMode === "SENDER" && shareTo === "FRIEND" && !friend) { toast("Dostunuzu seçin (saytda qeydiyyatlı olmalıdır)", "error"); return null; }
     setSharing(true);
     try {
       const body: any = { itemIds: [...selected], deliveryMode: shareMode };
-      if (shareMode === "SENDER") { body.address = shareLoc.address; body.city = shareLoc.city; body.latitude = shareLoc.latitude; body.longitude = shareLoc.longitude; body.phone = sharePhone; }
+      if (shareMode === "SENDER") {
+        body.address = shareLoc.address; body.city = shareLoc.city;
+        body.latitude = shareLoc.latitude; body.longitude = shareLoc.longitude; body.phone = sharePhone;
+        // Dosta göndərilirsə alıcı O olur (sifariş, bildiriş və tarixçə ona bağlanır).
+        if (shareTo === "FRIEND" && friend) body.recipientUserId = friend.id;
+      }
       const res = await fetch(`${API}/cart/share`, { method: "POST", headers, body: JSON.stringify(body) });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -392,23 +421,80 @@ export default function CartPage() {
             {/* Səbəti paylaş */}
             <div className="surface p-3 sm:p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-sm font-medium">🔗 Seçilmiş məhsulları başqasına göndər ({selItems.length})</p>
+                <p className="text-sm font-medium">🔗 Alışı paylaş ({selItems.length} məhsul)</p>
                 {/* Tək paylaş ikonu — kliklədikdə linki yaradır və tətbiqdə/xaricdə seçimi açır */}
                 <ShareButton title="Səbətdəki məhsullar" text="Səbətimə bax — tradixai" beforeShare={shareCart} disabled={sharing || selItems.length === 0} compact className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center text-orange-500 hover:bg-orange-500/10 transition-colors" />
               </div>
               {/* Çatdırılma kimə? — göndərən seçir */}
               <div className="grid grid-cols-2 gap-1 bg-input-bg/60 rounded-xl p-1 mt-2">
-                <button onClick={() => setShareMode("RECIPIENT")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "RECIPIENT" ? "bg-orange-500 text-white" : "text-muted"}`}>👤 Alıcı öz ünvanına alsın</button>
-                <button onClick={() => setShareMode("SENDER")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "SENDER" ? "bg-orange-500 text-white" : "text-muted"}`}>🏠 Paylaş digər şəxs ödəsin</button>
+                <button onClick={() => setShareMode("RECIPIENT")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "RECIPIENT" ? "bg-orange-500 text-white" : "text-muted"}`}>👤 Alan öz ünvanına alsın</button>
+                <button onClick={() => setShareMode("SENDER")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "SENDER" ? "bg-orange-500 text-white" : "text-muted"}`}>💳 Paylaş — başqası ödəsin</button>
               </div>
               {shareMode === "SENDER" ? (
                 <div className="mt-2 space-y-2">
-                  <p className="text-[11px] text-muted">Məhsullar <b>sizin</b> ünvanınıza gələcək — qarşı tərəf yalnız ödəyəcək. Çatdırılma yerinizi seçin:</p>
-                  <input value={sharePhone} onChange={(e) => setSharePhone(e.target.value)} placeholder="Telefonunuz" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" />
+                  <p className="text-[11px] text-muted">
+                    Linki açan şəxs <b>yalnız ödəyəcək</b> — heç nə seçməyəcək və saytda qeydiyyatlı olmasına ehtiyac yoxdur.
+                    Məhsulların kimə gedəcəyini siz indi təyin edirsiniz:
+                  </p>
+
+                  {/* Məhsul kimə gedir — mənə, yoxsa dostuma */}
+                  <div className="grid grid-cols-2 gap-1 bg-input-bg/60 rounded-xl p-1">
+                    <button onClick={() => setShareTo("ME")}
+                      className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareTo === "ME" ? "bg-orange-500 text-white" : "text-muted"}`}>
+                      🙋 Mənə gəlsin
+                    </button>
+                    <button onClick={() => { setShareTo("FRIEND"); if (!contactsLoaded) loadContacts(); }}
+                      className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareTo === "FRIEND" ? "bg-orange-500 text-white" : "text-muted"}`}>
+                      🎁 Dostuma gəlsin
+                    </button>
+                  </div>
+
+                  {shareTo === "FRIEND" && (
+                    <div className="rounded-xl border border-input-border p-2 space-y-2">
+                      {friend ? (
+                        <div className="flex items-center gap-2">
+                          {friend.avatar
+                            // eslint-disable-next-line @next/next/no-img-element
+                            ? <img src={imgUrl(friend.avatar)} alt="" className="w-8 h-8 rounded-full object-cover" />
+                            : <span className="w-8 h-8 rounded-full bg-input-bg flex items-center justify-center text-xs font-bold">{friend.name.slice(0, 1).toUpperCase()}</span>}
+                          <span className="text-xs font-semibold flex-1 truncate">{friend.name}</span>
+                          <button onClick={() => setFriend(null)} className="text-[11px] text-muted hover:text-foreground">Dəyiş</button>
+                        </div>
+                      ) : (
+                        <>
+                          <input value={friendQuery} onChange={(e) => setFriendQuery(e.target.value)} placeholder="Kontaktlarınızda axtarın…"
+                            className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" />
+                          <div className="max-h-40 overflow-y-auto divide-y divide-card-border">
+                            {registeredContacts.length === 0 ? (
+                              <p className="text-[11px] text-muted py-2">
+                                {contactsLoaded ? "Kontaktlarınız arasında saytda qeydiyyatlı şəxs tapılmadı." : "Yüklənir…"}
+                              </p>
+                            ) : registeredContacts.map((c) => (
+                              <button key={c.id} onClick={() => setFriend(c.user!)}
+                                className="w-full flex items-center gap-2 py-1.5 text-left hover:bg-input-bg rounded-lg px-1">
+                                {c.user!.avatar
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  ? <img src={imgUrl(c.user!.avatar)} alt="" className="w-7 h-7 rounded-full object-cover" />
+                                  : <span className="w-7 h-7 rounded-full bg-input-bg flex items-center justify-center text-[10px] font-bold">{(c.user!.name || c.name).slice(0, 1).toUpperCase()}</span>}
+                                <span className="text-xs truncate flex-1">{c.user!.name || c.name}</span>
+                                <span className="text-[10px] text-green-600 font-semibold shrink-0">✓ qeydiyyatlı</span>
+                              </button>
+                            ))}
+                          </div>
+                          <p className="text-[11px] text-muted">Dostunuz saytda qeydiyyatlı olmalıdır — sifariş və bildiriş onun hesabına bağlanır.</p>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  <p className="text-[11px] text-muted">
+                    {shareTo === "ME" ? "Çatdırılma ünvanınız:" : "Çatdırılma ünvanı:"}
+                  </p>
+                  <input value={sharePhone} onChange={(e) => setSharePhone(e.target.value)} placeholder="Əlaqə telefonu" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" />
                   <LocationPicker city={shareLoc.city} address={shareLoc.address} latitude={shareLoc.latitude} longitude={shareLoc.longitude} onChange={(n: any) => setShareLoc(n)} height="200px" />
                 </div>
               ) : (
-                <p className="text-[11px] text-muted mt-1">Linki alan şəxs məhsulları alıb <b>öz ünvanına</b> sifariş verəcək.</p>
+                <p className="text-[11px] text-muted mt-1">Linki alan şəxs məhsulları alıb <b>öz ünvanına</b> sifariş verəcək (nağd).</p>
               )}
               {shareLink && (
                 <div className="flex gap-2 mt-2 items-stretch">

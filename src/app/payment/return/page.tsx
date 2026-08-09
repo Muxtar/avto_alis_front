@@ -11,10 +11,19 @@ export default function PaymentReturnPage() {
     if (inIframe) {
       // Modaldakı parent dinləyir → modalı bağlayıb /orders-ə yönəldəcək.
       window.parent.postMessage({ type: "kapital-payment", status }, window.location.origin);
-    } else {
-      // Tam səhifə (redirect fallback) — birbaşa sifarişlərə.
-      window.location.replace(`/orders?payment=${status}`);
+      return;
     }
+    // "Paylaş — başqası ödəsin": ödəyən qonaq ola bilər, onun /orders səhifəsi yoxdur.
+    // Ödənişə getməzdən əvvəl paylaşım tokeni sessionStorage-a yazılır — nəticəni
+    // həmin paylaşım səhifəsində göstəririk.
+    let shared: string | null = null;
+    try { shared = sessionStorage.getItem("sharedPayToken"); sessionStorage.removeItem("sharedPayToken"); } catch { /* bloklanıb */ }
+    if (shared) {
+      window.location.replace(`/shared/${encodeURIComponent(shared)}?paid=${status}`);
+      return;
+    }
+    // Tam səhifə (redirect fallback) — birbaşa sifarişlərə.
+    window.location.replace(`/orders?payment=${status}`);
   }, []);
 
   return (
