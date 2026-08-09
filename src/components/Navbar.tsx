@@ -56,6 +56,13 @@ const PINK = "#4348f8";           // əsas vurğu (istifadəçi seçimi)
 const NAV_DARK = "var(--nav-dark)";   // başlıq — tünd (globals.css-də təyin olunub)
 const NAV_DARK2 = "var(--nav-dark2)"; // alt naviqasiya sətri
 
+// Axtarış sahəsindəki rejim seçicisi.
+const SEARCH_MODES = [
+  { key: "all" as const, icon: "🔎", label: "Hamısı", hint: "Sistem sorğuya baxıb özü qərar verir" },
+  { key: "product" as const, icon: "📦", label: "Məhsul", hint: "Saytdakı elanlar + tap.az, turbo.az və digər AZ saytları — ad, qiymət, satıcı" },
+  { key: "person" as const, icon: "👤", label: "Şəxs", hint: "Saytdakı ixtisas sahibləri + eyni addakı sosial media profilləri" },
+];
+
 export default function Navbar() {
   const { locale, setLocale, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
@@ -91,12 +98,19 @@ export default function Navbar() {
   // Sayt daxili (tradixai) nəticələr — internetdən ƏVVƏL göstərilir.
   // Məhsul: elanlar; şəxs: peşəkar profillər (ada görə).
   const [siteListings, setSiteListings] = useState<{ id: number; title: string; price: number; images?: string[]; user?: { name?: string } }[]>([]);
+  // Axtarış rejimi — istifadəçi axtarış sahəsindəki seçicidən özü seçir:
+  //   all     — hər şey (sistem sorğuya baxıb qərar verir)
+  //   product — məhsul: sayt elanları + AZ alış-veriş saytları (ad, qiymət, satıcı)
+  //   person  — şəxs: saytdakı ixtisas sahibləri + eyni addakı sosial media profilləri
+  const [searchMode, setSearchMode] = useState<"all" | "product" | "person">("all");
+  const [modeOpen, setModeOpen] = useState(false);
   const [sitePeople, setSitePeople] = useState<{ id: number; name: string; profession?: string | null; professions?: string[]; avatar?: string | null; publicId?: string | null }[]>([]);
   // unreadMessages artıq qlobal AuthContext-dən gəlir (real-time socket ilə).
   const [unreadInquiries, setUnreadInquiries] = useState(0);
   const langRef = useRef<HTMLDivElement>(null);
   const userRef = useRef<HTMLDivElement>(null);
   const catRef = useRef<HTMLDivElement>(null);
+  const modeRef = useRef<HTMLDivElement>(null);
   // Alt-kateqoriya flyout-u siyahıdan çıxıb ayrıca render olunur (backdrop-blur +
   // overflow onu kəsməsin). Kursor siyahıdan flyout-a keçəndə bağlanmasın deyə
   // kiçik gecikmə ilə bağlanır (flyout-a girəndə ləğv olunur).
@@ -136,6 +150,7 @@ export default function Navbar() {
       if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
       if (userRef.current && !userRef.current.contains(e.target as Node)) setUserOpen(false);
       if (catRef.current && !catRef.current.contains(e.target as Node)) { setCatOpen(false); setCatHover(null); }
+      if (modeRef.current && !modeRef.current.contains(e.target as Node)) setModeOpen(false);
       if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) setSearchFocused(false);
     };
     document.addEventListener("mousedown", handler);
@@ -170,6 +185,8 @@ export default function Navbar() {
   };
 
   // Sorğu ad-soyada bənzəyirmi? (backend ilə eyni məntiq) — şəxs axtarışı üçün.
+  // Qeyd: yalnız "Hamısı" rejimində istifadə olunur; istifadəçi rejimi özü
+  // seçəndə onun seçiminə hörmət edilir.
   const looksLikePerson = (q: string) => {
     if (/\d/.test(q)) return false;
     const w = q.trim().split(/\s+/).filter(Boolean);
@@ -187,21 +204,23 @@ export default function Navbar() {
     router.push(`/elanlar${q ? `?search=${encodeURIComponent(q)}` : ""}`);
     if (!q) return;
 
-    const person = looksLikePerson(q);
+    // Rejim: istifadəçi seçibsə ona hörmət; "all" olanda sistem təxmin edir.
+    const person = searchMode === "person" || (searchMode === "all" && looksLikePerson(q));
 
     // ── 1) ƏVVƏLCƏ SAYTDAN (tradixai) ──
     // HƏR axtarışda hər ikisi paralel gedir: ELANLAR (məhsul) + İXTİSAS (peşəkarlar).
     // Sorğunun məhsul, yoxsa ad olmasından asılı deyil — istifadəçi bir axtarış
     // qutusundan hər şeyi tapsın. Ad axtarışında ixtisas nəticələri ƏN BAŞDA göstərilir.
     try {
+      // Rejimə görə yalnız lazım olan sorğu gedir (boş yerə istək atılmır).
+      const wantListings = searchMode !== "person";
+      const wantPros = searchMode !== "product";
       const [lr, pr] = await Promise.all([
-        fetch(`${API}/listings?search=${encodeURIComponent(q)}&limit=6`),
-        fetch(`${API}/professionals?q=${encodeURIComponent(q)}`),
+        wantListings ? fetch(`${API}/listings?search=${encodeURIComponent(q)}&limit=6`) : Promise.resolve(null),
+        wantPros ? fetch(`${API}/professionals?q=${encodeURIComponent(q)}`) : Promise.resolve(null),
       ]);
-      const ld = await lr.json();
-      setSiteListings(Array.isArray(ld?.listings) ? ld.listings : []);
-      const pd = await pr.json().catch(() => null);
-      setSitePeople(Array.isArray(pd?.professionals) ? pd.professionals.slice(0, 6) : []);
+      if (lr) { const ld = await lr.json(); setSiteListings(Array.isArray(ld?.listings) ? ld.listings : []); }
+      if (pr) { const pd = await pr.json().catch(() => null); setSitePeople(Array.isArray(pd?.professionals) ? pd.professionals.slice(0, 6) : []); }
     } catch {
       // Sayt axtarışı alınmadısa da internetə keçirik — istifadəçi nəticəsiz qalmasın.
     }
@@ -231,7 +250,8 @@ export default function Navbar() {
       const res = await fetch(`${API}/search/web`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ query: q }),
+        // Rejimi backend-ə ÖTÜRÜRÜK — orada da təxmin edilmir, seçim tətbiq olunur.
+        body: JSON.stringify({ query: q, mode: searchMode === "all" ? "auto" : searchMode }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) setWebData({ mode: data.mode || (person ? "person" : "product"), summary: data.message || "Uyğun nəticə tapılmadı.", results: [] });
@@ -454,12 +474,31 @@ export default function Navbar() {
                 ilə ortada kiçik qalıb ikonlardan uzaq idi). İncə kənar + bulanıq fon. */}
             <div ref={searchBoxRef} className="order-last basis-full w-full sm:order-none sm:basis-auto sm:flex-1 sm:w-auto relative min-w-0 sm:min-w-[160px]">
             <form onSubmit={submitSearch} className="w-full flex items-stretch h-11 sm:h-12 overflow-hidden rounded-lg bg-white shadow-sm focus-within:ring-2" style={{ boxShadow: "0 0 0 0px transparent" }}>
-              {/* Kateqoriya seçici — Amazon üslubu "Hamısı" */}
-              <button type="button" onClick={() => { setCatOpen((v) => !v); setCatHover(null); }}
-                className="hidden sm:flex items-center gap-1 px-3 bg-[#eef0f5] text-[#0f172a] text-xs font-semibold border-r border-[#d5d9e0] hover:bg-[#e3e7ee] transition-colors shrink-0">
-                Hamısı
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-              </button>
+              {/* NƏ axtarıram? — məhsul, yoxsa şəxs. Seçim həm saytdaxili, həm
+                  internet axtarışına tətbiq olunur (backend-ə `mode` göndərilir). */}
+              <div ref={modeRef} className="relative shrink-0">
+                <button type="button" onClick={() => setModeOpen((v) => !v)}
+                  className="hidden sm:flex items-center gap-1 h-full px-3 bg-[#eef0f5] text-[#0f172a] text-xs font-semibold border-r border-[#d5d9e0] hover:bg-[#e3e7ee] transition-colors whitespace-nowrap">
+                  {SEARCH_MODES.find((m) => m.key === searchMode)!.label}
+                  <svg className={`w-3 h-3 transition-transform ${modeOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {modeOpen && (
+                  <div className="absolute left-0 top-full mt-1 z-50 w-64 bg-card text-foreground border border-card-border shadow-2xl">
+                    {SEARCH_MODES.map((m) => (
+                      <button key={m.key} type="button"
+                        onClick={() => { setSearchMode(m.key); setModeOpen(false); }}
+                        className={`w-full text-left px-3.5 py-2.5 flex items-start gap-2.5 hover:bg-[var(--brand-soft)] transition-colors border-b border-card-border/50 last:border-0 ${searchMode === m.key ? "bg-[var(--brand-soft)]" : ""}`}>
+                        <span className="text-base leading-none mt-0.5">{m.icon}</span>
+                        <span className="min-w-0">
+                          <span className={`block text-[13px] font-semibold ${searchMode === m.key ? "text-[var(--brand-to)]" : ""}`}>{m.label}</span>
+                          <span className="block text-[11px] text-muted leading-snug">{m.hint}</span>
+                        </span>
+                        {searchMode === m.key && <span className="ml-auto text-[var(--brand-to)] text-sm">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <input
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setSearchFocused(true); }}
@@ -533,9 +572,15 @@ export default function Navbar() {
                 <div className="absolute left-0 right-0 top-full mt-1 z-50 bg-card text-foreground border border-card-border shadow-2xl max-h-[75vh] overflow-y-auto">
                   <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-card-border">
                     <div className="min-w-0">
-                      <p className="text-sm font-bold">{person ? "Şəxs axtarışı" : "Axtarış nəticələri"}</p>
+                      <p className="text-sm font-bold">
+                        {person ? "👤 Şəxs axtarışı" : searchMode === "product" ? "📦 Məhsul axtarışı" : "Axtarış nəticələri"}
+                      </p>
                       <p className="text-xs text-muted mt-0.5 truncate">
-                        «{webQuery}» — {person ? "əvvəl tradixai ixtisas, sonra sosial media" : "tradixai (elan + ixtisas), sonra internet"}
+                        «{webQuery}» — {person
+                          ? "əvvəl tradixai ixtisas, sonra sosial media"
+                          : searchMode === "product"
+                            ? "əvvəl tradixai elanları, sonra tap.az / turbo.az və digər AZ saytları"
+                            : "tradixai (elan + ixtisas), sonra internet"}
                       </p>
                     </div>
                     <button onClick={() => setWebOpen(false)} aria-label="Bağla" className="shrink-0 p-1 text-muted hover:text-foreground transition-colors">
@@ -584,7 +629,7 @@ export default function Navbar() {
                   )}
 
                   {/* ── İNTERNETDƏN ── */}
-                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted">{person ? "sosial media (Instagram · Facebook · X · LinkedIn)" : "internetdən"}</p>
+                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted">{person ? "sosial media (Instagram · Facebook · X · LinkedIn)" : "digər saytlardan (tap.az · turbo.az · bina.az · umico.az …)"}</p>
                   {webLoading ? (
                     <div className="flex items-center gap-3 px-4 py-6 text-sm text-muted">
                       <svg className="w-5 h-5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" /></svg>
