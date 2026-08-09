@@ -795,7 +795,7 @@ export default function Navbar() {
               {isLoggedIn ? (
                 <div ref={userRef} className="relative">
                   <button onClick={() => setUserOpen(!userOpen)}
-                    className="relative flex items-center p-1.5 text-white/85 hover:text-white transition-colors" title={user?.name || "Profil"}>
+                    className="relative flex items-center p-1.5 rounded-md text-white/85 hover:text-white hover:ring-1 hover:ring-white/40 transition-colors" title={user?.name || "Profil"}>
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     {totalUnread > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse-soft">
