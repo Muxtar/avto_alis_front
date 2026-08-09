@@ -90,7 +90,7 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
-  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
+  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean; image?: string | null; description?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
   // Sosial profilə mesaj göndərmə (admin əl ilə çatdırır).
   const [msgTarget, setMsgTarget] = useState<any>(null);
   const [msgText, setMsgText] = useState("");
@@ -658,17 +658,12 @@ export default function Navbar() {
                       {(webData?.results?.length ?? 0) === 0 ? (
                         <p className="px-4 py-5 text-sm text-muted">{person ? "Açıq sosial media hesabı tapılmadı." : "İnternetdə uyğun nəticə tapılmadı."}</p>
                       ) : person ? (
-                        /* Tapılan hər profil ayrıca sətirdə — profil şəkli + platforma + istifadəçi adı */
-                        <ul className="divide-y divide-card-border">
+                        /* ── ŞƏXS KARTLARI ── profil şəkli + ad + platforma + əməliyyat */
+                        <div className="grid sm:grid-cols-2 gap-2 px-3 pb-3">
                           {webData!.results.map((r) => {
                             const m = platMeta[r.platform || ""] || { icon: "🔗", label: r.site || "Profil", cls: "bg-input-bg text-muted" };
-                            // Profil şəkli — unavatar (açıq avatar xidməti). Alınmasa
-                            // onError ilə platforma ikonuna qayıdır.
-                            // Saytda qeydiyyatlıdırsa öz avatarımızı işlədirik (etibarlı),
-                            // əks halda açıq avatar xidmətini sınayırıq.
-                            // Prioritet: saytdakı avatar → Apify şəkli → açıq avatar xidməti.
-                            // Xarici şəkillər proxy-dən keçir — Instagram/TikTok CDN-ləri
-                            // birbaşa hotlink-i bloklayır, proxy bunu həll edir.
+                            // Prioritet: saytdakı avatar → og:image/Apify şəkli → açıq avatar xidməti.
+                            // Xarici şəkillər proxy-dən keçir (CDN-lər birbaşa hotlink-i bloklayır).
                             const avatarSrc = r.siteUser?.avatar
                               ? imgUrl(r.siteUser.avatar)
                               : (r.avatarUrl
@@ -678,88 +673,103 @@ export default function Navbar() {
                                       : null));
                             const shownName = r.siteUser?.name || r.displayName || r.handle || r.title;
                             return (
-                              <li key={r.url} className={r.siteUser ? "bg-[var(--brand-soft)]" : ""}>
-                                <a href={r.url} target="_blank" rel="noopener noreferrer"
-                                  className="flex items-center gap-3 px-4 py-3 hover:bg-input-bg transition-colors">
+                              <div key={r.url}
+                                className={`relative border rounded-xl p-3 transition-colors ${r.siteUser ? "border-[var(--brand-to)] bg-[var(--brand-soft)]" : "border-card-border hover:border-[var(--brand-to)]/50"}`}>
+                                <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex gap-3 min-w-0">
                                   <span className="relative shrink-0">
                                     {avatarSrc ? (
                                       // eslint-disable-next-line @next/next/no-img-element
                                       <img src={avatarSrc} alt="" loading="lazy"
-                                        className="w-11 h-11 rounded-full object-cover bg-input-bg"
-                                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; const s = e.currentTarget.nextElementSibling as HTMLElement | null; if (s) s.style.display = "flex"; }} />
+                                        className="w-14 h-14 rounded-full object-cover bg-input-bg"
+                                        onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; const sib = e.currentTarget.nextElementSibling as HTMLElement | null; if (sib) sib.style.display = "flex"; }} />
                                     ) : null}
                                     <span style={{ display: avatarSrc ? "none" : "flex" }}
-                                      className={`w-11 h-11 rounded-full items-center justify-center text-lg ${m.cls || "bg-input-bg"}`}>
-                                      {m.icon}
+                                      className="w-14 h-14 rounded-full items-center justify-center text-lg font-bold bg-input-bg text-muted">
+                                      {(shownName || "?").slice(0, 1).toUpperCase()}
                                     </span>
                                     {/* Platforma nişanı — avatarın küncündə */}
-                                    <span className="absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full bg-card border border-card-border flex items-center justify-center text-[10px]">{m.icon}</span>
+                                    <span className={`absolute -bottom-0.5 -right-0.5 w-6 h-6 rounded-full border-2 border-card flex items-center justify-center text-[11px] ${m.cls || "bg-input-bg"}`}>{m.icon}</span>
                                   </span>
                                   <div className="min-w-0 flex-1">
-                                    <p className="text-sm font-semibold truncate flex items-center gap-1">
+                                    <p className="text-sm font-bold truncate flex items-center gap-1">
                                       {shownName}
-                                      {r.verifiedBadge && <span title="Təsdiqlənmiş hesab" className="text-[var(--brand-to)] text-xs">✔︎</span>}
+                                      {r.verifiedBadge && <span title="Təsdiqlənmiş hesab" className="text-[var(--brand-to)] text-xs shrink-0">✔︎</span>}
                                     </p>
                                     <p className="text-[11px] text-muted truncate">
-                                      {r.handle ? `@${r.handle} · ` : ""}{m.label}
+                                      {r.handle ? `@${r.handle}` : m.label}
                                       {typeof r.followers === "number" ? ` · ${r.followers.toLocaleString("az-AZ")} izləyici` : ""}
                                     </p>
+                                    {r.description && <p className="text-[11px] text-muted line-clamp-2 mt-0.5">{r.description}</p>}
                                     {r.siteUser && (
                                       <span className="inline-flex items-center gap-1 mt-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-[var(--brand-to)] text-white">
                                         ✓ tradixai istifadəçisi
                                       </span>
                                     )}
                                   </div>
-                                  <div className="shrink-0 flex items-center gap-2">
-                                    {/* Mesaj — admin panelə düşür, admin əl ilə çatdırır */}
-                                    <button type="button"
-                                      onClick={(e) => {
-                                        e.preventDefault(); e.stopPropagation();
-                                        if (!isLoggedIn) { toast("Mesaj göndərmək üçün daxil olun", "error"); return; }
-                                        setMsgTarget(r); setMsgText("");
-                                      }}
-                                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white cta-gradient whitespace-nowrap">
-                                      ✉️ Mesaj
-                                    </button>
-                                    {r.siteUser ? (
-                                      <span onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWebOpen(false); router.push(`/seller/${r.siteUser!.id}`); }}
-                                        className="text-[11px] font-semibold text-[var(--brand-to)] hover:underline">Profil →</span>
-                                    ) : (
-                                      <span className="text-[11px] font-semibold text-[var(--brand-to)]">Bax →</span>
-                                    )}
-                                  </div>
                                 </a>
-                              </li>
+                                <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-card-border/60">
+                                  {/* Mesaj — admin panelə düşür, admin əl ilə çatdırır */}
+                                  <button type="button"
+                                    onClick={() => {
+                                      if (!isLoggedIn) { toast("Mesaj göndərmək üçün daxil olun", "error"); return; }
+                                      setMsgTarget(r); setMsgText("");
+                                    }}
+                                    className="flex-1 px-2.5 py-1.5 rounded-lg text-[11px] font-bold text-white cta-gradient">
+                                    ✉️ Mesaj
+                                  </button>
+                                  {r.siteUser ? (
+                                    <button type="button" onClick={() => { setWebOpen(false); router.push(`/seller/${r.siteUser!.id}`); }}
+                                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-card-border hover:bg-input-bg transition-colors">
+                                      Profil →
+                                    </button>
+                                  ) : (
+                                    <a href={r.url} target="_blank" rel="noopener noreferrer"
+                                      className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border border-card-border hover:bg-input-bg transition-colors">
+                                      {m.label} →
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
                             );
                           })}
-                        </ul>
+                        </div>
                       ) : (
-                        <ul className="divide-y divide-card-border">
+                        /* ── MƏHSUL KARTLARI ── şəkil + ad + qiymət + satıcı + sayt */
+                        <div className="grid sm:grid-cols-2 gap-2 px-3 pb-3">
                           {webData!.results.map((r) => {
                             let host = r.site || r.url;
                             try { if (!r.site) host = new URL(r.url).hostname.replace(/^www\./, ""); } catch { /* keç */ }
+                            const thumb = r.image ? proxyImg(r.image) : null;
                             return (
-                              <li key={r.url}>
-                                <a href={r.url} target="_blank" rel="noopener noreferrer"
-                                  className="block px-4 py-3 hover:bg-input-bg transition-colors">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <p className="text-sm font-semibold text-primary line-clamp-2 min-w-0">{r.title}</p>
-                                    {typeof r.price === "number" && (
-                                      <span className="shrink-0 text-sm font-bold text-foreground whitespace-nowrap">
-                                        {formatPriceShort(r.price)} <span className="text-[10px] text-muted font-semibold">AZN</span>
-                                      </span>
-                                    )}
+                              <a key={r.url} href={r.url} target="_blank" rel="noopener noreferrer"
+                                className="flex gap-3 border border-card-border rounded-xl p-2.5 hover:border-[var(--brand-to)]/50 hover:bg-input-bg/40 transition-colors">
+                                <span className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-input-bg flex items-center justify-center">
+                                  {thumb ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover"
+                                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; const sib = e.currentTarget.nextElementSibling as HTMLElement | null; if (sib) sib.style.display = "flex"; }} />
+                                  ) : null}
+                                  <span style={{ display: thumb ? "none" : "flex" }} className="w-full h-full items-center justify-center text-2xl text-muted">📦</span>
+                                </span>
+                                <div className="min-w-0 flex-1 flex flex-col">
+                                  <p className="text-[13px] font-semibold line-clamp-2 leading-snug">{r.title}</p>
+                                  {typeof r.price === "number" ? (
+                                    <p className="mt-1 text-base font-extrabold text-[var(--brand-to)] leading-none">
+                                      {formatPriceShort(r.price)} <span className="text-[10px] text-muted font-bold">AZN</span>
+                                    </p>
+                                  ) : (
+                                    <p className="mt-1 text-[11px] text-muted">Qiymət göstərilməyib</p>
+                                  )}
+                                  {r.seller && <p className="text-[11px] text-muted truncate mt-0.5">Satıcı: <span className="font-semibold text-foreground">{r.seller}</span></p>}
+                                  <div className="mt-auto pt-1.5 flex items-center justify-between gap-2">
+                                    <span className="px-1.5 py-0.5 bg-input-bg border border-input-border rounded text-[10px] font-semibold text-muted truncate">{host}</span>
+                                    <span className="text-[11px] font-bold text-[var(--brand-to)] shrink-0">Bax →</span>
                                   </div>
-                                  <div className="mt-1 flex items-center gap-2 flex-wrap">
-                                    <span className="inline-block px-1.5 py-0.5 bg-input-bg border border-input-border text-[10px] font-semibold text-muted">{host}</span>
-                                    {r.seller && <span className="text-[11px] text-muted">Satıcı: <span className="font-semibold text-foreground">{r.seller}</span></span>}
-                                  </div>
-                                  {r.snippet && <p className="text-xs text-muted mt-1 line-clamp-2">{r.snippet}</p>}
-                                </a>
-                              </li>
+                                </div>
+                              </a>
                             );
                           })}
-                        </ul>
+                        </div>
                       )}
                     </>
                   )}
