@@ -44,6 +44,11 @@ export default function AdminBusinessPayoutsPage() {
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [reference, setReference] = useState("");
   const [paying, setPaying] = useState(false);
+  // Alıcı müdafiəsi pəncərəsi (gün) — bu müddət bitənə qədər pul ödənilə bilməz.
+  const [holdDays, setHoldDays] = useState("");
+  const [savedHold, setSavedHold] = useState<number | null>(null);
+  // Ödənişdən SONRA ləğv/qaytarma olan sifarişlər — pul satıcıdan geri alınmalıdır.
+  const [claw, setClaw] = useState<{ total: number; rows: any[] } | null>(null);
 
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
   const H = () => ({ Authorization: `Bearer ${token()}`, "Content-Type": "application/json" });
@@ -51,9 +56,15 @@ export default function AdminBusinessPayoutsPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(`${API}/admin/payouts/businesses?q=${encodeURIComponent(q)}`, { headers: H() }).then((x) => x.json());
+      const [r, h, c] = await Promise.all([
+        fetch(`${API}/admin/payouts/businesses?q=${encodeURIComponent(q)}`, { headers: H() }).then((x) => x.json()),
+        fetch(`${API}/admin/payouts/hold-days`, { headers: H() }).then((x) => x.json()).catch(() => null),
+        fetch(`${API}/admin/payouts/clawbacks`, { headers: H() }).then((x) => x.json()).catch(() => null),
+      ]);
       if (r.success) { setRows(r.rows || []); setTotals(r.totals || null); }
       else toast(r.message || "Xəta", "error");
+      if (h?.success) { setSavedHold(h.days); setHoldDays((v) => (v === "" ? String(h.days) : v)); }
+      if (c?.success) setClaw({ total: c.total, rows: c.rows || [] });
     } catch { toast("Xəta", "error"); } finally { setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
@@ -79,6 +90,36 @@ export default function AdminBusinessPayoutsPage() {
 
   const toggle = (id: number) => setPicked((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const allPicked = lines.length > 0 && picked.size === lines.length;
+
+  const saveHold = async () => {
+    const d = parseInt(holdDays);
+    if (!Number.isFinite(d) || d < 0 || d > 90) { toast("0–90 gün arası yazın", "error"); return; }
+    try {
+      const r = await fetch(`${API}/admin/payouts/hold-days`, { method: "PATCH", headers: H(), body: JSON.stringify({ days: d }) }).then((x) => x.json());
+      if (r.success) { setSavedHold(r.days); toast(`Saxlama müddəti ${r.days} gün oldu`, "success"); }
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); }
+  };
+
+  const reversePayout = async (id: number, amount: number) => {
+    const reason = prompt(`${azn(amount)} AZN-lik ödənişi geri alırsınız. Səbəb yazın:`);
+    if (!reason?.trim()) return;
+    try {
+      const r = await fetch(`${API}/admin/payouts/${id}/reverse`, { method: "POST", headers: H(), body: JSON.stringify({ reason }) }).then((x) => x.json());
+      if (r.success) { toast(`Geri alındı — ${r.restored} sətir yenidən ödəniləcək`, "success"); setOpenKey(null); load(); }
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); }
+  };
+
+  const resolveClaw = async (id: number) => {
+    const note = prompt("Necə həll olundu? (məs. növbəti ödənişdən tutuldu)");
+    if (note === null) return;
+    try {
+      const r = await fetch(`${API}/admin/payouts/clawbacks/${id}/resolve`, { method: "POST", headers: H(), body: JSON.stringify({ note }) }).then((x) => x.json());
+      if (r.success) { toast("İşarə götürüldü", "success"); load(); }
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); }
+  };
 
   const markPaid = async () => {
     if (picked.size === 0) { toast("Ən azı bir sifariş seçin", "error"); return; }
@@ -119,6 +160,59 @@ export default function AdminBusinessPayoutsPage() {
           <div className="surface p-3">
             <p className="text-[11px] text-muted">Bizim komissiya</p>
             <p className="text-lg font-extrabold">{azn(totals.commission)} <span className="text-[11px] text-muted">AZN</span></p>
+          </div>
+        </div>
+      )}
+
+      {/* Alıcı müdafiəsi pəncərəsi — çatdırılandan sonra pul bu qədər gün bizdə qalır */}
+      <div className="surface p-3 mb-3 flex items-center gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">🛡 Alıcı müdafiəsi pəncərəsi</p>
+          <p className="text-[11px] text-muted">
+            Sifariş çatdırıldıqdan sonra pul bu qədər gün <b>bizdə qalır</b>. Bu müddət bitməmiş
+            satıcıya ödəniş edilə bilməz — qaytarma tələbi çıxsa pul hələ bizdədir. 0 = saxlama yoxdur.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <input type="number" min={0} max={90} value={holdDays} onChange={(e) => setHoldDays(e.target.value)}
+            className="w-20 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm text-center" />
+          <span className="text-xs text-muted">gün</span>
+          <button onClick={saveHold} disabled={savedHold !== null && String(savedHold) === holdDays}
+            className="px-3 py-1.5 rounded-lg text-white text-xs font-bold disabled:opacity-40" style={{ background: "var(--brand-to)" }}>
+            Yadda saxla
+          </button>
+        </div>
+      </div>
+
+      {/* Ödənişdən SONRA ləğv/qaytarma olanlar — pul satıcıdan geri alınmalıdır */}
+      {claw && claw.rows.length > 0 && (
+        <div className="mb-3 border-2 border-red-500/40 bg-red-500/5 rounded-xl p-3">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <p className="text-sm font-bold text-red-600">⚠ Geri alınmalı pullar</p>
+            <span className="text-sm font-extrabold text-red-600">{azn(claw.total)} AZN</span>
+          </div>
+          <p className="text-[11px] text-muted mb-2">
+            Bu sifarişlər <b>satıcıya ödəniş edildikdən sonra</b> ləğv/qaytarma oldu. Pul satıcının bankındadır —
+            sistem avtomatik geri ala bilmir. Satıcı ilə həll edin (məs. növbəti ödənişdən tutun), sonra “Həll olundu” basın.
+          </p>
+          <div className="space-y-1">
+            {claw.rows.map((c: any) => (
+              <div key={c.id} className="flex items-center justify-between gap-2 bg-card rounded-lg px-2.5 py-2">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold truncate">
+                    {c.businessName || c.sellerName} <span className="font-normal text-muted">· sifariş #{c.orderId}</span>
+                  </p>
+                  <p className="text-[11px] text-muted truncate">{c.clawbackReason}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-sm font-extrabold text-red-600">{azn(c.netAmount)} ₼</span>
+                  <button onClick={() => resolveClaw(c.id)}
+                    className="px-2 py-1 rounded-lg border border-card-border text-[11px] font-semibold hover:bg-input-bg">
+                    Həll olundu
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -272,9 +366,20 @@ export default function AdminBusinessPayoutsPage() {
                     <p className="text-[11px] font-bold uppercase tracking-wide text-muted mb-1.5">Əvvəlki ödənişlər</p>
                     <div className="space-y-1">
                       {detail.payouts.map((p: any) => (
-                        <div key={p.id} className="flex items-center justify-between gap-2 text-[11px] px-2 py-1.5 rounded-lg bg-input-bg/50">
-                          <span className="text-muted">{new Date(p.createdAt).toLocaleString("az-AZ")} · {p.createdName}{p.reference ? ` · ${p.reference}` : ""}</span>
-                          <span className="font-bold shrink-0">{azn(p.amount)} AZN</span>
+                        <div key={p.id} className={`flex items-center justify-between gap-2 text-[11px] px-2 py-1.5 rounded-lg ${p.reversedAt ? "bg-red-500/10" : "bg-input-bg/50"}`}>
+                          <span className="text-muted min-w-0 truncate">
+                            {new Date(p.createdAt).toLocaleString("az-AZ")} · {p.createdName}{p.reference ? ` · ${p.reference}` : ""}
+                            {p.reversedAt && <b className="text-red-600"> · GERİ ALINDI ({p.reversedReason})</b>}
+                          </span>
+                          <span className="flex items-center gap-2 shrink-0">
+                            <span className={`font-bold ${p.reversedAt ? "line-through text-muted" : ""}`}>{azn(p.amount)} AZN</span>
+                            {!p.reversedAt && (
+                              <button onClick={() => reversePayout(p.id, p.amount)}
+                                className="px-2 py-0.5 rounded border border-red-500/40 text-red-600 font-semibold hover:bg-red-500/10">
+                                geri al
+                              </button>
+                            )}
+                          </span>
                         </div>
                       ))}
                     </div>
