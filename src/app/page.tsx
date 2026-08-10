@@ -81,7 +81,7 @@ export default function Home() {
         <div className="min-w-0 text-center lg:text-left animate-fade-in">
           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--brand-soft)] border border-card-border text-[13px] font-semibold text-foreground/80 mb-5 backdrop-blur">
             <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-70 animate-ping" /><span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" /></span>
-            Azərbaycanın onlayn bazarı
+            Azərbaycanın onlayn ticarət platforması
           </div>
 
           <h1 className="text-[2.1rem] leading-[1.08] sm:text-5xl lg:text-[3.4rem] font-extrabold tracking-tight">

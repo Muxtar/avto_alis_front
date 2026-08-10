@@ -10,8 +10,8 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "tradixai — Onlayn Bazar",
-  description: "Hər şeyin alınıb-satıldığı onlayn bazar platforması",
+  title: "tradixai — Onlayn Ticarət Platforması",
+  description: "Hər şeyin alınıb-satıldığı onlayn ticarət platforması",
 };
 
 // Klaviatura açılanda layout-un resize olması üçün (mobil chat üçün vacib).
