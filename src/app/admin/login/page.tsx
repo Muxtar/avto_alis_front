@@ -7,10 +7,8 @@ import { API } from "@/lib/api";
 export default function AdminLoginPage() {
   const { t } = useLanguage();
   const router = useRouter();
-  const [mode, setMode] = useState<"phone" | "password">("phone");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  // Nömrə (OTP) axını
+  // Giriş YALNIZ nömrə + təsdiq kodu ilədir. İsim+şifrə yolu təhlükəsizlik
+  // üçün tamamilə götürülüb (tək faktor idi — şifrə sızsa panel açılırdı).
   const [phone, setPhone] = useState("");
   const [step, setStep] = useState<"phone" | "code">("phone");
   const [userId, setUserId] = useState<number | null>(null);
@@ -30,21 +28,6 @@ export default function AdminLoginPage() {
       if (meData.user) localStorage.setItem("userData", JSON.stringify(meData.user));
     } catch {}
     router.push("/admin");
-  };
-
-  // İsim + şifrə (yedək)
-  const submitPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true); setError("");
-    try {
-      const res = await fetch(`${API}/admin/login`, {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-      const data = await res.json();
-      if (data.success) await finishLogin(data.token, data.admin.name);
-      else setError(t("adminLoginError"));
-    } catch { setError(t("error")); } finally { setLoading(false); }
   };
 
   // Nömrə → OTP göndər
@@ -95,25 +78,12 @@ export default function AdminLoginPage() {
           <h1 className="text-xl font-bold text-center mb-1">{t("adminLogin")}</h1>
           <p className="text-muted text-center text-sm mb-6">{t("adminPanel")}</p>
 
-          {/* Rejim seçici */}
-          <div className="flex gap-1 bg-input-bg border border-input-border rounded-xl p-1 mb-5">
-            <button type="button" onClick={() => { setMode("phone"); setError(""); }}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "phone" ? "bg-orange-500 text-white" : "text-muted"}`}>
-              📱 Nömrə
-            </button>
-            <button type="button" onClick={() => { setMode("password"); setError(""); }}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${mode === "password" ? "bg-orange-500 text-white" : "text-muted"}`}>
-              🔑 Şifrə
-            </button>
-          </div>
-
-          {mode === "phone" ? (
-            step === "phone" ? (
+          {step === "phone" ? (
               <form onSubmit={sendCode} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-1.5">Telefon nömrəsi</label>
                   <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="+994..." autoComplete="tel" className={inputCls} />
-                  <p className="text-[11px] text-muted mt-1">Yalnız icazə verilmiş admin nömrələri (Railway ADMIN_PHONES).</p>
+                  <p className="text-[11px] text-muted mt-1">Yalnız icazə verilmiş admin nömrələri işləyir.</p>
                 </div>
                 {error && <p className="text-red-500 text-sm text-center">{error}</p>}
                 <button type="submit" disabled={loading} className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50">
@@ -140,22 +110,6 @@ export default function AdminLoginPage() {
                 </button>
                 <button type="button" onClick={() => { setStep("phone"); setCode(""); setError(""); }} className="w-full text-xs text-muted hover:text-foreground">← Nömrəni dəyiş</button>
               </form>
-            )
-          ) : (
-            <form onSubmit={submitPassword} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium mb-1.5">{t("adminUsername")}</label>
-                <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required placeholder="admin" autoComplete="username" className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium mb-1.5">{t("adminPassword")}</label>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••" autoComplete="current-password" className={inputCls} />
-              </div>
-              {error && <p className="text-red-500 text-sm text-center">{error}</p>}
-              <button type="submit" disabled={loading} className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all disabled:opacity-50">
-                {loading ? "..." : t("adminLoginBtn")}
-              </button>
-            </form>
           )}
         </div>
       </div>
