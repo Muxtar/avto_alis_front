@@ -102,6 +102,12 @@ export default function Navbar() {
   //   all     — hər şey (sistem sorğuya baxıb qərar verir)
   //   product — məhsul: sayt elanları + AZ alış-veriş saytları (ad, qiymət, satıcı)
   //   person  — şəxs: saytdakı ixtisas sahibləri + eyni addakı sosial media profilləri
+  // Admin panelindən sayta keçən istifadəçilər üçün geri qayıtma düyməsi.
+  // Şərt: adminToken localStorage-dadır — yəni bu brauzer admin panelinə
+  // GİRİŞ EDİB. Adi istifadəçilərdə (və çıxış edəndən sonra) görünmür.
+  // localStorage yalnız brauzerdə var, ona görə mount-dan sonra oxunur
+  // (hidration uyğunsuzluğu olmasın).
+  const [isAdminSession, setIsAdminSession] = useState(false);
   const [searchMode, setSearchMode] = useState<"all" | "product" | "person">("all");
   const [modeOpen, setModeOpen] = useState(false);
   const [sitePeople, setSitePeople] = useState<{ id: number; name: string; profession?: string | null; professions?: string[]; avatar?: string | null; publicId?: string | null }[]>([]);
@@ -155,6 +161,14 @@ export default function Navbar() {
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  // Admin sessiyası varmı? (mount-dan sonra + başqa tabda çıxış edilsə yenilə)
+  useEffect(() => {
+    const read = () => { try { setIsAdminSession(!!localStorage.getItem("adminToken")); } catch { setIsAdminSession(false); } };
+    read();
+    window.addEventListener("storage", read);
+    return () => window.removeEventListener("storage", read);
   }, []);
 
   // Axtarış: əvvəlcə sayt daxili. Saytda heç nə tapılmasa, Claude-un internet
@@ -784,6 +798,16 @@ export default function Navbar() {
                 masaüstündə şrink-0 (təbii en) — böyüyən axtarışın həmən sağında
                 durur ki, bell/ikonlarla search arasında böyük boşluq qalmasın. */}
             <div className="order-3 ml-auto sm:ml-0 flex items-center justify-end gap-1.5 sm:gap-3 shrink-0">
+              {/* Admin panelə qayıt — YALNIZ admin panelinə giriş edənlərdə.
+                  Adi istifadəçi bu düyməni heç vaxt görmür. */}
+              {isAdminSession && (
+                <Link href="/admin" title="Admin panelə qayıt"
+                  className="flex items-center gap-1.5 h-9 px-2.5 rounded-md bg-white/15 text-white text-xs font-bold ring-1 ring-white/30 hover:bg-white/25 transition-colors shrink-0">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                  <span className="hidden xs:inline">Admin</span>
+                </Link>
+              )}
+
               {isLoggedIn && <NotificationBell />}
 
               <Link href="/favorites" className="flex flex-col items-center text-white/85 hover:text-white transition-colors px-1.5 py-1 rounded-md hover:ring-1 hover:ring-white/40" title={t("favorites")}>

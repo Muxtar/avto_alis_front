@@ -176,6 +176,15 @@ export default function AdminHeader({ overview, adminName, onRefresh, onLogout }
           )}
         </div>
 
+        {/* Satış sayta keçid — admin işləyərkən saytın özünə baxa bilsin.
+            adminToken localStorage-da qaldığı üçün saytda "Admin panel"
+            düyməsi görünəcək və bir kliklə geri qayıda biləcək. */}
+        <Link href="/elanlar" title="Satış səhifəsinə keç"
+          className="shrink-0 flex items-center gap-1.5 h-10 px-3 rounded-xl bg-input-bg border border-input-border text-sm font-semibold hover:border-[var(--brand-to)] hover:text-[var(--brand-to)] transition-colors">
+          <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" /></svg>
+          <span className="hidden md:inline">Sayta bax</span>
+        </Link>
+
         {/* Admin + çıxış */}
         <div className="hidden sm:flex items-center gap-2 shrink-0 pl-1">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold">{(adminName || "A").slice(0, 2).toUpperCase()}</div>
