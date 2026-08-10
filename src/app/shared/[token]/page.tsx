@@ -16,8 +16,9 @@ import LocationPicker from "@/components/LocationPickerWrapper";
  * Məhsul isə həmişə qeydiyyatlı şəxsə gedir (paylaşanın özünə və ya onun
  * seçdiyi qeydiyyatlı dosta).
  *
- * Köhnə rejim (RECIPIENT): linki alan öz ünvanını seçib nağd sifariş verir —
- * əvvəl yaradılmış linklər işləməyə davam etsin deyə saxlanılıb.
+ * İkinci rejim (RECIPIENT): məhsulu LİNKİ AÇAN özü alır — ona görə çatdırılma
+ * ünvanını O yazır və kartla O ödəyir. Bu halda hesabı OLMALIDIR, çünki sifariş,
+ * bildiriş, qaytarma və çatdırılma onun hesabına bağlanır.
  */
 export default function SharedCartPage() {
   const params = useParams();
@@ -87,17 +88,29 @@ export default function SharedCartPage() {
   };
 
   const isSender = data?.deliveryMode === "SENDER";
+  // Linki açan məhsulu ÖZÜ alırsa ünvanı O yazır (və daxil olmalıdır).
+  const needsAddress = !!data?.needsAddress;
 
   // ── Qonaq ödənişi: hesab tələb olunmur, birbaşa ödəniş pəncərəsinə keçir ──
   const payNow = async () => {
+    // Məhsulu linki açan özü alırsa: ünvan və hesab MƏCBURİDİR
+    // (sifariş, bildiriş və qaytarma onun hesabına bağlanır).
+    if (needsAddress) {
+      if (!isLoggedIn || !token) { toast("Məhsulu özünüz aldığınız üçün daxil olun", "info"); router.push(`/?next=/shared/${shareToken}`); return; }
+      if (!recLoc.address.trim()) { toast("Çatdırılma ünvanınızı seçin", "error"); return; }
+    }
     setPaying(true);
     try {
       const res = await fetch(`${API}/shared-cart/${shareToken}/pay`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ payerName: payerName.trim(), payerPhone: payerPhone.trim() }),
+        body: JSON.stringify({
+          payerName: payerName.trim(), payerPhone: payerPhone.trim(),
+          ...(needsAddress ? { address: recLoc.address, city: recLoc.city, phone: recPhone } : {}),
+        }),
       });
       const d = await res.json();
+      if (d?.needLogin) { toast("Məhsulu özünüz aldığınız üçün daxil olun", "info"); router.push(`/?next=/shared/${shareToken}`); return; }
       if (res.ok && d.success && d.paymentUrl) {
         // Ödənişdən sonra bank /payment/return-ə qaytarır; oradan bu səhifəyə
         // qayıda bilməsi üçün tokeni saxlayırıq (qonağın /orders səhifəsi yoxdur).
@@ -177,11 +190,11 @@ export default function SharedCartPage() {
       </h1>
       <p className="text-sm text-muted mb-4">
         {data.by?.name ? <><b>{data.by.name}</b> bu alışı sizinlə paylaşıb. </> : ""}
-        {directPay
-          ? "Siz yalnız ödəyirsiniz — hesab açmağa ehtiyac yoxdur. Məhsullar aşağıdakı ünvana göndəriləcək."
-          : isSender
-            ? "Ödədikdən sonra məhsullar göndərənin ünvanına çatdırılacaq."
-            : "Ödəyib öz ünvanınıza sifariş verə bilərsiniz."}
+        {needsAddress
+          ? "Məhsul SİZƏ göndəriləcək — çatdırılma ünvanınızı yazıb kartla ödəyin."
+          : directPay
+            ? "Siz yalnız ödəyirsiniz — hesab açmağa ehtiyac yoxdur. Məhsullar aşağıdakı ünvana göndəriləcək."
+            : "Ödədikdən sonra məhsullar göndərənin ünvanına çatdırılacaq."}
       </p>
       {data.title && <p className="text-sm font-medium mb-3">“{data.title}”</p>}
 
@@ -226,9 +239,10 @@ export default function SharedCartPage() {
               <p className="text-[11px] text-muted mt-2">Siz yalnız ödəyirsiniz — məhsullar bu ünvana göndərilir.</p>
             </div>
           ) : (
-            /* Köhnə rejim: linki alan öz ünvanını seçir */
+            /* Linki açan məhsulu özü alır → ünvanı O yazır */
             <div className="surface p-4 mb-3 space-y-2">
               <p className="text-sm font-semibold">📍 Çatdırılma ünvanınız</p>
+              <p className="text-[11px] text-muted">Məhsul sizə göndəriləcək — ünvanı siz təyin edirsiniz.</p>
               <input value={recPhone} onChange={(e) => setRecPhone(e.target.value)} placeholder="Telefonunuz" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-lg text-sm" />
               <LocationPicker city={recLoc.city} address={recLoc.address} latitude={recLoc.latitude} longitude={recLoc.longitude} onChange={(n: any) => setRecLoc(n)} height="220px" />
             </div>
@@ -236,7 +250,9 @@ export default function SharedCartPage() {
 
           {directPay ? (
             <>
-              {/* Ödəyənin adı — sifarişdə "kim ödədi" görünsün deyə. Məcburi deyil. */}
+              {/* Ödəyənin adı — yalnız BAŞQASI ödəyəndə mənalıdır (alıcı kimin
+                  ödədiyini bilsin). Linki açan məhsulu özü alırsa göstərilmir. */}
+              {!needsAddress && (
               <div className="surface p-4 mb-3 space-y-2">
                 <p className="text-sm font-semibold">Sizin adınız <span className="text-muted font-normal">(istəyə bağlı)</span></p>
                 <div className="grid sm:grid-cols-2 gap-2">
@@ -247,6 +263,7 @@ export default function SharedCartPage() {
                 </div>
                 <p className="text-[11px] text-muted">Ödənişi kimin etdiyi {recipientName || "alıcı"}ya bildirilsin deyə.</p>
               </div>
+              )}
               <button onClick={payNow} disabled={paying || data.paid}
                 className="w-full py-3.5 text-white rounded-xl font-bold text-[15px] disabled:opacity-50"
                 style={{ background: "var(--brand-to)" }}>
@@ -255,11 +272,17 @@ export default function SharedCartPage() {
               <p className="text-[11px] text-muted text-center mt-2">
                 Ödəniş bank səhifəsində aparılır. Kart məlumatlarınız tradixai-a ötürülmür.
               </p>
+              {needsAddress && (
+                <button onClick={importToCart} disabled={importing}
+                  className="w-full py-2.5 mt-2 bg-input-bg border border-input-border rounded-xl text-sm font-medium disabled:opacity-50">
+                  {importing ? "Əlavə olunur…" : "və ya səbətimə əlavə et"}
+                </button>
+              )}
             </>
           ) : (
             <>
-              <button onClick={checkout} disabled={checking} className="w-full py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-semibold disabled:opacity-50">
-                {checking ? "Göndərilir…" : "💳 Ödə və sifariş ver (nağd)"}
+              <button onClick={checkout} disabled={checking} className="w-full py-3 bg-input-bg border border-input-border rounded-xl text-sm font-semibold disabled:opacity-50">
+                {checking ? "Göndərilir…" : "Nağd sifariş ver"}
               </button>
               <button onClick={importToCart} disabled={importing} className="w-full py-2.5 mt-2 bg-input-bg border border-input-border rounded-xl text-sm font-medium disabled:opacity-50">
                 {importing ? "Əlavə olunur…" : "və ya səbətimə əlavə et"}

@@ -425,29 +425,30 @@ export default function CartPage() {
                 {/* Tək paylaş ikonu — kliklədikdə linki yaradır və tətbiqdə/xaricdə seçimi açır */}
                 <ShareButton title="Səbətdəki məhsullar" text="Səbətimə bax — tradixai" beforeShare={shareCart} disabled={sharing || selItems.length === 0} compact className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center text-orange-500 hover:bg-orange-500/10 transition-colors" />
               </div>
-              {/* Çatdırılma kimə? — göndərən seçir */}
-              <div className="grid grid-cols-2 gap-1 bg-input-bg/60 rounded-xl p-1 mt-2">
-                <button onClick={() => setShareMode("RECIPIENT")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "RECIPIENT" ? "bg-orange-500 text-white" : "text-muted"}`}>👤 Alan öz ünvanına alsın</button>
-                <button onClick={() => setShareMode("SENDER")} className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareMode === "SENDER" ? "bg-orange-500 text-white" : "text-muted"}`}>💳 Paylaş — başqası ödəsin</button>
+              {/* MƏHSUL KİMƏ GEDƏCƏK? — bütün fərq buradadır:
+                  • Mənə / Dostuma  → ünvanı İNDİ mən yazıram, linki açan yalnız ödəyir
+                                       (onun saytda hesabı olmasına ehtiyac yoxdur)
+                  • Linki açana     → ünvanı O yazır və O alır, ona görə O daxil olmalıdır */}
+              <p className="text-[11px] font-semibold mt-3 mb-1">Məhsul kimə gedəcək?</p>
+              <div className="space-y-1">
+                <button onClick={() => { setShareMode("SENDER"); setShareTo("ME"); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl border text-[11px] transition-colors ${shareMode === "SENDER" && shareTo === "ME" ? "border-orange-500 bg-orange-500/10" : "border-input-border hover:bg-input-bg"}`}>
+                  <span className="font-bold block">🙋 Mənə gəlsin</span>
+                  <span className="text-muted">Ünvanı mən yazıram · linki açan yalnız ödəyir (hesab lazım deyil)</span>
+                </button>
+                <button onClick={() => { setShareMode("SENDER"); setShareTo("FRIEND"); if (!contactsLoaded) loadContacts(); }}
+                  className={`w-full text-left px-3 py-2 rounded-xl border text-[11px] transition-colors ${shareMode === "SENDER" && shareTo === "FRIEND" ? "border-orange-500 bg-orange-500/10" : "border-input-border hover:bg-input-bg"}`}>
+                  <span className="font-bold block">🎁 Seçdiyim dosta gəlsin</span>
+                  <span className="text-muted">Ünvanı mən yazıram · dost qeydiyyatlı olmalıdır · linki açan yalnız ödəyir</span>
+                </button>
+                <button onClick={() => setShareMode("RECIPIENT")}
+                  className={`w-full text-left px-3 py-2 rounded-xl border text-[11px] transition-colors ${shareMode === "RECIPIENT" ? "border-orange-500 bg-orange-500/10" : "border-input-border hover:bg-input-bg"}`}>
+                  <span className="font-bold block">📬 Linki açan özü alsın</span>
+                  <span className="text-muted">Ünvanı O yazır və O ödəyir · məhsul ona gedir · O daxil olmalıdır</span>
+                </button>
               </div>
               {shareMode === "SENDER" ? (
                 <div className="mt-2 space-y-2">
-                  <p className="text-[11px] text-muted">
-                    Linki açan şəxs <b>yalnız ödəyəcək</b> — heç nə seçməyəcək və saytda qeydiyyatlı olmasına ehtiyac yoxdur.
-                    Məhsulların kimə gedəcəyini siz indi təyin edirsiniz:
-                  </p>
-
-                  {/* Məhsul kimə gedir — mənə, yoxsa dostuma */}
-                  <div className="grid grid-cols-2 gap-1 bg-input-bg/60 rounded-xl p-1">
-                    <button onClick={() => setShareTo("ME")}
-                      className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareTo === "ME" ? "bg-orange-500 text-white" : "text-muted"}`}>
-                      🙋 Mənə gəlsin
-                    </button>
-                    <button onClick={() => { setShareTo("FRIEND"); if (!contactsLoaded) loadContacts(); }}
-                      className={`py-1.5 rounded-lg text-[11px] font-semibold ${shareTo === "FRIEND" ? "bg-orange-500 text-white" : "text-muted"}`}>
-                      🎁 Dostuma gəlsin
-                    </button>
-                  </div>
 
                   {shareTo === "FRIEND" && (
                     <div className="rounded-xl border border-input-border p-2 space-y-2">
@@ -494,7 +495,10 @@ export default function CartPage() {
                   <LocationPicker city={shareLoc.city} address={shareLoc.address} latitude={shareLoc.latitude} longitude={shareLoc.longitude} onChange={(n: any) => setShareLoc(n)} height="200px" />
                 </div>
               ) : (
-                <p className="text-[11px] text-muted mt-1">Linki alan şəxs məhsulları alıb <b>öz ünvanına</b> sifariş verəcək (nağd).</p>
+                <p className="text-[11px] text-muted mt-2">
+                  Linki açan şəxs <b>öz çatdırılma ünvanını</b> yazıb kartla ödəyəcək və məhsul ona gedəcək.
+                  Sifariş onun hesabına bağlandığı üçün <b>daxil olmalıdır</b>.
+                </p>
               )}
               {shareLink && (
                 <div className="flex gap-2 mt-2 items-stretch">
