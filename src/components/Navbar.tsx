@@ -109,7 +109,12 @@ export default function Navbar() {
   // (hidration uyğunsuzluğu olmasın).
   const [isAdminSession, setIsAdminSession] = useState(false);
   const [searchMode, setSearchMode] = useState<"all" | "product" | "person">("all");
+  // Menyunun ekran koordinatları. Səbəb: axtarış <form>-u `overflow-hidden`-dir
+  // və cəmi ~48px hündürlükdədir — içindəki `absolute` menyu TAM KƏSİLİRDİ
+  // (DOM-da var idi, görünmürdü). Ona görə menyu `position: fixed` ilə
+  // formadan KƏNARDA yerləşdirilir.
   const [modeOpen, setModeOpen] = useState(false);
+  const [modePos, setModePos] = useState<{ top: number; left: number } | null>(null);
   const [sitePeople, setSitePeople] = useState<{ id: number; name: string; profession?: string | null; professions?: string[]; avatar?: string | null; publicId?: string | null }[]>([]);
   // unreadMessages artıq qlobal AuthContext-dən gəlir (real-time socket ilə).
   const [unreadInquiries, setUnreadInquiries] = useState(0);
@@ -491,13 +496,20 @@ export default function Navbar() {
               {/* NƏ axtarıram? — məhsul, yoxsa şəxs. Seçim həm saytdaxili, həm
                   internet axtarışına tətbiq olunur (backend-ə `mode` göndərilir). */}
               <div ref={modeRef} className="relative shrink-0">
-                <button type="button" onClick={() => setModeOpen((v) => !v)}
+                <button type="button"
+                  onClick={(e) => {
+                    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setModePos({ top: r.bottom + 4, left: r.left });
+                    setModeOpen((v) => !v);
+                  }}
                   className="hidden sm:flex items-center gap-1 h-full px-3 bg-[#eef0f5] text-[#0f172a] text-xs font-semibold border-r border-[#d5d9e0] hover:bg-[#e3e7ee] transition-colors whitespace-nowrap">
                   {SEARCH_MODES.find((m) => m.key === searchMode)!.label}
                   <svg className={`w-3 h-3 transition-transform ${modeOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
                 </button>
                 {modeOpen && (
-                  <div className="absolute left-0 top-full mt-1 z-50 w-64 bg-card text-foreground border border-card-border shadow-2xl">
+                  <div
+                    style={{ position: "fixed", top: modePos?.top ?? 0, left: modePos?.left ?? 0 }}
+                    className="z-[60] w-64 bg-card text-foreground border border-card-border shadow-2xl">
                     {SEARCH_MODES.map((m) => (
                       <button key={m.key} type="button"
                         onClick={() => { setSearchMode(m.key); setModeOpen(false); }}
