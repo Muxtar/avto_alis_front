@@ -1,29 +1,28 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 
 /**
- * MALİYYƏ — QRUPLAŞDIRILMIŞ GÖRÜNÜŞ.
+ * MALİYYƏ — SATICI ÜZRƏ GÖRÜNÜŞ.
  *
- * Düz siyahıda "kim kimə nə satdı" anlaşılmırdı. Burada üç səviyyə var:
+ *   Satıcı → Biznes → Obyekt → Sifariş
  *
- *   Satıcı → Biznes → Obyekt → Sifariş (alıcı + məhsullar)
- *
- * Hər səviyyə açılıb-yığılır, hər səviyyədə satış sayı və məbləği görünür.
- * Satıcı, alıcı, biznes və obyekt adlarına klik etmək olur.
+ * Burada həm "kim nə satdı" görünür, həm də satıcıya BORCUMUZ ödənilir:
+ * bankdan köçürmə etdikdən sonra sifarişləri seçib "Ödənildi" işarələyirsən.
+ * Ekran pul köçürmür — yalnız uçotu bağlayır.
  */
 
 const azn = (n: number) => n.toLocaleString("az-AZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const dt = (s: string) => new Date(s).toLocaleDateString("az-AZ");
 
-const PAY_LABEL: Record<string, string> = { CARD: "💳 Kart", CASH: "💵 Nağd", WALLET: "👛 Balans" };
-const STATUS_CLS: Record<string, string> = {
-  PAID: "bg-green-500/15 text-green-600",
-  PENDING: "bg-amber-500/15 text-amber-600",
-  FAILED: "bg-red-500/15 text-red-500",
-  REFUNDED: "bg-slate-500/15 text-slate-500",
+// Satıcıya ödəniş vəziyyəti — sadə, rəngli və bir baxışda anlaşılan.
+const LEDGER: Record<string, { label: string; cls: string }> = {
+  AVAILABLE: { label: "Ödəniləcək", cls: "bg-amber-500/15 text-amber-600" },
+  PAID_OUT: { label: "✓ Ödənildi", cls: "bg-green-500/15 text-green-600" },
+  PENDING: { label: "Gözləyir", cls: "bg-slate-500/15 text-slate-500" },
+  REVERSED: { label: "Ləğv", cls: "bg-red-500/15 text-red-500" },
 };
 
 export default function FinanceTree() {
@@ -35,14 +34,17 @@ export default function FinanceTree() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
-  // Açıq düyünlər — açar: "s3", "s3-b7", "s3-b7-o12"
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (k: string) => setOpen((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
 
-  const H = () => ({ Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}` });
+  // Ödəniş üçün seçilmiş sifarişlər (ledgerId → { key, net })
+  const [picked, setPicked] = useState<Map<number, { key: string; net: number }>>(new Map());
+  const [paying, setPaying] = useState(false);
+
+  const H = () => ({ Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" });
 
   const load = useCallback(async () => {
-    setLoading(true);
+    setLoading(true); setPicked(new Map());
     try {
       const p = new URLSearchParams({ paymentStatus: payStatus });
       if (q.trim()) p.set("q", q.trim());
@@ -56,38 +58,64 @@ export default function FinanceTree() {
   useEffect(() => { load(); }, [load]);
 
   const sellers = data?.sellers || [];
+  const pickedTotal = useMemo(() => [...picked.values()].reduce((s, v) => s + v.net, 0), [picked]);
+  // Ödəniş yalnız TƏK satıcı/biznes üçün edilir — bank köçürməsi bir hesaba gedir.
+  const pickedKeys = useMemo(() => new Set([...picked.values()].map((v) => v.key)), [picked]);
+
+  const pick = (ledgerId: number, key: string, net: number) =>
+    setPicked((p) => { const n = new Map(p); n.has(ledgerId) ? n.delete(ledgerId) : n.set(ledgerId, { key, net }); return n; });
+
+  // Bir obyektin/biznesin bütün ödəniləcək sifarişlərini seç
+  const pickAll = (orders: any[], key: string) =>
+    setPicked((p) => {
+      const n = new Map(p);
+      const payable = orders.filter((o) => o.payable);
+      const allOn = payable.every((o) => n.has(o.ledgerId));
+      payable.forEach((o) => (allOn ? n.delete(o.ledgerId) : n.set(o.ledgerId, { key, net: o.net || 0 })));
+      return n;
+    });
+
+  const markPaid = async () => {
+    if (picked.size === 0) return;
+    if (pickedKeys.size > 1) {
+      toast("Bir dəfəyə yalnız BİR satıcının/biznesin sifarişlərini ödəyin — köçürmə bir hesaba gedir", "error");
+      return;
+    }
+    const key = [...pickedKeys][0];
+    if (!confirm(`${picked.size} sifariş · ${azn(pickedTotal)} AZN\n\nBankdan köçürmə etdiyinizi təsdiqləyirsiniz?`)) return;
+    const reference = prompt("Bank köçürmə referansı (istəyə bağlı):") ?? "";
+    setPaying(true);
+    try {
+      const r = await fetch(`${API}/admin/payouts/businesses/${key}/pay`, {
+        method: "POST", headers: H(),
+        body: JSON.stringify({ ledgerIds: [...picked.keys()], method: "BANK", reference: reference.trim() }),
+      }).then((x) => x.json());
+      if (r.success) { toast(`${azn(r.amount)} AZN ödənildi işarələndi (${r.paidCount} sifariş)`, "success"); load(); }
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); } finally { setPaying(false); }
+  };
 
   return (
-    <div>
-      {/* Filtrlər */}
-      <div className="flex flex-wrap items-end gap-2 mb-3">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Satıcı və ya alıcı adı…"
-          className="flex-1 min-w-[180px] px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm" />
+    <div className="pb-24">
+      {/* ── Filtrlər ── */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 Satıcı və ya alıcı adı…"
+          className="flex-1 min-w-[200px] px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm" />
         <select value={payStatus} onChange={(e) => setPayStatus(e.target.value)}
           className="px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm">
-          <option value="PAID">Ödənilmiş</option>
+          <option value="PAID">Ödənilmiş sifarişlər</option>
           <option value="PENDING">Gözləyən</option>
           <option value="REFUNDED">Qaytarılmış</option>
           <option value="all">Hamısı</option>
         </select>
-        <label className="text-[11px] text-muted">Başlanğıc
-          <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
-            className="block px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
-        <label className="text-[11px] text-muted">Son
-          <input type="date" value={to} onChange={(e) => setTo(e.target.value)}
-            className="block px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
+        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} title="Başlanğıc"
+          className="px-2 py-2 bg-input-bg border border-input-border rounded-xl text-sm" />
+        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} title="Son"
+          className="px-2 py-2 bg-input-bg border border-input-border rounded-xl text-sm" />
       </div>
 
-      {/* Ümumi */}
-      {data?.totals && (
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          <div className="surface p-3"><p className="text-[11px] text-muted">Satıcı</p><p className="text-lg font-extrabold">{data.totals.sellers}</p></div>
-          <div className="surface p-3"><p className="text-[11px] text-muted">Sifariş</p><p className="text-lg font-extrabold">{data.totals.orders}</p></div>
-          <div className="surface p-3"><p className="text-[11px] text-muted">Ümumi məbləğ</p><p className="text-lg font-extrabold text-green-600">{azn(data.totals.amount)} <span className="text-[11px] text-muted">AZN</span></p></div>
-        </div>
-      )}
       {data?.totals?.capped && (
-        <p className="text-[11px] text-amber-600 mb-2">⚠ Çox nəticə var — yalnız son 2000 sifariş göstərilir. Tarix aralığı seçin.</p>
+        <p className="text-[11px] text-amber-600 mb-2">⚠ Çox nəticə var — son 2000 sifariş göstərilir. Tarix aralığı seçin.</p>
       )}
 
       {loading ? (
@@ -95,136 +123,142 @@ export default function FinanceTree() {
       ) : sellers.length === 0 ? (
         <p className="text-muted text-sm py-10 text-center">Nəticə yoxdur.</p>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2.5">
           {sellers.map((s: any) => {
             const sk = `s${s.id}`;
             const sOpen = open.has(sk);
             return (
               <div key={sk} className="surface overflow-hidden">
-                {/* ── 1. SATICI ── */}
-                <div className="flex items-center gap-2 p-3 hover:bg-input-bg/50 transition-colors">
-                  <button onClick={() => toggle(sk)} className="shrink-0 w-6 h-6 rounded-lg bg-input-bg flex items-center justify-center text-xs">
-                    {sOpen ? "−" : "+"}
-                  </button>
-                  <button onClick={() => toggle(sk)} className="min-w-0 flex-1 text-left">
-                    <span className="font-bold block truncate">{s.name || "—"}</span>
-                    <span className="text-[11px] text-muted">{s.phone || ""} · {s.businesses.length} biznes · {s.orders} satış</span>
-                  </button>
-                  <Link href={`/seller/${s.id}`} target="_blank"
-                    className="shrink-0 px-2 py-1 rounded-lg border border-card-border text-[11px] font-semibold hover:bg-input-bg">
-                    Profil ↗
-                  </Link>
-                  <span className="shrink-0 text-right">
-                    <span className="block font-extrabold text-green-600 leading-none">{azn(s.amount)}</span>
-                    <span className="text-[10px] text-muted">AZN</span>
+                {/* ── SATICI ── */}
+                <div className="flex items-center gap-3 p-3.5 cursor-pointer hover:bg-input-bg/40 transition-colors" onClick={() => toggle(sk)}>
+                  <span className="shrink-0 w-9 h-9 rounded-full bg-[var(--brand-soft)] text-[var(--brand-to)] flex items-center justify-center font-bold">
+                    {(s.name || "?").slice(0, 1).toUpperCase()}
                   </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold truncate">{s.name || "—"}</p>
+                    <p className="text-[11px] text-muted">{s.businesses.length} biznes · {s.orders} satış</p>
+                  </div>
+                  <Link href={`/seller/${s.id}`} target="_blank" onClick={(e) => e.stopPropagation()}
+                    className="shrink-0 px-2.5 py-1 rounded-lg border border-card-border text-[11px] font-semibold hover:bg-input-bg">Profil ↗</Link>
+                  <div className="shrink-0 text-right">
+                    <p className="font-extrabold text-lg leading-none">{azn(s.amount)}<span className="text-[10px] text-muted font-bold ml-0.5">₼</span></p>
+                  </div>
+                  <span className="shrink-0 text-muted text-lg w-4 text-center">{sOpen ? "⌄" : "›"}</span>
                 </div>
 
-                {/* ── 2. BİZNESLƏR ── */}
+                {/* ── BİZNESLƏR ── */}
                 {sOpen && (
-                  <div className="border-t border-card-border bg-input-bg/25 px-2 py-2 space-y-1.5">
+                  <div className="border-t border-card-border bg-input-bg/20 p-2 space-y-2">
                     {s.businesses.map((b: any) => {
                       const bk = `${sk}-b${b.id ?? 0}`;
                       const bOpen = open.has(bk);
+                      const payKey = b.id ? `b${b.id}` : `u${s.id}`;
                       return (
                         <div key={bk} className="bg-card border border-card-border rounded-xl overflow-hidden">
-                          <div className="flex items-center gap-2 p-2.5">
-                            <button onClick={() => toggle(bk)} className="shrink-0 w-5 h-5 rounded bg-input-bg flex items-center justify-center text-[11px]">
-                              {bOpen ? "−" : "+"}
-                            </button>
-                            <button onClick={() => toggle(bk)} className="min-w-0 flex-1 text-left">
-                              <span className="text-sm font-bold block truncate">🏢 {b.name}</span>
-                              <span className="text-[11px] text-muted block truncate">
-                                {b.voen ? `VÖEN ${b.voen}` : "VÖEN yoxdur"}
-                                {b.createdBy ? ` · yaradan: ${b.createdBy.name}` : ""}
-                                {b.createdAt ? ` · ${dt(b.createdAt)}` : ""}
-                                {` · ${b.objects.length} obyekt · ${b.orders} satış`}
-                              </span>
-                            </button>
+                          <div className="flex items-center gap-2.5 p-3 cursor-pointer hover:bg-input-bg/40 transition-colors" onClick={() => toggle(bk)}>
+                            <span className="shrink-0 text-lg">🏢</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-bold truncate">{b.name}</p>
+                              <p className="text-[11px] text-muted truncate">
+                                {b.voen ? `VÖEN ${b.voen}` : "VÖEN yoxdur"} · {b.objects.length} obyekt · {b.orders} satış
+                              </p>
+                            </div>
                             {b.id && (
-                              <Link href={`/admin/businesses?id=${b.id}`}
-                                className="shrink-0 px-2 py-1 rounded-lg border border-card-border text-[11px] font-semibold hover:bg-input-bg">
-                                Biznes ↗
-                              </Link>
+                              <Link href={`/admin/businesses?id=${b.id}`} onClick={(e) => e.stopPropagation()}
+                                className="shrink-0 px-2.5 py-1 rounded-lg border border-card-border text-[11px] font-semibold hover:bg-input-bg">Biznes ↗</Link>
                             )}
-                            <span className="shrink-0 text-sm font-extrabold text-green-600">{azn(b.amount)} ₼</span>
+                            <p className="shrink-0 font-extrabold">{azn(b.amount)}<span className="text-[10px] text-muted ml-0.5">₼</span></p>
+                            <span className="shrink-0 text-muted w-4 text-center">{bOpen ? "⌄" : "›"}</span>
                           </div>
 
-                          {/* Biznesin başlıq məlumatı — açılanda ən üstdə */}
                           {bOpen && (
-                            <div className="border-t border-card-border bg-input-bg/40 px-3 py-2 text-[11px] text-muted grid sm:grid-cols-2 gap-x-4 gap-y-0.5">
-                              <span>Sahib: <b className="text-foreground">{b.ownerName || "—"}</b></span>
-                              <span>Təsisçi: <b className="text-foreground">{b.founderName || "—"}</b></span>
-                              <span>Status: <b className="text-foreground">{b.status || "—"}</b>{b.isActive === false ? " (deaktiv)" : ""}</span>
-                              <span>Telefon: <b className="text-foreground">{b.phone || "—"}</b></span>
-                              <span className="sm:col-span-2 pt-1 font-semibold text-foreground">
-                                Bu biznesin ümumi satışı: <span className="text-green-600">{azn(b.amount)} AZN</span> ({b.orders} sifariş)
-                              </span>
-                            </div>
-                          )}
+                            <>
+                              {/* Biznes kartı — sadə açar/dəyər */}
+                              <div className="border-t border-card-border bg-input-bg/40 px-3 py-2.5 grid sm:grid-cols-2 gap-x-6 gap-y-1 text-[11px]">
+                                <span className="text-muted">Sahib: <b className="text-foreground">{b.ownerName || "—"}</b></span>
+                                <span className="text-muted">Təsisçi: <b className="text-foreground">{b.founderName || "—"}</b></span>
+                                <span className="text-muted">Yaradan: <b className="text-foreground">{b.createdBy?.name || "—"}</b></span>
+                                <span className="text-muted">Status: <b className="text-foreground">{b.status || "—"}</b></span>
+                              </div>
 
-                          {/* ── 3. OBYEKTLƏR ── */}
-                          {bOpen && (
-                            <div className="border-t border-card-border p-2 space-y-1.5">
-                              {b.objects.map((ob: any) => {
-                                const ok = `${bk}-o${ob.id ?? 0}`;
-                                const oOpen = open.has(ok);
-                                return (
-                                  <div key={ok} className="border border-card-border rounded-lg overflow-hidden">
-                                    <button onClick={() => toggle(ok)} className="w-full flex items-center gap-2 p-2 text-left hover:bg-input-bg/50 transition-colors">
-                                      <span className="shrink-0 w-5 h-5 rounded bg-input-bg flex items-center justify-center text-[11px]">{oOpen ? "−" : "+"}</span>
-                                      <span className="min-w-0 flex-1">
-                                        <span className="text-[13px] font-semibold block truncate">📍 {ob.name}</span>
-                                        <span className="text-[11px] text-muted block truncate">
-                                          {[ob.city, ob.address].filter(Boolean).join(", ") || "ünvan yoxdur"} · {ob.orders} satış
-                                        </span>
-                                      </span>
-                                      <span className="shrink-0 text-[13px] font-extrabold text-green-600">{azn(ob.amount)} ₼</span>
-                                    </button>
-
-                                    {/* ── 4. SİFARİŞLƏR ── */}
-                                    {oOpen && (
-                                      <div className="border-t border-card-border bg-input-bg/25 p-2 space-y-1.5">
-                                        {ob.list.map((o: any) => (
-                                          <div key={o.id} className="bg-card border border-card-border rounded-lg p-2.5">
-                                            <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
-                                              <span className="text-[11px] font-bold">
-                                                #{o.id} · {dt(o.createdAt)}
-                                                <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] font-bold ${STATUS_CLS[o.paymentStatus] || "bg-input-bg"}`}>
-                                                  {o.paymentStatus}
-                                                </span>
-                                                <span className="ml-1.5 text-[10px] text-muted">{PAY_LABEL[o.paymentMethod] || o.paymentMethod}</span>
-                                              </span>
-                                              <span className="text-[11px] text-muted">
-                                                Alıcı:{" "}
-                                                {o.buyer ? (
-                                                  <Link href={`/seller/${o.buyer.id}`} target="_blank" className="font-semibold text-[var(--brand-to)] hover:underline">
-                                                    {o.buyer.name}
-                                                  </Link>
-                                                ) : "—"}
-                                              </span>
-                                            </div>
-                                            {/* Hansı obyektdən hansı məhsul alınıb */}
-                                            <ul className="space-y-0.5">
-                                              {o.items.map((it: any) => (
-                                                <li key={it.id} className="flex items-baseline justify-between gap-2 text-[12px]">
-                                                  <span className="truncate">{it.title}{it.quantity > 1 && <span className="text-muted"> × {it.quantity}</span>}</span>
-                                                  <span className="shrink-0 font-semibold">{azn(it.price * it.quantity)} ₼</span>
-                                                </li>
-                                              ))}
-                                            </ul>
-                                            <div className="mt-1 pt-1 border-t border-card-border/60 flex justify-between text-[11px]">
-                                              <span className="text-muted">Sifariş cəmi</span>
-                                              <span className="font-extrabold">{azn(o.total)} ₼</span>
-                                            </div>
-                                          </div>
-                                        ))}
+                              {/* ── OBYEKTLƏR ── */}
+                              <div className="border-t border-card-border p-2 space-y-2">
+                                {b.objects.map((ob: any) => {
+                                  const ok = `${bk}-o${ob.id ?? 0}`;
+                                  const oOpen = open.has(ok);
+                                  const payableCount = ob.list.filter((o: any) => o.payable).length;
+                                  return (
+                                    <div key={ok} className="border border-card-border rounded-lg overflow-hidden">
+                                      <div className="flex items-center gap-2.5 p-2.5 cursor-pointer hover:bg-input-bg/40 transition-colors" onClick={() => toggle(ok)}>
+                                        <span className="shrink-0">📍</span>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="text-[13px] font-semibold truncate">{ob.name}</p>
+                                          <p className="text-[11px] text-muted truncate">
+                                            {[ob.city, ob.address].filter(Boolean).join(", ") || "ünvan yoxdur"} · {ob.orders} satış
+                                          </p>
+                                        </div>
+                                        {payableCount > 0 && (
+                                          <button onClick={(e) => { e.stopPropagation(); pickAll(ob.list, payKey); }}
+                                            className="shrink-0 px-2 py-1 rounded-lg bg-amber-500/15 text-amber-600 text-[11px] font-bold hover:bg-amber-500/25">
+                                            {payableCount} ödəniləcək — seç
+                                          </button>
+                                        )}
+                                        <p className="shrink-0 text-[13px] font-extrabold">{azn(ob.amount)}<span className="text-[10px] text-muted ml-0.5">₼</span></p>
+                                        <span className="shrink-0 text-muted w-4 text-center">{oOpen ? "⌄" : "›"}</span>
                                       </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
+
+                                      {/* ── SİFARİŞLƏR ── */}
+                                      {oOpen && (
+                                        <div className="border-t border-card-border bg-input-bg/20 p-2 space-y-2">
+                                          {ob.list.map((o: any) => {
+                                            const on = picked.has(o.ledgerId);
+                                            const lg = o.ledgerStatus ? LEDGER[o.ledgerStatus] : null;
+                                            return (
+                                              <div key={o.id}
+                                                onClick={() => o.payable && pick(o.ledgerId, payKey, o.net || 0)}
+                                                className={`bg-card border rounded-lg p-3 transition-colors ${on ? "border-green-500 bg-green-500/5" : "border-card-border"} ${o.payable ? "cursor-pointer hover:border-amber-500/60" : ""}`}>
+                                                <div className="flex items-center gap-2 mb-1.5">
+                                                  {o.payable && (
+                                                    <input type="checkbox" checked={on} readOnly className="shrink-0" />
+                                                  )}
+                                                  <span className="text-[11px] font-bold">#{o.id}</span>
+                                                  <span className="text-[11px] text-muted">{dt(o.createdAt)}</span>
+                                                  {lg && <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${lg.cls}`}>{lg.label}</span>}
+                                                  <span className="ml-auto text-[11px] text-muted truncate">
+                                                    Alıcı:{" "}
+                                                    {o.buyer ? (
+                                                      <Link href={`/seller/${o.buyer.id}`} target="_blank" onClick={(e) => e.stopPropagation()}
+                                                        className="font-semibold text-[var(--brand-to)] hover:underline">{o.buyer.name}</Link>
+                                                    ) : "—"}
+                                                  </span>
+                                                </div>
+                                                <ul className="space-y-0.5">
+                                                  {o.items.map((it: any) => (
+                                                    <li key={it.id} className="flex items-baseline justify-between gap-2 text-[12px]">
+                                                      <span className="truncate">{it.title}{it.quantity > 1 && <span className="text-muted"> × {it.quantity}</span>}</span>
+                                                      <span className="shrink-0 font-semibold">{azn(it.price * it.quantity)} ₼</span>
+                                                    </li>
+                                                  ))}
+                                                </ul>
+                                                <div className="mt-1.5 pt-1.5 border-t border-card-border/60 flex items-center justify-between text-[11px]">
+                                                  <span className="text-muted">
+                                                    Alış {azn(o.total)} ₼
+                                                    {o.commission != null && <> · komissiya {azn(o.commission)} ₼</>}
+                                                  </span>
+                                                  {o.net != null && (
+                                                    <span className="font-extrabold text-green-600 text-sm">Satıcıya {azn(o.net)} ₼</span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </>
                           )}
                         </div>
                       );
@@ -234,6 +268,33 @@ export default function FinanceTree() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── ÖDƏNİŞ ZOLAĞI — seçim olanda altda sabit görünür ── */}
+      {picked.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t-2 border-green-500 shadow-2xl">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold">{picked.size} sifariş seçildi</p>
+              <p className="text-[11px] text-muted">
+                {pickedKeys.size > 1
+                  ? "⚠ Fərqli satıcılar seçilib — köçürmə bir hesaba gedir, birini seçin"
+                  : "Bankdan köçürmə etdikdən sonra təsdiqləyin"}
+              </p>
+            </div>
+            <div className="text-right shrink-0">
+              <p className="text-xl font-extrabold text-green-600 leading-none">{azn(pickedTotal)}</p>
+              <p className="text-[10px] text-muted font-bold">AZN köçürüləcək</p>
+            </div>
+            <button onClick={() => setPicked(new Map())}
+              className="shrink-0 px-3 py-2.5 rounded-xl border border-card-border text-sm font-semibold hover:bg-input-bg">Ləğv</button>
+            <button onClick={markPaid} disabled={paying || pickedKeys.size > 1}
+              className="shrink-0 px-5 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-40"
+              style={{ background: "#16a34a" }}>
+              {paying ? "İşlənir…" : "✓ Pulu göndərdim"}
+            </button>
+          </div>
         </div>
       )}
     </div>
