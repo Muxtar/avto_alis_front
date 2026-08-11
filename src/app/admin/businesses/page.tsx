@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
@@ -43,6 +43,11 @@ export default function AdminBusinessesPage() {
   const [busyId, setBusyId] = useState<number | null>(null); // AI əməliyyatı gedən biznes
   const [edit, setEdit] = useState<{ id: number; name: string; voen: string; ownerName: string; founderName: string; phone: string } | null>(null);
   const [ibanInput, setIbanInput] = useState<{ [bizId: number]: string }>({});
+  // Eyni VÖEN/IBAN başqa biznesdə varmı? Saxtakarlıq əlaməti — admin təsdiqdən
+  // əvvəl görsün ki, yüzlərlə VÖEN-i əl ilə tutuşdurmasın.
+  const [dupVoen, setDupVoen] = useState<any[]>([]);
+  const [dupIban, setDupIban] = useState<any[]>([]);
+  const dupTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [openId, setOpenId] = useState<number | null>(null); // açıq (genişlənmiş) biznes kartı
 
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
@@ -109,7 +114,24 @@ export default function AdminBusinessesPage() {
   };
 
   // Redaktə formasını aç + (istəyə görə) AI ilə sənəddən doldur.
-  const startEdit = (b: Biz) => setEdit({ id: b.id, name: b.name, voen: b.voen, ownerName: b.ownerName, founderName: b.founderName, phone: b.phone || "" });
+  const startEdit = (b: Biz) => {
+    setDupVoen([]); setDupIban([]);
+    setEdit({ id: b.id, name: b.name, voen: b.voen, ownerName: b.ownerName, founderName: b.founderName, phone: b.phone || "" });
+    checkVoen(b.id, b.voen);   // mövcud VÖEN də dərhal yoxlanır
+  };
+
+  // VÖEN dəyişəndə serverdən dublikat soruş (yazma dayandıqdan 400 ms sonra).
+  const checkVoen = (id: number, voen: string) => {
+    if (dupTimer.current) clearTimeout(dupTimer.current);
+    const digits = (voen || "").replace(/\D/g, "");
+    if (digits.length < 6) { setDupVoen([]); return; }
+    dupTimer.current = setTimeout(async () => {
+      try {
+        const r = await fetch(`${API}/admin/businesses/${id}/voen-check?voen=${encodeURIComponent(voen)}`, { headers }).then((x) => x.json());
+        if (r.success) setDupVoen(r.duplicates || []);
+      } catch { /* şəbəkə — xəbərdarlıq göstərilmir */ }
+    }, 400);
+  };
   const aiFill = async (id: number) => {
     setBusyId(id);
     try {
@@ -131,7 +153,14 @@ export default function AdminBusinessesPage() {
             founderName: i.founderName || e.founderName,
           } : e);
           if (gotIban) setIbanInput((p) => ({ ...p, [id]: data.ibans[0] }));
-          toast(gotIban ? `AI oxudu — məlumat + IBAN dolduruldu (yoxlayın)` : "AI sənəddən oxudu — yoxlayıb yadda saxlayın", "success");
+          // Dublikat xəbərdarlığı — AI-ın oxuduğu VÖEN/IBAN başqa biznesdədirsə.
+          setDupVoen(data.voenDuplicates || []);
+          setDupIban(data.ibanDuplicates || []);
+          if (data.voenDuplicates?.length) {
+            toast(`⚠ Bu VÖEN artıq ${data.voenDuplicates.length} biznesdə var — aşağıya baxın`, "error");
+          } else {
+            toast(gotIban ? `AI oxudu — məlumat + IBAN dolduruldu (yoxlayın)` : "AI sənəddən oxudu — yoxlayıb yadda saxlayın", "success");
+          }
         }
       } else toast(data.message || "AI oxuya bilmədi", "error");
     } catch { toast(t("error"), "error"); } finally { setBusyId(null); }
@@ -280,12 +309,61 @@ export default function AdminBusinessesPage() {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <label className="text-[11px] text-muted">Ad<input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
-                    <label className="text-[11px] text-muted">VÖEN<input value={edit.voen} onChange={(e) => setEdit({ ...edit, voen: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
+                    <label className="text-[11px] text-muted">
+                      VÖEN {dupVoen.length > 0 && <span className="text-red-500 font-bold">⚠ TƏKRAR</span>}
+                      <input value={edit.voen}
+                        onChange={(e) => { setEdit({ ...edit, voen: e.target.value }); checkVoen(edit.id, e.target.value); }}
+                        className={`w-full mt-0.5 px-2 py-1.5 bg-input-bg border rounded-lg text-sm ${dupVoen.length > 0 ? "border-red-500 ring-1 ring-red-500/40 text-red-600 font-semibold" : "border-input-border"}`} />
+                    </label>
                     <label className="text-[11px] text-muted">Sahibi/Rəhbər<input value={edit.ownerName} onChange={(e) => setEdit({ ...edit, ownerName: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
                     <label className="text-[11px] text-muted">Təsisçi<input value={edit.founderName} onChange={(e) => setEdit({ ...edit, founderName: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
                     <label className="text-[11px] text-muted sm:col-span-2">Telefon<input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
                   </div>
                   <div className="flex gap-2">
+                    {/* ── DUBLİKAT XƏBƏRDARLIĞI ──
+                      Eyni VÖEN/IBAN başqa biznesdə varsa admin təsdiqdən əvvəl görür.
+                      Rədd etmək üçün konkret səbəb olur; VÖEN-ləri əl ilə
+                      tutuşdurmağa ehtiyac qalmır. */}
+                  {dupVoen.length > 0 && (
+                    <div className="border-2 border-red-500 bg-red-500/10 rounded-xl p-3">
+                      <p className="text-sm font-bold text-red-600 mb-1">
+                        ⚠ Bu VÖEN artıq {dupVoen.length} biznesdə qeydiyyatdadır
+                      </p>
+                      <p className="text-[11px] text-muted mb-2">
+                        Eyni VÖEN ikinci dəfə istifadə olunur — saxta müraciət ola bilər. Təsdiqləməzdən əvvəl yoxlayın.
+                      </p>
+                      <div className="space-y-1">
+                        {dupVoen.map((d: any) => (
+                          <div key={d.id} className="flex items-center justify-between gap-2 bg-card rounded-lg px-2.5 py-1.5">
+                            <span className="min-w-0">
+                              <span className="text-xs font-semibold block truncate">{d.name}</span>
+                              <span className="text-[11px] text-muted">
+                                #{d.id} · VÖEN {d.voen} · {new Date(d.createdAt).toLocaleDateString("az-AZ")}
+                              </span>
+                            </span>
+                            <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${d.status === "APPROVED" ? "bg-green-500/15 text-green-600" : d.status === "REJECTED" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-600"}`}>
+                              {d.status}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {dupIban.length > 0 && (
+                    <div className="border-2 border-amber-500 bg-amber-500/10 rounded-xl p-3">
+                      <p className="text-sm font-bold text-amber-600 mb-1">⚠ Bu IBAN başqa biznesdə də var</p>
+                      <p className="text-[11px] text-muted mb-2">Pul eyni bank hesabına gedəcək — yoxlayın.</p>
+                      <div className="space-y-1">
+                        {dupIban.map((d: any, i: number) => (
+                          <div key={i} className="flex items-center justify-between gap-2 bg-card rounded-lg px-2.5 py-1.5">
+                            <span className="text-xs font-semibold truncate">{d.name} <span className="font-normal text-muted">#{d.id}</span></span>
+                            <span className="text-[11px] font-mono text-muted shrink-0">{d.iban}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                     <button onClick={saveEdit} disabled={busyId === b.id} className="px-4 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50">Yadda saxla</button>
                     <button onClick={() => setEdit(null)} className="px-4 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm">Ləğv et</button>
                   </div>
