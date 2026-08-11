@@ -18,7 +18,9 @@ import SocialIcon from "@/components/SocialIcon";
 export default function SellerProfilePage() {
   const { t } = useLanguage();
   const { toast } = useToast();
-  const { token, isLoggedIn } = useAuth();
+  const { token, isLoggedIn, user: me } = useAuth();
+  // Öz profilində "Mesaj yaz" göstərilmir.
+  const meId = me?.id ?? null;
   const router = useRouter();
   const params = useParams();
   const [data, setData] = useState<any>(null);
@@ -120,7 +122,20 @@ export default function SellerProfilePage() {
               )}
               {/* İxtisas profilində paylaşım İxtisas kontekstini saxlayır (?from=ixtisas) —
                   qarşı tərəf də eyni rəy yönümlü profili görsün (telefon/məhsullar gizli). */}
-              <ShareButton title={user.name} text={`${user.name}${user.profession ? ` — ${user.profession}` : ""} · tradixai`} path={ixtisasMode ? `/seller/${params.id}?from=ixtisas` : `/seller/${params.id}`} compact className="ml-auto shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
+              {/* Mesaj yaz — sayt daxili chat. Telefon göstərilmədiyi üçün əlaqənin
+                  əsas yoludur. Öz profilində göstərilmir. */}
+              {user.id !== meId && (
+                <button
+                  onClick={() => {
+                    if (!isLoggedIn || !token) { router.push(`/?next=/seller/${params.id}`); return; }
+                    router.push(`/messages?chat=${user.id}&name=${encodeURIComponent(user.name || "")}`);
+                  }}
+                  className="ml-auto shrink-0 inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl text-white text-sm font-bold cta-gradient hover:opacity-90 transition-opacity">
+                  <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
+                  Mesaj yaz
+                </button>
+              )}
+              <ShareButton title={user.name} text={`${user.name}${user.profession ? ` — ${user.profession}` : ""} · tradixai`} path={ixtisasMode ? `/seller/${params.id}?from=ixtisas` : `/seller/${params.id}`} compact className={`${user.id !== meId ? "" : "ml-auto "}shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all`} />
               <QRShare path={ixtisasMode ? `/seller/${params.id}?from=ixtisas` : `/seller/${params.id}`} title={user.name} subtitle={ixtisasMode ? (user.profession ? `${user.profession} · İxtisas` : "İxtisas profili") : (user.profession || "Profil")} compact className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
             </div>
 

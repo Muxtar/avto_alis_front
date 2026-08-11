@@ -9,9 +9,8 @@ import { API } from "@/lib/api";
  *
  *   Satıcı → Biznes → Obyekt → Sifariş
  *
- * Burada həm "kim nə satdı" görünür, həm də satıcıya BORCUMUZ ödənilir:
- * bankdan köçürmə etdikdən sonra sifarişləri seçib "Ödənildi" işarələyirsən.
- * Ekran pul köçürmür — yalnız uçotu bağlayır.
+ * Bu ekran YALNIZ GÖSTƏRİR — "kim kimə nə satdı, nə qədər".
+ * Satıcıya ödəniş "Biznes hesablaşması" bölməsindən edilir (təkrar olmasın).
  */
 
 const azn = (n: number) => n.toLocaleString("az-AZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -37,14 +36,10 @@ export default function FinanceTree() {
   const [open, setOpen] = useState<Set<string>>(new Set());
   const toggle = (k: string) => setOpen((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
 
-  // Ödəniş üçün seçilmiş sifarişlər (ledgerId → { key, net })
-  const [picked, setPicked] = useState<Map<number, { key: string; net: number }>>(new Map());
-  const [paying, setPaying] = useState(false);
-
   const H = () => ({ Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" });
 
   const load = useCallback(async () => {
-    setLoading(true); setPicked(new Map());
+    setLoading(true);
     try {
       const p = new URLSearchParams({ paymentStatus: payStatus });
       if (q.trim()) p.set("q", q.trim());
@@ -58,45 +53,8 @@ export default function FinanceTree() {
   useEffect(() => { load(); }, [load]);
 
   const sellers = data?.sellers || [];
-  const pickedTotal = useMemo(() => [...picked.values()].reduce((s, v) => s + v.net, 0), [picked]);
-  // Ödəniş yalnız TƏK satıcı/biznes üçün edilir — bank köçürməsi bir hesaba gedir.
-  const pickedKeys = useMemo(() => new Set([...picked.values()].map((v) => v.key)), [picked]);
-
-  const pick = (ledgerId: number, key: string, net: number) =>
-    setPicked((p) => { const n = new Map(p); n.has(ledgerId) ? n.delete(ledgerId) : n.set(ledgerId, { key, net }); return n; });
-
-  // Bir obyektin/biznesin bütün ödəniləcək sifarişlərini seç
-  const pickAll = (orders: any[], key: string) =>
-    setPicked((p) => {
-      const n = new Map(p);
-      const payable = orders.filter((o) => o.payable);
-      const allOn = payable.every((o) => n.has(o.ledgerId));
-      payable.forEach((o) => (allOn ? n.delete(o.ledgerId) : n.set(o.ledgerId, { key, net: o.net || 0 })));
-      return n;
-    });
-
-  const markPaid = async () => {
-    if (picked.size === 0) return;
-    if (pickedKeys.size > 1) {
-      toast("Bir dəfəyə yalnız BİR satıcının/biznesin sifarişlərini ödəyin — köçürmə bir hesaba gedir", "error");
-      return;
-    }
-    const key = [...pickedKeys][0];
-    if (!confirm(`${picked.size} sifariş · ${azn(pickedTotal)} AZN\n\nBankdan köçürmə etdiyinizi təsdiqləyirsiniz?`)) return;
-    const reference = prompt("Bank köçürmə referansı (istəyə bağlı):") ?? "";
-    setPaying(true);
-    try {
-      const r = await fetch(`${API}/admin/payouts/businesses/${key}/pay`, {
-        method: "POST", headers: H(),
-        body: JSON.stringify({ ledgerIds: [...picked.keys()], method: "BANK", reference: reference.trim() }),
-      }).then((x) => x.json());
-      if (r.success) { toast(`${azn(r.amount)} AZN ödənildi işarələndi (${r.paidCount} sifariş)`, "success"); load(); }
-      else toast(r.message || "Xəta", "error");
-    } catch { toast("Xəta", "error"); } finally { setPaying(false); }
-  };
-
   return (
-    <div className="pb-24">
+    <div>
       {/* ── Filtrlər ── */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="🔍 Satıcı və ya alıcı adı…"
@@ -152,7 +110,6 @@ export default function FinanceTree() {
                     {s.businesses.map((b: any) => {
                       const bk = `${sk}-b${b.id ?? 0}`;
                       const bOpen = open.has(bk);
-                      const payKey = b.id ? `b${b.id}` : `u${s.id}`;
                       return (
                         <div key={bk} className="bg-card border border-card-border rounded-xl overflow-hidden">
                           <div className="flex items-center gap-2.5 p-3 cursor-pointer hover:bg-input-bg/40 transition-colors" onClick={() => toggle(bk)}>
@@ -198,10 +155,9 @@ export default function FinanceTree() {
                                           </p>
                                         </div>
                                         {payableCount > 0 && (
-                                          <button onClick={(e) => { e.stopPropagation(); pickAll(ob.list, payKey); }}
-                                            className="shrink-0 px-2 py-1 rounded-lg bg-amber-500/15 text-amber-600 text-[11px] font-bold hover:bg-amber-500/25">
-                                            {payableCount} ödəniləcək — seç
-                                          </button>
+                                          <span className="shrink-0 px-2 py-1 rounded-lg bg-amber-500/15 text-amber-600 text-[11px] font-bold">
+                                            {payableCount} ödəniləcək
+                                          </span>
                                         )}
                                         <p className="shrink-0 text-[13px] font-extrabold">{azn(ob.amount)}<span className="text-[10px] text-muted ml-0.5">₼</span></p>
                                         <span className="shrink-0 text-muted w-4 text-center">{oOpen ? "⌄" : "›"}</span>
@@ -211,16 +167,10 @@ export default function FinanceTree() {
                                       {oOpen && (
                                         <div className="border-t border-card-border bg-input-bg/20 p-2 space-y-2">
                                           {ob.list.map((o: any) => {
-                                            const on = picked.has(o.ledgerId);
                                             const lg = o.ledgerStatus ? LEDGER[o.ledgerStatus] : null;
                                             return (
-                                              <div key={o.id}
-                                                onClick={() => o.payable && pick(o.ledgerId, payKey, o.net || 0)}
-                                                className={`bg-card border rounded-lg p-3 transition-colors ${on ? "border-green-500 bg-green-500/5" : "border-card-border"} ${o.payable ? "cursor-pointer hover:border-amber-500/60" : ""}`}>
+                                              <div key={o.id} className="bg-card border border-card-border rounded-lg p-3">
                                                 <div className="flex items-center gap-2 mb-1.5">
-                                                  {o.payable && (
-                                                    <input type="checkbox" checked={on} readOnly className="shrink-0" />
-                                                  )}
                                                   <span className="text-[11px] font-bold">#{o.id}</span>
                                                   <span className="text-[11px] text-muted">{dt(o.createdAt)}</span>
                                                   {lg && <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${lg.cls}`}>{lg.label}</span>}
@@ -271,32 +221,6 @@ export default function FinanceTree() {
         </div>
       )}
 
-      {/* ── ÖDƏNİŞ ZOLAĞI — seçim olanda altda sabit görünür ── */}
-      {picked.size > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t-2 border-green-500 shadow-2xl">
-          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3 flex-wrap">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-bold">{picked.size} sifariş seçildi</p>
-              <p className="text-[11px] text-muted">
-                {pickedKeys.size > 1
-                  ? "⚠ Fərqli satıcılar seçilib — köçürmə bir hesaba gedir, birini seçin"
-                  : "Bankdan köçürmə etdikdən sonra təsdiqləyin"}
-              </p>
-            </div>
-            <div className="text-right shrink-0">
-              <p className="text-xl font-extrabold text-green-600 leading-none">{azn(pickedTotal)}</p>
-              <p className="text-[10px] text-muted font-bold">AZN köçürüləcək</p>
-            </div>
-            <button onClick={() => setPicked(new Map())}
-              className="shrink-0 px-3 py-2.5 rounded-xl border border-card-border text-sm font-semibold hover:bg-input-bg">Ləğv</button>
-            <button onClick={markPaid} disabled={paying || pickedKeys.size > 1}
-              className="shrink-0 px-5 py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-40"
-              style={{ background: "#16a34a" }}>
-              {paying ? "İşlənir…" : "✓ Pulu göndərdim"}
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
