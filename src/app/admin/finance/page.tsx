@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback, Fragment } from "react";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import FinanceTree from "./FinanceTree";
 
 interface Person { id: number; name: string | null; phone: string | null; email?: string | null }
 interface Item { title: string; quantity: number; price: number }
@@ -49,6 +50,7 @@ const DLV: Record<string, { label: string; cls: string }> = {
 export default function AdminFinancePage() {
   const { toast } = useToast();
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [view, setView] = useState<"tree" | "list">("tree");
   const [txns, setTxns] = useState<Txn[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -118,13 +120,30 @@ export default function AdminFinancePage() {
 
   return (
     <div className="max-w-6xl">
-      <div className="mb-6 flex items-start justify-between gap-3">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Maliyyə</h1>
-          <p className="text-muted text-sm mt-1">Kim kimdən hansı məhsulu neçəyə aldı, çatdı-çatmadı. Sətrə klik → detal.</p>
+          <p className="text-muted text-sm mt-1">Kim kimdən hansı məhsulu neçəyə aldı, çatdı-çatmadı.</p>
         </div>
         <button onClick={exportCsv} className="shrink-0 px-3 py-2 text-xs font-medium rounded-lg bg-input-bg border border-input-border hover:border-orange-500">⬇ CSV</button>
       </div>
+
+      {/* Görünüş seçimi:
+          • Qruplaşdırılmış — Satıcı → Biznes → Obyekt → Sifariş (anlaşıqlı)
+          • Siyahı — köhnə düz cədvəl (axtarış/filtr üçün rahatdır) */}
+      <div className="flex gap-1 bg-input-bg border border-input-border rounded-xl p-1 mb-4 w-fit">
+        <button onClick={() => setView("tree")}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${view === "tree" ? "bg-orange-500 text-white" : "text-muted"}`}>
+          🗂 Qruplaşdırılmış
+        </button>
+        <button onClick={() => setView("list")}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${view === "list" ? "bg-orange-500 text-white" : "text-muted"}`}>
+          ☰ Siyahı
+        </button>
+      </div>
+
+      {view === "tree" ? <FinanceTree /> : (
+      <>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         {cards.map((c) => (
@@ -211,6 +230,8 @@ export default function AdminFinancePage() {
           <span className="text-sm text-muted">{page} / {totalPages}</span>
           <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1.5 rounded-lg border border-card-border text-sm disabled:opacity-40">Sonrakı</button>
         </div>
+      )}
+      </>
       )}
     </div>
   );
