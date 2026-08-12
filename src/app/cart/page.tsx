@@ -22,6 +22,8 @@ export default function CartPage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+  // Qeydiyyatlı nömrəni dəyişmək istəyəndə sahə açılır.
+  const [phoneEdit, setPhoneEdit] = useState(false);
   const [note, setNote] = useState("");
   const [placing, setPlacing] = useState(false);
   const [placed, setPlaced] = useState(false);
@@ -56,6 +58,11 @@ export default function CartPage() {
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
   // Səbəti göndərmə: çatdırılma alıcıya (RECIPIENT) yoxsa mənə (SENDER) — göndərən seçir.
+  // Paylaşım bloku YIĞILI açılır. Əvvəl həmişə açıq idi və içindəki xəritə +
+  // telefon sahəsi səbətə girən kimi görünürdü — istifadəçi "Sifariş ver"
+  // düyməsindən ƏVVƏL xəritə görüb qarışdırırdı (sifariş xəritəsi ilə eyni
+  // görünür, amma başqa şeydir). Paylaşım ikinci dərəcəli xüsusiyyətdir.
+  const [shareOpen, setShareOpen] = useState(false);
   const [shareMode, setShareMode] = useState<"RECIPIENT" | "SENDER">("SENDER");
   const [shareLoc, setShareLoc] = useState<{ city: string; address: string; latitude: number | null; longitude: number | null }>({ city: "", address: "", latitude: null, longitude: null });
   const [sharePhone, setSharePhone] = useState("");
@@ -421,10 +428,20 @@ export default function CartPage() {
             {/* Səbəti paylaş */}
             <div className="surface p-3 sm:p-4">
               <div className="flex items-center justify-between gap-2 flex-wrap">
-                <p className="text-sm font-medium">🔗 Alışı paylaş ({selItems.length} məhsul)</p>
-                {/* Tək paylaş ikonu — kliklədikdə linki yaradır və tətbiqdə/xaricdə seçimi açır */}
-                <ShareButton title="Səbətdəki məhsullar" text="Səbətimə bax — tradixai" beforeShare={shareCart} disabled={sharing || selItems.length === 0} compact className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center text-orange-500 hover:bg-orange-500/10 transition-colors" />
+                <button type="button" onClick={() => setShareOpen((v) => !v)} className="flex items-center gap-2 text-left min-w-0">
+                  <span className="text-sm font-medium">🔗 Alışı paylaş — başqası ödəsin</span>
+                  <span className="text-muted text-xs">{shareOpen ? "⌄" : "›"}</span>
+                </button>
+                {shareOpen && (
+                  /* Tək paylaş ikonu — kliklədikdə linki yaradır və tətbiqdə/xaricdə seçimi açır */
+                  <ShareButton title="Səbətdəki məhsullar" text="Səbətimə bax — tradixai" beforeShare={shareCart} disabled={sharing || selItems.length === 0} compact className="w-10 h-10 rounded-xl bg-input-bg border border-input-border flex items-center justify-center text-orange-500 hover:bg-orange-500/10 transition-colors" />
+                )}
               </div>
+              {!shareOpen && (
+                <p className="text-[11px] text-muted mt-1">Linki göndərin — qarşı tərəf ödəsin, məhsul sizə gəlsin.</p>
+              )}
+              {shareOpen && (
+              <>
               {/* MƏHSUL KİMƏ GEDƏCƏK? — bütün fərq buradadır:
                   • Mənə / Dostuma  → ünvanı İNDİ mən yazıram, linki açan yalnız ödəyir
                                        (onun saytda hesabı olmasına ehtiyac yoxdur)
@@ -491,7 +508,13 @@ export default function CartPage() {
                   <p className="text-[11px] text-muted">
                     {shareTo === "ME" ? "Çatdırılma ünvanınız:" : "Çatdırılma ünvanı:"}
                   </p>
-                  <input value={sharePhone} onChange={(e) => setSharePhone(e.target.value)} placeholder="Əlaqə telefonu" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" />
+                  {/* Qeydiyyatlı istifadəçinin nömrəsi onsuz da bizdədir — yenidən soruşmuruq.
+                      Yalnız nömrəsi olmayan (nadir) halda sahə göstərilir. */}
+                  {user?.phone ? (
+                    <p className="text-[11px] text-muted">Əlaqə: <b className="text-foreground">{user.phone}</b></p>
+                  ) : (
+                    <input value={sharePhone} onChange={(e) => setSharePhone(e.target.value)} placeholder="Əlaqə telefonu" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" />
+                  )}
                   <LocationPicker city={shareLoc.city} address={shareLoc.address} latitude={shareLoc.latitude} longitude={shareLoc.longitude} onChange={(n: any) => setShareLoc(n)} height="200px" />
                 </div>
               ) : (
@@ -505,6 +528,8 @@ export default function CartPage() {
                   <input readOnly value={shareLink} className="flex-1 px-3 py-2 bg-input-bg border border-input-border rounded-lg text-xs" onFocus={(e) => e.currentTarget.select()} />
                   <button onClick={() => { navigator.clipboard?.writeText(shareLink); toast("Kopyalandı ✓", "success"); }} className="px-3 py-2 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-semibold">Kopyala</button>
                 </div>
+              )}
+              </>
               )}
             </div>
 
@@ -730,9 +755,22 @@ export default function CartPage() {
                     </div>
                   )}
 
+                  {/* ƏLAQƏ TELEFONU.
+                      Qeydiyyatlı istifadəçinin nömrəsi onsuz da bizdədir (üzvlük
+                      nömrəsi) — yenidən yazdırmırıq, sadəcə göstəririk.
+                      Başqa nömrə lazımdırsa "Dəyiş" ilə açılır.
+                      Nömrəsi olmayan hallarda sahə birbaşa göstərilir. */}
                   <div>
                     <label className="block text-xs text-muted mb-1">{t("phone")}</label>
-                    <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} />
+                    {user?.phone && !phoneEdit ? (
+                      <div className="flex items-center gap-2 px-3 py-2 bg-input-bg border border-input-border rounded-xl">
+                        <span className="text-sm font-medium flex-1 truncate">{phone || user.phone}</span>
+                        <button type="button" onClick={() => setPhoneEdit(true)}
+                          className="text-[11px] font-semibold text-[var(--brand-to)] shrink-0">Dəyiş</button>
+                      </div>
+                    ) : (
+                      <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputCls} autoFocus={phoneEdit} />
+                    )}
                   </div>
 
                   {/* Biznes adına alış — yalnız canBuy səlahiyyətli işçilərə görünür */}
