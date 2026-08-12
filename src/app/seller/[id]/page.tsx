@@ -32,6 +32,10 @@ export default function SellerProfilePage() {
   const [fromIxtisas, setFromIxtisas] = useState(false);
   useEffect(() => { setFromIxtisas(new URLSearchParams(window.location.search).get("from") === "ixtisas"); }, []);
 
+  // Alıcı neçə blok almaq istəyir (məs. 1 saatlıq təklifdən 2 ədəd = 2 saat).
+  const [qty, setQty] = useState<{ [offerId: number]: number }>({});
+  const getQty = (id: number) => qty[id] || 1;
+
   const requestConsultation = async (offerId: number) => {
     if (!isLoggedIn) { router.push("/"); return; }
     setReqBusy(offerId);
@@ -39,7 +43,7 @@ export default function SellerProfilePage() {
       const r = await fetch(`${API}/consultations/request`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ offerId }),
+        body: JSON.stringify({ offerId, quantity: getQty(offerId) }),
       }).then((x) => x.json());
       if (r.success) {
         toast(r.needsVoen ? "Sorğu göndərildi (peşəkar VÖEN əlavə edənə qədər ödəniş donur)" : "Sorğu göndərildi ✓", "success");
@@ -196,13 +200,30 @@ export default function SellerProfilePage() {
                           <div className="min-w-0">
                             <p className="font-bold text-[15px] leading-tight">{o.title || "Rəy konsultasiyası"}</p>
                             <div className="flex items-center gap-2 mt-1.5">
-                              <span className="inline-flex items-center gap-1 text-[11px] text-muted bg-input-bg border border-input-border rounded-md px-2 py-0.5">⏱ {o.durationMinutes} dəq</span>
-                              <span className="text-lg font-extrabold text-orange-500">{o.price} <span className="text-xs font-bold">AZN</span></span>
+                              <span className="inline-flex items-center gap-1 text-[11px] text-muted bg-input-bg border border-input-border rounded-md px-2 py-0.5">
+                                ⏱ {o.durationMinutes * getQty(o.id)} dəq
+                              </span>
+                              <span className="text-lg font-extrabold text-orange-500">
+                                {Math.round(o.price * getQty(o.id) * 100) / 100} <span className="text-xs font-bold">AZN</span>
+                              </span>
+                              {getQty(o.id) > 1 && (
+                                <span className="text-[11px] text-muted">({getQty(o.id)} × {o.durationMinutes} dəq · {o.price} AZN)</span>
+                              )}
                             </div>
                           </div>
-                          <button onClick={() => requestConsultation(o.id)} disabled={reqBusy === o.id} className="shrink-0 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm">
-                            {reqBusy === o.id ? "..." : "Rəy al"}
-                          </button>
+                          <div className="shrink-0 flex items-center gap-2">
+                            {/* Neçə blok? — qiymət və müddət avtomatik vurulur */}
+                            <div className="flex items-center bg-input-bg border border-input-border rounded-xl overflow-hidden">
+                              <button type="button" onClick={() => setQty((p) => ({ ...p, [o.id]: Math.max(1, getQty(o.id) - 1) }))}
+                                className="w-8 h-9 text-lg font-bold text-muted hover:text-foreground">−</button>
+                              <span className="w-7 text-center text-sm font-bold">{getQty(o.id)}</span>
+                              <button type="button" onClick={() => setQty((p) => ({ ...p, [o.id]: Math.min(24, getQty(o.id) + 1) }))}
+                                className="w-8 h-9 text-lg font-bold text-muted hover:text-foreground">+</button>
+                            </div>
+                            <button onClick={() => requestConsultation(o.id)} disabled={reqBusy === o.id} className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 shadow-sm">
+                              {reqBusy === o.id ? "..." : "Rəy al"}
+                            </button>
+                          </div>
                         </div>
                         {o.description && <p className="text-[13px] text-foreground/80 mt-2.5 whitespace-pre-line leading-snug">{o.description}</p>}
                       </div>
