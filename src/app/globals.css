@@ -500,6 +500,21 @@ a:focus-visible {
   }
 }
 
+/* Mobil chat tam ekranda açıqkən sayt başlığı və alt naviqasiya gizlənir.
+   Overlay onsuz da üstlərini örtür, amma iOS-da vizual viewport sürüşəndə
+   `position: fixed` bir neçə piksel yerindən oynayır və header üstdən
+   sızırdı. Render olunmayan element sıza bilməz. */
+@media (max-width: 639px) {
+  body.chat-fullscreen > header,
+  body.chat-fullscreen .bottom-nav {
+    display: none !important;
+  }
+  /* Səhifə sürüşməsin — overlay onsuz da bütün ekranı tutur. */
+  body.chat-fullscreen {
+    overflow: hidden;
+  }
+}
+
 /* Mobile bottom-nav bar — only visible on small screens */
 .bottom-nav {
   position: fixed;

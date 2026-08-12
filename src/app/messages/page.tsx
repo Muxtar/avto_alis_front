@@ -350,6 +350,22 @@ export default function MessagesPage() {
       ? `${API}/groups/${chat.id}/messages?limit=50${before ? `&before=${before}` : ""}`
       : `${API}/messages/${chat.id}?limit=50${before ? `&before=${before}` : ""}`;
 
+  // Mobil chat açıqkən saytın header-ini TAMAMİLƏ gizlət.
+  //
+  // Səbəb: chat overlay-i `position: fixed; top: 0; z-70` ilə header-i örtür və
+  // masaüstü brauzerdə bu qüsursuz işləyir (ölçülüb). Amma iOS-da (xüsusən
+  // iPhone Chrome) URL zolağı yığılanda vizual viewport layout viewport-dan
+  // sürüşür; `fixed` elementlər LAYOUT viewport-a görə yerləşdiyi üçün overlay
+  // bir neçə on piksel yerindən oynayır və header-in bir hissəsi üstdən görünür.
+  // Header ümumiyyətlə render olunmasa, hansı ofset olursa-olsun görünə bilməz.
+  useEffect(() => {
+    const mobile = typeof window !== "undefined" && window.matchMedia("(max-width: 639px)").matches;
+    if (active && mobile) document.body.classList.add("chat-fullscreen");
+    else document.body.classList.remove("chat-fullscreen");
+    // Səhifədən çıxanda mütləq təmizlə — əks halda header itmiş qalardı.
+    return () => document.body.classList.remove("chat-fullscreen");
+  }, [active]);
+
   const openChat = (chat: any) => {
     setActive(chat);
     // Qaralama: göndərilməmiş mətn həmin söhbətdə saxlanır — girəndə inputa qaytarılır.
