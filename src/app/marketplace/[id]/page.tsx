@@ -645,7 +645,7 @@ export default function ListingDetailPage() {
                       {canMsg && (
                         <>
                           <span className="text-muted-foreground/50">·</span>
-                          <a href="#message" className="text-muted hover:text-[var(--brand-to)] underline-offset-2 hover:underline">Mesaj</a>
+                          <a href="#message" className="text-muted hover:text-[var(--brand-to)] underline-offset-2 hover:underline">Chat</a>
                         </>
                       )}
                     </div>
@@ -857,11 +857,6 @@ export default function ListingDetailPage() {
                 </div>
               )}
 
-              {/* Əlaqə yalnız sayt daxili chat ilə — telefon nömrəsi göstərilmir. */}
-              <a href="#message" className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-[var(--brand-to)]/20">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-                Mesaj yaz
-              </a>
             </div>
           ) : (
           <div className="bg-card border border-card-border rounded-2xl p-4 sm:p-6">
@@ -919,11 +914,6 @@ export default function ListingDetailPage() {
               </div>
             )}
 
-            {/* Əlaqə yalnız sayt daxili chat ilə — telefon nömrəsi göstərilmir. */}
-            <a href="#message" className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl font-semibold text-white hover:brightness-110 transition-all shadow-lg shadow-[var(--brand-to)]/20">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
-              Mesaj yaz
-            </a>
           </div>
           )}
 

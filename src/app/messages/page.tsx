@@ -912,6 +912,14 @@ export default function MessagesPage() {
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-sm truncate flex items-center gap-1">
                         {chat.type !== "group" && chat.lastMessage?.consultationId && <span title="Rəy konsultasiyası">🗣️</span>}
+                        {/* Mesaj bir biznes obyektinə (filial) aiddirsə göstər —
+                            eyni şəxs bir neçə obyektə baxırsa hansından gəldiyi bilinsin. */}
+                        {chat.type !== "group" && chat.lastMessage?.businessObject && (
+                          <span className="px-1.5 py-0.5 rounded bg-[var(--brand-soft)] text-[var(--brand-to)] text-[10px] font-bold truncate max-w-[110px]"
+                            title={`Obyekt: ${chat.lastMessage.businessObject.name}`}>
+                            📍 {chat.lastMessage.businessObject.name}
+                          </span>
+                        )}
                         {chat.name}
                       </span>
                       {chat.unreadCount > 0 && <span className="min-w-[20px] h-5 px-1 bg-orange-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0">{chat.unreadCount}</span>}
@@ -1009,7 +1017,10 @@ export default function MessagesPage() {
                             <div className={`text-[11px] mb-1 px-2 py-1 rounded-lg border-l-2 ${isMine ? "bg-white/15 border-white/50" : "bg-orange-500/10 border-orange-500/50"}`}>{previewText(msg.replyTo)}</div>
                           )}
                           {msg.listing && !deleted && (
-                            <Link href={`/marketplace/${msg.listing.id}`} onClick={(e) => e.stopPropagation()} className={`block text-[10px] mb-1 ${isMine ? 'text-white/70' : 'text-orange-500'} hover:underline`}>{t("messageAbout")}: {msg.listing.title}</Link>
+                            <Link href={`/marketplace/${msg.listing.id}`} onClick={(e) => e.stopPropagation()} className={`block text-[10px] mb-1 ${isMine ? 'text-white/70' : 'text-orange-500'} hover:underline`}>
+                              {t("messageAbout")}: {msg.listing.title}
+                              {msg.businessObject && <span className={isMine ? "text-white/60" : "text-muted"}> · 📍 {msg.businessObject.name}</span>}
+                            </Link>
                           )}
                           {msg.consultationId && !deleted && (
                             <Link href={`/consultations/${msg.consultationId}`} onClick={(e) => e.stopPropagation()} className={`block text-[10px] mb-1 ${isMine ? 'text-white/70' : 'text-orange-500'} hover:underline`}>🗣️ Rəy konsultasiyası — aç</Link>
