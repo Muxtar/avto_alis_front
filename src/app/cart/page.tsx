@@ -723,7 +723,18 @@ export default function CartPage() {
                         <div className="grid grid-cols-2 gap-2">
                           <button type="button" disabled={yangoBlocked} onClick={() => !yangoBlocked && setDeliveryMethod("COURIER")}
                             className={`py-2 px-2 rounded-lg text-xs font-medium border ${yangoBlocked ? "opacity-40 cursor-not-allowed border-input-border bg-input-bg" : deliveryMethod === "COURIER" ? "border-orange-500 bg-orange-500/10 text-orange-500" : "border-input-border bg-input-bg"}`}>
-                            🛵 Yango kuryer{yangoBlocked ? <span className="block text-[10px] text-red-500">50 kq-dan ağır</span> : deliveryMethod === "COURIER" && (quoting ? <span className="block text-[10px] text-muted">hesablanır...</span> : yangoFee != null ? <span className="block text-[10px] text-muted">{yangoFee.toFixed(2)} AZN</span> : <span className="block text-[10px] text-muted">konum seçin</span>)}
+                            🛵 Yango kuryer{yangoBlocked ? (
+                              <span className="block text-[10px] text-red-500">50 kq-dan ağır</span>
+                            ) : deliveryMethod === "COURIER" && (
+                              /* Etiket ƏSL vəziyyəti göstərməlidir. Əvvəl qiymət
+                                 alınmayan HƏR halda "konum seçin" yazırdı — konum
+                                 onsuz da seçilmiş olsa belə. İstifadəçi nə etməli
+                                 olduğunu anlamırdı. İndi hər hal ayrıdır. */
+                              quoting ? <span className="block text-[10px] text-muted">hesablanır…</span>
+                              : yangoFee != null ? <span className="block text-[10px] text-muted">{yangoFee.toFixed(2)} AZN</span>
+                              : (lat == null || lng == null) ? <span className="block text-[10px] text-muted">əvvəlcə konumu seçin</span>
+                              : <span className="block text-[10px] text-red-500">bu ünvana çatdıra bilmir</span>
+                            )}
                           </button>
                           {allSelfAllowed && (
                             <button type="button" onClick={() => setDeliveryMethod("SELF")}
@@ -735,6 +746,15 @@ export default function CartPage() {
                         {yangoBlocked && (
                           <p className="text-[11px] text-red-500 mt-1.5">
                             ⚖️ Sifariş 50 kq-dan ağırdır — Yango kuryer mümkün deyil. {allSelfAllowed ? "Satıcı çatdırması seçildi." : "Yuxarıdan “🏪 Götürmə”ni seçin (satıcı bu məhsulda özü çatdırma təklif etmir)."}
+                          </p>
+                        )}
+                        {/* Yango qiymət verə bilmirsə SƏBƏBİ elə burada — istifadəçinin
+                            baxdığı yerdə — yazılır. Səbəb aşağıdakı yekun bölməsində də
+                            görünürdü, amma orada gözdən qaçırdı. */}
+                        {!yangoBlocked && deliveryMethod === "COURIER" && !quoting && yangoFee == null && lat != null && lng != null && (
+                          <p className="text-[11px] text-red-500 mt-1.5">
+                            🛵 Yango bu ünvana çatdıra bilmir{yangoMsg ? ` — ${yangoMsg}` : ""}.
+                            <span className="text-muted"> Satıcı çatdırması və ya “🏪 Götürmə” seçin.</span>
                           </p>
                         )}
                         {/* Satıcının öz çatdırma qeydi/qiyməti */}
