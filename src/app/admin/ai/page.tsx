@@ -50,6 +50,8 @@ export default function AdminAiPage() {
   const [busy, setBusy] = useState<string | null>(null);
   // Servis sağlamlıq yoxlaması — yalnız düyməyə basanda (kredit qənaəti).
   const [services, setServices] = useState<ServiceHealth[] | null>(null);
+  // Serverin çıxış IP-si — Yango kimi IP-yə bağlı API-lərə vermək üçün.
+  const [outboundIp, setOutboundIp] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   // Hər AI-ın ayrıca testi.
   const [testing, setTesting] = useState<string | null>(null);
@@ -97,6 +99,7 @@ export default function AdminAiPage() {
       const d = await res.json();
       if (!res.ok || !d.success) { toast(d.message || "Xəta", "error"); return; }
       setServices(d.services || []);
+      setOutboundIp(d.outboundIp || null);
     } catch { toast("Xəta", "error"); } finally { setChecking(false); }
   };
 
@@ -209,6 +212,23 @@ export default function AdminAiPage() {
           <p className="text-xs text-muted mt-2">«Yoxla» düyməsinə basın. Qeyd: canlı yoxlama az miqdar token/kredit istifadə edə bilər (Claude sınaq çağırışı, Tavily 1 kredit).</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+      {/* Serverin çıxış IP-si — Yango/bank kimi xidmətlər API açarını IP-yə
+          bağlayır. "Host is not allowed" xətası alanda bu IP onlara verilməlidir. */}
+      {outboundIp && (
+        <div className="surface p-3 mb-3 flex items-center gap-3 flex-wrap">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">🌐 Serverin çıxış IP-si</p>
+            <p className="text-[11px] text-muted">
+              Yango, bank və s. API açarını IP-yə bağlayırsa bu ünvanı onlara verin.
+              «Host is not allowed» xətası məhz bundan gəlir.
+            </p>
+          </div>
+          <code className="px-3 py-1.5 rounded-lg bg-input-bg border border-input-border text-sm font-mono">{outboundIp}</code>
+          <button onClick={() => { navigator.clipboard?.writeText(outboundIp); toast("Kopyalandı", "success"); }}
+            className="px-3 py-1.5 rounded-lg border border-card-border text-xs font-semibold hover:bg-input-bg">Kopyala</button>
+        </div>
+      )}
+
             {services.map((s) => {
               const st = statusStyle[s.status] || statusStyle.not_configured;
               return (
