@@ -96,11 +96,20 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
   const [zoom, setZoom] = useState(initialZoom);
 
   const setPin = async (lat: number, lng: number) => {
+    // Koordinatı dərhal yaz (xəritə cavab verməsə də pin görünsün).
     onChange({ city, address, latitude: lat, longitude: lng });
-    // Yalnız xəritə rejimində (sahələr gizli) pin qoyulanda ünvanı avtomatik doldur.
-    if (hideFields) {
+    // ÜNVAN MƏTNİNİ DƏ DOLDUR.
+    // Əvvəl bu, yalnız `hideFields` rejimində edilirdi. Səbət kimi sahələr
+    // görünən yerlərdə xəritəyə klik ünvanı doldurmurdu → istifadəçi konumu
+    // seçsə də "Ünvan seçilmədi" yazısı qalırdı. "Cari yerimi tap" isə həmişə
+    // doldurduğu üçün yalnız o işləyirmiş kimi görünürdü.
+    // İndi hər iki yol eyni davranır.
+    setReverseLoading(true);
+    try {
       const r = await reverseGeocodeAt(lat, lng);
       if (r.display) onChange({ city: r.city || city, address: r.display, latitude: lat, longitude: lng });
+    } finally {
+      setReverseLoading(false);
     }
   };
 
