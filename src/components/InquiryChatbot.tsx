@@ -172,8 +172,10 @@ export default function InquiryChatbot() {
           {/* Mesajlar */}
           <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain p-3 space-y-3">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm whitespace-pre-line break-words ${
+              <div key={i} className={`flex min-w-0 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {/* overflow-wrap:anywhere — `break-words` boşluqsuz uzun URL-ləri
+                    həmişə kəsmir; bu, hər halda kəsir və balonu daşmadan saxlayır. */}
+                <div className={`max-w-[85%] min-w-0 overflow-hidden [overflow-wrap:anywhere] px-3 py-2 rounded-xl text-sm whitespace-pre-line break-words ${
                   msg.role === 'user' ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white' : 'bg-input-bg text-foreground border border-input-border'
                 }`}>
                   {msg.role === 'assistant' ? renderText(msg.text) : msg.text}
@@ -202,18 +204,30 @@ export default function InquiryChatbot() {
           </div>
 
           {/* Giriş */}
-          <div className="shrink-0 p-3 border-t border-card-border">
-            <div className="flex gap-2">
+          {/* Giriş sətri.
+              • pb + env(safe-area-inset-bottom): iPhone-da alt "home indicator"
+                zolağı ~34px yer tutur; panel tam ekran olduğu üçün göndər düyməsi
+                onun altında qalırdı.
+              • Düymə `shrink-0` — uzun mətn yazılanda flex onu sıxa bilməsin. */}
+          <div className="shrink-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] border-t border-card-border">
+            <div className="flex gap-2 items-end">
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && send()}
+                /* Klaviatura açılanda brauzer bəzən sətri görünən sahədən aşağı
+                   buraxır — fokusdan sonra özümüz görünürə gətiririk. */
+                onFocus={(e) => {
+                  const el = e.currentTarget;
+                  setTimeout(() => el.scrollIntoView({ block: 'nearest' }), 300);
+                }}
                 placeholder={t('chatbotPlaceholder') || 'Sualını yaz…'}
                 className="flex-1 min-w-0 bg-input-bg border border-input-border rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-orange-500"
                 disabled={loading}
               />
-              <button onClick={send} disabled={loading || !input.trim()} className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition">
+              <button onClick={send} disabled={loading || !input.trim()} aria-label="Göndər"
+                className="shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-3 py-2 rounded-lg text-sm font-medium hover:opacity-90 disabled:opacity-50 transition">
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
               </button>
             </div>

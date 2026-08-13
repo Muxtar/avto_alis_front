@@ -19,6 +19,12 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   interactiveWidget: "resizes-content",
+  // viewport-fit=cover OLMADAN `env(safe-area-inset-*)` HƏMİŞƏ 0 qaytarır.
+  // Kodda bu dəyər onsuz da bir neçə yerdə işlədilir (alt naviqasiya paddingi,
+  // chat qutusunun hündürlüyü, AI panelinin giriş sətri) — yəni onlar iPhone-da
+  // sükutla işləmirdi. Bu sətir onların hamısını işə salır: alt "home indicator"
+  // zolağının altında qalan düymələr yuxarı qalxır.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
