@@ -76,6 +76,10 @@ export default function Navbar() {
   const [inOpen, setInOpen] = useState(false);   // Məndən gələnlər (satışlar)
   const [catOpen, setCatOpen] = useState(false);
   const [catHover, setCatHover] = useState<{ cat: any; top: number; left: number } | null>(null);
+  // TELEFONDA alt kateqoriyalar: hover yoxdur, ona görə sağdakı ox akkordeon
+  // kimi açılır. Əvvəl bütün sətir <Link> idi — oxa toxunanda birbaşa
+  // kateqoriyaya keçirdi və alt kateqoriyalara ümumiyyətlə çatmaq olmurdu.
+  const [catExpanded, setCatExpanded] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [imgBusy, setImgBusy] = useState(false);
@@ -433,22 +437,59 @@ export default function Navbar() {
                   </div>
                   {CATEGORIES.map((c) => {
                     const hasSubs = c.subs && c.subs.length > 0;
+                    const expanded = catExpanded === c.name;
                     return (
-                      <Link key={c.name} href={`/elanlar/${slugify(c.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
-                        onMouseEnter={(e) => {
-                          if (catCloseTimer.current) clearTimeout(catCloseTimer.current);
-                          if (!hasSubs) { setCatHover(null); return; }
-                          const r = e.currentTarget.getBoundingClientRect();
-                          const vh = window.innerHeight;
-                          const est = Math.min((c.subs.length + 2) * 42, vh * 0.8);
-                          const top = Math.max(8, Math.min(r.top, vh - est - 12));
-                          setCatHover({ cat: c, top, left: r.right });
-                        }}
-                        className="group/cat flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[var(--brand-soft)] transition-colors text-foreground">
-                        <span className="w-8 h-8 rounded-lg bg-input-bg text-muted group-hover/cat:bg-[var(--brand-to)] group-hover/cat:text-white flex items-center justify-center shrink-0 transition-colors"><CategoryIcon name={c.name} className="w-[18px] h-[18px]" /></span>
-                        <span className="truncate flex-1 font-medium group-hover/cat:text-[var(--brand-to)]">{c.name}</span>
-                        {hasSubs && <svg className="w-4 h-4 text-muted shrink-0 group-hover/cat:text-[var(--brand-to)] group-hover/cat:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>}
-                      </Link>
+                      <div key={c.name}>
+                        <div
+                          onMouseEnter={(e) => {
+                            if (catCloseTimer.current) clearTimeout(catCloseTimer.current);
+                            if (!hasSubs) { setCatHover(null); return; }
+                            const r = e.currentTarget.getBoundingClientRect();
+                            const vh = window.innerHeight;
+                            const est = Math.min((c.subs.length + 2) * 42, vh * 0.8);
+                            const top = Math.max(8, Math.min(r.top, vh - est - 12));
+                            setCatHover({ cat: c, top, left: r.right });
+                          }}
+                          className="group/cat flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[var(--brand-soft)] transition-colors text-foreground">
+                          {/* Adın özü — kateqoriyaya keçid */}
+                          <Link href={`/elanlar/${slugify(c.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
+                            className="flex items-center gap-3 min-w-0 flex-1">
+                            <span className="w-8 h-8 rounded-lg bg-input-bg text-muted group-hover/cat:bg-[var(--brand-to)] group-hover/cat:text-white flex items-center justify-center shrink-0 transition-colors"><CategoryIcon name={c.name} className="w-[18px] h-[18px]" /></span>
+                            <span className="truncate font-medium group-hover/cat:text-[var(--brand-to)]">{c.name}</span>
+                          </Link>
+                          {hasSubs && (
+                            <>
+                              {/* TELEFON: ox artıq keçid deyil — alt kateqoriyaları açır */}
+                              <button type="button" aria-label="Alt kateqoriyalar"
+                                aria-expanded={expanded}
+                                onClick={() => setCatExpanded(expanded ? null : c.name)}
+                                className="sm:hidden shrink-0 -mr-1 p-1.5 rounded-lg hover:bg-[var(--brand-soft)]">
+                                <svg className={`w-4 h-4 text-muted transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                              </button>
+                              {/* MASAÜSTÜ: ox yalnız göstəricidir, alt menyu hover ilə açılır */}
+                              <svg className="hidden sm:block w-4 h-4 text-muted shrink-0 group-hover/cat:text-[var(--brand-to)] group-hover/cat:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Telefonda alt kateqoriyalar — sətirin altında açılır */}
+                        {hasSubs && expanded && (
+                          <div className="sm:hidden bg-input-bg/40 border-y border-card-border">
+                            <Link href={`/elanlar/${slugify(c.name)}`} onClick={() => { setCatOpen(false); setCatExpanded(null); }}
+                              className="block pl-14 pr-4 py-2 text-[13px] font-bold" style={{ color: PINK }}>
+                              Hamısına bax →
+                            </Link>
+                            {c.subs.map((sub: any) => (
+                              <Link key={sub.name} href={`/elanlar/${slugify(c.name)}/${slugify(sub.name)}`}
+                                onClick={() => { setCatOpen(false); setCatExpanded(null); }}
+                                className="flex items-center gap-2.5 pl-14 pr-4 py-2 text-[13px] text-foreground hover:bg-[var(--brand-soft)] transition-colors">
+                                <SubCategoryIcon name={sub.name} parent={c.name} className="w-4 h-4 shrink-0 text-muted" />
+                                <span className="truncate">{sub.name}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     );
                   })}
                   <Link href="/elanlar" onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-4 py-3 text-sm font-bold border-t border-card-border hover:bg-[var(--brand-soft)] transition-colors" style={{ color: PINK }}>
