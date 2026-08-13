@@ -80,6 +80,11 @@ export default function Navbar() {
   // kimi açılır. Əvvəl bütün sətir <Link> idi — oxa toxunanda birbaşa
   // kateqoriyaya keçirdi və alt kateqoriyalara ümumiyyətlə çatmaq olmurdu.
   const [catExpanded, setCatExpanded] = useState<string | null>(null);
+  // Telefonda kataloq menyusu EKRANIN TAM ENİNDƏ açılır. Əvvəl düymənin altına
+  // (absolute left-0, w-72) yapışırdı: 375px ekranda solda 60px boş qalır,
+  // sağda cəmi 27px — menyu sağa sıxılmış görünürdü. Tam en üçün `fixed`
+  // lazımdır, o da yuxarı ofseti tələb edir.
+  const [catTop, setCatTop] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [search, setSearch] = useState("");
   const [imgBusy, setImgBusy] = useState(false);
@@ -421,7 +426,11 @@ export default function Navbar() {
             {/* Kataloq — kateqoriya menyusu (telefonda da görünür, kompakt) */}
             <div ref={catRef} className="order-2 relative shrink-0">
               {/* Amazon üslubu: şəffaf, ağ mətnli — açılanda vurğu rəngi ilə işıqlanır */}
-              <button onClick={() => { setCatOpen((v) => !v); setCatHover(null); }}
+              <button onClick={(e) => {
+                  const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                  setCatTop(r.bottom + 4);
+                  setCatOpen((v) => !v); setCatHover(null); setCatExpanded(null);
+                }}
                 className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 h-11 rounded-md text-white font-bold text-sm sm:text-[15px] ring-1 transition-colors ${catOpen ? "ring-white/60 bg-white/10" : "ring-transparent hover:ring-white/40"}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                 <span className="hidden xs:inline">{t("navCatalog")}</span>
@@ -429,7 +438,12 @@ export default function Navbar() {
               </button>
               {catOpen && (
                 <>
-                <div className="absolute left-0 mt-1 w-72 bg-card text-foreground border border-card-border shadow-2xl z-50 max-h-[72vh] overflow-y-auto"
+                <div
+                  /* Yuxarı ofset CSS dəyişəni ilə verilir — inline `top` masaüstündə
+                     də tətbiq olunub `absolute` yerləşməni pozardı. Dəyişəni yalnız
+                     mobil klas oxuyur; `sm:top-auto` masaüstündə onu ləğv edir. */
+                  style={{ ["--cat-top" as string]: `${catTop}px` } as React.CSSProperties}
+                  className="fixed top-[var(--cat-top)] left-2 right-2 w-auto max-h-[75vh] sm:absolute sm:top-auto sm:left-0 sm:right-auto sm:mt-1 sm:w-72 sm:max-h-[72vh] bg-card text-foreground border border-card-border shadow-2xl z-50 overflow-y-auto"
                   onMouseLeave={() => { catCloseTimer.current = setTimeout(() => setCatHover(null), 180); }}>
                   {/* Başlıq zolağı — header ilə eyni tünd ton */}
                   <div className="sticky top-0 z-10 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: NAV_DARK }}>
