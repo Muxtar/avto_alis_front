@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import { getSocket } from "@/lib/callSocket";
 import ContactsPanel from "@/components/ContactsPanel";
+import ChatPeopleSearch from "@/components/ChatPeopleSearch";
 import Avatar from "@/components/Avatar";
 import { useCall } from "@/lib/CallContext";
 
@@ -882,7 +883,19 @@ export default function MessagesPage() {
               <button onClick={() => setSideTab("contacts")} className={`py-1.5 rounded-lg text-xs font-semibold transition-colors ${sideTab === "contacts" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>👥 Kontaktlar</button>
             </div>
             {sideTab === "chats" && (
-              <button onClick={openGroupModal} className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold bg-input-bg border border-input-border hover:bg-input-bg/70 flex items-center justify-center gap-1">➕ Yeni qrup</button>
+              <>
+                {/* Şəxs axtarışı — əvvəl söhbətlərdə, sonra sosial mediada.
+                    Ana səhifə axtarışından bura köçürüldü (orada yalnız məhsul qaldı). */}
+                <div className="mt-2">
+                  <ChatPeopleSearch
+                    people={chatList
+                      .filter((c: any) => c.type === "direct")
+                      .map((c: any) => ({ id: c.id, name: c.name, avatar: c.avatar, sub: c.partnerType || undefined }))}
+                    onOpenChat={(p) => openChat({ type: "direct", id: p.id, name: p.name, avatar: p.avatar })}
+                  />
+                </div>
+                <button onClick={openGroupModal} className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold bg-input-bg border border-input-border hover:bg-input-bg/70 flex items-center justify-center gap-1">➕ Yeni qrup</button>
+              </>
             )}
           </div>
 
