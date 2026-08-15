@@ -2,7 +2,8 @@
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
-import { API } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
+import UserDetail from "./UserDetail";
 const USER_TYPES = ["CAR_OWNER", "MECHANIC", "PARTS_SELLER"];
 const USER_ROLES = ["USER", "ADMIN"];
 
@@ -14,7 +15,8 @@ export default function AdminUsersPage() {
   const [typeFilter, setTypeFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<any>(null); // edit modal data
-  const [detailUser, setDetailUser] = useState<any>(null); // detail panel
+  // Tam profil pəncərəsi — yalnız id saxlanır, məlumatı UserDetail özü çəkir.
+  const [detailId, setDetailId] = useState<number | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
@@ -71,7 +73,7 @@ export default function AdminUsersPage() {
       const data = await res.json();
       if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
       setUsers(users.filter((u) => u.id !== id));
-      if (detailUser?.id === id) setDetailUser(null);
+      if (detailId === id) setDetailId(null);
       toast(t("adminDeleted") || "Silindi", "success");
       setConfirmDel(null);
     } catch { toast(t("error"), "error"); } finally { setDeleting(false); }
@@ -185,21 +187,36 @@ export default function AdminUsersPage() {
                 <div className="flex items-center gap-4">
                   {/* Toplu seçim */}
                   <input type="checkbox" checked={selected.has(user.id)} onChange={() => toggleSel(user.id)} className="w-4 h-4 accent-orange-500 shrink-0" onClick={(e) => e.stopPropagation()} />
-                  {/* Avatar */}
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-500/80 to-red-600/80 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0">
-                    {user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
-                  </div>
+                  {/* Avatar — istifadəçinin öz profil şəkli, yoxdursa baş hərflər */}
+                  {user.avatar ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={imgUrl(user.avatar)} alt="" loading="lazy"
+                      className="w-10 h-10 rounded-xl object-cover shrink-0 bg-input-bg border border-card-border" />
+                  ) : (
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-500/80 to-red-600/80 rounded-xl flex items-center justify-center text-white font-bold text-xs shrink-0">
+                      {user.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
+                    </div>
+                  )}
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDetailUser(detailUser?.id === user.id ? null : user)}>
+                  {/* Info — kliklə tam profil açılır */}
+                  <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setDetailId(user.id)} title="Tam profili aç">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm truncate">{user.name}</span>
                       <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${tl.cls}`}>{tl.text}</span>
                       {user.verified && <span className="w-2 h-2 bg-green-500 rounded-full shrink-0" title="Doğrulanıb" />}
                       {user.role === "ADMIN" && <span className="px-1.5 py-0.5 bg-red-500/10 text-red-500 border border-red-500/20 rounded text-[10px] font-medium">ADMIN</span>}
+                      {user.sellerVerified && <span className="px-1.5 py-0.5 bg-blue-500/10 text-blue-500 border border-blue-500/20 rounded text-[10px] font-medium">🏢 Satıcı</span>}
                       {user.isBlocked && <span className="px-1.5 py-0.5 bg-red-600/15 text-red-600 border border-red-600/30 rounded text-[10px] font-bold">{t("adminBlockedTag") || "BLOKLU"}</span>}
+                      {user.complaintFlags > 0 && <span className="px-1.5 py-0.5 bg-red-500/10 text-red-500 rounded text-[10px] font-bold" title="Təsdiqlənmiş şikayət">⚠ {user.complaintFlags}</span>}
                     </div>
-                    <p className="text-muted text-xs mt-0.5">{user.phone} · {user._count?.listings || 0} elan · ID: {user.id}</p>
+                    <p className="text-muted text-xs mt-0.5 truncate">
+                      {user.phone} · {user._count?.listings || 0} elan
+                      {user._count?.businesses > 0 && ` · ${user._count.businesses} biznes`}
+                      {user._count?.buyerOrders > 0 && ` · ${user._count.buyerOrders} alış`}
+                      {user._count?.sellerOrders > 0 && ` · ${user._count.sellerOrders} satış`}
+                      {user.avgRating ? ` · ${user.avgRating.toFixed(1)}★` : ""}
+                      {user.city ? ` · ${user.city}` : ""} · ID: {user.id}
+                    </p>
                   </div>
 
                   {/* Actions */}
@@ -222,43 +239,6 @@ export default function AdminUsersPage() {
                   </div>
                 </div>
 
-                {/* Detail Panel (expandable) */}
-                {detailUser?.id === user.id && (
-                  <div className="mt-4 pt-4 border-t border-card-border grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted text-xs mb-1">Növ</p>
-                      <p className="font-medium">{user.type}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted text-xs mb-1">Rol</p>
-                      <p className="font-medium">{user.role || "USER"}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted text-xs mb-1">Qeydiyyat</p>
-                      <p className="font-medium">{new Date(user.createdAt).toLocaleDateString()}</p>
-                    </div>
-                    {user.workplaces?.length > 0 && (
-                      <div className="sm:col-span-3">
-                        <p className="text-muted text-xs mb-1">Obyektlər</p>
-                        <div className="flex flex-wrap gap-2">
-                          {user.workplaces.map((w: any) => (
-                            <span key={w.id} className="px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs">{w.name} - {w.address}</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {user.vehicles?.length > 0 && (
-                      <div className="sm:col-span-3">
-                        <p className="text-muted text-xs mb-1">Avtomobillər</p>
-                        <div className="flex flex-wrap gap-2">
-                          {user.vehicles.map((v: any) => (
-                            <span key={v.id} className="px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs">{v.brand} {v.model} ({v.year})</span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
@@ -276,6 +256,9 @@ export default function AdminUsersPage() {
           ))}
         </div>
       )}
+
+      {/* Tam profil — profil şəkli, sənədlər, bizneslər, elanlar, pul, reytinq */}
+      {detailId != null && <UserDetail userId={detailId} onClose={() => setDetailId(null)} />}
 
       {/* Edit Modal */}
       {modal && (
