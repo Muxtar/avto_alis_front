@@ -53,11 +53,23 @@ export default function AdminAiPage() {
   // Serverin çıxış IP-si — Yango kimi IP-yə bağlı API-lərə vermək üçün.
   const [outboundIp, setOutboundIp] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
+  // Yango tarif müqayisəsi — yalnız düyməyə basanda (Yango-ya real sorğu gedir).
+  const [tariffs, setTariffs] = useState<any>(null);
+  const [tariffBusy, setTariffBusy] = useState(false);
   // Hər AI-ın ayrıca testi.
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<Record<string, { ok?: boolean; manual?: boolean; output: string; query?: string }>>({});
 
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
+
+  // Son real Yango sifarişinin marşrutu üçün bütün tariflərin qiymətini gətir.
+  const loadTariffs = async () => {
+    setTariffBusy(true);
+    try {
+      const r = await fetch(`${API}/admin/yango/tariffs`, { headers: { Authorization: `Bearer ${token()}` } }).then((x) => x.json());
+      setTariffs(r);
+    } catch { toast("Yoxlanmadı", "error"); } finally { setTariffBusy(false); }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -208,6 +220,51 @@ export default function AdminAiPage() {
             className="px-3 py-1.5 rounded-lg border border-card-border text-xs font-semibold hover:bg-input-bg">Kopyala</button>
         </div>
       )}
+      {/* ── Yango tarif müqayisəsi ──
+          Çatdırılma qiymətinə ƏN ÇOX təsir edən şey tarif sinfidir. Burada
+          eyni marşrut üçün bütün siniflərin CANLI qiyməti yan-yana görünür —
+          hansının seçiləcəyi təxminlə deyil, real rəqəmlə qərarlaşdırılır. */}
+      <div className="surface p-3 mb-3">
+        <div className="flex items-center gap-3 flex-wrap mb-2">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold">🛵 Yango tarif müqayisəsi</p>
+            <p className="text-[11px] text-muted">
+              Çatdırılma qiyməti gözlədiyinizdən bahadırsa səbəb adətən tarif sinfidir.
+              <b> express</b> prioritet (baha), <b>courier</b> adi çatdırılmadır.
+              Dəyişmək üçün Railway-də <code>YANGO_TAXI_CLASS</code>.
+            </p>
+          </div>
+          <button onClick={loadTariffs} disabled={tariffBusy}
+            className="px-3 py-1.5 rounded-lg border border-card-border text-xs font-semibold hover:bg-input-bg disabled:opacity-50">
+            {tariffBusy ? "yoxlanılır…" : "Qiymətləri yoxla"}
+          </button>
+        </div>
+        {tariffs && (
+          tariffs.success === false ? (
+            <p className="text-[11px] text-red-500">{tariffs.message}</p>
+          ) : (
+            <>
+              <p className="text-[11px] text-muted mb-1.5">
+                Marşrut: {tariffs.route?.note} · yük {tariffs.route?.weight} kq · hazırkı sinif: <b className="text-foreground">{tariffs.active}</b>
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {tariffs.rows?.map((r: any) => (
+                  <div key={r.taxiClass}
+                    className={`px-3 py-2 rounded-xl border ${r.taxiClass === tariffs.active ? "border-[var(--brand-to)] bg-[var(--brand-soft)]" : "border-card-border"}`}>
+                    <p className="text-[11px] font-bold">{r.taxiClass}{r.taxiClass === tariffs.active ? " (aktiv)" : ""}</p>
+                    {r.ok ? (
+                      <p className="text-base font-extrabold">{r.price?.toFixed(2)} <span className="text-[10px] text-muted">{r.currency || "AZN"}</span></p>
+                    ) : (
+                      <p className="text-[11px] text-red-500 max-w-[180px]">{r.error || "alınmadı"}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
+          )
+        )}
+      </div>
+
       <h1 className="text-xl sm:text-2xl font-bold mb-1">Süni intellekt idarəetməsi</h1>
       <p className="text-muted text-sm mb-4">Hər AI motorunu ayrıca aç/söndür. Söndürülən motor işləmir — asılı olduğu bölmə AI-sız işləyir (məs. axtarış nəticəsiz, KYC əl ilə). Dəyişiklik dərhal (≈15 saniyə keşdən sonra) qüvvəyə minir.</p>
 
