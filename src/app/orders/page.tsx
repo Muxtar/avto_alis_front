@@ -7,6 +7,7 @@ import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import Link from "next/link";
 import OrderMap from "@/components/OrderMapWrapper";
+import { yangoDead } from "@/lib/yangoStatus";
 
 export default function OrdersPage() {
   const { t } = useLanguage();
@@ -120,9 +121,12 @@ export default function OrdersPage() {
   // Wolt-tipli avtomatik canlı yeniləmə — aktiv Yango sifarişləri üçün hər 30 saniyədə.
   useEffect(() => {
     const list = activeTab === "buying" ? buyingOrders : sellingOrders;
-    const terminal = ["delivered", "delivered_finish", "cancelled", "cancelled_by_taxi", "failed"];
+    // Bitmiş claim üçün sorğu göndərmirik. "Ölü" statuslar ortaq siyahıdan
+    // gəlir — əvvəl `performer_not_found`/`estimating_failed` sayılmırdı və
+    // belə sifarişlər sonsuza qədər sorğulanırdı.
+    const isDone = (s?: string) => !!s && (yangoDead(s) || ["delivered", "delivered_finish"].includes(s));
     const activeIds = list
-      .filter((o: any) => o.yangoClaimId && !terminal.includes(yangoInfo[o.id]?.status || o.yangoStatus))
+      .filter((o: any) => o.yangoClaimId && !isDone(yangoInfo[o.id]?.status || o.yangoStatus))
       .map((o: any) => o.id);
     if (!token || activeIds.length === 0) return;
     const poll = () => activeIds.forEach((id: number) => {
@@ -149,7 +153,10 @@ export default function OrdersPage() {
     setYangoBusy(null);
     if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
     toast("Yango kuryeri çağırıldı ✓", "success");
-    fetchOrders();
+    // Yalnız bu sətri yenilə (siyahı sıçramasın). Köhnə claim-in izləmə
+    // məlumatı silinir — yeni claim üçün sıfırdan yüklənsin.
+    patchOrder(orderId, { yangoClaimId: r.claimId, yangoStatus: r.status || "new", yangoError: null, courierLat: null, courierLng: null });
+    setYangoInfo((p) => { const n = { ...p }; delete n[orderId]; return n; });
   };
   // Yalnız BİR sifarişin Yango sahələrini yerində yeniləyir.
   //
@@ -178,8 +185,13 @@ export default function OrdersPage() {
     const r = await fetch(`${API}/orders/${orderId}/yango/cancel`, { method: "POST", headers }).then((x) => x.json()).catch(() => null);
     setYangoBusy(null);
     if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
-    toast("Yango çatdırılması ləğv edildi", "success");
-    fetchOrders();
+    toast("Çatdırılma ləğv edildi — yeni kuryer çağıra bilərsiniz", "success");
+    // Sifarişin ÖZ statusuna toxunulmur — yalnız kuryer ləğv olundu.
+    patchOrder(orderId, {
+      yangoStatus: r.status || "cancelled", courierLat: null, courierLng: null,
+      yangoError: "Çatdırılma ləğv edildi — yeni kuryer çağıra bilərsiniz",
+    });
+    setYangoInfo((p) => { const n = { ...p }; delete n[orderId]; return n; });
   };
   const YANGO_LABEL: Record<string, string> = {
     new: "yaradıldı", estimating: "hesablanır", ready_for_approval: "təsdiq gözləyir",
@@ -190,6 +202,11 @@ export default function OrdersPage() {
     cancelled: "ləğv edildi", cancelled_by_taxi: "kuryer ləğv etdi", failed: "uğursuz",
   };
   const yangoLabel = (s?: string) => (s ? (YANGO_LABEL[s] || s) : "");
+  // Kuryer çağırıla bilərmi: heç göndərilməyib, YA DA əvvəlki cəhd ölüb.
+  const canDispatch = (o: any) =>
+    o.deliveryType !== "PICKUP" && o.deliveryMethod === "COURIER" &&
+    (o.status === "CONFIRMED" || o.status === "SHIPPED") &&
+    (!o.yangoClaimId || yangoDead(o.yangoStatus));
   // Wolt-tipli izləmə addımları (0-4).
   const YANGO_STEPS = ["Kuryer axtarılır", "Kuryer mağazaya gedir", "Mağazada", "Sizə gəlir", "Çatdırıldı"];
   const yangoStep = (s?: string): number => {
@@ -635,7 +652,18 @@ export default function OrdersPage() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-red-500 mb-1">Ləğv edildi / uğursuz</p>
+                        // Ölü claim — satıcıya dərhal çıxış yolu göstərilir,
+                        // əks halda ekranda yalnız "ləğv edildi" qalıb heç nə
+                        // edilə bilmirdi.
+                        <div className="mb-1">
+                          <p className="text-sm text-red-500">Çatdırılma ləğv edildi / uğursuz oldu</p>
+                          {activeTab === "selling" && canDispatch(order) && (
+                            <button onClick={() => dispatchYango(order.id)} disabled={yangoBusy === order.id}
+                              className="mt-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-semibold hover:bg-blue-500/20 disabled:opacity-50">
+                              {yangoBusy === order.id ? "..." : "🛵 Yenidən kuryer çağır"}
+                            </button>
+                          )}
+                        </div>
                       )}
 
                       <div className="flex items-center gap-2 flex-wrap text-xs">
@@ -715,11 +743,16 @@ export default function OrdersPage() {
                     {order.status === "CONFIRMED" && (
                       <button onClick={() => updateStatus(order.id, "SHIPPED")} className="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-medium hover:bg-purple-500/20">📦 Göndərildi olaraq işarələ</button>
                     )}
-                    {/* Yango təsdiqdə avtomatik çağırılır; claim yaranmayıbsa satıcı əl ilə çağırıb Yango cavabını görə bilər. */}
-                    {!order.yangoClaimId && order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER" && (order.status === "CONFIRMED" || order.status === "SHIPPED") && (
-                      <button onClick={() => dispatchYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-semibold hover:bg-blue-500/20 disabled:opacity-50">{yangoBusy === order.id ? "..." : (order.yangoError ? "🔁 Yango təkrar cəhd" : "🛵 Kuryer çağır (Yango)")}</button>
+                    {/* Yango təsdiqdə avtomatik çağırılır. Claim yaranmayıbsa —
+                        və ya əvvəlki claim ləğv/uğursuz olubsa — satıcı yenidən
+                        çağıra bilər. Əvvəl yalnız `!yangoClaimId` şərti vardı:
+                        ləğvdən sonra düymə heç vaxt görünmürdü. */}
+                    {canDispatch(order) && (
+                      <button onClick={() => dispatchYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-semibold hover:bg-blue-500/20 disabled:opacity-50">
+                        {yangoBusy === order.id ? "..." : yangoDead(order.yangoStatus) ? "🛵 Yenidən kuryer çağır" : order.yangoError ? "🔁 Yango təkrar cəhd" : "🛵 Kuryer çağır (Yango)"}
+                      </button>
                     )}
-                    {order.yangoClaimId && !["delivered", "delivered_finish", "cancelled", "cancelled_by_taxi", "failed"].includes(order.yangoStatus) && (
+                    {order.yangoClaimId && !yangoDead(order.yangoStatus) && !["delivered", "delivered_finish"].includes(order.yangoStatus) && (
                       <button onClick={() => cancelYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-amber-500/10 text-amber-500 rounded-lg text-xs font-medium hover:bg-amber-500/20 disabled:opacity-50">Yango ləğv</button>
                     )}
                     {order.status === "SHIPPED" && (

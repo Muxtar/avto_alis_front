@@ -19,3 +19,12 @@ export const YANGO_STATUS_AZ: Record<string, string> = {
 };
 
 export const yangoLabel = (s?: string | null): string => (s ? (YANGO_STATUS_AZ[s] || s) : "");
+
+// "Ölü" statuslar — claim bir daha hərəkət etməyəcək. Belə sifariş üçün YENİ
+// kuryer çağırıla bilər. Serverdəki YANGO_DEAD siyahısının eynisidir
+// (backend/src/routes/yango.ts) — ikisi birlikdə dəyişməlidir.
+export const YANGO_DEAD = [
+  "cancelled", "cancelled_by_taxi", "cancelled_with_payment", "cancelled_with_items_on_hands",
+  "failed", "estimating_failed", "performer_not_found", "returned", "returned_finish",
+];
+export const yangoDead = (s?: string | null): boolean => !!s && YANGO_DEAD.includes(s);

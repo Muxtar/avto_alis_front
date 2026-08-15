@@ -7,7 +7,7 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { useToast } from '@/components/Toast';
 import { API, imgUrl } from '@/lib/api';
 import OrderMap from '@/components/OrderMapWrapper';
-import { yangoLabel } from '@/lib/yangoStatus';
+import { yangoLabel, YANGO_DEAD } from '@/lib/yangoStatus';
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -154,14 +154,16 @@ export default function OrderDetailPage() {
           </div>
         )}
 
-        {/* Göndərmə uğursuz olub (kuryer tapılmadı / ünvan yoxdur) — satıcıya təkrar düyməsi */}
-        {order.deliveryMethod === 'COURIER' && !order.yangoClaimId && order.yangoError && ['CONFIRMED', 'SHIPPED'].includes(order.status) && (
+        {/* Kuryer göndərilməyib, YA DA əvvəlki kuryer ləğv/uğursuz olub —
+            satıcıya yenidən çağırmaq düyməsi. Əvvəl yalnız `!yangoClaimId`
+            şərti vardı: ləğvdən sonra düymə heç vaxt görünmürdü. */}
+        {order.deliveryMethod === 'COURIER' && (!order.yangoClaimId || YANGO_DEAD.includes(order.yangoStatus)) && (order.yangoError || YANGO_DEAD.includes(order.yangoStatus)) && ['CONFIRMED', 'SHIPPED'].includes(order.status) && (
           <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm">
-            <p className="text-red-500 font-medium">⚠️ Kuryerə göndərilmədi</p>
+            <p className="text-red-500 font-medium">{YANGO_DEAD.includes(order.yangoStatus) ? '⚠️ Çatdırılma ləğv edildi' : '⚠️ Kuryerə göndərilmədi'}</p>
             <p className="text-xs text-muted mt-0.5">{order.yangoError}</p>
             {user?.id === order.sellerId && (
               <button onClick={redispatch} disabled={redispatching} className="mt-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold disabled:opacity-50">
-                {redispatching ? '...' : '🔄 Yenidən göndər'}
+                {redispatching ? '...' : '🛵 Yenidən kuryer çağır'}
               </button>
             )}
           </div>
