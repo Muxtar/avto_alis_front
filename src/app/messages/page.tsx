@@ -17,6 +17,14 @@ const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const CHAT_EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🥳","😉","🙂","😇","🤗","🤔","😴","😭","😡","😱","😳","🥰","😜","🤪","😏","🙄","😤","😢","😅","😬","🤯","🤒","🤕","👍","👎","👌","🙏","👏","🙌","💪","🤝","👋","✌️","🤟","🫶","❤️","🧡","💛","💚","💙","💜","🖤","🔥","✨","🎉","🎊","💯","⭐","🌟","💥","💐","🌹","☀️","🌙","⚡","☕","🍰","🍕","🎁","💰","✅","❌","❗","❓","💬","📍","🚗","⚽"];
 const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const onlyDigits = (s?: string) => (s || "").replace(/\D/g, "");
+
+// ── SÖHBƏT SEQMENTİ ────────────────────────────────────────────────────────
+// Mesaj ya şəxsi profil üzərindən, ya da məhsul/biznes obyekti üzərindən gəlir.
+// Serverdəki ayrımın eynisi (backend: segOf) — real-time gələn mesajı açıq
+// söhbətə əlavə etməzdən əvvəl seqmenti burada da yoxlamalıyıq, yoxsa "iş"
+// mesajı açıq "şəxsi" söhbətə düşərdi.
+type Seg = "PERSONAL" | "BUSINESS";
+const segOfMsg = (m: any): Seg => (m?.isBusiness || m?.businessObjectId || m?.listingId ? "BUSINESS" : "PERSONAL");
 // Mətndəki linkləri klikləyilə bilən et — paylaşılan məhsul/profil linkləri açılsın.
 function linkify(text: string): React.ReactNode {
   if (!text) return text;
@@ -71,6 +79,8 @@ export default function MessagesPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sideTab, setSideTab] = useState<"chats" | "contacts">("chats");
+  // Söhbət siyahısının seqmenti: hamısı / şəxsi / iş.
+  const [segTab, setSegTab] = useState<"ALL" | Seg>("ALL");
   const { startCall, startGroupCall } = useCall();
   const [replyTo, setReplyTo] = useState<any>(null);
   const [editingMsg, setEditingMsg] = useState<any>(null);
@@ -252,7 +262,11 @@ export default function MessagesPage() {
     const belongs = (m: any) => {
       const a = activeRef.current; if (!a) return false;
       if (a.type === "group") return m.conversationId === a.id;
-      return !m.conversationId && ((m.senderId === a.id && m.receiverId === me()) || (m.senderId === me() && m.receiverId === a.id));
+      if (m.conversationId) return false;
+      const between = (m.senderId === a.id && m.receiverId === me()) || (m.senderId === me() && m.receiverId === a.id);
+      // Seqment də uyğun gəlməlidir: "iş" mesajı açıq "şəxsi" söhbətə düşməsin.
+      // (a.segment yoxdursa — dərin linklə açılmış birləşik görünüş — hamısı keçir.)
+      return between && (!a.segment || segOfMsg(m) === a.segment);
     };
     const upsert = (m: any) => setMessages((prev) => {
       const i = prev.findIndex((x) => x.id === m.id);
@@ -312,7 +326,7 @@ export default function MessagesPage() {
   // Qaralamanı saxla — göndərilməmiş mətn həmin söhbətə bağlı qalır (girəndə qaytarılır).
   useEffect(() => {
     if (!active || typeof window === "undefined") return;
-    const k = `draft:${active.type}:${active.id}`;
+    const k = `draft:${active.type}:${active.key || active.id}`;
     if (newMsg.trim()) localStorage.setItem(k, newMsg); else localStorage.removeItem(k);
   }, [newMsg, active]);
 
@@ -340,16 +354,37 @@ export default function MessagesPage() {
   const fetchGroups = () => fetch(`${API}/groups`, { headers }).then((r) => r.json()).then((d) => setGroups(d.groups || [])).catch(() => {});
   const fetchAll = () => { fetchDirect(); fetchGroups(); setLoading(false); };
 
-  // Birləşmiş siyahı (1:1 + qruplar), son fəaliyyətə görə sıralı
+  // Birləşmiş siyahı (1:1 + qruplar), son fəaliyyətə görə sıralı.
+  //
+  // Eyni şəxs həm dost, həm müştəri ola bilər — server bizə onu İKİ ayrı söhbət
+  // kimi qaytarır (şəxsi + iş). Ona görə sətrin şəxsiyyəti artıq təkcə `id` deyil,
+  // `key` sahəsidir; draft, silmə, seçim — hamısı ona bağlanır.
   const chatList: any[] = [
-    ...directConvs.map((c) => ({ type: "direct", id: c.partner.id, name: c.partner.name, partnerType: c.partner.type, avatar: c.partner.avatar, phone: c.partner.phone, lastMessage: c.lastMessage, unreadCount: c.unreadCount, lastAt: c.lastMessage?.createdAt })),
-    ...groups.map((g) => ({ type: "group", id: g.id, name: g.name, avatar: g.avatar, memberCount: g.memberCount, lastMessage: g.lastMessage, unreadCount: g.unreadCount, lastAt: g.lastAt })),
+    ...directConvs.map((c) => ({
+      type: "direct", id: c.partner.id, key: c.key || `${c.partner.id}:PERSONAL`,
+      segment: (c.segment || "PERSONAL") as Seg,
+      businessObject: c.businessObject || null, listing: c.listing || null,
+      name: c.partner.name, partnerType: c.partner.type, avatar: c.partner.avatar, phone: c.partner.phone,
+      lastMessage: c.lastMessage, unreadCount: c.unreadCount, lastAt: c.lastMessage?.createdAt,
+    })),
+    // Qruplar həmişə şəxsi tərəfdədir — biznes obyektinə bağlı qrup anlayışı yoxdur.
+    ...groups.map((g) => ({ type: "group", id: g.id, key: `g${g.id}`, segment: "PERSONAL" as Seg, name: g.name, avatar: g.avatar, memberCount: g.memberCount, lastMessage: g.lastMessage, unreadCount: g.unreadCount, lastAt: g.lastAt })),
   ].sort((a, b) => new Date(b.lastAt || 0).getTime() - new Date(a.lastAt || 0).getTime());
+
+  // Seqment üzrə oxunmamış saylar — tab başlığındakı nişanlar.
+  const segUnread = (s: Seg) => chatList.filter((c) => c.segment === s).reduce((n, c) => n + (c.unreadCount || 0), 0);
+  const visibleChats = segTab === "ALL" ? chatList : chatList.filter((c) => c.segment === segTab);
+
+  // İki söhbət eyni sətir sayılırmı. İd kifayət etmir — seqment də uyğun olmalıdır.
+  // Açar bəzi girişlərdə (qrup yaradılması, kontaktdan açma) verilmir, ona görə
+  // burada eyni qayda ilə hesablanır.
+  const chatKey = (c: any) => !c ? "" : (c.key || (c.type === "group" ? `g${c.id}` : `${c.id}:${c.segment || "ALL"}`));
+  const sameChat = (a: any, b: any) => !!a && !!b && a.type === b.type && chatKey(a) === chatKey(b);
 
   const threadUrl = (chat: any, before?: number) =>
     chat.type === "group"
       ? `${API}/groups/${chat.id}/messages?limit=50${before ? `&before=${before}` : ""}`
-      : `${API}/messages/${chat.id}?limit=50${before ? `&before=${before}` : ""}`;
+      : `${API}/messages/${chat.id}?limit=50${chat.segment ? `&segment=${chat.segment}` : ""}${before ? `&before=${before}` : ""}`;
 
   // Mobil chat açıqkən saytın header-ini TAMAMİLƏ gizlət.
   //
@@ -370,16 +405,18 @@ export default function MessagesPage() {
   const openChat = (chat: any) => {
     setActive(chat);
     // Qaralama: göndərilməmiş mətn həmin söhbətdə saxlanır — girəndə inputa qaytarılır.
-    setNewMsg(typeof window !== "undefined" ? (localStorage.getItem(`draft:${chat.type}:${chat.id}`) || "") : "");
+    setNewMsg(typeof window !== "undefined" ? (localStorage.getItem(`draft:${chat.type}:${chat.key || chat.id}`) || "") : "");
     setHasMore(false); setReplyTo(null); setEditingMsg(null); setSelectedMsg(null); setPartnerTyping(false); setAttachOpen(false); setSideTab("chats");
     fetch(threadUrl(chat), { headers })
       .then((r) => r.json())
       .then((d) => {
         setMessages(d.messages || []);
         setHasMore(d.hasMore || false);
-        if (chat.type === "direct" && d.partner) setActive((a: any) => a && a.id === chat.id ? { ...a, phone: d.partner.phone, avatar: a.avatar ?? d.partner.avatar } : a);
+        if (chat.type === "direct" && d.partner) setActive((a: any) => a && sameChat(a, chat) ? { ...a, phone: d.partner.phone, avatar: a.avatar ?? d.partner.avatar } : a);
         scrollToEnd(false);
-        if (chat.type === "direct") setDirectConvs((prev) => prev.map((c) => c.partner.id === chat.id ? { ...c, unreadCount: 0 } : c));
+        // Oxunmuşu YALNIZ açılan seqmentdə sıfırla — "şəxsi"yə baxmaq "iş"
+        // sətrindəki oxunmamış nişanı söndürməməlidir.
+        if (chat.type === "direct") setDirectConvs((prev) => prev.map((c) => (c.key || `${c.partner.id}:PERSONAL`) === chat.key ? { ...c, unreadCount: 0 } : c));
         else setGroups((prev) => prev.map((g) => g.id === chat.id ? { ...g, unreadCount: 0 } : g));
       })
       .catch(() => { toast(t('error'), 'error'); });
@@ -394,7 +431,10 @@ export default function MessagesPage() {
     const chatId = parseInt(sp.get("chat") || "");
     if (chatId > 0) {
       deepLinkedRef.current = true;
-      openChat({ type: "direct", id: chatId, name: sp.get("name") || "" });
+      // `seg` — hansı axına düşməli olduğu. Sifariş səhifəsindən gələn link
+      // BUSINESS verir; verilməsə birləşik görünüş açılır (köhnə linklər).
+      const seg = sp.get("seg") === "BUSINESS" ? "BUSINESS" as Seg : undefined;
+      openChat({ type: "direct", id: chatId, name: sp.get("name") || "", segment: seg, key: `${chatId}:${seg || "ALL"}` });
       window.history.replaceState({}, "", "/messages"); // geri qayıdanda təkrar açılmasın
     }
     // eslint-disable-next-line
@@ -415,8 +455,12 @@ export default function MessagesPage() {
       .finally(() => setLoadingMore(false));
   };
 
-  // Göndərmə hədəfi (1:1 → receiverId, qrup → conversationId)
-  const sendTarget = () => active?.type === "group" ? { conversationId: active.id } : { receiverId: active.id };
+  // Göndərmə hədəfi (1:1 → receiverId, qrup → conversationId).
+  // `segment` göndərilir ki, "iş" sekmesindəki cavab da iş axınında qalsın —
+  // server konteksti (obyekt/məhsul) keçmişdən bərpa edib mesaja yazır.
+  const sendTarget = () => active?.type === "group"
+    ? { conversationId: active.id }
+    : { receiverId: active.id, segment: active?.segment || undefined };
 
   const emitTyping = () => {
     const socket = token ? getSocket(token) : null;
@@ -456,7 +500,8 @@ export default function MessagesPage() {
     try {
       const fd = new FormData();
       fd.append("media", file);
-      if (active.type === "group") fd.append("conversationId", String(active.id)); else fd.append("receiverId", String(active.id));
+      if (active.type === "group") fd.append("conversationId", String(active.id));
+      else { fd.append("receiverId", String(active.id)); if (active.segment) fd.append("segment", active.segment); }
       fd.append("type", type);
       if (duration) fd.append("duration", String(duration));
       if (replyTo) fd.append("replyToId", String(replyTo.id));
@@ -620,14 +665,18 @@ export default function MessagesPage() {
   };
   // Söhbəti sil (məndə) — şəxs/qrup siyahıdan çıxır, bütün mesajlar məndə gizlənir.
   const deleteThread = async (chat: any) => {
-    if (!confirm(`"${chat.name}" ilə söhbət sizdə silinsin? (Qarşı tərəfdə qalacaq)`)) return;
+    const what = chat.segment === "BUSINESS" ? `"${chat.name}" ilə İŞ söhbəti` : `"${chat.name}" ilə söhbət`;
+    if (!confirm(`${what} sizdə silinsin? (Qarşı tərəfdə qalacaq)`)) return;
     try {
-      const url = chat.type === "group" ? `${API}/messages/group/${chat.id}` : `${API}/messages/thread/${chat.id}`;
+      // Yalnız həmin seqment silinir — iş söhbətini silmək şəxsi yazışmanı saxlayır.
+      const url = chat.type === "group"
+        ? `${API}/messages/group/${chat.id}`
+        : `${API}/messages/thread/${chat.id}${chat.segment ? `?segment=${chat.segment}` : ""}`;
       const res = await fetch(url, { method: "DELETE", headers });
       if (res.ok) {
         if (chat.type === "group") setGroups((prev) => prev.filter((g) => g.id !== chat.id));
-        else setDirectConvs((prev) => prev.filter((c) => c.partner.id !== chat.id));
-        if (active && active.type === chat.type && active.id === chat.id) { setActive(null); setMessages([]); }
+        else setDirectConvs((prev) => prev.filter((c) => (c.key || `${c.partner.id}:PERSONAL`) !== chat.key));
+        if (sameChat(active, chat)) { setActive(null); setMessages([]); }
         toast("Söhbət silindi", "success");
       } else toast(t('error'), 'error');
     } catch { toast(t('error'), 'error'); }
@@ -821,7 +870,7 @@ export default function MessagesPage() {
           <div className="flex items-center gap-2"><span className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-lg">👤</span>
             <div className="min-w-0"><p className="font-semibold truncate">{msg.mediaName}</p><p className="text-[11px] opacity-80">{msg.contactPhone}</p></div></div>
           <div className="flex gap-2 mt-0.5">
-            {msg.contactUserId ? <button onClick={(e) => { e.stopPropagation(); openChat({ type: "direct", id: msg.contactUserId, name: msg.mediaName }); }} className="text-[11px] underline">💬 Chat</button>
+            {msg.contactUserId ? <button onClick={(e) => { e.stopPropagation(); openChat({ type: "direct", id: msg.contactUserId, name: msg.mediaName, segment: "PERSONAL", key: `${msg.contactUserId}:PERSONAL` }); }} className="text-[11px] underline">💬 Chat</button>
               : <a href={`tel:${msg.contactPhone}`} onClick={(e) => e.stopPropagation()} className="text-[11px] underline">📞 Zəng et</a>}
           </div>
         </div>
@@ -891,26 +940,52 @@ export default function MessagesPage() {
                     people={chatList
                       .filter((c: any) => c.type === "direct")
                       .map((c: any) => ({ id: c.id, name: c.name, avatar: c.avatar, sub: c.partnerType || undefined }))}
-                    onOpenChat={(p) => openChat({ type: "direct", id: p.id, name: p.name, avatar: p.avatar })}
+                    onOpenChat={(p) => openChat({ type: "direct", id: p.id, name: p.name, avatar: p.avatar, segment: "PERSONAL", key: `${p.id}:PERSONAL` })}
                   />
                 </div>
                 <button onClick={openGroupModal} className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold bg-input-bg border border-input-border hover:bg-input-bg/70 flex items-center justify-center gap-1">➕ Yeni qrup</button>
+
+                {/* ── SEQMENT: şəxsi / iş ──
+                    Eyni şəxs həm dost, həm müştəri ola bilər. Məhsul və ya
+                    biznes obyekti üzərindən gələn yazışma ayrı sətirdə durur ki,
+                    satış mesajı şəxsi söhbətlə qarışmasın. */}
+                <div className="mt-2 grid grid-cols-3 gap-1 bg-input-bg/60 rounded-xl p-1">
+                  {([
+                    { k: "ALL" as const, label: "Hamısı", n: 0 },
+                    { k: "PERSONAL" as const, label: "👤 Şəxsi", n: segUnread("PERSONAL") },
+                    { k: "BUSINESS" as const, label: "🏢 İş", n: segUnread("BUSINESS") },
+                  ]).map((s) => (
+                    <button key={s.k} onClick={() => setSegTab(s.k)}
+                      className={`relative py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${segTab === s.k ? "bg-card shadow-sm text-foreground" : "text-muted hover:text-foreground"}`}>
+                      {s.label}
+                      {s.n > 0 && <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-orange-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold">{s.n}</span>}
+                    </button>
+                  ))}
+                </div>
               </>
             )}
           </div>
 
+          {/* Kontaktdan açılan söhbət ŞƏXSİdir — biznes axını yalnız
+              məhsul/obyekt üzərindən başlayır. */}
           {sideTab === "contacts" ? (
-            <ContactsPanel onMessage={(u) => openChat({ type: "direct", id: u.id, name: u.name })} />
+            <ContactsPanel onMessage={(u) => openChat({ type: "direct", id: u.id, name: u.name, segment: "PERSONAL", key: `${u.id}:PERSONAL` })} />
           ) : (
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
-            ) : chatList.length === 0 ? (
-              <div className="text-center py-10 px-4"><p className="text-muted text-sm">{t("noMessages")}</p></div>
+            ) : visibleChats.length === 0 ? (
+              <div className="text-center py-10 px-4">
+                <p className="text-muted text-sm">
+                  {chatList.length === 0 ? t("noMessages")
+                    : segTab === "BUSINESS" ? "İş yazışması yoxdur — məhsullarınıza gələn mesajlar burada görünəcək."
+                    : "Bu bölmədə söhbət yoxdur."}
+                </p>
+              </div>
             ) : (
-              chatList.map((chat) => (
-                <div key={`${chat.type}-${chat.id}`} role="button" tabIndex={0} onClick={() => openChat(chat)}
-                  className={`group w-full flex items-center gap-3 p-3 hover:bg-input-bg/50 transition-colors text-left border-b border-card-border/30 cursor-pointer ${active?.type === chat.type && active?.id === chat.id ? "bg-input-bg" : ""}`}>
+              visibleChats.map((chat) => (
+                <div key={`${chat.type}-${chat.key}`} role="button" tabIndex={0} onClick={() => openChat(chat)}
+                  className={`group w-full flex items-center gap-3 p-3 hover:bg-input-bg/50 transition-colors text-left border-b border-card-border/30 cursor-pointer ${sameChat(active, chat) ? "bg-input-bg" : ""}`}>
                   <div className="relative shrink-0">
                     {chat.type === "group"
                       ? (chat.avatar
@@ -925,12 +1000,12 @@ export default function MessagesPage() {
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-sm truncate flex items-center gap-1">
                         {chat.type !== "group" && chat.lastMessage?.consultationId && <span title="Rəy konsultasiyası">🗣️</span>}
-                        {/* Mesaj bir biznes obyektinə (filial) aiddirsə göstər —
-                            eyni şəxs bir neçə obyektə baxırsa hansından gəldiyi bilinsin. */}
-                        {chat.type !== "group" && chat.lastMessage?.businessObject && (
-                          <span className="px-1.5 py-0.5 rounded bg-[var(--brand-soft)] text-[var(--brand-to)] text-[10px] font-bold truncate max-w-[110px]"
-                            title={`Obyekt: ${chat.lastMessage.businessObject.name}`}>
-                            📍 {chat.lastMessage.businessObject.name}
+                        {/* İŞ söhbəti — hansı obyektdən/məhsuldan gəldiyi yazılır.
+                            Obyekt adı yoxdursa (məhsul şəxsi elandırsa) sadəcə "İş". */}
+                        {chat.segment === "BUSINESS" && (
+                          <span className="px-1.5 py-0.5 rounded bg-[var(--brand-soft)] text-[var(--brand-to)] text-[10px] font-bold truncate max-w-[110px] shrink-0"
+                            title={chat.businessObject ? `Obyekt: ${chat.businessObject.name}` : chat.listing ? `Məhsul: ${chat.listing.title}` : "Biznes yazışması"}>
+                            🏢 {chat.businessObject?.name || chat.listing?.title || "İş"}
                           </span>
                         )}
                         {chat.name}
@@ -969,7 +1044,17 @@ export default function MessagesPage() {
                   {active.type === "group" ? (
                     <button onClick={openInfo} className="text-left"><p className="font-medium text-sm">{active.name}</p><p className="text-muted text-xs">{active.memberCount} üzv · məlumat üçün toxun</p></button>
                   ) : (
-                    <><Link href={`/seller/${active.id}`} className="font-medium text-sm hover:text-orange-500 transition-colors">{active.name}</Link>
+                    <><span className="flex items-center gap-1.5 min-w-0">
+                      <Link href={`/seller/${active.id}`} className="font-medium text-sm hover:text-orange-500 transition-colors truncate">{active.name}</Link>
+                      {/* Açıq söhbətin hansı axın olduğu başlıqda görünsün —
+                          eyni şəxslə iki söhbət var, hansında yazdığın bilinməlidir. */}
+                      {active.segment === "BUSINESS" && (
+                        <span className="shrink-0 px-1.5 py-0.5 rounded bg-[var(--brand-soft)] text-[var(--brand-to)] text-[10px] font-bold truncate max-w-[140px]"
+                          title={active.businessObject ? `Obyekt: ${active.businessObject.name}` : "Biznes yazışması"}>
+                          🏢 {active.businessObject?.name || active.listing?.title || "İş"}
+                        </span>
+                      )}
+                    </span>
                     <p className="text-muted text-xs h-4 flex items-center gap-2">
                       {partnerTyping ? <span className="text-orange-500">yazır...</span> : presence[active.id]?.online ? <span className="text-green-500">onlayn</span> : presence[active.id]?.lastSeen ? lastSeenText(presence[active.id].lastSeen) : null}
                       {/* Kontaktda deyilsə — adı/nömrəni bilmədən userId ilə əlavə et (WhatsApp üslubu) */}

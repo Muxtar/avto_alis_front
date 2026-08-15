@@ -172,8 +172,9 @@ export default function OrderDetailPage() {
             <p className="text-xs text-muted">{t('buyer')}</p>
             <p>{order.buyer?.name}</p>
             {order.buyer?.phone && <a href={`tel:${order.buyer.phone}`} className="block text-xs text-orange-500 hover:underline">📞 {order.buyer.phone}</a>}
+            {/* Sifariş yazışması İŞ axınına gedir — şəxsi söhbətlə qarışmasın. */}
             {user?.id !== order.buyerId && order.buyerId && (
-              <Link href={`/messages?chat=${order.buyerId}&name=${encodeURIComponent(order.buyer?.name || '')}`} className="block text-xs text-orange-500 hover:underline mt-0.5">💬 Mesaj yaz</Link>
+              <Link href={`/messages?chat=${order.buyerId}&seg=BUSINESS&name=${encodeURIComponent(order.buyer?.name || '')}`} className="block text-xs text-orange-500 hover:underline mt-0.5">💬 Mesaj yaz</Link>
             )}
           </div>
           <div>
@@ -181,7 +182,7 @@ export default function OrderDetailPage() {
             <p>{order.seller?.name}</p>
             {order.seller?.phone && <a href={`tel:${order.seller.phone}`} className="block text-xs text-orange-500 hover:underline">📞 {order.seller.phone}</a>}
             {user?.id !== order.sellerId && order.sellerId && (
-              <Link href={`/messages?chat=${order.sellerId}&name=${encodeURIComponent(order.seller?.name || '')}`} className="block text-xs text-orange-500 hover:underline mt-0.5">💬 Mesaj yaz</Link>
+              <Link href={`/messages?chat=${order.sellerId}&seg=BUSINESS&name=${encodeURIComponent(order.seller?.name || '')}`} className="block text-xs text-orange-500 hover:underline mt-0.5">💬 Mesaj yaz</Link>
             )}
           </div>
           {/* Yango kuryeri — təyin olunanda ad + maşın. Kuryer alıcıya ÖZÜ zəng edir
