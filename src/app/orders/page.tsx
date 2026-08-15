@@ -110,6 +110,8 @@ export default function OrdersPage() {
     setYangoBusy(orderId);
     const r = await fetch(`${API}/orders/${orderId}/yango/call`, { method: "POST", headers }).then((x) => x.json()).catch(() => null);
     setYangoBusy(null);
+    // `pending` — xəta deyil, sadəcə kuryer hələ təyin olunmayıb.
+    if (r?.pending) { toast(r.message, "info"); return; }
     if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
     setCourierPhone((p) => ({ ...p, [orderId]: { phone: r.phone, ext: r.ext } }));
     if (typeof window !== "undefined") window.location.href = `tel:${r.phone}${r.ext ? "," + r.ext : ""}`;
@@ -125,7 +127,16 @@ export default function OrdersPage() {
     if (!token || activeIds.length === 0) return;
     const poll = () => activeIds.forEach((id: number) => {
       fetch(`${API}/orders/${id}/yango/status`, { headers }).then((x) => x.json()).then((r) => {
-        if (r && r.success !== false) setYangoInfo((p) => ({ ...p, [id]: r }));
+        if (!r || r.success === false) return;
+        setYangoInfo((p) => ({ ...p, [id]: r }));
+        // Sifarişin öz statusunu da yenilə — timeline canlı qalsın. YALNIZ
+        // dəyişəndə: hər sorğuda massivi əvəz etsək bu effekt yenidən qurulub
+        // taymeri sıfırlayardı.
+        const cur = list.find((o: any) => o.id === id);
+        if (r.status && cur && cur.yangoStatus !== r.status) {
+          const apply = (l: any[]) => l.map((o) => (o.id === id ? { ...o, yangoStatus: r.status } : o));
+          setBuyingOrders(apply); setSellingOrders(apply);
+        }
       }).catch(() => {});
     });
     const t = setInterval(poll, 30000);
@@ -140,13 +151,27 @@ export default function OrdersPage() {
     toast("Yango kuryeri çağırıldı ✓", "success");
     fetchOrders();
   };
+  // Yalnız BİR sifarişin Yango sahələrini yerində yeniləyir.
+  //
+  // Əvvəl `fetchOrders()` çağırılırdı — bütün siyahı yenidən çəkilib sıfırdan
+  // render olunurdu: səhifə "yenilənmiş" kimi sıçrayır, açıq kartlar bağlanır,
+  // sürüşmə yuxarı qayıdırdı. İndi yalnız həmin sətir yamanır.
+  const patchOrder = (orderId: number, patch: any) => {
+    const apply = (list: any[]) => list.map((o) => (o.id === orderId ? { ...o, ...patch } : o));
+    setBuyingOrders(apply);
+    setSellingOrders(apply);
+  };
+
   const refreshYango = async (orderId: number) => {
     setYangoBusy(orderId);
     const r = await fetch(`${API}/orders/${orderId}/yango/status`, { headers }).then((x) => x.json()).catch(() => null);
     setYangoBusy(null);
     if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
     setYangoInfo((p) => ({ ...p, [orderId]: r }));
-    fetchOrders();
+    patchOrder(orderId, {
+      yangoStatus: r.status ?? undefined,
+      ...(r.courierPosition ? { courierLat: r.courierPosition.lat, courierLng: r.courierPosition.lon } : {}),
+    });
   };
   const cancelYango = async (orderId: number) => {
     setYangoBusy(orderId);
@@ -634,7 +659,14 @@ export default function OrdersPage() {
                       {/* Əməllər — zəng, canlı izlə */}
                       {active && (
                         <div className="flex items-center gap-2 flex-wrap mt-2.5">
-                          <button onClick={() => callCourier(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20 disabled:opacity-50">📞 Kuryerə zəng</button>
+                          {/* Zəng YALNIZ kuryer təyin olunandan sonra mümkündür —
+                              əvvəl Yango proksi nömrə vermir. Düymə həmişə aktiv
+                              idi və basanda xəta qaytarırdı. */}
+                          {yi.performer ? (
+                            <button onClick={() => callCourier(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20 disabled:opacity-50">📞 Kuryerə zəng</button>
+                          ) : (
+                            <span className="px-3 py-1.5 bg-input-bg text-muted rounded-lg text-xs font-semibold" title="Kuryer tapılandan sonra aktiv olur">📞 Kuryer gözlənilir…</span>
+                          )}
                           {yi.trackingUrl && (
                             <a href={yi.trackingUrl} target="_blank" rel="noreferrer" className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-semibold hover:bg-blue-500/20">🗺 Canlı izlə (xəritə)</a>
                           )}
