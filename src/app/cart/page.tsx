@@ -49,6 +49,9 @@ export default function CartPage() {
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "WALLET">("CASH");
   // Hissəli alış planı (ay). null = taksitsiz.
   const [installMonths, setInstallMonths] = useState<number | null>(null);
+  // Saxlanmış kartlar (token serverdə qalır — burada yalnız id və maska).
+  const [savedCards, setSavedCards] = useState<any[]>([]);
+  const [savedCardId, setSavedCardId] = useState<number | null>(null);
   const [paymentTouched, setPaymentTouched] = useState(false); // istifadəçi ödəniş üsulunu əl ilə dəyişib?
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscount, setPromoDiscount] = useState(0);
@@ -121,6 +124,22 @@ export default function CartPage() {
     if (!cardAllowed) { setPaymentMethod((m) => (m === "CARD" ? "CASH" : m)); return; }
     if (!paymentTouched) setPaymentMethod("CARD"); // VÖEN → default kart
   }, [cardAllowed, paymentTouched]);
+
+  // Saxlanmış kartları yüklə — kartla ödəniş seçiləndə lazım olur.
+  useEffect(() => {
+    if (!isLoggedIn || !token) return;
+    fetch(`${API}/me/cards`, { headers })
+      .then((r) => r.json())
+      .then((d) => {
+        const list = d?.cards || [];
+        setSavedCards(list);
+        // Əsas kart varsa avtomatik seçilir — bir kliklə ödəniş.
+        const def = list.find((c: any) => c.isDefault) || list[0];
+        if (def) setSavedCardId(def.id);
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoggedIn, token]);
 
   // Kontaktlardan yalnız saytda QEYDİYYATLI olanlar — alıcı yalnız qeydiyyatlı
   // şəxs ola bilər (sifariş, bildiriş və ünvan hesaba bağlanır).
@@ -386,6 +405,7 @@ export default function CartPage() {
           // Hissəli alış — yalnız kartla və biznes məhsullarında qəbul olunur
           // (server də eyni şərti yenidən yoxlayır).
           installmentMonths: paymentMethod === "CARD" ? installMonths : null,
+          savedCardId: paymentMethod === "CARD" ? savedCardId : null,
           itemIds: [...selected], // yalnız seçilmiş məhsullar alınır
         }),
       });
@@ -831,6 +851,28 @@ export default function CartPage() {
                       : paymentMethod === "CARD" && <p className="text-[11px] text-muted mt-1.5">💳 Kartla ödəniş — təsdiqdən sonra bankın təhlükəsiz ödəniş səhifəsi açılacaq.</p>}
 
                     {/* Hissəli alış — yalnız kartla və biznes məhsullarında */}
+                    {/* Saxlanmış kartlar — kart məlumatını hər dəfə yazmağa ehtiyac yoxdur.
+                        Seçilirsə ödəniş bank səhifəsinə keçmədən dərhal icra olunur. */}
+                    {paymentMethod === "CARD" && savedCards.length > 0 && (
+                      <div className="mt-3 space-y-1.5">
+                        <p className="text-xs text-muted">Kartla ödə</p>
+                        {savedCards.map((c) => (
+                          <label key={c.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-input-border cursor-pointer hover:bg-input-bg/50">
+                            <input type="radio" name="paycard" checked={savedCardId === c.id}
+                              onChange={() => setSavedCardId(c.id)} className="accent-orange-500" />
+                            <span className="text-sm font-semibold">{c.brand || "Kart"} ···· {(c.maskedPan || "").slice(-4)}</span>
+                            <span className="text-[11px] text-muted">{c.expiry ? `${c.expiry.slice(0, 2)}/${c.expiry.slice(2)}` : ""}</span>
+                            {c.isDefault && <span className="ml-auto text-[10px] font-bold text-[var(--brand-to)]">əsas</span>}
+                          </label>
+                        ))}
+                        <label className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-input-border cursor-pointer hover:bg-input-bg/50">
+                          <input type="radio" name="paycard" checked={savedCardId == null}
+                            onChange={() => setSavedCardId(null)} className="accent-orange-500" />
+                          <span className="text-sm">Yeni kartla ödə</span>
+                        </label>
+                      </div>
+                    )}
+
                     {paymentMethod === "CARD" && installmentAllowed(selTotal, cardAllowed) && (
                       <div className="mt-3">
                         <label className="flex items-center gap-2 mb-2 cursor-pointer">

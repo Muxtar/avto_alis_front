@@ -10,6 +10,7 @@ import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import QRShare from "@/components/QRShare";
+import SavedCards from "@/components/SavedCards";
 
 const MAX_IMAGES = 5;
 // Bu ölçüdən böyük şəkillər avtomatik sıxılır (rədd edilmir) — istifadəçi üçün ölçü fərq etməsin.
@@ -398,6 +399,9 @@ function AccountPageInner() {
           </button>
         )}
       </div>
+
+      {/* Saxlanmış kartlar — hər ödənişdə kart nömrəsini yenidən yazmamaq üçün. */}
+      <div className="mb-6"><SavedCards /></div>
 
       {(() => {
         const cardCls = "text-left p-4 rounded-2xl border border-input-border hover:border-orange-500/60 hover:bg-orange-500/5 transition-all";
