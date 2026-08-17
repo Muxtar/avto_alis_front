@@ -13,11 +13,21 @@ import ChatPeopleSearch from "@/components/ChatPeopleSearch";
 import Avatar from "@/components/Avatar";
 import { useCall } from "@/lib/CallContext";
 import { Ico } from "@/components/ChatIcons";
+import { installmentAllowed } from "@/lib/installment";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const CHAT_EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🥳","😉","🙂","😇","🤗","🤔","😴","😭","😡","😱","😳","🥰","😜","🤪","😏","🙄","😤","😢","😅","😬","🤯","🤒","🤕","👍","👎","👌","🙏","👏","🙌","💪","🤝","👋","✌️","🤟","🫶","❤️","🧡","💛","💚","💙","💜","🖤","🔥","✨","🎉","🎊","💯","⭐","🌟","💥","💐","🌹","☀️","🌙","⚡","☕","🍰","🍕","🎁","💰","✅","❌","❗","❓","💬","📍","🚗","⚽"];
 const fmtSecs = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const onlyDigits = (s?: string) => (s || "").replace(/\D/g, "");
+// Söhbət sətrindəki tarix — bugünkü mesajda saat, əks halda qısa tarix.
+const rowDate = (iso: string) => {
+  const d = new Date(iso);
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  return sameDay
+    ? d.toLocaleTimeString("az-AZ", { hour: "2-digit", minute: "2-digit" })
+    : d.toLocaleDateString("az-AZ", { day: "numeric", month: "short" });
+};
 
 // ── SÖHBƏT SEQMENTİ ────────────────────────────────────────────────────────
 // Mesaj ya şəxsi profil üzərindən, ya da məhsul/biznes obyekti üzərindən gəlir.
@@ -1005,35 +1015,52 @@ export default function MessagesPage() {
               visibleChats.map((chat) => (
                 <div key={`${chat.type}-${chat.key}`} role="button" tabIndex={0} onClick={() => openChat(chat)}
                   className={`group w-full flex items-center gap-3 p-3 hover:bg-input-bg/50 transition-colors text-left border-b border-card-border/30 cursor-pointer ${sameChat(active, chat) ? "bg-input-bg" : ""}`}>
+                  {/* Şəkil: İŞ söhbətində MƏHSUL şəkli əsasdır, şəxsin avatarı
+                      küncdə kiçik nişan kimi durur. Söhbətin nə haqqında olduğu
+                      bir baxışda görünsün — turbo.az-dakı kimi. Şəxsi söhbətdə
+                      isə əksinə: şəxsin özü əsasdır. */}
                   <div className="relative shrink-0">
-                    {chat.type === "group"
-                      ? (chat.avatar
-                          ? <Avatar name={chat.name} src={chat.avatar} className="w-10 h-10" />
-                          : <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-xs bg-gradient-to-br from-teal-500 to-cyan-600">👥</div>)
-                      : <Avatar name={chat.name} src={chat.avatar} className="w-10 h-10" gradient={typeColor(chat.partnerType)} />}
+                    {chat.segment === "BUSINESS" && chat.listing?.images?.[0] ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imgUrl(chat.listing.images[0])} alt="" loading="lazy"
+                          className="w-11 h-11 rounded-xl object-cover bg-input-bg" />
+                        <span className="absolute -bottom-1 -left-1">
+                          <Avatar name={chat.name} src={chat.avatar} className="w-5 h-5 ring-2 ring-card" gradient={typeColor(chat.partnerType)} />
+                        </span>
+                      </>
+                    ) : chat.type === "group" ? (
+                      chat.avatar
+                        ? <Avatar name={chat.name} src={chat.avatar} className="w-11 h-11" />
+                        : <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white bg-gradient-to-br from-teal-500 to-cyan-600"><Ico.Users className="w-5 h-5" /></div>
+                    ) : (
+                      <Avatar name={chat.name} src={chat.avatar} className="w-11 h-11" gradient={typeColor(chat.partnerType)} />
+                    )}
                     {chat.type === "direct" && presence[chat.id]?.online && (
                       <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-card rounded-full" title="Onlayn" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm truncate flex items-center gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      {/* Başlıq: iş söhbətində məhsulun adı, şəxsidə şəxsin adı. */}
+                      <span className="font-semibold text-sm truncate flex items-center gap-1 min-w-0">
                         {chat.type !== "group" && chat.lastMessage?.consultationId && <span title="Rəy konsultasiyası">🗣️</span>}
-                        {/* İŞ söhbəti — hansı obyektdən/məhsuldan gəldiyi yazılır.
-                            Obyekt adı yoxdursa (məhsul şəxsi elandırsa) sadəcə "İş". */}
-                        {chat.segment === "BUSINESS" && (
-                          <span className="px-1.5 py-0.5 rounded bg-[var(--brand-soft)] text-[var(--brand-to)] text-[10px] font-bold truncate max-w-[110px] shrink-0"
-                            title={chat.businessObject ? `Obyekt: ${chat.businessObject.name}` : chat.listing ? `Məhsul: ${chat.listing.title}` : "Biznes yazışması"}>
-                            🏢 {chat.businessObject?.name || chat.listing?.title || "İş"}
-                          </span>
-                        )}
-                        {chat.name}
+                        {chat.segment === "BUSINESS" ? (chat.listing?.title || chat.businessObject?.name || chat.name) : chat.name}
                       </span>
                       {chat.unreadCount > 0 && <span className="min-w-[20px] h-5 px-1 bg-orange-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0">{chat.unreadCount}</span>}
                     </div>
                     <p className="text-muted text-xs truncate">
-                      {chat.type === "group" && chat.lastMessage?.sender ? `${chat.lastMessage.sender.name?.split(" ")[0]}: ` : ""}{previewText(chat.lastMessage) || (chat.type === "group" ? `${chat.memberCount} üzv` : "")}
+                      {chat.type === "group" && chat.lastMessage?.sender ? `${chat.lastMessage.sender.name?.split(" ")[0]}: ` : ""}
+                      {previewText(chat.lastMessage) || (chat.type === "group" ? `${chat.memberCount} üzv` : "")}
+                      {chat.lastAt && <span className="text-muted/70"> · {rowDate(chat.lastAt)}</span>}
                     </p>
+                    {/* İş söhbətində kimin yazdığı ayrıca sətirdə — başlıq artıq
+                        məhsulun adıdır, şəxs itməsin. */}
+                    {chat.segment === "BUSINESS" && chat.type === "direct" && (
+                      <p className="text-[11px] text-muted/80 truncate flex items-center gap-1">
+                        <Ico.Store className="w-3 h-3" />{chat.businessObject?.name || chat.name}
+                      </p>
+                    )}
                   </div>
                   {/* Söhbəti sil (məndə) */}
                   <button onClick={(e) => { e.stopPropagation(); deleteThread(chat); }} title="Söhbəti sil" className="shrink-0 w-8 h-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -1214,13 +1241,13 @@ export default function MessagesPage() {
                         ))}
                       </div>
                     </>)}
-                    <input ref={inputRef} value={newMsg} onChange={(e) => { setNewMsg(e.target.value); emitTyping(); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder={t("messagePlaceholder")} className="flex-1 min-w-0 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-base sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground" />
+                    <input ref={inputRef} value={newMsg} onChange={(e) => { setNewMsg(e.target.value); emitTyping(); }} onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }} placeholder={t("messagePlaceholder")} className="flex-1 min-w-0 px-5 py-3 bg-input-bg border border-input-border rounded-full text-base sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/40 placeholder-muted-foreground" />
                     {newMsg.trim() || editingMsg ? (
-                      <button onClick={handleSend} disabled={sending} className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center shrink-0 disabled:opacity-50">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                      <button onClick={handleSend} disabled={sending} aria-label="Göndər" className="w-11 h-11 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center shrink-0 disabled:opacity-50 hover:brightness-110 active:scale-95 transition">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
                       </button>
                     ) : (
-                      <button onClick={startVoice} title="Səs mesajı" className="w-10 h-10 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center shrink-0" aria-label="Səs mesajı">
+                      <button onClick={startVoice} title="Səs mesajı" className="w-11 h-11 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white flex items-center justify-center shrink-0" aria-label="Səs mesajı">
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 15a3.5 3.5 0 003.5-3.5v-5a3.5 3.5 0 10-7 0v5A3.5 3.5 0 0012 15z" /><path fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" d="M19 11.5a7 7 0 01-14 0M12 18.5V22M8.5 22h7" /></svg>
                       </button>
                     )}
@@ -1232,7 +1259,16 @@ export default function MessagesPage() {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-muted"><p className="text-sm">{t("noMessages")}</p></div>
+            // Söhbət seçilməyib — boş ekran əvəzinə izahlı vəziyyət.
+            <div className="flex-1 flex flex-col items-center justify-center text-muted px-6 text-center">
+              <svg className="w-16 h-16 mb-3 opacity-25" fill="none" stroke="currentColor" strokeWidth={1.2}
+                strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.9 7.5 10 4.3-1.1 7.5-5.4 7.5-10V6L12 3Z" />
+                <path d="m9 12 2 2 4-4" />
+              </svg>
+              <p className="text-sm">Mesajlar — təhlükəsiz əlaqə üsuludur.</p>
+              <p className="text-xs mt-1 opacity-70">Sol tərəfdən söhbət seçin.</p>
+            </div>
           )}
         </div>
 
@@ -1260,6 +1296,13 @@ export default function MessagesPage() {
               <p className="font-bold text-base leading-snug">{activeListing.title}</p>
               {activeListing.price != null && (
                 <p className="text-xl font-extrabold mt-1">{activeListing.price.toLocaleString("az-AZ")} <span className="text-sm">AZN</span></p>
+              )}
+              {/* Taksit nişanı — biznes məhsulu və məbləğ uyğundursa. */}
+              {installmentAllowed(activeListing.price || 0, active.segment === "BUSINESS") && (
+                <p className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-400/15 text-amber-600 text-[11px] font-bold">
+                  <span className="w-4 h-4 rounded-full bg-amber-400/30 flex items-center justify-center text-[9px]">%</span>
+                  Hissəli alış
+                </p>
               )}
               {active.businessObject?.name && (
                 <p className="text-[11px] text-muted mt-1.5 flex items-center gap-1.5">
