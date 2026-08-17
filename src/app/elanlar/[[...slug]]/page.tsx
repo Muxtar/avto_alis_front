@@ -374,7 +374,7 @@ function MarketplacePage() {
     <div className="min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)]">
       {/* Hero / Search Section */}
       <div className="hero-bg border-b border-card-border">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-2.5">
+        <div className="page-wrap py-2 sm:py-2.5">
           {/* Tək sətirli yığcam alət paneli — başlıq legv edildi ki, karusel
               headerə mümkün qədər yaxın olsun. */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
@@ -460,7 +460,7 @@ function MarketplacePage() {
       {/* tap.az üslublu kateqoriya gridi söndürüldü — kateqoriyalar artıq sol paneldədir (umico üslubu). */}
       {SHOW_TAPAZ_GRID && activeType !== "PROFESSION" && (
       <div className="border-b border-card-border bg-card/30">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-5 sm:py-6">
+        <div className="page-wrap py-5 sm:py-6">
           {(() => {
             const selMain = selectedCategory ? parseCat(selectedCategory).main : "";
             const cat = CATEGORIES.find((c) => c.name === selMain);
@@ -561,7 +561,7 @@ function MarketplacePage() {
       {/* İxtisas rejimi — sektor → ixtisas seçici (axtarışı doldurur) */}
       {activeType === "PROFESSION" && (
         <div className="border-b border-card-border bg-card/30">
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-5">
+          <div className="page-wrap py-4 sm:py-5">
             <p className="text-xs font-semibold text-muted mb-2">Sektor seçin:</p>
             <div className="flex flex-wrap gap-1.5 mb-3">
               <button onClick={() => { setSelectedSector(null); setSearchQuery(""); }} className={`px-3 py-1.5 rounded-full text-xs font-medium border ${!selectedSector ? "bg-orange-500 border-orange-500 text-white" : "bg-input-bg border-input-border hover:border-orange-500/50"}`}>Hamısı</button>
@@ -581,7 +581,7 @@ function MarketplacePage() {
       )}
 
       {/* Listings Grid with side ads */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
+      <div className="page-wrap py-3 sm:py-4">
         {/* ── ANA SƏHİFƏ HERO BLOKU (umico/birmarket üslubu) ──
             Kateqoriyalar + karusel + promo bannerlər TƏK komponentin içindədir.
             `sticky` YOXDUR: səhifə aşağı sürüşdürüləndə hamısı birlikdə yuxarı qalxır,

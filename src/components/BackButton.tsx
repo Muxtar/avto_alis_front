@@ -31,7 +31,7 @@ export default function BackButton() {
   // yerləşdirmə sihirbazındakı "← Geri" kimi). Məzmun sahəsi ilə eyni
   // enlik/kənarda olsun deyə max-w-7xl + eyni px.
   return (
-    <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-3 flex justify-end">
+    <div className="w-full page-wrap pt-3 flex justify-end">
       <button
         onClick={goBack}
         aria-label="Geri qayıt"

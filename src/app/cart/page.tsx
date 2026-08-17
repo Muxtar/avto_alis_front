@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import InstallmentCalculator from "@/components/InstallmentCalculator";
+import { installmentAllowed } from "@/lib/installment";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import ShareButton from "@/components/ShareButton";
 
@@ -45,6 +47,8 @@ export default function CartPage() {
   const [buyerObjectId, setBuyerObjectId] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "CARD" | "WALLET">("CASH");
+  // Hissəli alış planı (ay). null = taksitsiz.
+  const [installMonths, setInstallMonths] = useState<number | null>(null);
   const [paymentTouched, setPaymentTouched] = useState(false); // istifadəçi ödəniş üsulunu əl ilə dəyişib?
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscount, setPromoDiscount] = useState(0);
@@ -379,6 +383,9 @@ export default function CartPage() {
           paymentMethod,
           promoCode: promoValidated ? promoCode : null,
           usePoints,
+          // Hissəli alış — yalnız kartla və biznes məhsullarında qəbul olunur
+          // (server də eyni şərti yenidən yoxlayır).
+          installmentMonths: paymentMethod === "CARD" ? installMonths : null,
           itemIds: [...selected], // yalnız seçilmiş məhsullar alınır
         }),
       });
@@ -822,6 +829,21 @@ export default function CartPage() {
                     {!cardAllowed
                       ? <p className="text-[11px] text-muted mt-1.5">{t("cardOnlyBusinessHint") || "Bu məhsullar fərdi satıcılara aiddir — yalnız nağd/əldən. Kart yalnız biznes məhsullarında işləyir."}</p>
                       : paymentMethod === "CARD" && <p className="text-[11px] text-muted mt-1.5">💳 Kartla ödəniş — təsdiqdən sonra bankın təhlükəsiz ödəniş səhifəsi açılacaq.</p>}
+
+                    {/* Hissəli alış — yalnız kartla və biznes məhsullarında */}
+                    {paymentMethod === "CARD" && installmentAllowed(selTotal, cardAllowed) && (
+                      <div className="mt-3">
+                        <label className="flex items-center gap-2 mb-2 cursor-pointer">
+                          <input type="checkbox" checked={installMonths != null}
+                            onChange={(e) => setInstallMonths(e.target.checked ? 6 : null)}
+                            className="w-4 h-4 accent-orange-500" />
+                          <span className="text-xs font-semibold">Hissəli (taksitlə) almaq istəyirəm</span>
+                        </label>
+                        {installMonths != null && (
+                          <InstallmentCalculator amount={selTotal} value={installMonths} onChange={setInstallMonths} compact />
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Promo Code */}

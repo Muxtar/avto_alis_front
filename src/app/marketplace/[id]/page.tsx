@@ -15,6 +15,8 @@ import ShareButton from "@/components/ShareButton";
 import ListingCard from "@/components/ListingCard";
 import ComplaintButton from "@/components/ComplaintButton";
 import { recordView } from "@/lib/recentlyViewed";
+import InstallmentCalculator from "@/components/InstallmentCalculator";
+import { installmentAllowed, isBusinessListing } from "@/lib/installment";
 
 
 export default function ListingDetailPage() {
@@ -35,6 +37,8 @@ export default function ListingDetailPage() {
   const [commentRating, setCommentRating] = useState(0); // 5 ulduzlu rəy
   const [commentSending, setCommentSending] = useState(false);
   const [cartQty, setCartQty] = useState(1);
+  // Hissəli alış planı — səbətə əlavə edərkən ötürülür.
+  const [installMonths, setInstallMonths] = useState<number | null>(6);
   const [cartAdding, setCartAdding] = useState(false);
   const [cartAdded, setCartAdded] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
@@ -246,7 +250,7 @@ export default function ListingDetailPage() {
   const isService = listing.type === "SERVICE";
 
   return (
-    <div className="max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+    <div className="page-wrap py-4 sm:py-6">
       {/* Breadcrumb — kateqoriya yolu (birmarket üslubu) */}
       {(() => {
         const { main, sub } = parseCat(listing.category);
@@ -687,6 +691,17 @@ export default function ListingDetailPage() {
               </svg>
               {listing.category}
             </div>
+
+            {/* Hissəli alış — yalnız BİZNES məhsullarında (şəxsi elanda taksit yoxdur) */}
+            {installmentAllowed(listing.price * cartQty, isBusinessListing(listing)) && (
+              <div className="mb-4">
+                <InstallmentCalculator
+                  amount={listing.price * cartQty}
+                  value={installMonths}
+                  onChange={setInstallMonths}
+                />
+              </div>
+            )}
 
             {/* Owner actions — redaktə + sil */}
             {isLoggedIn && user?.id === listing.user.id && (

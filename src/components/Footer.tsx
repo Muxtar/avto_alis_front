@@ -24,7 +24,7 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-card-border bg-card mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+      <div className="page-wrap py-10 sm:py-14">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 sm:gap-10">
           {/* Brand */}
           <div className="col-span-2 sm:col-span-1">
