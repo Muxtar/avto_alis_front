@@ -52,6 +52,8 @@ export default function CartPage() {
   // Saxlanmış kartlar (token serverdə qalır — burada yalnız id və maska).
   const [savedCards, setSavedCards] = useState<any[]>([]);
   const [savedCardId, setSavedCardId] = useState<number | null>(null);
+  // Yeni kartla ödəyəndə kartı yadda saxlamaq (şlüzə save=y gedir).
+  const [saveCard, setSaveCard] = useState(false);
   const [paymentTouched, setPaymentTouched] = useState(false); // istifadəçi ödəniş üsulunu əl ilə dəyişib?
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscount, setPromoDiscount] = useState(0);
@@ -140,6 +142,21 @@ export default function CartPage() {
       .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoggedIn, token]);
+
+  // Saxlanmış kartı sil — idarəetmə burada, çünki kartlar yalnız burada işlədilir.
+  const removeCard = async (id: number) => {
+    if (!confirm("Bu kart silinsin?")) return;
+    try {
+      const r = await fetch(`${API}/me/cards/${id}`, { method: "DELETE", headers }).then((x) => x.json());
+      if (!r.success) { toast(r.message || t("error"), "error"); return; }
+      setSavedCards((prev) => {
+        const rest = prev.filter((c) => c.id !== id);
+        setSavedCardId((cur) => (cur === id ? (rest[0]?.id ?? null) : cur));
+        return rest;
+      });
+      toast("Kart silindi", "success");
+    } catch { toast(t("error"), "error"); }
+  };
 
   // Kontaktlardan yalnız saytda QEYDİYYATLI olanlar — alıcı yalnız qeydiyyatlı
   // şəxs ola bilər (sifariş, bildiriş və ünvan hesaba bağlanır).
@@ -406,6 +423,7 @@ export default function CartPage() {
           // (server də eyni şərti yenidən yoxlayır).
           installmentMonths: paymentMethod === "CARD" ? installMonths : null,
           savedCardId: paymentMethod === "CARD" ? savedCardId : null,
+          saveCard: paymentMethod === "CARD" && !savedCardId ? saveCard : false,
           itemIds: [...selected], // yalnız seçilmiş məhsullar alınır
         }),
       });
@@ -863,6 +881,11 @@ export default function CartPage() {
                             <span className="text-sm font-semibold">{c.brand || "Kart"} ···· {(c.maskedPan || "").slice(-4)}</span>
                             <span className="text-[11px] text-muted">{c.expiry ? `${c.expiry.slice(0, 2)}/${c.expiry.slice(2)}` : ""}</span>
                             {c.isDefault && <span className="ml-auto text-[10px] font-bold text-[var(--brand-to)]">əsas</span>}
+                            <button type="button" title="Kartı sil"
+                              onClick={(e) => { e.preventDefault(); removeCard(c.id); }}
+                              className={`${c.isDefault ? "" : "ml-auto"} w-7 h-7 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center shrink-0`}>
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-.9 13a2 2 0 0 1-2 1.9H7.9a2 2 0 0 1-2-1.9L5 6" /></svg>
+                            </button>
                           </label>
                         ))}
                         <label className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-input-border cursor-pointer hover:bg-input-bg/50">
@@ -871,6 +894,22 @@ export default function CartPage() {
                           <span className="text-sm">Yeni kartla ödə</span>
                         </label>
                       </div>
+                    )}
+
+                    {/* Yeni kartla ödəyirsə — kartı yadda saxlamaq təklifi.
+                        Kart məlumatı bankın səhifəsində daxil edilir; biz yalnız
+                        bankın verdiyi tokeni saxlayırıq (nömrə bizə gəlmir). */}
+                    {paymentMethod === "CARD" && savedCardId == null && (
+                      <label className="mt-2 flex items-start gap-2 cursor-pointer">
+                        <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)}
+                          className="w-4 h-4 mt-0.5 accent-orange-500" />
+                        <span className="text-xs">
+                          Kartı yadda saxla
+                          <span className="block text-[11px] text-muted">
+                            Növbəti alışda nömrəni yenidən yazmayacaqsınız. Kart nömrəsi saytda saxlanmır — bankın ödəniş sistemi saxlayır.
+                          </span>
+                        </span>
+                      </label>
                     )}
 
                     {paymentMethod === "CARD" && installmentAllowed(selTotal, cardAllowed) && (
