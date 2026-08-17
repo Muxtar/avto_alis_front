@@ -795,3 +795,13 @@ a[class*="btn-"]:not([class*="rounded-full"]),
   margin-inline: auto;
   padding-inline: clamp(12px, 1.6vw, 28px);
 }
+
+/* ── MƏHSUL ŞƏBƏKƏSİ ───────────────────────────────────────────────────────
+   Sayt tam enə keçəndən sonra 3 sütun kartları 600px enində edirdi — çox
+   böyük görünürdü. Sütun sayı ekrana görə artır; 1400px-dən yuxarı 5 sütun.
+
+   Niyə Tailwind variantı yox, açıq media sorğusu: bu qurulumda özəl
+   breakpoint (`wide:`) generasiya olunmadı — ölçülüb yoxlanılıb. */
+@media (min-width: 1400px) {
+  .product-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
