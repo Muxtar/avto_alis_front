@@ -52,8 +52,6 @@ export default function CartPage() {
   // Saxlanmış kartlar (token serverdə qalır — burada yalnız id və maska).
   const [savedCards, setSavedCards] = useState<any[]>([]);
   const [savedCardId, setSavedCardId] = useState<number | null>(null);
-  // Yeni kartla ödəyəndə kartı yadda saxlamaq (şlüzə save=y gedir).
-  const [saveCard, setSaveCard] = useState(false);
   const [paymentTouched, setPaymentTouched] = useState(false); // istifadəçi ödəniş üsulunu əl ilə dəyişib?
   const [promoCode, setPromoCode] = useState("");
   const [promoDiscount, setPromoDiscount] = useState(0);
@@ -423,7 +421,6 @@ export default function CartPage() {
           // (server də eyni şərti yenidən yoxlayır).
           installmentMonths: paymentMethod === "CARD" ? installMonths : null,
           savedCardId: paymentMethod === "CARD" ? savedCardId : null,
-          saveCard: paymentMethod === "CARD" && !savedCardId ? saveCard : false,
           itemIds: [...selected], // yalnız seçilmiş məhsullar alınır
         }),
       });
@@ -896,21 +893,6 @@ export default function CartPage() {
                       </div>
                     )}
 
-                    {/* Yeni kartla ödəyirsə — kartı yadda saxlamaq təklifi.
-                        Kart məlumatı bankın səhifəsində daxil edilir; biz yalnız
-                        bankın verdiyi tokeni saxlayırıq (nömrə bizə gəlmir). */}
-                    {paymentMethod === "CARD" && savedCardId == null && (
-                      <label className="mt-2 flex items-start gap-2 cursor-pointer">
-                        <input type="checkbox" checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)}
-                          className="w-4 h-4 mt-0.5 accent-orange-500" />
-                        <span className="text-xs">
-                          Kartı yadda saxla
-                          <span className="block text-[11px] text-muted">
-                            Növbəti alışda nömrəni yenidən yazmayacaqsınız. Kart nömrəsi saytda saxlanmır — bankın ödəniş sistemi saxlayır.
-                          </span>
-                        </span>
-                      </label>
-                    )}
 
                     {paymentMethod === "CARD" && installmentAllowed(selTotal, cardAllowed) && (
                       <div className="mt-3">
