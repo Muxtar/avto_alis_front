@@ -134,6 +134,8 @@ export default function MessagesPage() {
   const [infoOpen, setInfoOpen] = useState(false);
   // Sağ "Təsvir" paneli — söhbətin aid olduğu məhsul. Geniş ekranda açıq gəlir.
   const [infoOpenRight, setInfoOpenRight] = useState(true);
+  // Başlıqdakı "+" menyusu (kontaktlar / yeni qrup).
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [groupInfo, setGroupInfo] = useState<any>(null);
   const [addMemberMode, setAddMemberMode] = useState(false);
   // Qrupda aktiv səsli/görüntülü zəng — conversationId üzrə (gec qoşulma bannerı üçün).
@@ -946,11 +948,43 @@ export default function MessagesPage() {
 
       <div ref={attachBox} className={`surface overflow-hidden flex chat-shell ${active ? "chat-active-mobile" : ""}`}>
         {/* Sol panel */}
-        <div className={`${active ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-80 border-r border-card-border shrink-0`}>
+        {/* Sol panel — masaüstündə daha geniş: söhbət sətrində məhsul adı,
+            son mesaj və satıcı adı sığsın deyə 320px azlıq edirdi. */}
+        <div className={`${active ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-80 lg:w-96 xl:w-[26rem] border-r border-card-border shrink-0`}>
           <div className="p-2 border-b border-card-border">
-            <div className="grid grid-cols-2 gap-1 bg-input-bg/60 rounded-xl p-1">
-              <button onClick={() => setSideTab("chats")} className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${sideTab === "chats" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}><Ico.Chat />{t("messages")}</button>
-              <button onClick={() => setSideTab("contacts")} className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${sideTab === "contacts" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}><Ico.Users />Kontaktlar</button>
+            {/* Başlıq sətri — WhatsApp üslubu: solda bölmənin adı, sağda "+".
+                Əvvəl burada "Mesajlar / Kontaktlar" adlı iki tab vardı; söz
+                yerinə "+" düyməsi qoyuldu, kontaktlar həmin menyudan açılır. */}
+            <div className="flex items-center gap-2 px-1 py-1">
+              {sideTab === "contacts" && (
+                <button onClick={() => setSideTab("chats")} title="Geri"
+                  className="w-8 h-8 -ml-1 rounded-lg text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M15 18 9 12l6-6" /></svg>
+                </button>
+              )}
+              <p className="font-bold text-base flex-1 truncate">{sideTab === "contacts" ? "Kontaktlar" : t("messages")}</p>
+              <div className="relative">
+                <button onClick={() => setNewMenuOpen((v) => !v)} title="Yeni"
+                  aria-expanded={newMenuOpen}
+                  className="w-9 h-9 rounded-full text-white cta-gradient flex items-center justify-center hover:brightness-110 active:scale-95 transition shadow-sm">
+                  <Ico.Plus className="w-5 h-5" />
+                </button>
+                {newMenuOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setNewMenuOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-52 bg-card border border-card-border rounded-xl shadow-xl overflow-hidden z-50">
+                      <button onClick={() => { setNewMenuOpen(false); setSideTab("contacts"); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-input-bg text-left">
+                        <Ico.Users className="w-4 h-4 text-muted" />Kontaktlar
+                      </button>
+                      <button onClick={() => { setNewMenuOpen(false); openGroupModal(); }}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-input-bg text-left border-t border-card-border">
+                        <Ico.Plus className="w-4 h-4 text-muted" />Yeni qrup
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
             {sideTab === "chats" && (
               <>
@@ -964,7 +998,6 @@ export default function MessagesPage() {
                     onOpenChat={(p) => openChat({ type: "direct", id: p.id, name: p.name, avatar: p.avatar, segment: "PERSONAL", key: `${p.id}:PERSONAL` })}
                   />
                 </div>
-                <button onClick={openGroupModal} className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold bg-input-bg border border-input-border hover:bg-input-bg/70 flex items-center justify-center gap-1.5"><Ico.Plus className="w-3.5 h-3.5" />Yeni qrup</button>
 
                 {/* ── SEQMENT: şəxsi / iş ──
                     Eyni şəxs həm dost, həm müştəri ola bilər. Məhsul və ya
