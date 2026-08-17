@@ -460,6 +460,13 @@ a:focus-visible {
   height: calc(100dvh - var(--chat-top, 135px) - 24px);
   min-height: 320px;
 }
+/* Masaüstündə chat ekranı TAM tutur: yan boşluqlar yoxdur, künclər düz.
+   Əvvəl `max-w-5xl` ilə ortada dar zolaq kimi qalırdı. */
+@media (min-width: 640px) {
+  .chat-shell {
+    height: calc(100dvh - var(--chat-top, 96px) - 12px);
+  }
+}
 /* Telefonda chat siyahısı görünüşündə (aktiv chat açıq deyil) alt mobil-nav
    (~64px + safe-area) qutunun altını örtürdü — son söhbətlər görünmürdü.
    O hündürlüyü də çıxırıq. Aktiv chat onsuz da ayrıca tam-ekran overlaydir

@@ -12,6 +12,7 @@ import ContactsPanel from "@/components/ContactsPanel";
 import ChatPeopleSearch from "@/components/ChatPeopleSearch";
 import Avatar from "@/components/Avatar";
 import { useCall } from "@/lib/CallContext";
+import { Ico } from "@/components/ChatIcons";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const CHAT_EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🥳","😉","🙂","😇","🤗","🤔","😴","😭","😡","😱","😳","🥰","😜","🤪","😏","🙄","😤","😢","😅","😬","🤯","🤒","🤕","👍","👎","👌","🙏","👏","🙌","💪","🤝","👋","✌️","🤟","🫶","❤️","🧡","💛","💚","💙","💜","🖤","🔥","✨","🎉","🎊","💯","⭐","🌟","💥","💐","🌹","☀️","🌙","⚡","☕","🍰","🍕","🎁","💰","✅","❌","❗","❓","💬","📍","🚗","⚽"];
@@ -121,6 +122,8 @@ export default function MessagesPage() {
   const [contactUserIds, setContactUserIds] = useState<Set<number>>(new Set()); // kontaktlarımın istifadəçi id-ləri (chat-dan əlavə üçün)
   const [blockedIds, setBlockedIds] = useState<Set<number>>(new Set()); // bloklağım istifadəçilər
   const [infoOpen, setInfoOpen] = useState(false);
+  // Sağ "Təsvir" paneli — söhbətin aid olduğu məhsul. Geniş ekranda açıq gəlir.
+  const [infoOpenRight, setInfoOpenRight] = useState(true);
   const [groupInfo, setGroupInfo] = useState<any>(null);
   const [addMemberMode, setAddMemberMode] = useState(false);
   // Qrupda aktiv səsli/görüntülü zəng — conversationId üzrə (gec qoşulma bannerı üçün).
@@ -378,6 +381,11 @@ export default function MessagesPage() {
   // İki söhbət eyni sətir sayılırmı. İd kifayət etmir — seqment də uyğun olmalıdır.
   // Açar bəzi girişlərdə (qrup yaradılması, kontaktdan açma) verilmir, ona görə
   // burada eyni qayda ilə hesablanır.
+  // Açıq söhbətin məhsulu: söhbət sətrindən gəlir, yoxdursa mesajlardan
+  // geriyə doğru ilk dolu `listing` götürülür (dərin linklə açılan hallar).
+  const activeListing: any =
+    active?.listing || [...messages].reverse().find((m) => m.listing)?.listing || null;
+
   const chatKey = (c: any) => !c ? "" : (c.key || (c.type === "group" ? `g${c.id}` : `${c.id}:${c.segment || "ALL"}`));
   const sameChat = (a: any, b: any) => !!a && !!b && a.type === b.type && chatKey(a) === chatKey(b);
 
@@ -921,15 +929,18 @@ export default function MessagesPage() {
   // "Chat" başlığı legv edildi — onsuz da chat olduğu bəllidir; header
   // (Chat/Kontaktlar tabları) yuxarı qalxsın deyə üst boşluq azaldıldı.
   return (
-    <div className="max-w-5xl mx-auto px-3 sm:px-6 pt-2 sm:pt-4 pb-4 sm:pb-6">
+    // Chat tam ekranı tutur — sağ/sol boşluq yoxdur, hündürlük ekrana oturur.
+    // Əvvəl `max-w-5xl` idi: geniş monitorda söhbət ortada dar zolaq kimi
+    // qalırdı, sağ "Təsvir" paneli üçün isə ümumiyyətlə yer yox idi.
+    <div className="w-full px-0 sm:px-3 pt-0 sm:pt-3 pb-0 sm:pb-3">
 
       <div ref={attachBox} className={`surface overflow-hidden flex chat-shell ${active ? "chat-active-mobile" : ""}`}>
         {/* Sol panel */}
         <div className={`${active ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-80 border-r border-card-border shrink-0`}>
           <div className="p-2 border-b border-card-border">
             <div className="grid grid-cols-2 gap-1 bg-input-bg/60 rounded-xl p-1">
-              <button onClick={() => setSideTab("chats")} className={`py-1.5 rounded-lg text-xs font-semibold transition-colors ${sideTab === "chats" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>💬 {t("messages")}</button>
-              <button onClick={() => setSideTab("contacts")} className={`py-1.5 rounded-lg text-xs font-semibold transition-colors ${sideTab === "contacts" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>👥 Kontaktlar</button>
+              <button onClick={() => setSideTab("chats")} className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${sideTab === "chats" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}><Ico.Chat />{t("messages")}</button>
+              <button onClick={() => setSideTab("contacts")} className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${sideTab === "contacts" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}><Ico.Users />Kontaktlar</button>
             </div>
             {sideTab === "chats" && (
               <>
@@ -943,7 +954,7 @@ export default function MessagesPage() {
                     onOpenChat={(p) => openChat({ type: "direct", id: p.id, name: p.name, avatar: p.avatar, segment: "PERSONAL", key: `${p.id}:PERSONAL` })}
                   />
                 </div>
-                <button onClick={openGroupModal} className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold bg-input-bg border border-input-border hover:bg-input-bg/70 flex items-center justify-center gap-1">➕ Yeni qrup</button>
+                <button onClick={openGroupModal} className="mt-2 w-full py-1.5 rounded-lg text-xs font-semibold bg-input-bg border border-input-border hover:bg-input-bg/70 flex items-center justify-center gap-1.5"><Ico.Plus className="w-3.5 h-3.5" />Yeni qrup</button>
 
                 {/* ── SEQMENT: şəxsi / iş ──
                     Eyni şəxs həm dost, həm müştəri ola bilər. Məhsul və ya
@@ -951,13 +962,13 @@ export default function MessagesPage() {
                     satış mesajı şəxsi söhbətlə qarışmasın. */}
                 <div className="mt-2 grid grid-cols-3 gap-1 bg-input-bg/60 rounded-xl p-1">
                   {([
-                    { k: "ALL" as const, label: "Hamısı", n: 0 },
-                    { k: "PERSONAL" as const, label: "👤 Şəxsi", n: segUnread("PERSONAL") },
-                    { k: "BUSINESS" as const, label: "🏢 İş", n: segUnread("BUSINESS") },
+                    { k: "ALL" as const, label: "Hamısı", icon: null, n: 0 },
+                    { k: "PERSONAL" as const, label: "Şəxsi", icon: <Ico.User className="w-3.5 h-3.5" />, n: segUnread("PERSONAL") },
+                    { k: "BUSINESS" as const, label: "İş", icon: <Ico.Store className="w-3.5 h-3.5" />, n: segUnread("BUSINESS") },
                   ]).map((s) => (
                     <button key={s.k} onClick={() => setSegTab(s.k)}
-                      className={`relative py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${segTab === s.k ? "bg-card shadow-sm text-foreground" : "text-muted hover:text-foreground"}`}>
-                      {s.label}
+                      className={`relative flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${segTab === s.k ? "bg-card shadow-sm text-foreground" : "text-muted hover:text-foreground"}`}>
+                      {s.icon}{s.label}
                       {s.n > 0 && <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-orange-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold">{s.n}</span>}
                     </button>
                   ))}
@@ -969,7 +980,15 @@ export default function MessagesPage() {
           {/* Kontaktdan açılan söhbət ŞƏXSİdir — biznes axını yalnız
               məhsul/obyekt üzərindən başlayır. */}
           {sideTab === "contacts" ? (
-            <ContactsPanel onMessage={(u) => openChat({ type: "direct", id: u.id, name: u.name, segment: "PERSONAL", key: `${u.id}:PERSONAL` })} />
+            <div className="relative flex-1 min-h-0 flex flex-col">
+              <ContactsPanel onMessage={(u) => openChat({ type: "direct", id: u.id, name: u.name, segment: "PERSONAL", key: `${u.id}:PERSONAL` })} />
+              {/* WhatsApp üslubunda üzən "+" — yeni kontakt/qrup. Kontaktlar
+                  siyahısı uzun olanda da həmişə əlçatan qalır. */}
+              <button onClick={openGroupModal} title="Yeni qrup / kontakt"
+                className="absolute bottom-4 right-4 w-12 h-12 rounded-full text-white cta-gradient shadow-lg shadow-black/20 flex items-center justify-center hover:brightness-110 active:scale-95 transition">
+                <Ico.Plus className="w-6 h-6" />
+              </button>
+            </div>
           ) : (
           <div className="flex-1 overflow-y-auto">
             {loading ? (
@@ -1066,7 +1085,14 @@ export default function MessagesPage() {
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button onClick={() => startCall({ id: active.id, name: active.name, avatar: active.avatar }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></button>
                     <button onClick={() => startCall({ id: active.id, name: active.name, avatar: active.avatar }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg></button>
-                    <button onClick={toggleBlock} title={blockedIds.has(active.id) ? "Blokdan çıxar" : "Blokla"} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${blockedIds.has(active.id) ? "bg-red-500/20 text-red-500" : "bg-input-bg text-muted hover:text-red-500"}`}>🚫</button>
+                    <button onClick={toggleBlock} title={blockedIds.has(active.id) ? "Blokdan çıxar" : "Blokla"} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${blockedIds.has(active.id) ? "bg-red-500/20 text-red-500" : "bg-input-bg text-muted hover:text-red-500"}`}><Ico.Block className="w-4.5 h-4.5" /></button>
+                    {/* Sağ "Təsvir" panelini aç/bağla — yalnız göstəriləcək məhsul varsa */}
+                    {activeListing && (
+                      <button onClick={() => setInfoOpenRight((v) => !v)} title="Təsvir"
+                        className={`hidden lg:flex w-9 h-9 rounded-xl items-center justify-center transition-colors ${infoOpenRight ? "bg-[var(--brand-soft)] text-[var(--brand-to)]" : "bg-input-bg text-muted hover:text-foreground"}`}>
+                        <Ico.Info className="w-4.5 h-4.5" />
+                      </button>
+                    )}
                   </div>
                 )}
                 {active.type === "group" && (
@@ -1209,6 +1235,54 @@ export default function MessagesPage() {
             <div className="flex-1 flex items-center justify-center text-muted"><p className="text-sm">{t("noMessages")}</p></div>
           )}
         </div>
+
+        {/* ── SAĞ PANEL: "Təsvir" ──
+            Söhbətin nə haqqında olduğunu göstərir: məhsul şəkli, adı, qiyməti
+            və elana keçid. Yalnız İŞ söhbətlərində və geniş ekranda görünür —
+            şəxsi yazışmada göstərəcək məhsul yoxdur. */}
+        {active?.type === "direct" && infoOpenRight && activeListing && (
+          <aside className="hidden lg:flex flex-col w-72 xl:w-80 border-l border-card-border shrink-0">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-card-border">
+              <p className="font-semibold text-sm flex-1">Təsvir</p>
+              <button onClick={() => setInfoOpenRight(false)} title="Bağla"
+                className="w-8 h-8 rounded-lg text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center">
+                <Ico.Close className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              {activeListing.images?.[0] ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={imgUrl(activeListing.images[0])} alt="" className="w-full aspect-[4/3] object-cover rounded-xl bg-input-bg mb-3" />
+              ) : (
+                <div className="w-full aspect-[4/3] rounded-xl bg-input-bg flex items-center justify-center mb-3 text-muted"><Ico.Tag className="w-8 h-8" /></div>
+              )}
+              <p className="font-bold text-base leading-snug">{activeListing.title}</p>
+              {activeListing.price != null && (
+                <p className="text-xl font-extrabold mt-1">{activeListing.price.toLocaleString("az-AZ")} <span className="text-sm">AZN</span></p>
+              )}
+              {active.businessObject?.name && (
+                <p className="text-[11px] text-muted mt-1.5 flex items-center gap-1.5">
+                  <Ico.Store className="w-3.5 h-3.5" />{active.businessObject.name}
+                  {activeListing.city ? ` · ${activeListing.city}` : ""}
+                </p>
+              )}
+              <Link href={`/marketplace/${activeListing.id}`} target="_blank"
+                className="mt-4 w-full flex items-center justify-center py-2.5 rounded-xl border border-[var(--brand-to)] text-[var(--brand-to)] text-sm font-semibold hover:bg-[var(--brand-soft)] transition-colors">
+                Elana keç
+              </Link>
+            </div>
+
+            <div className="p-4 border-t border-card-border">
+              <button onClick={toggleBlock}
+                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                  blockedIds.has(active.id) ? "bg-red-500/15 text-red-500" : "text-red-500 hover:bg-red-500/10"}`}>
+                <Ico.Block className="w-4 h-4" />
+                {blockedIds.has(active.id) ? "Blokdan çıxar" : "Blok et"}
+              </button>
+            </div>
+          </aside>
+        )}
       </div>
 
       <Portal>
