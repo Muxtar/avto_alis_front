@@ -6,7 +6,7 @@ import { API, imgUrl } from "@/lib/api";
 
 interface Biz {
   id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
-  status: string; rejectionReason: string | null; createdAt: string;
+  status: string; rejectionReason: string | null; createdAt: string; isActive: boolean;
   aiAuthorized: boolean | null; aiVoenMatch: boolean | null; aiConfidence: number | null; aiFraudSignals: string[]; aiReason: string | null; autoApproved: boolean;
   taxDocImage: string | null; companyDocImage: string | null; powerOfAttorneyImage: string | null; bankDocImage: string | null; idCardImage: string | null; selfieImage: string | null;
   user: {
@@ -16,7 +16,7 @@ interface Biz {
     idAiNameMatch: boolean | null; idAiFaceMatch: boolean | null;
   };
   banks: { id: number; iban: string; title: string | null; isActive: boolean }[];
-  objects: { id: number; name: string; address: string; city: string | null; activityAreas: string[] }[];
+  objects: { id: number; name: string; address: string; city: string | null; activityAreas: string[]; isActive?: boolean }[];
 }
 
 // Fayl PDF-dirmi? (şəkil kimi göstərmək olmaz — belge formasında açılır)
@@ -82,23 +82,43 @@ export default function AdminBusinessesPage() {
 
   // Biznesi sil — ona aid bütün obyektlər və elanlar da silinir.
   const deleteBusiness = async (id: number, name: string) => {
-    if (!confirm(`"${name}" biznesini silmək istəyirsiniz?\n\n⚠️ BU BİZNESƏ AİD BÜTÜN OBYEKTLƏR VƏ ELANLAR SİLİNƏCƏK. Geri qaytarmaq mümkün deyil.`)) return;
+    if (!confirm(`"${name}" biznesini silmək istəyirsiniz?\n\n⚠️ Bütün obyektlər və elanlar saytdan GÖTÜRÜLƏCƏK.\n\nSatış tarixçəsi və hesablaşma (kimə nə qədər borcluyuq) Maliyyə bölməsində QALIR.`)) return;
     try {
       const res = await fetch(`${API}/admin/businesses/${id}`, { method: "DELETE", headers });
       const data = await res.json();
-      if (res.ok && data.success) { toast(`Biznes silindi (${data.deletedObjects} obyekt, ${data.deletedListings} elan)`, "success"); load(); }
+      if (res.ok && data.success) { toast(`Biznes silindi — ${data.deletedObjects} obyekt, ${data.deletedListings} elan saytdan götürüldü`, "success"); load(); }
       else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); }
   };
 
   // Obyekti sil — ona aid bütün elanlar da silinir.
   const deleteObject = async (id: number, name: string) => {
-    if (!confirm(`"${name}" obyektini silmək istəyirsiniz?\n\n⚠️ BU OBYEKTƏ AİD BÜTÜN ELANLAR SİLİNƏCƏK. Geri qaytarmaq mümkün deyil.`)) return;
+    if (!confirm(`"${name}" obyektini silmək istəyirsiniz?\n\n⚠️ Bu obyektin bütün elanları saytdan GÖTÜRÜLƏCƏK.\n\nSatış tarixçəsi Maliyyə bölməsində QALIR.`)) return;
     try {
       const res = await fetch(`${API}/admin/objects/${id}`, { method: "DELETE", headers });
       const data = await res.json();
-      if (res.ok && data.success) { toast(`Obyekt silindi (${data.deletedListings} elan)`, "success"); load(); }
+      if (res.ok && data.success) { toast(`Obyekt silindi — ${data.deletedListings} elan saytdan götürüldü`, "success"); load(); }
       else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+
+  // Aktiv/deaktiv — SİLMƏ DEYİL. Elanlar bazada qalır, sadəcə saytda görünmür;
+  // yenidən aktiv ediləndə hər şey olduğu kimi qayıdır.
+  const toggleBusinessActive = async (id: number, name: string, next: boolean) => {
+    if (!next && !confirm(`"${name}" deaktiv edilsin?\n\nElanlar SİLİNMİR — sadəcə saytda görünməyəcək. İstənilən vaxt geri qaytara bilərsiniz.`)) return;
+    try {
+      const r = await fetch(`${API}/admin/businesses/${id}/active`, { method: "PATCH", headers, body: JSON.stringify({ isActive: next }) }).then((x) => x.json());
+      if (r.success) { toast(next ? "Biznes aktiv edildi" : "Biznes deaktiv edildi — elanlar saytda görünmür", "success"); load(); }
+      else toast(r.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+
+  const toggleObjectActive = async (id: number, name: string, next: boolean) => {
+    if (!next && !confirm(`"${name}" obyekti deaktiv edilsin?\n\nElanlar SİLİNMİR — sadəcə saytda görünməyəcək.`)) return;
+    try {
+      const r = await fetch(`${API}/admin/objects/${id}/active`, { method: "PATCH", headers, body: JSON.stringify({ isActive: next }) }).then((x) => x.json());
+      if (r.success) { toast(next ? "Obyekt aktiv edildi" : "Obyekt deaktiv edildi", "success"); load(); }
+      else toast(r.message || t("error"), "error");
     } catch { toast(t("error"), "error"); }
   };
 
@@ -238,6 +258,11 @@ export default function AdminBusinessesPage() {
               <div className="flex items-center gap-1.5 flex-wrap mb-3">
                 <button onClick={() => aiRecheck(b.id)} disabled={busyId === b.id} title="Sənədləri AI ilə yenidən yoxla" className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 disabled:opacity-50">{busyId === b.id ? "…" : "🤖 AI yoxla"}</button>
                 <button onClick={() => (edit?.id === b.id ? setEdit(null) : startEdit(b))} title="Məlumatları əl ilə redaktə et" className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20 hover:bg-orange-500/20">{edit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə"}</button>
+                <button onClick={() => toggleBusinessActive(b.id, b.name, !b.isActive)}
+                  title={b.isActive ? "Deaktiv et — elanlar saytda görünməsin (silinmir)" : "Aktiv et"}
+                  className={`px-2 py-0.5 rounded-lg text-[11px] font-medium border ${b.isActive ? "bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20" : "bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20"}`}>
+                  {b.isActive ? "⏸ Deaktiv et" : "▶ Aktiv et"}
+                </button>
                 <button onClick={() => deleteBusiness(b.id, b.name)} title="Biznesi sil (obyektlər + elanlar da silinir)" className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20">🗑 Sil</button>
               </div>
 
