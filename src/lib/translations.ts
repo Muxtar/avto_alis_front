@@ -590,7 +590,7 @@ export const translations = {
     courierNotSharingYet: "Kuryer hələ konumunu paylaşmır",
 
     // Location feature (city + map pin)
-    browseByLocation: "Yer üzrə",
+    browseByLocation: "Xəritə üzrə axtarış",
     browseByLocationLong: "Yer üzrə axtar",
     locationsTitle: "Yer üzrə axtarış",
     locationsSubtitle: "Şəhər seçərək o yerdə olan satıcıları və elanları görün. Sizə yaxın olanları tapın.",
@@ -1214,7 +1214,7 @@ export const translations = {
     courierNotSharingYet: "Курьер пока не делится местоположением",
 
     // Location feature (city + map pin)
-    browseByLocation: "По городу",
+    browseByLocation: "Поиск по карте",
     browseByLocationLong: "Поиск по городу",
     locationsTitle: "Поиск по городу",
     locationsSubtitle: "Выберите город, чтобы увидеть продавцов и объявления в этой местности. Найдите тех, кто рядом.",
@@ -1833,7 +1833,7 @@ export const translations = {
     courierNotSharingYet: "Courier hasn't shared location yet",
 
     // Location feature (city + map pin)
-    browseByLocation: "By city",
+    browseByLocation: "Search by map",
     browseByLocationLong: "Browse by city",
     locationsTitle: "Browse by city",
     locationsSubtitle: "Pick a city to see sellers and listings in that area. Find ones near you.",
