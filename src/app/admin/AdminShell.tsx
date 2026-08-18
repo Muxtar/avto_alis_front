@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -16,11 +16,26 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // Cari adminin icazələri — sidebar yalnız icazəli bölmələri göstərsin.
   const [me, setMe] = useState<{ isSuperAdmin: boolean; permissions: string[] } | null>(null);
 
+  // Gözləyən elan sayının son bilinən dəyəri — dəyişəndə açıq səhifələrə
+  // xəbər verilir ki, siyahılarını özləri təzələsin.
+  const pendingListingsRef = useRef<number | null>(null);
+
   const loadOverview = () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
     if (!token) return;
     fetch(`${API}/admin/overview`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json()).then((d) => { if (d.success) setOverview(d); }).catch(() => {});
+      .then((r) => r.json()).then((d) => {
+        if (!d.success) return;
+        setOverview(d);
+        // Yeni elan gəlibsə (və ya sayı dəyişibsə) siqnal ver. Əvvəl yalnız
+        // bildiriş düşürdü, siyahı isə səhifə yenilənənə qədər köhnə qalırdı.
+        const n = d?.pending?.listings ?? 0;
+        const prev = pendingListingsRef.current;
+        pendingListingsRef.current = n;
+        if (prev !== null && n !== prev) {
+          window.dispatchEvent(new CustomEvent("admin:listings-changed", { detail: { pending: n } }));
+        }
+      }).catch(() => {});
   };
 
   // Gözləyən iş sayları + statistikanı yüklə (login-dən sonra) və 30 saniyədə bir yenilə.

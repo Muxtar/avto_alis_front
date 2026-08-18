@@ -108,6 +108,21 @@ export default function AdminListingsPage() {
   };
 
   useEffect(() => { fetchOwners(); setRows({}); setOpenKey(null); }, [statusFilter, typeFilter]);
+
+  // Yeni elan gələndə (və ya gözləyən sayı dəyişəndə) siyahını təzələ.
+  // Əvvəl yalnız bildiriş düşürdü, siyahı isə səhifə yenilənənə qədər köhnə
+  // qalırdı — admin əli ilə F5 etməli olurdu.
+  useEffect(() => {
+    const onChanged = () => {
+      fetchOwners();
+      // Açıq sahibin elanları da təzələnsin (yeni elan onun altına düşə bilər).
+      const cur = owners.find((o) => o.key === openKey);
+      if (cur) fetchRows(cur);
+    };
+    window.addEventListener("admin:listings-changed", onChanged);
+    return () => window.removeEventListener("admin:listings-changed", onChanged);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openKey, owners, statusFilter, typeFilter, search]);
   useEffect(() => { const tm = setTimeout(() => { fetchOwners(); setRows({}); setOpenKey(null); }, 300); return () => clearTimeout(tm); }, [search]);
 
   // Sahib sayğaclarını YERİNDƏ güncəllə (səhifə yenilənmədən) — bir elanın
@@ -121,6 +136,13 @@ export default function AdminListingsPage() {
       const key = (s: string) => (s === "PENDING" ? "pending" : s === "APPROVED" ? "approved" : "rejected");
       if (oldStatus) n[key(oldStatus)] = Math.max(0, n[key(oldStatus)] - 1);
       if (newStatus) n[key(newStatus)] = n[key(newStatus)] + 1;
+      // Status filtri aktivdirsə və sahibdə həmin statusdan elan qalmayıbsa,
+      // sahib də siyahıdan çıxır — "Gözləmədə" siyahısında 0 gözləyən sahib
+      // qalmasın (əvvəl qalırdı və yalnız F5 təmizləyirdi).
+      if (statusFilter !== "all" && n[key(statusFilter)] <= 0) {
+        if (openKey === ownerKey) setOpenKey(null);
+        return [];
+      }
       return [n];
     }));
   };
@@ -156,9 +178,16 @@ export default function AdminListingsPage() {
       if (!res.ok || !r.success) { toast(r.message || t("error"), "error"); return; }
       toast(status === "APPROVED" ? "Elan təsdiqləndi" : status === "REJECTED" ? "Elan rədd edildi" : "Gözləməyə qaytarıldı", "success");
       // Elanın statusunu yerində dəyiş — səhifə/siyahı yenilənmir, akkordeon açıq qalır.
+      // Aktiv statuс filtri varsa və elan artıq ona uyğun gəlmirsə (məs.
+      // "Gözləmədə" siyahısında elanı təsdiqlədik) sətir siyahıdan ÇIXIR.
+      // Əvvəl qalırdı və "gözləmədə" kimi görünürdü — yalnız F5 düzəldirdi.
       setRows((prev) => ({
         ...prev,
-        [owner.key]: (prev[owner.key] || []).map((l) => (l.id === id ? { ...l, status, rejectReason } : l)),
+        [owner.key]: (prev[owner.key] || []).flatMap((l) => {
+          if (l.id !== id) return [l];
+          if (statusFilter !== "all" && status !== statusFilter) return [];
+          return [{ ...l, status, rejectReason }];
+        }),
       }));
       if (oldStatus !== status) bumpOwner(owner.key, oldStatus, status);
       // Sol sidebar badge-i (overview) də yenilənmədən güncəllənsin.
