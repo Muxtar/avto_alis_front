@@ -39,6 +39,7 @@ export default function AdminBusinessesPage() {
   const [items, setItems] = useState<Biz[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [search, setSearch] = useState("");
   const [rejectReason, setRejectReason] = useState<{ [id: number]: string }>({});
   const [busyId, setBusyId] = useState<number | null>(null); // AI əməliyyatı gedən biznes
   const [edit, setEdit] = useState<{ id: number; name: string; voen: string; ownerName: string; founderName: string; phone: string } | null>(null);
@@ -58,12 +59,12 @@ export default function AdminBusinessesPage() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch(`${API}/admin/businesses?status=${filter}`, { headers });
+      const res = await fetch(`${API}/admin/businesses?status=${filter}&search=${encodeURIComponent(search)}`, { headers });
       const data = await res.json();
       setItems(data.businesses || []);
     } catch { toast(t("error"), "error"); } finally { if (!silent) setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter]);
+  }, [filter, search]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -225,13 +226,21 @@ export default function AdminBusinessesPage() {
 
   return (
     <div>
-      <h1 className="text-xl sm:text-2xl font-bold mb-4">{t("adminBusinesses") || "Biznes təsdiqi"}</h1>
-      <div className="flex gap-1.5 flex-wrap bg-input-bg border border-input-border rounded-xl p-1 mb-6 w-fit">
-        {statuses.map((s) => (
-          <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filter === s ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>
-            {s === "all" ? t("all") : s}
-          </button>
-        ))}
+      <h1 className="text-2xl sm:text-3xl font-bold mb-1">{t("adminBusinesses") || "Biznes təsdiqi"}</h1>
+      <p className="text-muted text-sm mb-4">Şirkət adı, VÖEN, sahib və ya müraciəti göndərən şəxs üzrə axtarın.</p>
+
+      <div className="flex items-center gap-3 flex-wrap mb-6">
+        <input value={search} onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍 Şirkət adı, VÖEN, sahibi, telefon…"
+          className="ui-field max-w-md flex-1 min-w-[240px]" />
+        <div className="flex gap-1 flex-wrap bg-input-bg border border-input-border rounded-xl p-1">
+          {statuses.map((s) => (
+            <button key={s} onClick={() => setFilter(s)}
+              className={`px-3.5 h-8 rounded-lg text-xs font-semibold transition-colors ${filter === s ? "text-white cta-gradient" : "text-muted hover:text-foreground"}`}>
+              {s === "all" ? t("all") : s}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
@@ -262,16 +271,16 @@ export default function AdminBusinessesPage() {
                   görünürdü, mobil ekranda düz basmaq çətin idi. */}
               <div className="flex items-center gap-2 flex-wrap mb-3">
                 <button onClick={() => aiRecheck(b.id)} disabled={busyId === b.id} title="Sənədləri AI ilə yenidən yoxla"
-                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/25 hover:bg-blue-500/20 active:scale-95 transition disabled:opacity-50">
+                  className="ui-btn ui-btn-soft">
                   {busyId === b.id ? "Yoxlanılır…" : <><span aria-hidden>🤖</span>AI yoxla</>}
                 </button>
                 <button onClick={() => toggleBusinessActive(b.id, b.name, !b.isActive)}
                   title={b.isActive ? "Deaktiv et — elanlar saytda görünməsin (silinmir)" : "Aktiv et"}
-                  className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold border active:scale-95 transition ${b.isActive ? "bg-amber-500/10 text-amber-600 border-amber-500/25 hover:bg-amber-500/20" : "bg-green-500/10 text-green-600 border-green-500/25 hover:bg-green-500/20"}`}>
+                  className={`ui-btn ${b.isActive ? "ui-btn-warn" : "ui-btn-ok"}`}>
                   {b.isActive ? <><span aria-hidden>⏸</span>Deaktiv et</> : <><span aria-hidden>▶</span>Aktiv et</>}
                 </button>
                 <button onClick={() => deleteBusiness(b.id, b.name)} title="Biznesi sil — elanlar saytdan götürülür, satış tarixçəsi qalır"
-                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold bg-red-500/10 text-red-500 border border-red-500/25 hover:bg-red-500/20 active:scale-95 transition ml-auto">
+                  className="ui-btn ui-btn-danger ml-auto">
                   <span aria-hidden>🗑</span>Sil
                 </button>
               </div>
@@ -279,7 +288,7 @@ export default function AdminBusinessesPage() {
               {/* Yaradanın təsdiqlənmiş kimliyi — admin sənəddəki sahiblə müqayisə etsin */}
               <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
-                  <p className="text-[11px] font-semibold text-muted">🪪 Yaradanın kimliyi (sənəddəki sahiblə müqayisə edin)</p>
+                  <p className="ui-section-title">🪪 Yaradanın kimliyi (sənəddəki sahiblə müqayisə edin)</p>
                   {/* Bu sahələr istifadəçinin təsdiqlənmiş KYC məlumatıdır —
                       biznes kartından dəyişdirilmir, "İstifadəçilər" bölməsindən
                       idarə olunur. Yanlış redaktə kimlik yoxlamasını mənasız edərdi. */}
@@ -291,7 +300,7 @@ export default function AdminBusinessesPage() {
                     sözə görə ölçülür, ona görə BÜTÜN dəyərlər eyni şaquli xətdən
                     başlayır. Əvvəl 4 sütunlu şəbəkə idi və "Sənəddəki sahib" ayrıca
                     sətirdə qalırdı — göz müqayisə edə bilmirdi. */}
-                <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+                <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-[13px]">
                   <dt className="text-muted">Ad</dt>
                   <dd className="font-semibold break-words">{b.user.name || "—"}</dd>
 
@@ -334,16 +343,16 @@ export default function AdminBusinessesPage() {
                     və eyni yerdən saxlayır. */}
                 <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
                   <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-                    <p className="text-[11px] font-semibold text-muted">🏢 Şirkət məlumatları (sənəddən daxil edilib)</p>
+                    <p className="ui-section-title">🏢 Şirkət məlumatları (sənəddən daxil edilib)</p>
                     <div className="flex items-center gap-1.5">
                       {edit?.id === b.id && (
                         <button onClick={() => aiFill(b.id)} disabled={busyId === b.id}
-                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/25 hover:bg-blue-500/20 disabled:opacity-50">
+                          className="ui-btn ui-btn-sm ui-btn-soft">
                           {busyId === b.id ? "AI oxuyur…" : "🤖 AI ilə doldur"}
                         </button>
                       )}
                       <button onClick={() => (edit?.id === b.id ? setEdit(null) : startEdit(b))}
-                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-semibold bg-orange-500/10 text-orange-600 border border-orange-500/25 hover:bg-orange-500/20">
+                        className="ui-btn ui-btn-sm ui-btn-soft">
                         {edit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə et"}
                       </button>
                     </div>
@@ -352,10 +361,10 @@ export default function AdminBusinessesPage() {
                   {edit?.id === b.id ? (
                     /* Redaktə rejimi — eyni sətirlər, dəyər yerinə input. */
                     <>
-                      <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1.5 text-xs items-center max-w-lg">
+                      <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-[13px] items-center max-w-lg">
                         <dt className="text-muted">Şirkət adı</dt>
                         <dd><input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-                          className="w-full px-2.5 py-1.5 bg-card border border-input-border rounded-lg text-sm" /></dd>
+                          className="ui-field" /></dd>
 
                         <dt className="text-muted">VÖEN {dupVoen.length > 0 && <span className="text-red-500 font-bold">⚠</span>}</dt>
                         <dd><input value={edit.voen}
@@ -364,15 +373,15 @@ export default function AdminBusinessesPage() {
 
                         <dt className="text-muted">Sahibi / Rəhbər</dt>
                         <dd><input value={edit.ownerName} onChange={(e) => setEdit({ ...edit, ownerName: e.target.value })}
-                          className="w-full px-2.5 py-1.5 bg-card border border-input-border rounded-lg text-sm" /></dd>
+                          className="ui-field" /></dd>
 
                         <dt className="text-muted">Təsisçi</dt>
                         <dd><input value={edit.founderName} onChange={(e) => setEdit({ ...edit, founderName: e.target.value })}
-                          className="w-full px-2.5 py-1.5 bg-card border border-input-border rounded-lg text-sm" /></dd>
+                          className="ui-field" /></dd>
 
                         <dt className="text-muted">Telefon</dt>
                         <dd><input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })}
-                          className="w-full px-2.5 py-1.5 bg-card border border-input-border rounded-lg text-sm" /></dd>
+                          className="ui-field" /></dd>
                       </dl>
 
                       <div className="mt-2 space-y-2">
@@ -419,13 +428,13 @@ export default function AdminBusinessesPage() {
 
                       <div className="flex gap-2 mt-2.5">
                         <button onClick={saveEdit} disabled={busyId === b.id}
-                          className="h-9 px-4 rounded-xl bg-orange-500 text-white text-xs font-bold hover:brightness-110 active:scale-95 transition disabled:opacity-50">Yadda saxla</button>
+                          className="ui-btn ui-btn-primary">Yadda saxla</button>
                         <button onClick={() => setEdit(null)}
-                          className="h-9 px-4 rounded-xl bg-card border border-input-border text-xs font-semibold hover:bg-input-bg">Ləğv et</button>
+                          className="ui-btn ui-btn-ghost">Ləğv et</button>
                       </div>
                     </>
                   ) : (
-                    <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+                    <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-[13px]">
                       <dt className="text-muted">Şirkət adı</dt>
                       <dd className="font-semibold break-words">{b.name || <span className="text-muted font-normal">—</span>}</dd>
 
@@ -463,7 +472,7 @@ export default function AdminBusinessesPage() {
               {/* Claude AI sənəd yoxlaması */}
               {(b.aiAuthorized !== null || b.aiReason) && (
                 <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
-                  <p className="text-[11px] font-semibold text-muted mb-1.5">🤖 Claude AI sənəd yoxlaması</p>
+                  <p className="ui-section-title block mb-1.5">🤖 Claude AI sənəd yoxlaması</p>
                   <div className="flex flex-wrap gap-2">
                     {b.aiAuthorized !== null && (
                       <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${b.aiAuthorized ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"}`}>
@@ -487,9 +496,9 @@ export default function AdminBusinessesPage() {
               {/* Bank hesabları — admin yoxlayır (biznes təsdiqi bankları da əhatə edir) */}
               <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-                  <p className="text-[11px] font-semibold text-muted">🏦 Bank hesabları</p>
+                  <p className="ui-section-title">🏦 Bank hesabları</p>
                   <button onClick={() => setBankEditFor(bankEditFor === b.id ? null : b.id)}
-                    className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-semibold bg-orange-500/10 text-orange-600 border border-orange-500/25 hover:bg-orange-500/20">
+                    className="ui-btn ui-btn-sm ui-btn-soft">
                     {bankEditFor === b.id ? "✕ Bağla" : "✏️ Redaktə et"}
                   </button>
                 </div>
@@ -513,9 +522,9 @@ export default function AdminBusinessesPage() {
                     onChange={(e) => setIbanInput((p) => ({ ...p, [b.id]: e.target.value }))}
                     onKeyDown={(e) => { if (e.key === "Enter") addBank(b.id); }}
                     placeholder="AZ00 XXXX 0000 ... (sənəddən)"
-                    className="flex-1 sm:max-w-xs px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs font-mono"
+                    className="ui-field flex-1 sm:max-w-sm font-mono"
                   />
-                  <button onClick={() => addBank(b.id)} className="h-9 px-3.5 rounded-xl text-xs font-semibold bg-orange-500 text-white hover:brightness-110 active:scale-95 transition">+ Əlavə et</button>
+                  <button onClick={() => addBank(b.id)} className="ui-btn ui-btn-primary">+ Əlavə et</button>
                 </div>
                 )}
               </div>

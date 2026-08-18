@@ -253,15 +253,15 @@ export default function BusinessPage() {
         <h1 className="text-xl sm:text-2xl font-bold">🏢 Biznes Kabinetim</h1>
         <div className="flex items-center gap-2 flex-wrap">
           {publicId && <span className="px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs font-mono">ID: <b>{publicId}</b></span>}
-          <a href="/business/sales" className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10">{t("bizSales") || "Satış pəncərəsi"}</a>
+          <a href="/business/sales" className="ui-btn ui-btn-ghost">{t("bizSales") || "Satış pəncərəsi"}</a>
           {idVerified === false ? (
-            <a href="/profile" className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">🪪 Profilini təsdiqlə</a>
+            <a href="/profile" className="ui-btn ui-btn-primary">🪪 Profilini təsdiqlə</a>
           ) : (
-            <button onClick={openForm} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">{showForm ? (t("adminCancel") || "Bağla") : `+ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
+            <button onClick={openForm} className="ui-btn ui-btn-primary">{showForm ? (t("adminCancel") || "Bağla") : `+ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
           )}
         </div>
       </div>
-      <p className="text-muted text-sm mb-5">{t("bizDesc") || "Biznes təsdiqləndikdən sonra məhsullarınız kartla satıla bilər."}</p>
+      <p className="text-muted text-[15px] mb-5">{t("bizDesc") || "Biznes təsdiqləndikdən sonra məhsullarınız kartla satıla bilər."}</p>
 
       {idVerified === false && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-5 flex items-start gap-3">
@@ -374,7 +374,7 @@ export default function BusinessPage() {
                     {b.status === "APPROVED" && b.objects?.length ? ` · 🏪 ${b.objects.length} obyekt` : ""}
                   </p>
                 </div>
-                <span className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border shrink-0 ${statusBadge(b.status)}`}>{statusText(b.status)}</span>
+                <span className={`px-3 py-1 rounded-lg text-xs font-bold border shrink-0 ${statusBadge(b.status)}`}>{statusText(b.status)}</span>
                 <span className="text-muted text-xs shrink-0 w-4 text-center">{openBizId === b.id ? "▲" : "▼"}</span>
               </button>
 
@@ -446,7 +446,7 @@ export default function BusinessPage() {
                       toast(data.reApproval ? "Yadda saxlanıldı — biznes yenidən admin təsdiqinə göndərildi" : "Yadda saxlanıldı", "success");
                       setBizEdit(null); setBizEditDoc(null); setBizEditBank(null); load();
                     })} className="px-4 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-semibold">Yadda saxla</button>
-                    <button type="button" onClick={() => setBizEdit(null)} className="px-4 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm">Ləğv</button>
+                    <button type="button" onClick={() => setBizEdit(null)} className="ui-btn ui-btn-ghost">Ləğv</button>
                   </div>
                 </div>
               )}

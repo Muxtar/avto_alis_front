@@ -73,14 +73,14 @@ export default function AdminObjectsPage() {
 
   return (
     <div className="max-w-6xl">
-      <h1 className="text-xl sm:text-2xl font-bold mb-1">Obyektlər</h1>
+      <h1 className="text-2xl sm:text-3xl font-bold mb-1">Obyektlər</h1>
       <p className="text-muted text-sm mb-4">
         Bizneslərə bağlı mağaza və filiallar. Sətrə basaraq obyektin bütün məlumatlarını və paylaşdığı elanları açın.
       </p>
 
       <input value={search} onChange={(e) => setSearch(e.target.value)}
         placeholder="🔍 Obyekt adı, ünvan, şəhər, telefon, biznes adı və ya VÖEN…"
-        className="w-full max-w-xl mb-4 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm" />
+        className="ui-field max-w-xl mb-5" />
 
       {loading ? (
         <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
@@ -99,12 +99,12 @@ export default function AdminObjectsPage() {
                   <span className="shrink-0 w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center text-lg">🏪</span>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-sm truncate">{o.name}</span>
+                      <span className="font-bold text-base truncate">{o.name}</span>
                       {!o.isActive && <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-600 text-[10px] font-bold">Deaktiv</span>}
                       {o.business?.isActive === false && <span className="px-1.5 py-0.5 rounded bg-red-500/15 text-red-500 text-[10px] font-bold">Biznes deaktiv</span>}
                     </div>
                     {/* Hansı biznesə aiddir — əsas sual budur, ona görə sətirdə açıq yazılır. */}
-                    <p className="text-[11px] text-muted truncate">
+                    <p className="text-xs text-muted truncate">
                       🏢 <b className="text-foreground">{o.business?.name}</b>
                       {o.business?.voen ? ` · VÖEN ${o.business.voen}` : ""}
                       {o.city ? ` · ${o.city}` : ""}
@@ -120,8 +120,8 @@ export default function AdminObjectsPage() {
                     <div className="grid sm:grid-cols-2 gap-4">
                       {/* Obyektin məlumatları */}
                       <div className="p-3 bg-card border border-card-border rounded-lg">
-                        <p className="text-[11px] font-semibold text-muted mb-2">🏪 Obyekt məlumatları</p>
-                        <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+                        <p className="ui-section-title block mb-2">🏪 Obyekt məlumatları</p>
+                        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-[13px]">
                           <dt className="text-muted">Ad</dt><dd className="font-semibold break-words">{o.name}</dd>
                           <dt className="text-muted">Ünvan</dt><dd className="font-semibold break-words">{o.address || "—"}</dd>
                           <dt className="text-muted">Şəhər</dt><dd className="font-semibold">{o.city || "—"}</dd>
@@ -148,8 +148,8 @@ export default function AdminObjectsPage() {
 
                       {/* Bağlı olduğu biznes */}
                       <div className="p-3 bg-card border border-card-border rounded-lg">
-                        <p className="text-[11px] font-semibold text-muted mb-2">🏢 Bağlı olduğu biznes</p>
-                        <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+                        <p className="ui-section-title block mb-2">🏢 Bağlı olduğu biznes</p>
+                        <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-[13px]">
                           <dt className="text-muted">Biznes</dt><dd className="font-semibold break-words">{o.business?.name}</dd>
                           <dt className="text-muted">VÖEN</dt><dd className="font-semibold font-mono">{o.business?.voen || "—"}</dd>
                           <dt className="text-muted">Status</dt>
@@ -167,9 +167,9 @@ export default function AdminObjectsPage() {
                           <dt className="text-muted">Obyekt adına alış</dt><dd className="font-semibold">{o._count?.purchases || 0}</dd>
                         </dl>
                         <div className="flex gap-2 mt-3">
-                          <Link href="/admin/businesses" className="h-8 px-3 inline-flex items-center rounded-lg border border-card-border text-[11px] font-semibold hover:bg-input-bg">Biznesə keç ↗</Link>
+                          <Link href="/admin/businesses" className="ui-btn ui-btn-sm ui-btn-ghost">Biznesə keç ↗</Link>
                           <button onClick={() => toggleActive(o)}
-                            className={`h-8 px-3 rounded-lg text-[11px] font-semibold border ${o.isActive ? "bg-amber-500/10 text-amber-600 border-amber-500/25" : "bg-green-500/10 text-green-600 border-green-500/25"}`}>
+                            className={`ui-btn ui-btn-sm ${o.isActive ? "ui-btn-warn" : "ui-btn-ok"}`}>
                             {o.isActive ? "⏸ Deaktiv et" : "▶ Aktiv et"}
                           </button>
                         </div>
@@ -179,7 +179,7 @@ export default function AdminObjectsPage() {
                     {/* Elanlar */}
                     <div>
                       <div className="flex items-center gap-2 flex-wrap mb-2">
-                        <p className="text-[11px] font-semibold text-muted">📦 Bu obyektin elanları</p>
+                        <p className="ui-section-title">📦 Bu obyektin elanları</p>
                         {Object.entries(st).map(([k, v]) => (
                           <span key={k} className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${ST[k]?.cls || "bg-input-bg text-muted"}`}>{ST[k]?.label || k}: {v as number}</span>
                         ))}

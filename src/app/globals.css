@@ -244,7 +244,6 @@ body::before {
 .surface {
   background: var(--card);
   border: 1px solid var(--card-border);
-  border-radius: 1rem;
 }
 .dark .surface {
   box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.03) inset, 0 8px 24px -16px rgba(0, 0, 0, 0.6);
@@ -804,4 +803,104 @@ a[class*="btn-"]:not([class*="rounded-full"]),
    breakpoint (`wide:`) generasiya olunmadı — ölçülüb yoxlanılıb. */
 @media (min-width: 1400px) {
   .product-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
+
+/* ── ORTAQ UI DƏSTİ (giriş səhifəsinin görünüşü) ──────────────────────────
+   Biznes/obyekt ekranları hər yerdə fərqli ölçü və rənglə yazılmışdı:
+   11px mətn, `py-0.5` düymələr, ad-hoc kənar rəngləri. Giriş səhifəsi isə
+   bütün saytın ən səliqəli hissəsidir — onun dilini bura da gətiririk.
+   Rənglər `--brand-*` dəyişənlərindən gəlir, ona görə tema dəyişəndə
+   avtomatik uyğunlaşır. */
+
+.ui-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 1rem;
+}
+
+/* Sahə — giriş formasındakı ilə eyni ölçü və fokus halqası. */
+.ui-field {
+  width: 100%;
+  padding: 0.7rem 0.9rem;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  /* Künc radiusu QOYULMUR: saytın qlobal qaydası input/düymələri düz künclü
+     edir (yuxarıda). Burada radius yazsaq da o qayda üstələyir — giriş
+     səhifəsi də elə düz küncdür, yəni bu dəst onunla eyni görünür. */
+  color: var(--foreground);
+  font-size: 0.875rem;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ui-field::placeholder { color: var(--muted-foreground); }
+.ui-field:focus {
+  outline: none;
+  border-color: var(--brand-to);
+  box-shadow: 0 0 0 3px var(--brand-soft);
+}
+
+/* Düymələr — hamısı eyni hündürlükdə (40px), barmaqla rahat basılır. */
+.ui-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 2.5rem;
+  padding: 0 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: filter .15s, background-color .15s, transform .08s;
+}
+.ui-btn:active { transform: scale(0.97); }
+.ui-btn:disabled { opacity: .5; cursor: not-allowed; }
+.ui-btn-sm { height: 2rem; padding: 0 0.7rem; font-size: 0.75rem; }
+
+.ui-btn-primary {
+  background-image: linear-gradient(135deg, var(--brand-from) 0%, var(--brand-to) 100%);
+  color: #fff;
+  border: 0;
+}
+.ui-btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+
+.ui-btn-soft {
+  background: var(--brand-soft);
+  color: var(--brand-to);
+  border: 1px solid color-mix(in srgb, var(--brand-to) 25%, transparent);
+}
+.ui-btn-soft:hover:not(:disabled) { background: color-mix(in srgb, var(--brand-to) 14%, transparent); }
+
+.ui-btn-ghost {
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--card-border);
+}
+.ui-btn-ghost:hover:not(:disabled) { background: var(--input-bg); }
+
+.ui-btn-danger {
+  background: rgba(239, 68, 68, .1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, .25);
+}
+.ui-btn-danger:hover:not(:disabled) { background: rgba(239, 68, 68, .18); }
+
+.ui-btn-warn {
+  background: rgba(245, 158, 11, .12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, .28);
+}
+.ui-btn-warn:hover:not(:disabled) { background: rgba(245, 158, 11, .2); }
+
+.ui-btn-ok {
+  background: rgba(34, 197, 94, .12);
+  color: #16a34a;
+  border: 1px solid rgba(34, 197, 94, .28);
+}
+.ui-btn-ok:hover:not(:disabled) { background: rgba(34, 197, 94, .2); }
+
+/* Bölmə başlığı — biznes/obyekt kartlarındakı kiçik başlıqlar. */
+.ui-section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--muted-foreground);
+  letter-spacing: .01em;
 }
