@@ -272,66 +272,90 @@ export default function ListingDetailPage() {
             (Əvvəl ayrı grid sıralarında idi — alış qutusu hündür olduqda sol sıralar
             dartılıb bir şəkildə boşluq yaradırdı; indi axın təbii, boşluq yoxdur.) */}
         <div className="order-1 lg:col-span-3 space-y-4 sm:space-y-6 min-w-0">
-          <div className="bg-card border border-card-border rounded-2xl overflow-hidden">
-            <div className="relative aspect-video tile-soft flex items-center justify-center group">
-              {listing.images?.length > 0 ? (
-                <>
-                <img
-                  src={(() => {
-                    const img = listing.images[Math.min(activeImageIdx, listing.images.length - 1)];
-                    return img.startsWith('http') ? img : `${imgUrl(img)}`;
-                  })()}
-                  loading="lazy"
-                  alt={listing.title}
-                  className="w-full h-full object-cover"
-                />
-                {/* Şəkil sayğacı + naviqasiya oxları */}
-                {listing.images.length > 1 && (
-                  <>
-                    <span className="absolute bottom-3 right-3 px-2.5 py-1 bg-black/60 backdrop-blur text-white text-xs font-semibold rounded-lg">
-                      {Math.min(activeImageIdx, listing.images.length - 1) + 1} / {listing.images.length}
-                    </span>
-                    <button type="button" aria-label="Əvvəlki şəkil"
-                      onClick={() => setActiveImageIdx((i) => (i - 1 + listing.images.length) % listing.images.length)}
-                      className="absolute left-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur text-white flex items-center justify-center transition-all sm:opacity-0 sm:group-hover:opacity-100">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
-                    </button>
-                    <button type="button" aria-label="Növbəti şəkil"
-                      onClick={() => setActiveImageIdx((i) => (i + 1) % listing.images.length)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 backdrop-blur text-white flex items-center justify-center transition-all sm:opacity-0 sm:group-hover:opacity-100">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
-                    </button>
-                  </>
-                )}
-                </>
-              ) : (
-                <div className="text-center">
-                  <svg className="w-20 h-20 text-muted-foreground/20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    {isService ? (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z" />
-                    ) : (
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-                    )}
-                  </svg>
+          {/* ── QALEREYA (eBay quruluşu) ──
+              Kiçik şəkillər ŞƏKLİN ALTINDA yox, SOLUNDA — yuxarıdan aşağı.
+              Əsas şəkil `object-contain` ilə göstərilir: `object-cover` məhsulu
+              kəsirdi və `aspect-video` onu həddən artıq iri edirdi.
+              Telefonda şaquli zolaq dar gəldiyi üçün kiçiklər aşağıda üfüqi qalır. */}
+          <div className="bg-card border border-card-border rounded-2xl p-3">
+            <div className="flex gap-3">
+              {/* Kiçik şəkillər — masaüstündə solda, şaquli */}
+              {listing.images?.length > 1 && (
+                <div className="hidden sm:flex flex-col gap-2 w-[68px] shrink-0 max-h-[520px] overflow-y-auto">
+                  {listing.images.map((img: string, idx: number) => {
+                    const src = img.startsWith('http') ? img : `${imgUrl(img)}`;
+                    const isActive = idx === Math.min(activeImageIdx, listing.images.length - 1);
+                    return (
+                      <button key={idx} type="button"
+                        onClick={() => setActiveImageIdx(idx)}
+                        onMouseEnter={() => setActiveImageIdx(idx)}
+                        className={`relative shrink-0 w-[68px] h-[68px] overflow-hidden border transition-all bg-white ${
+                          isActive ? "border-[var(--brand-to)] ring-1 ring-[var(--brand-to)]" : "border-card-border hover:border-[var(--brand-to)]/60"
+                        }`}
+                        aria-label={`Şəkil ${idx + 1}`}>
+                        <img src={src} alt="" loading="lazy" className="w-full h-full object-contain" />
+                      </button>
+                    );
+                  })}
                 </div>
               )}
+
+              {/* Əsas şəkil */}
+              <div className="relative flex-1 min-w-0 aspect-square max-h-[520px] tile-soft flex items-center justify-center group overflow-hidden">
+                {listing.images?.length > 0 ? (
+                  <>
+                    <img
+                      src={(() => {
+                        const img = listing.images[Math.min(activeImageIdx, listing.images.length - 1)];
+                        return img.startsWith('http') ? img : `${imgUrl(img)}`;
+                      })()}
+                      loading="lazy"
+                      alt={listing.title}
+                      className="w-full h-full object-contain"
+                    />
+                    {listing.images.length > 1 && (
+                      <>
+                        <span className="absolute bottom-3 right-3 px-2.5 py-1 bg-black/60 backdrop-blur text-white text-xs font-semibold rounded-lg">
+                          {Math.min(activeImageIdx, listing.images.length - 1) + 1} / {listing.images.length}
+                        </span>
+                        <button type="button" aria-label="Əvvəlki şəkil"
+                          onClick={() => setActiveImageIdx((i) => (i - 1 + listing.images.length) % listing.images.length)}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-md text-foreground flex items-center justify-center transition-all sm:opacity-0 sm:group-hover:opacity-100">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                        </button>
+                        <button type="button" aria-label="Növbəti şəkil"
+                          onClick={() => setActiveImageIdx((i) => (i + 1) % listing.images.length)}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white shadow-md text-foreground flex items-center justify-center transition-all sm:opacity-0 sm:group-hover:opacity-100">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center">
+                    <svg className="w-20 h-20 text-muted-foreground/20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {isService ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
+                      )}
+                    </svg>
+                  </div>
+                )}
+              </div>
             </div>
+
+            {/* Telefonda kiçiklər aşağıda üfüqi */}
             {listing.images?.length > 1 && (
-              <div className="flex gap-2 p-3 overflow-x-auto">
+              <div className="sm:hidden flex gap-2 pt-3 overflow-x-auto">
                 {listing.images.map((img: string, idx: number) => {
                   const src = img.startsWith('http') ? img : `${imgUrl(img)}`;
                   const isActive = idx === Math.min(activeImageIdx, listing.images.length - 1);
                   return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setActiveImageIdx(idx)}
-                      className={`relative shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden border-2 transition-all ${
-                        isActive ? "border-[var(--brand-to)] shadow-md shadow-[var(--brand-to)]/25" : "border-transparent opacity-70 hover:opacity-100"
-                      }`}
-                      aria-label={`Şəkil ${idx + 1}`}
-                    >
-                      <img src={src} alt={`${listing.title} ${idx + 1}`} loading="lazy" className="w-full h-full object-cover" />
+                    <button key={idx} type="button" onClick={() => setActiveImageIdx(idx)}
+                      className={`relative shrink-0 w-16 h-16 overflow-hidden border bg-white ${isActive ? "border-[var(--brand-to)] ring-1 ring-[var(--brand-to)]" : "border-card-border"}`}
+                      aria-label={`Şəkil ${idx + 1}`}>
+                      <img src={src} alt="" loading="lazy" className="w-full h-full object-contain" />
                     </button>
                   );
                 })}
