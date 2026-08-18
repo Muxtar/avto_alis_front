@@ -86,6 +86,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
         });
       }
+      // Header-dəki sayğac yenilənsin (kontekst bu hadisəni dinləyir).
+      window.dispatchEvent(new Event("favorites-changed"));
     } catch {
       setIsFavorited(!newState); // geri al
     }

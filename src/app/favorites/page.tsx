@@ -37,6 +37,7 @@ export default function FavoritesPage() {
         method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
       });
       setFavorites(prev => prev.filter(f => f.listingId !== listingId));
+      window.dispatchEvent(new Event("favorites-changed"));
       toast(t('removedFromFavorites'), 'success');
     } catch { toast(t('error'), 'error'); }
   };

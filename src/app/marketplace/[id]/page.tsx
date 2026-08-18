@@ -90,6 +90,7 @@ export default function ListingDetailPage() {
         await fetch(`${API}/favorites`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ listingId: listing.id }) });
         setIsFavorited(true);
       }
+      window.dispatchEvent(new Event("favorites-changed"));
     } catch { toast(t("error"), "error"); } finally { setFavBusy(false); }
   };
 

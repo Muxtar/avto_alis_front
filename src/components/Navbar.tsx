@@ -60,7 +60,7 @@ export default function Navbar() {
   const { locale, setLocale, t } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { user, token, isLoggedIn, logout, unreadMessages } = useAuth();
-  const { cartCount } = useCart();
+  const { cartCount, favCount } = useCart();
   const { toast } = useToast();
   const router = useRouter();
   const [langOpen, setLangOpen] = useState(false);
@@ -825,7 +825,16 @@ export default function Navbar() {
               {isLoggedIn && <NotificationBell />}
 
               <Link href="/favorites" className="flex flex-col items-center text-white/85 hover:text-white transition-colors px-1.5 py-1 rounded-md hover:ring-1 hover:ring-white/40" title={t("favorites")}>
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                {/* Sayğac ürəyin üstündə — səbətdəki ilə eyni üslub. Sıfır olanda
+                    göstərilmir ki, header lüzumsuz rəqəmlə dolmasın. */}
+                <span className="relative">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
+                  {isLoggedIn && favCount > 0 && (
+                    <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 min-w-[18px] h-[18px] px-1 text-white text-[11px] font-extrabold rounded-full flex items-center justify-center" style={{ background: PINK }}>
+                      {favCount > 99 ? "99+" : favCount}
+                    </span>
+                  )}
+                </span>
                 <span className="text-[10px] mt-0.5 hidden lg:inline">{t("favorites")}</span>
               </Link>
 
