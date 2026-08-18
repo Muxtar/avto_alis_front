@@ -325,6 +325,19 @@ export default function AdminListingsPage() {
                           <div className="text-orange-500 font-bold text-sm shrink-0">{formatPriceShort(listing.price)} AZN</div>
 
                           <div className="flex gap-1.5 shrink-0">
+                            {/* Təsdiqlənmiş elan saytda görünür — bir kliklə satış
+                                səhifəsini yeni tabda aç. Yalnız APPROVED üçün:
+                                digər statuslarda səhifə ictimai deyil, link ölü olardı. */}
+                            {listing.status === 'APPROVED' && (
+                              <a href={`/marketplace/${listing.id}`} target="_blank" rel="noopener noreferrer"
+                                title="Saytda aç — satış səhifəsi"
+                                className="flex items-center gap-1 px-2.5 py-2 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-semibold hover:bg-blue-500/20 transition-colors">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+                                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" />
+                                </svg>
+                                Saytda bax
+                              </a>
+                            )}
                             {listing.status !== 'APPROVED' && (
                               <button onClick={() => setStatus(listing.id, 'APPROVED', owner)} className="px-2.5 py-2 bg-green-500/10 text-green-500 rounded-lg text-xs font-semibold hover:bg-green-500/20 transition-colors">✓ Təsdiqlə</button>
                             )}
