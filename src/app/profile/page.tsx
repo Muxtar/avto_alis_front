@@ -884,14 +884,26 @@ export default function ProfilePage() {
           <h2 className="text-lg font-semibold flex items-center gap-2">🪪 Kimlik təsdiqi</h2>
           {(() => {
             const s = profile.idVerifyStatus;
-            const cls = s === "APPROVED" ? "bg-green-500/10 text-green-500" : s === "REJECTED" ? "bg-red-500/10 text-red-500" : s === "PENDING" ? "bg-amber-500/10 text-amber-500" : "bg-input-bg text-muted";
-            const label = s === "APPROVED" ? "✓ Təsdiqlənib" : s === "REJECTED" ? "Rədd edildi" : s === "PENDING" ? "Yoxlanılır" : "Təsdiqlənməyib";
+            // İki vəziyyət var: profil TƏSDİQLƏNİB, ya da təsdiqlənməyib.
+            // Əvvəl PENDING üçün "Yoxlanılır" yazılırdı — istifadəçi bunu
+            // "təsdiqlənib" kimi başa düşürdü, halbuki profil hələ təsdiqsizdir
+            // və biznes yaratmaq mümkün deyil. Gözləmə/rədd izahı aşağıdakı
+            // sətirdə verilir, nişanın özü isə birmənalıdır.
+            const ok = s === "APPROVED";
+            const cls = ok ? "bg-green-500/15 text-green-600" : s === "REJECTED" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-600";
+            const label = ok ? "✓ Təsdiqlənmiş profil" : "Təsdiqlənməmiş profil";
             return <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${cls}`}>{label}</span>;
           })()}
         </div>
         <p className="text-xs text-muted mb-3">Kimlik <b>Veriff</b> ilə təsdiqlənir — şəxsiyyət vəsiqəsi, sürücülük vəsiqəsi və ya pasport + video-selfie. Təsdiqdən sonra ad, FIN, doğum tarixi və cins avtomatik doldurulur.</p>
         {profile.idVerifyStatus !== "APPROVED" && !showIdentity && (
-          <p className="text-[11px] text-amber-500 mb-3">ⓘ Profiliniz təsdiqlənməyib. Təsdiq üçün «Profilini təsdiqlə» düyməsinə basın və Veriff ilə kimliyinizi doğrulayın.</p>
+          <p className="text-[11px] text-amber-600 mb-3">
+            {profile.idVerifyStatus === "PENDING"
+              ? "ⓘ Kimlik yoxlamanız davam edir. Təsdiqlənənə qədər profil təsdiqlənməmiş sayılır və biznes yarada bilməzsiniz."
+              : profile.idVerifyStatus === "REJECTED"
+                ? "ⓘ Kimlik təsdiqiniz rədd edilib. «Kimliyi yenidən təsdiqlə» düyməsi ilə yenidən cəhd edin."
+                : "ⓘ Profiliniz təsdiqlənməyib. Təsdiq üçün «Profilini təsdiqlə» düyməsinə basın və Veriff ilə kimliyinizi doğrulayın. Biznes yaratmaq üçün bu tələb olunur."}
+          </p>
         )}
         {(profile.idCardImage || profile.selfieImage) && !showIdentity && (
           <div className="mb-3">

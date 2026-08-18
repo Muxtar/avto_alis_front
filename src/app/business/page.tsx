@@ -55,6 +55,8 @@ export default function BusinessPage() {
   const [bizEditDoc, setBizEditDoc] = useState<File | null>(null); // yeni şirkət/vergi sənədi
   const [bizEditBank, setBizEditBank] = useState<File | null>(null); // yeni bank sənədi
   const [busy, setBusy] = useState(false);
+  // Kimlik statusu — istifadəçiyə dəqiq səbəb göstərmək üçün.
+  const [idStatus, setIdStatus] = useState<string | null>(null);
   const [idVerified, setIdVerified] = useState<boolean | null>(null); // kimlik təqdim olunub?
   const [identityReusable, setIdentityReusable] = useState(false); // kimlik+üz təsdiqlənib (>50%) → biznesdə təkrar istənilmir
 
@@ -93,9 +95,11 @@ export default function BusinessPage() {
       setPublicId(pid.publicId || "");
       // Kimlik + üz təsdiqi olmadan biznes yaratmaq olmaz.
       const me = await fetch(`${API}/me`, { headers: authH }).then((r) => r.json());
-      // Kimlik prosesi başladılıbsa (Veriff/AI) biznes əlavə etmək olar — test rejimində
-      // Veriff APPROVED-a çatmaya bilər, ona görə truthy status kifayətdir.
-      setIdVerified(!!me?.user?.idVerifyStatus);
+      // YALNIZ TƏSDİQLƏNMİŞ kimlik. Əvvəl istənilən dolu status kifayət edirdi —
+      // Veriff-i sadəcə başladan (və hətta rədd edilən) istifadəçi biznes
+      // yarada bilirdi. Server də eyni şərti yoxlayır.
+      setIdVerified(me?.user?.idVerifyStatus === "APPROVED");
+      setIdStatus(me?.user?.idVerifyStatus || null);
       const u = me?.user || {};
       const faceOk = (u.faceMatchScore ?? 0) > 0.5 || u.idAiFaceMatch === true || (u.idAiFaceScore ?? 0) > 0.5;
       // Kimlik profildə edilib — biznesdə vəsiqə+selfie təkrar istənilmir.
@@ -251,7 +255,7 @@ export default function BusinessPage() {
           {publicId && <span className="px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs font-mono">ID: <b>{publicId}</b></span>}
           <a href="/business/sales" className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10">{t("bizSales") || "Satış pəncərəsi"}</a>
           {idVerified === false ? (
-            <a href="/complete-profile" className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">Profili tamamlayın</a>
+            <a href="/profile" className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">🪪 Profilini təsdiqlə</a>
           ) : (
             <button onClick={openForm} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">{showForm ? (t("adminCancel") || "Bağla") : `+ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
           )}
@@ -263,9 +267,21 @@ export default function BusinessPage() {
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-5 flex items-start gap-3">
           <span className="text-2xl">🪪</span>
           <div className="flex-1">
-            <p className="font-semibold text-sm">Biznes yaratmaq üçün kimlik təsdiqi lazımdır</p>
-            <p className="text-xs text-muted mt-0.5">Şəxsiyyət vəsiqəsi şəkli + selfie ilə profilinizi tamamlayın, sonra biznes əlavə edə bilərsiniz.</p>
-            <a href="/complete-profile" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">Profili tamamla →</a>
+            <p className="font-semibold text-sm">
+              {idStatus === "PENDING" ? "Kimlik yoxlamanız davam edir" : "Biznes yaratmaq üçün əvvəlcə profilinizi təsdiqləyin"}
+            </p>
+            <p className="text-xs text-muted mt-0.5">
+              {idStatus === "PENDING"
+                ? "Veriff yoxlaması bitənə qədər profiliniz təsdiqlənməmiş sayılır. Təsdiqləndikdən sonra biznes əlavə edə biləcəksiniz."
+                : idStatus === "REJECTED"
+                  ? "Kimlik təsdiqiniz rədd edilib. Profil səhifəsindən yenidən cəhd edin — təsdiqdən sonra biznes yarada bilərsiniz."
+                  : "Profiliniz təsdiqlənməmiş profildir. Veriff ilə kimliyinizi doğrulayın — bundan sonra biznes əlavə edə bilərsiniz."}
+            </p>
+            {idStatus !== "PENDING" && (
+              <a href="/profile" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">
+                {idStatus === "REJECTED" ? "Yenidən təsdiqlə →" : "Profilini təsdiqlə →"}
+              </a>
+            )}
           </div>
         </div>
       )}
