@@ -403,17 +403,32 @@ export default function AdminBusinessesPage() {
                       {busyId === b.id ? "AI oxuyur…" : "🤖 AI ilə sənəddən doldur"}
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <label className="text-[11px] text-muted">Ad<input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
+                  {/* Sahələr ALT-ALTA və məhdud enlə. Səhifə tam enə keçəndən
+                      sonra 2 sütunlu şəbəkə hər xananı ~700px edirdi — qısa
+                      dəyərlər (VÖEN, telefon) üçün mənasız dərəcədə geniş idi. */}
+                  <div className="flex flex-col gap-2 max-w-md">
+                    <label className="text-[11px] text-muted">Ad
+                      <input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                        className="w-full mt-0.5 px-2.5 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" />
+                    </label>
                     <label className="text-[11px] text-muted">
                       VÖEN {dupVoen.length > 0 && <span className="text-red-500 font-bold">⚠ TƏKRAR</span>}
                       <input value={edit.voen}
                         onChange={(e) => { setEdit({ ...edit, voen: e.target.value }); checkVoen(edit.id, e.target.value); }}
-                        className={`w-full mt-0.5 px-2 py-1.5 bg-input-bg border rounded-lg text-sm ${dupVoen.length > 0 ? "border-red-500 ring-1 ring-red-500/40 text-red-600 font-semibold" : "border-input-border"}`} />
+                        className={`w-full mt-0.5 px-2.5 py-1.5 bg-input-bg border rounded-lg text-sm font-mono ${dupVoen.length > 0 ? "border-red-500 ring-1 ring-red-500/40 text-red-600 font-semibold" : "border-input-border"}`} />
                     </label>
-                    <label className="text-[11px] text-muted">Sahibi/Rəhbər<input value={edit.ownerName} onChange={(e) => setEdit({ ...edit, ownerName: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
-                    <label className="text-[11px] text-muted">Təsisçi<input value={edit.founderName} onChange={(e) => setEdit({ ...edit, founderName: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
-                    <label className="text-[11px] text-muted sm:col-span-2">Telefon<input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })} className="w-full mt-0.5 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" /></label>
+                    <label className="text-[11px] text-muted">Sahibi/Rəhbər
+                      <input value={edit.ownerName} onChange={(e) => setEdit({ ...edit, ownerName: e.target.value })}
+                        className="w-full mt-0.5 px-2.5 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" />
+                    </label>
+                    <label className="text-[11px] text-muted">Təsisçi
+                      <input value={edit.founderName} onChange={(e) => setEdit({ ...edit, founderName: e.target.value })}
+                        className="w-full mt-0.5 px-2.5 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" />
+                    </label>
+                    <label className="text-[11px] text-muted">Telefon
+                      <input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })}
+                        className="w-full mt-0.5 px-2.5 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" />
+                    </label>
                   </div>
                   <div className="flex gap-2">
                     {/* ── DUBLİKAT XƏBƏRDARLIĞI ──
