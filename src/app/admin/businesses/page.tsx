@@ -274,20 +274,35 @@ export default function AdminBusinessesPage() {
                     {b.user.idVerifyStatus === "APPROVED" ? "✓ Təsdiqlənmiş kimlik" : b.user.idVerifyStatus ? "Kimlik yoxlanılır" : "Kimlik təsdiqlənməyib"}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-0.5 text-xs">
-                  <p><span className="text-muted">Ad:</span> <b>{b.user.name || "—"}</b></p>
-                  <p><span className="text-muted">FIN:</span> <b>{b.user.idNumber || "—"}</b></p>
-                  <p><span className="text-muted">Doğum:</span> <b>{b.user.birthDate ? new Date(b.user.birthDate).toLocaleDateString("az-AZ") : "—"}</b></p>
-                  <p><span className="text-muted">Cins:</span> <b>{b.user.gender || "—"}</b></p>
-                </div>
-                <p className="text-[11px] mt-1.5">
-                  <span className="text-muted">Sənəddəki sahib:</span> <b>{b.ownerName || "(admin doldurmayıb)"}</b>
-                  {b.ownerName && b.user.name && (
-                    nameMatch(b.user.name, b.ownerName)
-                      ? <span className="text-emerald-500 ml-1.5">✓ ad uyğun görünür</span>
-                      : <span className="text-amber-500 ml-1.5">⚠ ad fərqlidir — yoxlayın</span>
-                  )}
-                </p>
+                {/* Etiket/dəyər cütləri — iki sütunlu şəbəkə. Etiket sütunu ən uzun
+                    sözə görə ölçülür, ona görə BÜTÜN dəyərlər eyni şaquli xətdən
+                    başlayır. Əvvəl 4 sütunlu şəbəkə idi və "Sənəddəki sahib" ayrıca
+                    sətirdə qalırdı — göz müqayisə edə bilmirdi. */}
+                <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+                  <dt className="text-muted">Ad</dt>
+                  <dd className="font-semibold break-words">{b.user.name || "—"}</dd>
+
+                  <dt className="text-muted">FIN</dt>
+                  <dd className="font-semibold font-mono">{b.user.idNumber || "—"}</dd>
+
+                  <dt className="text-muted">Doğum</dt>
+                  <dd className="font-semibold">{b.user.birthDate ? new Date(b.user.birthDate).toLocaleDateString("az-AZ") : "—"}</dd>
+
+                  <dt className="text-muted">Cins</dt>
+                  <dd className="font-semibold">{b.user.gender || "—"}</dd>
+
+                  {/* Müqayisənin əsas sətri — yuxarıdakı "Ad" ilə yan-yana oxunsun deyə
+                      eyni şəbəkədədir və üstündən nazik xətlə ayrılır. */}
+                  <dt className="text-muted border-t border-input-border pt-1.5">Sənəddəki sahib</dt>
+                  <dd className="border-t border-input-border pt-1.5">
+                    <b className={b.ownerName ? "" : "text-muted font-normal"}>{b.ownerName || "(admin doldurmayıb)"}</b>
+                    {b.ownerName && b.user.name && (
+                      nameMatch(b.user.name, b.ownerName)
+                        ? <span className="text-emerald-500 ml-1.5 whitespace-nowrap">✓ ad uyğun görünür</span>
+                        : <span className="text-amber-500 ml-1.5 whitespace-nowrap">⚠ ad fərqlidir — yoxlayın</span>
+                    )}
+                  </dd>
+                </dl>
                 {(b.user.idCardImage || b.user.selfieImage) && (
                   <div className="flex gap-2 mt-2">
                     {b.user.idCardImage && (
