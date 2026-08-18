@@ -42,6 +42,8 @@ export default function AdminBusinessesPage() {
   const [rejectReason, setRejectReason] = useState<{ [id: number]: string }>({});
   const [busyId, setBusyId] = useState<number | null>(null); // AI əməliyyatı gedən biznes
   const [edit, setEdit] = useState<{ id: number; name: string; voen: string; ownerName: string; founderName: string; phone: string } | null>(null);
+  // Hansı biznesin bank bölməsi redaktə rejimindədir.
+  const [bankEditFor, setBankEditFor] = useState<number | null>(null);
   const [ibanInput, setIbanInput] = useState<{ [bizId: number]: string }>({});
   // Eyni VÖEN/IBAN başqa biznesdə varmı? Saxtakarlıq əlaməti — admin təsdiqdən
   // əvvəl görsün ki, yüzlərlə VÖEN-i əl ilə tutuşdurmasın.
@@ -263,10 +265,6 @@ export default function AdminBusinessesPage() {
                   className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/25 hover:bg-blue-500/20 active:scale-95 transition disabled:opacity-50">
                   {busyId === b.id ? "Yoxlanılır…" : <><span aria-hidden>🤖</span>AI yoxla</>}
                 </button>
-                <button onClick={() => (edit?.id === b.id ? setEdit(null) : startEdit(b))} title="Məlumatları əl ilə redaktə et"
-                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold bg-orange-500/10 text-orange-600 border border-orange-500/25 hover:bg-orange-500/20 active:scale-95 transition">
-                  {edit?.id === b.id ? <><span aria-hidden>✕</span>Bağla</> : <><span aria-hidden>✏️</span>Redaktə et</>}
-                </button>
                 <button onClick={() => toggleBusinessActive(b.id, b.name, !b.isActive)}
                   title={b.isActive ? "Deaktiv et — elanlar saytda görünməsin (silinmir)" : "Aktiv et"}
                   className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold border active:scale-95 transition ${b.isActive ? "bg-amber-500/10 text-amber-600 border-amber-500/25 hover:bg-amber-500/20" : "bg-green-500/10 text-green-600 border-green-500/25 hover:bg-green-500/20"}`}>
@@ -282,6 +280,9 @@ export default function AdminBusinessesPage() {
               <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
                 <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
                   <p className="text-[11px] font-semibold text-muted">🪪 Yaradanın kimliyi (sənəddəki sahiblə müqayisə edin)</p>
+                  {/* Bu sahələr istifadəçinin təsdiqlənmiş KYC məlumatıdır —
+                      biznes kartından dəyişdirilmir, "İstifadəçilər" bölməsindən
+                      idarə olunur. Yanlış redaktə kimlik yoxlamasını mənasız edərdi. */}
                   <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${b.user.idVerifyStatus === "APPROVED" ? "text-emerald-500 bg-emerald-500/10" : b.user.idVerifyStatus ? "text-amber-500 bg-amber-500/10" : "text-red-500 bg-red-500/10"}`}>
                     {b.user.idVerifyStatus === "APPROVED" ? "✓ Təsdiqlənmiş kimlik" : b.user.idVerifyStatus ? "Kimlik yoxlanılır" : "Kimlik təsdiqlənməyib"}
                   </span>
@@ -327,49 +328,137 @@ export default function AdminBusinessesPage() {
                 )}
               </div>
 
-              {/* ── ŞİRKƏT MƏLUMATLARI (salt-oxunur) ──
-                  Yaradanın kimliyi ilə EYNİ görünüşdə, dərhal onun altında.
-                  Əvvəl bu məlumatlar yalnız "Redaktə et" açılanda görünürdü —
-                  admin saxlanmış VÖEN/sahib/təsisçini yoxlamaq üçün formu
-                  açmağa məcbur idi. */}
-              <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
-                <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
-                  <p className="text-[11px] font-semibold text-muted">🏢 Şirkət məlumatları (sənəddən daxil edilib)</p>
-                  {!b.voen && <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 text-amber-600 bg-amber-500/10">Doldurulmayıb</span>}
+                {/* ── ŞİRKƏT MƏLUMATLARI — baxış və REDAKTƏ eyni yerdə ──
+                    Ayrıca redaktə forması yoxdur: "Redaktə et" basanda elə bu blokdakı
+                    sətirlər inputa çevrilir. Beləliklə admin harada nə dəyişdiyini görür
+                    və eyni yerdən saxlayır. */}
+                <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
+                  <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                    <p className="text-[11px] font-semibold text-muted">🏢 Şirkət məlumatları (sənəddən daxil edilib)</p>
+                    <div className="flex items-center gap-1.5">
+                      {edit?.id === b.id && (
+                        <button onClick={() => aiFill(b.id)} disabled={busyId === b.id}
+                          className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/25 hover:bg-blue-500/20 disabled:opacity-50">
+                          {busyId === b.id ? "AI oxuyur…" : "🤖 AI ilə doldur"}
+                        </button>
+                      )}
+                      <button onClick={() => (edit?.id === b.id ? setEdit(null) : startEdit(b))}
+                        className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-semibold bg-orange-500/10 text-orange-600 border border-orange-500/25 hover:bg-orange-500/20">
+                        {edit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə et"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {edit?.id === b.id ? (
+                    /* Redaktə rejimi — eyni sətirlər, dəyər yerinə input. */
+                    <>
+                      <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1.5 text-xs items-center max-w-lg">
+                        <dt className="text-muted">Şirkət adı</dt>
+                        <dd><input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-card border border-input-border rounded-lg text-sm" /></dd>
+
+                        <dt className="text-muted">VÖEN {dupVoen.length > 0 && <span className="text-red-500 font-bold">⚠</span>}</dt>
+                        <dd><input value={edit.voen}
+                          onChange={(e) => { setEdit({ ...edit, voen: e.target.value }); checkVoen(edit.id, e.target.value); }}
+                          className={`w-full px-2.5 py-1.5 bg-card border rounded-lg text-sm font-mono ${dupVoen.length > 0 ? "border-red-500 ring-1 ring-red-500/40 text-red-600 font-semibold" : "border-input-border"}`} /></dd>
+
+                        <dt className="text-muted">Sahibi / Rəhbər</dt>
+                        <dd><input value={edit.ownerName} onChange={(e) => setEdit({ ...edit, ownerName: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-card border border-input-border rounded-lg text-sm" /></dd>
+
+                        <dt className="text-muted">Təsisçi</dt>
+                        <dd><input value={edit.founderName} onChange={(e) => setEdit({ ...edit, founderName: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-card border border-input-border rounded-lg text-sm" /></dd>
+
+                        <dt className="text-muted">Telefon</dt>
+                        <dd><input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-card border border-input-border rounded-lg text-sm" /></dd>
+                      </dl>
+
+                      <div className="mt-2 space-y-2">
+{dupVoen.length > 0 && (
+                  <div className="border-2 border-red-500 bg-red-500/10 rounded-xl p-3">
+                    <p className="text-sm font-bold text-red-600 mb-1">
+                      ⚠ Bu VÖEN artıq {dupVoen.length} biznesdə qeydiyyatdadır
+                    </p>
+                    <p className="text-[11px] text-muted mb-2">
+                      Eyni VÖEN ikinci dəfə istifadə olunur — saxta müraciət ola bilər. Təsdiqləməzdən əvvəl yoxlayın.
+                    </p>
+                    <div className="space-y-1">
+                      {dupVoen.map((d: any) => (
+                        <div key={d.id} className="flex items-center justify-between gap-2 bg-card rounded-lg px-2.5 py-1.5">
+                          <span className="min-w-0">
+                            <span className="text-xs font-semibold block truncate">{d.name}</span>
+                            <span className="text-[11px] text-muted">
+                              #{d.id} · VÖEN {d.voen} · {new Date(d.createdAt).toLocaleDateString("az-AZ")}
+                            </span>
+                          </span>
+                          <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${d.status === "APPROVED" ? "bg-green-500/15 text-green-600" : d.status === "REJECTED" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-600"}`}>
+                            {d.status}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {dupIban.length > 0 && (
+                  <div className="border-2 border-amber-500 bg-amber-500/10 rounded-xl p-3">
+                    <p className="text-sm font-bold text-amber-600 mb-1">⚠ Bu IBAN başqa biznesdə də var</p>
+                    <p className="text-[11px] text-muted mb-2">Pul eyni bank hesabına gedəcək — yoxlayın.</p>
+                    <div className="space-y-1">
+                      {dupIban.map((d: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between gap-2 bg-card rounded-lg px-2.5 py-1.5">
+                          <span className="text-xs font-semibold truncate">{d.name} <span className="font-normal text-muted">#{d.id}</span></span>
+                          <span className="text-[11px] font-mono text-muted shrink-0">{d.iban}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                      </div>
+
+                      <div className="flex gap-2 mt-2.5">
+                        <button onClick={saveEdit} disabled={busyId === b.id}
+                          className="h-9 px-4 rounded-xl bg-orange-500 text-white text-xs font-bold hover:brightness-110 active:scale-95 transition disabled:opacity-50">Yadda saxla</button>
+                        <button onClick={() => setEdit(null)}
+                          className="h-9 px-4 rounded-xl bg-card border border-input-border text-xs font-semibold hover:bg-input-bg">Ləğv et</button>
+                      </div>
+                    </>
+                  ) : (
+                    <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+                      <dt className="text-muted">Şirkət adı</dt>
+                      <dd className="font-semibold break-words">{b.name || <span className="text-muted font-normal">—</span>}</dd>
+
+                      <dt className="text-muted">VÖEN</dt>
+                      <dd className="font-semibold font-mono">{b.voen || <span className="text-muted font-normal">—</span>}</dd>
+
+                      <dt className="text-muted">Sahibi / Rəhbər</dt>
+                      <dd className="font-semibold break-words">{b.ownerName || <span className="text-muted font-normal">—</span>}</dd>
+
+                      <dt className="text-muted">Təsisçi</dt>
+                      <dd className="font-semibold break-words">{b.founderName || <span className="text-muted font-normal">—</span>}</dd>
+
+                      <dt className="text-muted">Telefon</dt>
+                      <dd className="font-semibold">{b.phone || <span className="text-muted font-normal">—</span>}</dd>
+
+                      <dt className="text-muted border-t border-input-border pt-1.5">Şəxs növü</dt>
+                      <dd className="border-t border-input-border pt-1.5 font-semibold">
+                        {b.kind === "LEGAL" ? "Hüquqi şəxs" : b.kind === "PHYSICAL" ? "Fiziki şəxs" : "—"}
+                      </dd>
+
+                      <dt className="text-muted">Sənəd növü</dt>
+                      <dd className="font-semibold">
+                        {b.proofType === "TAX_DOC" ? "Vergi qeydiyyatı sənədi" : b.proofType === "POWER_OF_ATTORNEY" ? "Etibarnamə" : "—"}
+                      </dd>
+
+                      <dt className="text-muted">Vəziyyət</dt>
+                      <dd className="font-semibold">
+                        <span className={b.isActive ? "text-green-600" : "text-amber-600"}>{b.isActive ? "Aktiv" : "Deaktiv"}</span>
+                        <span className="text-muted font-normal"> · {new Date(b.createdAt).toLocaleDateString("az-AZ")} tarixində yaradılıb</span>
+                      </dd>
+                    </dl>
+                  )}
                 </div>
-                <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
-                  <dt className="text-muted">Şirkət adı</dt>
-                  <dd className="font-semibold break-words">{b.name || <span className="text-muted font-normal">—</span>}</dd>
-
-                  <dt className="text-muted">VÖEN</dt>
-                  <dd className="font-semibold font-mono">{b.voen || <span className="text-muted font-normal">—</span>}</dd>
-
-                  <dt className="text-muted">Sahibi / Rəhbər</dt>
-                  <dd className="font-semibold break-words">{b.ownerName || <span className="text-muted font-normal">—</span>}</dd>
-
-                  <dt className="text-muted">Təsisçi</dt>
-                  <dd className="font-semibold break-words">{b.founderName || <span className="text-muted font-normal">—</span>}</dd>
-
-                  <dt className="text-muted">Telefon</dt>
-                  <dd className="font-semibold">{b.phone || <span className="text-muted font-normal">—</span>}</dd>
-
-                  <dt className="text-muted border-t border-input-border pt-1.5">Şəxs növü</dt>
-                  <dd className="border-t border-input-border pt-1.5 font-semibold">
-                    {b.kind === "LEGAL" ? "Hüquqi şəxs" : b.kind === "PHYSICAL" ? "Fiziki şəxs" : "—"}
-                  </dd>
-
-                  <dt className="text-muted">Sənəd növü</dt>
-                  <dd className="font-semibold">
-                    {b.proofType === "TAX_DOC" ? "Vergi qeydiyyatı sənədi" : b.proofType === "POWER_OF_ATTORNEY" ? "Etibarnamə" : "—"}
-                  </dd>
-
-                  <dt className="text-muted">Vəziyyət</dt>
-                  <dd className="font-semibold">
-                    <span className={b.isActive ? "text-green-600" : "text-amber-600"}>{b.isActive ? "Aktiv" : "Deaktiv"}</span>
-                    <span className="text-muted font-normal"> · {new Date(b.createdAt).toLocaleDateString("az-AZ")} tarixində yaradılıb</span>
-                  </dd>
-                </dl>
-              </div>
 
               {/* Claude AI sənəd yoxlaması */}
               {(b.aiAuthorized !== null || b.aiReason) && (
@@ -394,114 +483,30 @@ export default function AdminBusinessesPage() {
                   {b.aiReason && <p className="text-[11px] text-muted mt-1 leading-snug">{b.aiReason}</p>}
                 </div>
               )}
-              {edit?.id === b.id ? (
-                /* ── Redaktə formu (əl ilə və ya AI ilə doldur) ── */
-                <div className="mb-3 p-3 bg-orange-500/5 border border-orange-500/20 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <p className="text-[11px] font-semibold text-orange-500">✏️ Şirkət məlumatlarını redaktə et</p>
-                    <button onClick={() => aiFill(b.id)} disabled={busyId === b.id} className="px-2 py-1 rounded-lg text-[11px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 disabled:opacity-50">
-                      {busyId === b.id ? "AI oxuyur…" : "🤖 AI ilə sənəddən doldur"}
-                    </button>
-                  </div>
-                  {/* Sahələr ALT-ALTA və məhdud enlə. Səhifə tam enə keçəndən
-                      sonra 2 sütunlu şəbəkə hər xananı ~700px edirdi — qısa
-                      dəyərlər (VÖEN, telefon) üçün mənasız dərəcədə geniş idi. */}
-                  <div className="flex flex-col gap-2 max-w-md">
-                    <label className="text-[11px] text-muted">Ad
-                      <input value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })}
-                        className="w-full mt-0.5 px-2.5 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" />
-                    </label>
-                    <label className="text-[11px] text-muted">
-                      VÖEN {dupVoen.length > 0 && <span className="text-red-500 font-bold">⚠ TƏKRAR</span>}
-                      <input value={edit.voen}
-                        onChange={(e) => { setEdit({ ...edit, voen: e.target.value }); checkVoen(edit.id, e.target.value); }}
-                        className={`w-full mt-0.5 px-2.5 py-1.5 bg-input-bg border rounded-lg text-sm font-mono ${dupVoen.length > 0 ? "border-red-500 ring-1 ring-red-500/40 text-red-600 font-semibold" : "border-input-border"}`} />
-                    </label>
-                    <label className="text-[11px] text-muted">Sahibi/Rəhbər
-                      <input value={edit.ownerName} onChange={(e) => setEdit({ ...edit, ownerName: e.target.value })}
-                        className="w-full mt-0.5 px-2.5 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" />
-                    </label>
-                    <label className="text-[11px] text-muted">Təsisçi
-                      <input value={edit.founderName} onChange={(e) => setEdit({ ...edit, founderName: e.target.value })}
-                        className="w-full mt-0.5 px-2.5 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" />
-                    </label>
-                    <label className="text-[11px] text-muted">Telefon
-                      <input value={edit.phone} onChange={(e) => setEdit({ ...edit, phone: e.target.value })}
-                        className="w-full mt-0.5 px-2.5 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm" />
-                    </label>
-                  </div>
-                  <div className="flex gap-2">
-                    {/* ── DUBLİKAT XƏBƏRDARLIĞI ──
-                      Eyni VÖEN/IBAN başqa biznesdə varsa admin təsdiqdən əvvəl görür.
-                      Rədd etmək üçün konkret səbəb olur; VÖEN-ləri əl ilə
-                      tutuşdurmağa ehtiyac qalmır. */}
-                  {dupVoen.length > 0 && (
-                    <div className="border-2 border-red-500 bg-red-500/10 rounded-xl p-3">
-                      <p className="text-sm font-bold text-red-600 mb-1">
-                        ⚠ Bu VÖEN artıq {dupVoen.length} biznesdə qeydiyyatdadır
-                      </p>
-                      <p className="text-[11px] text-muted mb-2">
-                        Eyni VÖEN ikinci dəfə istifadə olunur — saxta müraciət ola bilər. Təsdiqləməzdən əvvəl yoxlayın.
-                      </p>
-                      <div className="space-y-1">
-                        {dupVoen.map((d: any) => (
-                          <div key={d.id} className="flex items-center justify-between gap-2 bg-card rounded-lg px-2.5 py-1.5">
-                            <span className="min-w-0">
-                              <span className="text-xs font-semibold block truncate">{d.name}</span>
-                              <span className="text-[11px] text-muted">
-                                #{d.id} · VÖEN {d.voen} · {new Date(d.createdAt).toLocaleDateString("az-AZ")}
-                              </span>
-                            </span>
-                            <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold ${d.status === "APPROVED" ? "bg-green-500/15 text-green-600" : d.status === "REJECTED" ? "bg-red-500/15 text-red-500" : "bg-amber-500/15 text-amber-600"}`}>
-                              {d.status}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  {dupIban.length > 0 && (
-                    <div className="border-2 border-amber-500 bg-amber-500/10 rounded-xl p-3">
-                      <p className="text-sm font-bold text-amber-600 mb-1">⚠ Bu IBAN başqa biznesdə də var</p>
-                      <p className="text-[11px] text-muted mb-2">Pul eyni bank hesabına gedəcək — yoxlayın.</p>
-                      <div className="space-y-1">
-                        {dupIban.map((d: any, i: number) => (
-                          <div key={i} className="flex items-center justify-between gap-2 bg-card rounded-lg px-2.5 py-1.5">
-                            <span className="text-xs font-semibold truncate">{d.name} <span className="font-normal text-muted">#{d.id}</span></span>
-                            <span className="text-[11px] font-mono text-muted shrink-0">{d.iban}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                    <button onClick={saveEdit} disabled={busyId === b.id} className="px-4 py-1.5 bg-orange-500 text-white rounded-lg text-sm font-semibold disabled:opacity-50">Yadda saxla</button>
-                    <button onClick={() => setEdit(null)} className="px-4 py-1.5 bg-input-bg border border-input-border rounded-lg text-sm">Ləğv et</button>
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm mb-3">
-                  <p><span className="text-muted text-xs">VÖEN:</span> {b.voen}</p>
-                  <p><span className="text-muted text-xs">{t("phone") || "Tel"}:</span> {b.phone || "—"}</p>
-                  <p><span className="text-muted text-xs">{t("bizOwner") || "Sahibi"}:</span> {b.ownerName}</p>
-                  <p><span className="text-muted text-xs">{t("bizFounder") || "Təsisçi"}:</span> {b.founderName}</p>
-                </div>
-              )}
 
               {/* Bank hesabları — admin yoxlayır (biznes təsdiqi bankları da əhatə edir) */}
-              <div className="mb-3">
-                <p className="text-xs font-semibold text-muted mb-1">🏦 Bank hesabları:</p>
+              <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                  <p className="text-[11px] font-semibold text-muted">🏦 Bank hesabları</p>
+                  <button onClick={() => setBankEditFor(bankEditFor === b.id ? null : b.id)}
+                    className="inline-flex items-center gap-1 h-7 px-2.5 rounded-lg text-[11px] font-semibold bg-orange-500/10 text-orange-600 border border-orange-500/25 hover:bg-orange-500/20">
+                    {bankEditFor === b.id ? "✕ Bağla" : "✏️ Redaktə et"}
+                  </button>
+                </div>
                 {b.banks?.length ? (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {b.banks.map((bk) => (
                       <span key={bk.id} className="inline-flex items-center gap-1.5 px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs font-mono">
                         {bk.iban}{bk.title ? <span className="text-muted font-sans">({bk.title})</span> : null}
-                        <button onClick={() => deleteBank(bk.id)} title="Bank hesabını sil" className="text-red-500 hover:text-red-600 font-bold leading-none">×</button>
+                        {bankEditFor === b.id && (
+                          <button onClick={() => deleteBank(bk.id)} title="Bank hesabını sil" className="text-red-500 hover:text-red-600 font-bold leading-none">×</button>
+                        )}
                       </span>
                     ))}
                   </div>
                 ) : <p className="text-xs text-muted mb-2">Hələ IBAN yoxdur — sənədə (aşağıda «Bank sənədi») baxıb əlavə edin.</p>}
-                {/* Sənədə baxıb IBAN əlavə et */}
+                {/* Sənədə baxıb IBAN əlavə et — yalnız redaktə rejimində */}
+                {bankEditFor === b.id && (
                 <div className="flex items-center gap-2">
                   <input
                     value={ibanInput[b.id] || ""}
@@ -510,8 +515,9 @@ export default function AdminBusinessesPage() {
                     placeholder="AZ00 XXXX 0000 ... (sənəddən)"
                     className="flex-1 sm:max-w-xs px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs font-mono"
                   />
-                  <button onClick={() => addBank(b.id)} className="px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20 hover:bg-orange-500/20">+ IBAN əlavə et</button>
+                  <button onClick={() => addBank(b.id)} className="h-9 px-3.5 rounded-xl text-xs font-semibold bg-orange-500 text-white hover:brightness-110 active:scale-95 transition">+ Əlavə et</button>
                 </div>
+                )}
               </div>
 
               {/* KYC sənədləri — admin əllə yoxlayır (üz tanıma) */}
