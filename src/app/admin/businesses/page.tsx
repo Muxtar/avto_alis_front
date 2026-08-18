@@ -255,15 +255,27 @@ export default function AdminBusinessesPage() {
               {openId === b.id && (
               <div className="mt-3">
               {/* Əməliyyatlar */}
-              <div className="flex items-center gap-1.5 flex-wrap mb-3">
-                <button onClick={() => aiRecheck(b.id)} disabled={busyId === b.id} title="Sənədləri AI ilə yenidən yoxla" className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-blue-500/10 text-blue-500 border border-blue-500/20 hover:bg-blue-500/20 disabled:opacity-50">{busyId === b.id ? "…" : "🤖 AI yoxla"}</button>
-                <button onClick={() => (edit?.id === b.id ? setEdit(null) : startEdit(b))} title="Məlumatları əl ilə redaktə et" className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-orange-500/10 text-orange-500 border border-orange-500/20 hover:bg-orange-500/20">{edit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə"}</button>
+              {/* Əməliyyat düymələri — barmaqla da rahat basılan ölçü (h-9),
+                  oxunaqlı mətn. Əvvəl `py-0.5` + 11px idi: sıxılmış və zəif
+                  görünürdü, mobil ekranda düz basmaq çətin idi. */}
+              <div className="flex items-center gap-2 flex-wrap mb-3">
+                <button onClick={() => aiRecheck(b.id)} disabled={busyId === b.id} title="Sənədləri AI ilə yenidən yoxla"
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold bg-blue-500/10 text-blue-600 border border-blue-500/25 hover:bg-blue-500/20 active:scale-95 transition disabled:opacity-50">
+                  {busyId === b.id ? "Yoxlanılır…" : <><span aria-hidden>🤖</span>AI yoxla</>}
+                </button>
+                <button onClick={() => (edit?.id === b.id ? setEdit(null) : startEdit(b))} title="Məlumatları əl ilə redaktə et"
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold bg-orange-500/10 text-orange-600 border border-orange-500/25 hover:bg-orange-500/20 active:scale-95 transition">
+                  {edit?.id === b.id ? <><span aria-hidden>✕</span>Bağla</> : <><span aria-hidden>✏️</span>Redaktə et</>}
+                </button>
                 <button onClick={() => toggleBusinessActive(b.id, b.name, !b.isActive)}
                   title={b.isActive ? "Deaktiv et — elanlar saytda görünməsin (silinmir)" : "Aktiv et"}
-                  className={`px-2 py-0.5 rounded-lg text-[11px] font-medium border ${b.isActive ? "bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20" : "bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20"}`}>
-                  {b.isActive ? "⏸ Deaktiv et" : "▶ Aktiv et"}
+                  className={`inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold border active:scale-95 transition ${b.isActive ? "bg-amber-500/10 text-amber-600 border-amber-500/25 hover:bg-amber-500/20" : "bg-green-500/10 text-green-600 border-green-500/25 hover:bg-green-500/20"}`}>
+                  {b.isActive ? <><span aria-hidden>⏸</span>Deaktiv et</> : <><span aria-hidden>▶</span>Aktiv et</>}
                 </button>
-                <button onClick={() => deleteBusiness(b.id, b.name)} title="Biznesi sil (obyektlər + elanlar da silinir)" className="px-2 py-0.5 rounded-lg text-[11px] font-medium bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20">🗑 Sil</button>
+                <button onClick={() => deleteBusiness(b.id, b.name)} title="Biznesi sil — elanlar saytdan götürülür, satış tarixçəsi qalır"
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-xl text-xs font-semibold bg-red-500/10 text-red-500 border border-red-500/25 hover:bg-red-500/20 active:scale-95 transition ml-auto">
+                  <span aria-hidden>🗑</span>Sil
+                </button>
               </div>
 
               {/* Yaradanın təsdiqlənmiş kimliyi — admin sənəddəki sahiblə müqayisə etsin */}
@@ -313,6 +325,50 @@ export default function AdminBusinessesPage() {
                     )}
                   </div>
                 )}
+              </div>
+
+              {/* ── ŞİRKƏT MƏLUMATLARI (salt-oxunur) ──
+                  Yaradanın kimliyi ilə EYNİ görünüşdə, dərhal onun altında.
+                  Əvvəl bu məlumatlar yalnız "Redaktə et" açılanda görünürdü —
+                  admin saxlanmış VÖEN/sahib/təsisçini yoxlamaq üçün formu
+                  açmağa məcbur idi. */}
+              <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-lg">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+                  <p className="text-[11px] font-semibold text-muted">🏢 Şirkət məlumatları (sənəddən daxil edilib)</p>
+                  {!b.voen && <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 text-amber-600 bg-amber-500/10">Doldurulmayıb</span>}
+                </div>
+                <dl className="grid grid-cols-[max-content_1fr] gap-x-3 gap-y-1 text-xs">
+                  <dt className="text-muted">Şirkət adı</dt>
+                  <dd className="font-semibold break-words">{b.name || <span className="text-muted font-normal">—</span>}</dd>
+
+                  <dt className="text-muted">VÖEN</dt>
+                  <dd className="font-semibold font-mono">{b.voen || <span className="text-muted font-normal">—</span>}</dd>
+
+                  <dt className="text-muted">Sahibi / Rəhbər</dt>
+                  <dd className="font-semibold break-words">{b.ownerName || <span className="text-muted font-normal">—</span>}</dd>
+
+                  <dt className="text-muted">Təsisçi</dt>
+                  <dd className="font-semibold break-words">{b.founderName || <span className="text-muted font-normal">—</span>}</dd>
+
+                  <dt className="text-muted">Telefon</dt>
+                  <dd className="font-semibold">{b.phone || <span className="text-muted font-normal">—</span>}</dd>
+
+                  <dt className="text-muted border-t border-input-border pt-1.5">Şəxs növü</dt>
+                  <dd className="border-t border-input-border pt-1.5 font-semibold">
+                    {b.kind === "LEGAL" ? "Hüquqi şəxs" : b.kind === "PHYSICAL" ? "Fiziki şəxs" : "—"}
+                  </dd>
+
+                  <dt className="text-muted">Sənəd növü</dt>
+                  <dd className="font-semibold">
+                    {b.proofType === "TAX_DOC" ? "Vergi qeydiyyatı sənədi" : b.proofType === "POWER_OF_ATTORNEY" ? "Etibarnamə" : "—"}
+                  </dd>
+
+                  <dt className="text-muted">Vəziyyət</dt>
+                  <dd className="font-semibold">
+                    <span className={b.isActive ? "text-green-600" : "text-amber-600"}>{b.isActive ? "Aktiv" : "Deaktiv"}</span>
+                    <span className="text-muted font-normal"> · {new Date(b.createdAt).toLocaleDateString("az-AZ")} tarixində yaradılıb</span>
+                  </dd>
+                </dl>
               </div>
 
               {/* Claude AI sənəd yoxlaması */}
