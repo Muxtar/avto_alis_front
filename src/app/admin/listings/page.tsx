@@ -316,7 +316,23 @@ export default function AdminListingsPage() {
                                   {listing.status === 'APPROVED' ? 'Təsdiqlənib' : listing.status === 'REJECTED' ? 'Rədd edilib' : 'Gözləmədə'}
                                 </span>
                                 {imgs.length > 0 && <span className="px-1.5 py-0.5 bg-input-bg border border-input-border rounded text-[10px] text-muted">📷 {imgs.length}</span>}
+                                {/* Təsdiqləmək tək şərt deyil — elan saytda
+                                    görünmürsə səbəbi burada yazılır. */}
+                                {listing.visibility && !listing.visibility.visible && (
+                                  <span className="px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-semibold"
+                                    title={listing.visibility.reasons.join(" · ")}>
+                                    ⚠ Saytda görünmür
+                                  </span>
+                                )}
+                                {listing.visibility?.visible && listing.status === 'APPROVED' && (
+                                  <span className="px-1.5 py-0.5 rounded bg-green-500/10 text-green-600 text-[10px] font-semibold">● Saytda</span>
+                                )}
                               </div>
+                              {listing.visibility && !listing.visibility.visible && listing.visibility.reasons.length > 0 && (
+                                <p className="text-[11px] text-red-500 mt-0.5">
+                                  Səbəb: {listing.visibility.reasons.join(" · ")}
+                                </p>
+                              )}
                               <p className="text-muted text-xs mt-0.5 truncate break-all">ID: {listing.id} · {listing.description?.slice(0, 60)}...</p>
                             </div>
                             <svg className={`w-4 h-4 text-muted shrink-0 transition-transform ${detOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
