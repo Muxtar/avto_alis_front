@@ -99,6 +99,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     { href: "/admin/businesses", label: t("adminBusinesses") || "Biznes", icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
     )},
+    { href: "/admin/objects", label: "Obyektlər", icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 9.5V20h16V9.5M3 9.5 4.6 4.8A1.2 1.2 0 0 1 5.7 4h12.6a1.2 1.2 0 0 1 1.1.8L21 9.5a2.5 2.5 0 0 1-4.5 1.6 2.5 2.5 0 0 1-4.5 0 2.5 2.5 0 0 1-4.5 0A2.5 2.5 0 0 1 3 9.5ZM10 20v-5h4v5" /></svg>
+    )},
     { href: "/admin/seller-applications", label: t("adminKycApplications") || "KYC", icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
     )},
@@ -163,7 +166,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     "/admin/complaints": "complaints", "/admin/social-links": "social", "/admin/promo": "promo",
     "/admin/comments": "comments", "/admin/broadcast": "broadcast", "/admin/banners": "banners",
     "/admin/settings": "settings", "/admin/ai": "ai", "/admin/payouts": "finance_payouts", "/admin/payouts/businesses": "finance_payouts",
-    "/admin/refunds": "finance",
+    "/admin/refunds": "finance", "/admin/objects": "businesses",
     "/admin/audit": "audit", "/admin/support": "support", "/admin/outreach": "outreach", "/admin/pages": "content", "/admin/admins": "admins",
   };
   // İdarə paneli (/admin) həmişə görünür. Digərləri icazəyə görə süzülür;
