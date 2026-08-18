@@ -137,7 +137,7 @@ export default function InquiryChatbot() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="AI Köməkçi"
-        className="hidden md:flex fixed md:bottom-6 md:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg hover:scale-110 transition-transform items-center justify-center"
+        className="hidden md:flex fixed md:bottom-24 md:right-6 z-50 w-14 h-14 rounded-full bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg hover:scale-110 transition-transform items-center justify-center"
       >
         {open ? (
           <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -154,7 +154,7 @@ export default function InquiryChatbot() {
       {open && (
         <div
           style={vp ? { top: vp.top, left: 0, right: 0, height: vp.height, bottom: 'auto', maxHeight: 'none', borderRadius: 0 } : undefined}
-          className="fixed z-50 top-2 left-2 right-2 bottom-2 md:top-auto md:left-auto md:bottom-24 md:right-6 md:w-[440px] md:h-[78vh] md:max-h-[720px] bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+          className="fixed z-50 top-2 left-2 right-2 bottom-2 md:top-auto md:left-auto md:bottom-[168px] md:right-6 md:w-[440px] md:h-[78vh] md:max-h-[720px] bg-card border border-card-border rounded-2xl shadow-2xl flex flex-col overflow-hidden">
           {/* Başlıq */}
           <div className="shrink-0 bg-gradient-to-r from-orange-500 to-orange-600 px-4 py-3 text-white flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
