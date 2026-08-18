@@ -333,6 +333,9 @@ export default function AdminListingsPage() {
                                   Səbəb: {listing.visibility.reasons.join(" · ")}
                                 </p>
                               )}
+                              {listing.visibility?.note && (
+                                <p className="text-[11px] text-amber-600 mt-0.5">ℹ {listing.visibility.note}</p>
+                              )}
                               <p className="text-muted text-xs mt-0.5 truncate break-all">ID: {listing.id} · {listing.description?.slice(0, 60)}...</p>
                             </div>
                             <svg className={`w-4 h-4 text-muted shrink-0 transition-transform ${detOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
