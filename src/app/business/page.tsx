@@ -370,7 +370,12 @@ export default function BusinessPage() {
                   {b.voen && <span>🆔 VÖEN: <b className="text-foreground">{b.voen}</b> ({b.kind === "LEGAL" ? "Hüquqi" : "Fiziki"})</span>}
                   {b.ownerName && <span>👤 {b.ownerName}</span>}
                   {b.phone && <span>📞 {b.phone}</span>}
-                  {!b.voen && b.status === "PENDING" && <span className="text-amber-600">⏳ Məlumatlar admin təsdiqindən sonra doldurulacaq</span>}
+                  {b.status === "PENDING" && (
+                    <span className="text-amber-600 w-full">
+                      ⏳ Admin təsdiqini gözləyir. Təsdiqdən sonra obyekt (mağaza/filial) əlavə edə və məhsul satışa qoya biləcəksiniz.
+                      İndi məlumatları dəyişə və ya müraciəti ləğv edə bilərsiniz — dəyişiklik dərhal admin panelinə düşür.
+                    </span>
+                  )}
                   {b.status === "REJECTED" && b.rejectionReason && <span className="text-red-500 w-full mt-0.5">⚠ {b.rejectionReason}</span>}
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
@@ -382,7 +387,13 @@ export default function BusinessPage() {
                     {t("bizActive") || "Aktiv"}
                   </label>
                   <button onClick={() => { setBizEditDoc(null); setBizEditBank(null); setBizEdit(bizEdit?.id === b.id ? null : { id: b.id, name: b.name, ownerName: b.ownerName, founderName: b.founderName, phone: b.phone || "", proofType: b.proofType }); }} className="text-orange-500 text-xs">{bizEdit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə"}</button>
-                  <button onClick={wrap(async () => { if (confirm(t("bizDeleteConfirm") || "Silinsin?")) await jsonReq(`${API}/me/businesses/${b.id}`, "DELETE"); })} className="text-red-500 text-xs">{t("delete") || "Sil"}</button>
+                  {/* Silmə YALNIZ hələ təsdiqlənməmiş biznes üçün. Təsdiqlənmiş biznesin
+                      arxasında satış və hesablaşma dayanır — server də bunu rədd edir. */}
+                  {b.status !== "APPROVED" ? (
+                    <button onClick={wrap(async () => { if (confirm("Bu biznes müraciəti ləğv edilsin?")) await jsonReq(`${API}/me/businesses/${b.id}`, "DELETE"); })} className="text-red-500 text-xs">Ləğv et</button>
+                  ) : (
+                    <span className="text-[11px] text-muted" title="Satış və hesablaşma tarixçəsi bu biznesə bağlıdır">Silinmir</span>
+                  )}
                 </div>
               </div>
 
