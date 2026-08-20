@@ -90,6 +90,8 @@ export default function Footer() {
             <Link href="/terms" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{t('footerTerms')}</Link>
             <Link href="/returns" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{pick('returns')}</Link>
             <Link href="/cancellation" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">{pick('cancellation')}</Link>
+            <Link href="/komissiya" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">Komissiya qaydaları</Link>
+            <Link href="/satici-muqavilesi" className="text-muted text-xs hover:text-orange-500 cursor-pointer transition-colors">Satıcı müqaviləsi</Link>
           </div>
         </div>
       </div>

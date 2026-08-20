@@ -6,6 +6,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import LocationPicker from "@/components/LocationPickerWrapper";
+import SellerContract from "@/components/SellerContract";
 import ProfessionPicker from "@/components/ProfessionPicker";
 import QRShare from "@/components/QRShare";
 
@@ -450,6 +451,10 @@ export default function BusinessPage() {
                   </div>
                 </div>
               )}
+
+              {/* Satıcı Müqaviləsi — dolmuş mətn, DocuSign imzası, PDF endirmə.
+                  Yalnız biznes təsdiqləndikdən sonra imzaya göndərilir. */}
+              <SellerContract businessId={b.id} />
 
               {b.status === "APPROVED" ? (
               <>

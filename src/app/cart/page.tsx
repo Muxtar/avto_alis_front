@@ -8,6 +8,7 @@ import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
+import ConsentBox from "@/components/ConsentBox";
 import { installmentAllowed } from "@/lib/installment";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import ShareButton from "@/components/ShareButton";
@@ -42,6 +43,8 @@ export default function CartPage() {
   const [yangoMsg, setYangoMsg] = useState<string | null>(null); // çatdıra bilməyəndə səbəb (koordinat yox / coverage)
   const [quoting, setQuoting] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false); // ödəniş şərtlərini qəbul (bank tələbi)
+  // Qaydaların qəbulu (hüquqi) — server də yoxlayır, bu yalnız interfeys qapısıdır.
+  const [rulesAccepted, setRulesAccepted] = useState(false);
   // Biznes adına alış — canBuy səlahiyyətli işçi obyekt seçə bilər.
   const [buyOptions, setBuyOptions] = useState<{ id: number; label: string }[]>([]);
   const [buyerObjectId, setBuyerObjectId] = useState("");
@@ -425,6 +428,12 @@ export default function CartPage() {
         }),
       });
       const data = await res.json();
+      // Server qaydaların qəbulunu tələb edir — qutu yuxarıda görünür.
+      if (res.status === 451 || data?.code === "CONSENT_REQUIRED") {
+        setRulesAccepted(false);
+        toast("Sifariş üçün qaydaları qəbul edin", "error");
+        return;
+      }
       if (res.ok && data.success) {
         // Kart ödənişi: bankın səhifəsini saytda modal (iframe) içində aç.
         if (data.paymentUrl) {
@@ -936,6 +945,11 @@ export default function CartPage() {
                     <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} className={inputCls + " resize-none"} />
                   </div>
 
+                  {/* Qaydaların qəbulu — qeydiyyatda keçilibsə burada məcburidir.
+                      Server də yoxlayır (451 CONSENT_REQUIRED), yəni bu qutunu
+                      keçmək sifariş verməyə imkan vermir. */}
+                  <ConsentBox mode="hard" onChange={setRulesAccepted} />
+
                   {/* Ödəniş şərtlərinin qəbulu — bank tələbi */}
                   <label className="flex items-start gap-2.5 px-1 cursor-pointer">
                     <input type="checkbox" checked={acceptedTerms} onChange={(e) => setAcceptedTerms(e.target.checked)} className="w-4 h-4 mt-0.5 accent-orange-500 shrink-0" />
@@ -950,7 +964,7 @@ export default function CartPage() {
                     </span>
                   </label>
 
-                  <button onClick={checkout} disabled={placing || !acceptedTerms} className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white text-sm font-semibold disabled:opacity-50">
+                  <button onClick={checkout} disabled={placing || !acceptedTerms || !rulesAccepted} className="w-full py-3 bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl text-white text-sm font-semibold disabled:opacity-50">
                     {placing ? "..." : `${t("confirmOrder")} • ${finalTotal.toFixed(2)} AZN`}
                   </button>
                   <button onClick={() => setShowCheckout(false)} className="w-full py-2 text-muted text-xs">{t("adminCancel")}</button>

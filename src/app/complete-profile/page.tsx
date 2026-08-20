@@ -5,6 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import ConsentBox from "@/components/ConsentBox";
 import { compareFaces, FaceResult } from "@/lib/faceMatch";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import ProfessionPicker from "@/components/ProfessionPicker";
@@ -247,6 +248,10 @@ export default function CompleteProfilePage() {
             </p>
             <IdentityVerify token={token} onDone={() => toast("Kimlik təsdiqi göndərildi ✓", "success")} />
           </div>
+
+          {/* Qaydaların qəbulu — MƏCBURİ DEYİL. İstifadəçi keçə bilər; alış
+              anında səbətdə yenidən qarşısına çıxır və orada keçmək olmur. */}
+          <ConsentBox mode="soft" className="pt-1" />
 
           <button type="submit" disabled={loading} className="w-full py-3.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl font-semibold text-white hover:from-orange-600 hover:to-red-700 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50">
             {loading ? t("submitting") : (t("save") || "Yadda saxla")}
