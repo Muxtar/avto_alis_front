@@ -61,6 +61,11 @@ export default function BusinessPage() {
   const [idVerified, setIdVerified] = useState<boolean | null>(null); // kimlik təqdim olunub?
   const [identityReusable, setIdentityReusable] = useState(false); // kimlik+üz təsdiqlənib (>50%) → biznesdə təkrar istənilmir
 
+  // Biznes yaratma haqqı — birdəfəlik ödəniş (məbləği admin paneldən dəyişilir).
+  const [fee, setFee] = useState<{ amount: number; required: boolean; paid: boolean } | null>(null);
+  const [feePayUrl, setFeePayUrl] = useState<string | null>(null); // şlüz səhifəsi (iframe)
+  const [feeBusy, setFeeBusy] = useState(false);
+
   // create form
   const [kind, setKind] = useState("PHYSICAL");
   const [proofType, setProofType] = useState("TAX_DOC");
@@ -105,6 +110,9 @@ export default function BusinessPage() {
       const faceOk = (u.faceMatchScore ?? 0) > 0.5 || u.idAiFaceMatch === true || (u.idAiFaceScore ?? 0) > 0.5;
       // Kimlik profildə edilib — biznesdə vəsiqə+selfie təkrar istənilmir.
       setIdentityReusable(!!u.idVerifyStatus || (!!u.idCardImage && !!u.selfieImage && faceOk));
+      // Birdəfəlik haqq ödənilibmi (tarif 0-dırsa `required: false` gəlir).
+      const fr = await fetch(`${API}/me/business-fee`, { headers: authH }).then((r) => r.json());
+      if (fr?.success) setFee({ amount: fr.amount, required: fr.required, paid: fr.paid });
     } catch { toast(t("error"), "error"); } finally { setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -121,6 +129,15 @@ export default function BusinessPage() {
   useEffect(() => {
     if (loading || deepLinkRef.current) return;
     const sp = new URLSearchParams(window.location.search);
+    // Haqq ödənişindən tam səhifə ilə qayıdış (iframe-dən çıxmış hallar).
+    const feeRet = sp.get("fee");
+    if (feeRet) {
+      deepLinkRef.current = true;
+      window.history.replaceState({}, "", "/business");
+      if (feeRet === "success") pollFeePaid();
+      else toast("Ödəniş baş tutmadı", "error");
+      return;
+    }
     if (sp.get("new") === "1") {
       deepLinkRef.current = true;
       resetForm();
@@ -152,6 +169,53 @@ export default function BusinessPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, businesses]);
+
+  // ── Biznes yaratma haqqının ödənişi ──
+  // Şlüz səhifəsi modal iframe-də açılır; ödəniş bitəndə /payment/return
+  // parent-ə postMessage göndərir (səbətdəki ilə eyni mexanizm).
+  const payFee = async () => {
+    setFeeBusy(true);
+    try {
+      const r = await fetch(`${API}/me/business-fee/pay`, { method: "POST", headers: { ...authH, "Content-Type": "application/json" } }).then((x) => x.json());
+      if (!r.success) { toast(r.message || t("error"), "error"); return; }
+      // Şlüz iframe-dən çıxsa /payment/return bizi geri /business-ə qaytarsın.
+      try { sessionStorage.setItem("bizFeePay", "1"); } catch { /* bloklanıb */ }
+      setFeePayUrl(r.redirectUrl);
+    } catch { toast(t("error"), "error"); } finally { setFeeBusy(false); }
+  };
+
+  // Ödənişin HƏQİQƏTƏN keçdiyini brauzerdən gələn siqnala görə deyil, SERVERDƏN
+  // soruşuruq: şlüz callback-i gəlib haqqı PAID edənə qədər poll edirik.
+  // (Brauzerin "uğurlu" mesajı saxtalaşdırıla bilər — ona güvənmirik.)
+  const pollFeePaid = useCallback(async () => {
+    for (let i = 0; i < 12; i++) {
+      try {
+        const r = await fetch(`${API}/me/business-fee`, { headers: authH }).then((x) => x.json());
+        if (r?.success && r.paid) {
+          setFee({ amount: r.amount, required: r.required, paid: true });
+          toast("Ödəniş qəbul edildi ✓ İndi biznes müraciətinizi göndərə bilərsiniz.", "success");
+          return true;
+        }
+      } catch { /* şəbəkə — yenidən cəhd */ }
+      await new Promise((res) => setTimeout(res, 2000));
+    }
+    toast("Ödəniş hələ təsdiqlənməyib. Bir neçə saniyədən sonra səhifəni yeniləyin.", "error");
+    return false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  useEffect(() => {
+    const onMsg = async (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (e.data?.type !== "kapital-payment") return;
+      setFeePayUrl(null);
+      if (e.data.status === "success") await pollFeePaid();
+      else toast("Ödəniş baş tutmadı", "error");
+    };
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollFeePaid]);
 
   const jsonReq = async (url: string, method: string, body?: any) => {
     const res = await fetch(url, { method, headers: { ...authH, "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
@@ -204,7 +268,17 @@ export default function BusinessPage() {
       fd.append("banks", JSON.stringify(banks.filter((b) => b.iban.trim())));
       const res = await fetch(`${API}/me/businesses`, { method: "POST", headers: authH, body: fd });
       const data = await res.json();
-      if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      if (!res.ok || !data.success) {
+        // Haqq ödənilməyib (məs. başqa cihazda artıq xərclənib) — ödəniş təklif et.
+        if (data.code === "FEE_REQUIRED") {
+          setFee((p) => ({ amount: data.amount ?? p?.amount ?? 0, required: true, paid: false }));
+          toast(data.message || "Əvvəlcə biznes yaratma haqqını ödəyin", "error");
+          setShowForm(false);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          return;
+        }
+        toast(data.message || t("error"), "error"); return;
+      }
       const ibanMsg = data.bankAccountsFound ? ` · AI ${data.bankAccountsFound} bank hesabı (IBAN) tapdı` : "";
       toast(
         (data.autoApproved
@@ -213,7 +287,7 @@ export default function BusinessPage() {
         "success",
       );
       setShowForm(false); resetForm();
-      load();
+      load();   // haqq xərcləndi → vəziyyət yenidən oxunur
     } catch { toast(t("error"), "error"); } finally { setBusy(false); }
   };
 
@@ -221,6 +295,10 @@ export default function BusinessPage() {
 
   const statusBadge = (s: string) => s === "APPROVED" ? "bg-green-500/10 text-green-500 border-green-500/20" : s === "REJECTED" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20";
   const statusText = (s: string) => s === "APPROVED" ? (t("bizApproved") || "Təsdiqləndi") : s === "REJECTED" ? (t("bizRejected") || "Rədd edildi") : (t("bizPending") || "Gözləyir");
+
+  // Haqq tələb olunur, hələ ödənilməyib — forma bağlıdır. (Kimlik təsdiqi
+  // ödənişdən ƏVVƏLKİ şərtdir: təsdiqlənməmiş profildən pul almırıq.)
+  const feeUnpaid = !!fee && fee.required && !fee.paid && idVerified === true;
 
   const inputCls = "w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground";
   const fileInputCls = "block w-full text-xs mt-1 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500";
@@ -257,6 +335,11 @@ export default function BusinessPage() {
           <a href="/business/sales" className="ui-btn ui-btn-ghost">{t("bizSales") || "Satış pəncərəsi"}</a>
           {idVerified === false ? (
             <a href="/profile" className="ui-btn ui-btn-primary">🪪 Profilini təsdiqlə</a>
+          ) : feeUnpaid ? (
+            // Haqq ödənilməyib — forma açılmır, əvvəlcə ödəniş.
+            <button onClick={payFee} disabled={feeBusy} className="ui-btn ui-btn-primary">
+              {feeBusy ? "…" : `💳 ${fee!.amount.toFixed(2)} AZN ödə`}
+            </button>
           ) : (
             <button onClick={openForm} className="ui-btn ui-btn-primary">{showForm ? (t("adminCancel") || "Bağla") : `+ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
           )}
@@ -287,7 +370,47 @@ export default function BusinessPage() {
         </div>
       )}
 
-      {showForm && idVerified !== false && (
+      {/* ── Birdəfəlik haqq ── */}
+      {feeUnpaid && (
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 mb-5 flex items-start gap-3">
+          <span className="text-2xl">💳</span>
+          <div className="flex-1">
+            <p className="font-semibold text-sm">Biznes yaratmaq üçün birdəfəlik {fee!.amount.toFixed(2)} AZN</p>
+            <p className="text-xs text-muted mt-1 leading-relaxed">
+              Bu haqq sənədlərinizin yoxlanılması (kimlik doğrulaması, vergi və bank sənədlərinin analizi)
+              xərclərini qarşılayır. <b className="text-foreground">Bir dəfə ödənilir</b> — sonrakı obyektlər,
+              elanlar və satış üçün əlavə haqq yoxdur.
+            </p>
+            <p className="text-[11px] text-muted mt-1.5">
+              Müraciətiniz rədd edilsə ödənişiniz qüvvədə qalır — düzəlişdən sonra yenidən ödəmirsiniz.
+            </p>
+            <button onClick={payFee} disabled={feeBusy} className="ui-btn ui-btn-primary ui-btn-sm mt-3">
+              {feeBusy ? "Açılır…" : `💳 ${fee!.amount.toFixed(2)} AZN ödə`}
+            </button>
+          </div>
+        </div>
+      )}
+      {fee && fee.required && fee.paid && businesses.length === 0 && (
+        <p className="text-xs text-emerald-600 mb-4">✓ Biznes yaratma haqqı ödənilib — müraciətinizi göndərə bilərsiniz.</p>
+      )}
+
+      {/* Şlüz səhifəsi — modal iframe. Bitəndə /payment/return postMessage göndərir. */}
+      {feePayUrl && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-3">
+          <div className="bg-card w-full max-w-lg h-[85vh] rounded-2xl overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between px-4 py-2.5 border-b border-card-border">
+              <p className="font-semibold text-sm">Biznes yaratma haqqı — {fee?.amount.toFixed(2)} AZN</p>
+              <button onClick={() => setFeePayUrl(null)} className="text-muted hover:text-foreground text-lg leading-none">✕</button>
+            </div>
+            <iframe src={feePayUrl} title="fee-payment" className="flex-1 w-full border-0 bg-white" />
+            <p className="text-[11px] text-muted px-4 py-2 text-center">
+              Pəncərə açılmırsa <a href={feePayUrl} target="_blank" rel="noreferrer" className="text-orange-500 font-medium hover:underline">tam səhifədə açın</a>.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {showForm && idVerified !== false && !feeUnpaid && (
         <div className="bg-card border border-card-border rounded-xl p-4 sm:p-5 mb-5 space-y-4">
           {/* Şəxs növü — əl ilə seçilmir; VÖEN sənəddən oxunduqda son rəqəmə görə
               avtomatik təyin olunur (1 → Hüquqi şəxs, 2 → Fiziki şəxs). */}

@@ -16,6 +16,16 @@ export default function PaymentReturnPage() {
     // "Paylaş — başqası ödəsin": ödəyən qonaq ola bilər, onun /orders səhifəsi yoxdur.
     // Ödənişə getməzdən əvvəl paylaşım tokeni sessionStorage-a yazılır — nəticəni
     // həmin paylaşım səhifəsində göstəririk.
+    // Biznes yaratma haqqı — bu ödənişin /orders ilə heç bir əlaqəsi yoxdur.
+    // Şlüz iframe-dən çıxıb tam səhifəyə keçsə istifadəçi biznes kabinetinə qayıtsın.
+    try {
+      if (sessionStorage.getItem("bizFeePay")) {
+        sessionStorage.removeItem("bizFeePay");
+        window.location.replace(`/business?fee=${status}`);
+        return;
+      }
+    } catch { /* sessionStorage bloklanıb */ }
+
     let shared: string | null = null;
     try { shared = sessionStorage.getItem("sharedPayToken"); sessionStorage.removeItem("sharedPayToken"); } catch { /* bloklanıb */ }
     if (shared) {

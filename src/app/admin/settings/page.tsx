@@ -27,9 +27,25 @@ interface OtpDiag {
   whatsapp: ChannelStatus;
 }
 
+// Rəqəmli tənzimləmə (tarif) — açıq/bağlı deyil, dəyər.
+interface NumberSetting {
+  key: string;
+  label: string;
+  description: string;
+  value: number;
+  unit: string;
+  min: number;
+  max: number;
+  decimals: number;
+  isDefault: boolean;
+}
+
 export default function AdminSettingsPage() {
   const { toast } = useToast();
   const [flags, setFlags] = useState<Flag[]>([]);
+  const [numbers, setNumbers] = useState<NumberSetting[]>([]);
+  const [draft, setDraft] = useState<Record<string, string>>({}); // input mətni (yazarkən)
+  const [savingKey, setSavingKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [wa, setWa] = useState<OtpDiag | null>(null);
@@ -45,7 +61,12 @@ export default function AdminSettingsPage() {
     setLoading(true);
     fetch(`${API}/admin/settings`, { headers })
       .then((r) => r.json())
-      .then((d) => setFlags(d.settings || []))
+      .then((d) => {
+        setFlags(d.settings || []);
+        const nums: NumberSetting[] = d.numbers || [];
+        setNumbers(nums);
+        setDraft(Object.fromEntries(nums.map((n) => [n.key, n.value.toFixed(n.decimals)])));
+      })
       .catch(() => toast("Tənzimləmələr yüklənmədi", "error"))
       .finally(() => setLoading(false));
     fetch(`${API}/admin/whatsapp-status`, { headers })
@@ -132,6 +153,27 @@ export default function AdminSettingsPage() {
     }
   };
 
+  const saveNumber = async (n: NumberSetting) => {
+    const v = parseFloat((draft[n.key] ?? "").replace(",", "."));
+    if (!Number.isFinite(v)) { toast("Rəqəm yazın", "error"); return; }
+    if (v < n.min || v > n.max) { toast(`${n.min}–${n.max} ${n.unit} aralığında olmalıdır`, "error"); return; }
+    setSavingKey(n.key);
+    try {
+      const res = await fetch(`${API}/admin/settings/number`, {
+        method: "PATCH", headers, body: JSON.stringify({ key: n.key, value: v }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message);
+      setNumbers((prev) => prev.map((x) => (x.key === n.key ? { ...x, value: data.value, isDefault: false } : x)));
+      setDraft((p) => ({ ...p, [n.key]: Number(data.value).toFixed(n.decimals) }));
+      toast(`${n.label}: ${Number(data.value).toFixed(n.decimals)} ${n.unit} ✓`, "success");
+    } catch (e: any) {
+      toast(e?.message || "Yenilənmədi", "error");
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
   const sections: { id: Flag["section"]; title: string; hint: string; accent: string }[] = [
     { id: "production", title: "Production", hint: "Canlı istifadəçilərə təsir edən tənzimləmələr — diqqətlə dəyişin.", accent: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" },
     { id: "developer", title: "Developer", hint: "Yalnız test/debug üçün — real istifadədə deaktiv saxlayın.", accent: "text-amber-500 bg-amber-500/10 border-amber-500/20" },
@@ -162,6 +204,53 @@ export default function AdminSettingsPage() {
           {channelPanel("sms", "SMS", "✉️", wa?.sms)}
         </div>
       </div>
+
+      {/* ── Tariflər (rəqəmli tənzimləmələr) ── */}
+      {numbers.length > 0 && (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border text-blue-500 bg-blue-500/10 border-blue-500/20">Tariflər</span>
+            <span className="text-xs text-muted">Məbləğlər. Dəyişiklik dərhal qüvvəyə minir — yeni ödənişlərə tətbiq olunur.</span>
+          </div>
+          <div className="bg-card border border-card-border rounded-2xl divide-y divide-card-border overflow-hidden">
+            {numbers.map((n) => {
+              const dirty = (draft[n.key] ?? "") !== n.value.toFixed(n.decimals);
+              return (
+                <div key={n.key} className="flex flex-col sm:flex-row sm:items-start gap-3 p-4">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-sm">{n.label}</p>
+                      {n.isDefault && <span className="text-[10px] text-muted border border-card-border rounded px-1.5 py-0.5">default</span>}
+                      <span className="text-[10px] font-semibold rounded px-1.5 py-0.5 text-emerald-500 bg-emerald-500/10">
+                        {n.value === 0 ? "pulsuz" : `${n.value.toFixed(n.decimals)} ${n.unit}`}
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted mt-1 leading-relaxed">{n.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="relative">
+                      <input
+                        type="number" inputMode="decimal" step={n.decimals ? 0.01 : 1} min={n.min} max={n.max}
+                        value={draft[n.key] ?? ""}
+                        onChange={(e) => setDraft((p) => ({ ...p, [n.key]: e.target.value }))}
+                        onKeyDown={(e) => { if (e.key === "Enter") saveNumber(n); }}
+                        className="w-28 pl-3 pr-10 py-2 bg-input-bg border border-input-border rounded-lg text-sm text-right focus:outline-none focus:ring-2 focus:ring-orange-500/30"
+                      />
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted pointer-events-none">{n.unit}</span>
+                    </div>
+                    <button
+                      type="button" onClick={() => saveNumber(n)} disabled={!dirty || savingKey === n.key}
+                      className="px-3 py-2 bg-orange-500 text-white rounded-lg text-xs font-semibold disabled:opacity-40 whitespace-nowrap"
+                    >
+                      {savingKey === n.key ? "…" : "Yadda saxla"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted text-sm py-10">
