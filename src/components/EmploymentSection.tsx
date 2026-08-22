@@ -7,7 +7,10 @@ import { API } from "@/lib/api";
 // Profil: "İş yerim" — istifadəçi özünü bir VÖEN-in (şirkətin) işçisi kimi qeyd edir.
 // Axın: şirkəti ad/VÖEN ilə axtar → sorğu göndər → sahib qəbul edəndə rəsmi işçi.
 // Şirkət də dəvət göndərə bilər — burada qəbul/rədd olunur.
-export default function EmploymentSection() {
+// Profil səhifəsindəki karta status ötürmək üçün.
+export type EmploymentStatus = { state: "ok" | "pending" | "none"; label: string; hint: string };
+
+export default function EmploymentSection({ embedded = false, onStatus }: { embedded?: boolean; onStatus?: (s: EmploymentStatus) => void } = {}) {
   const { token } = useAuth();
   const { toast } = useToast();
   const [memberships, setMemberships] = useState<any[]>([]);
@@ -29,6 +32,16 @@ export default function EmploymentSection() {
   }, [token]);
 
   useEffect(() => { if (token) load(); }, [token, load]);
+
+  // Kart üçün qısa status (aktiv iş yeri / gözləyən sorğu / yoxdur).
+  useEffect(() => {
+    if (!onStatus) return;
+    const act = memberships.find((m) => m.status === "ACTIVE");
+    const wait = memberships.find((m) => m.status === "PENDING_BUSINESS" || m.status === "PENDING_USER");
+    if (act) onStatus({ state: "ok", label: act.business?.name || "Şirkət", hint: `VOEN: ${act.business?.voen || "—"}${act.object ? ` · ${act.object.name}` : ""}` });
+    else if (wait) onStatus({ state: "pending", label: wait.business?.name || "Şirkət", hint: wait.status === "PENDING_USER" ? "Şirkət sizi dəvət edib — cavab gözlənilir" : "Sorğunuz təsdiq gözləyir" });
+    else onStatus({ state: "none", label: "İş yeri əlavə edilməyib", hint: "Çalışdığınız şirkəti (VOEN) qeyd edin" });
+  }, [memberships, onStatus]);
 
   // Axtarış — yazdıqca (debounce).
   useEffect(() => {
@@ -79,8 +92,8 @@ export default function EmploymentSection() {
   };
 
   return (
-    <div className="surface p-5 sm:p-6">
-      <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">🏢 İş yerim</h2>
+    <div className={embedded ? "" : "surface p-5 sm:p-6"}>
+      {!embedded && <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">🏢 İş yerim</h2>}
       <p className="text-xs text-muted mb-4">
         Çalışdığınız şirkəti (VÖEN) qeyd edin. Şirkət sahibi sorğunuzu təsdiqləyəndə profilinizdə rəsmi işçi kimi görünəcəksiniz.
       </p>

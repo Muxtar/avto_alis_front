@@ -11,8 +11,9 @@ import LocationPicker from "@/components/LocationPickerWrapper";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
 import IdentityVerify from "@/components/IdentityVerify";
+import VerifyCard, { type VerifyState } from "@/components/VerifyCard";
 import ProfessionMultiPicker from "@/components/ProfessionMultiPicker";
-import EmploymentSection from "@/components/EmploymentSection";
+import EmploymentSection, { type EmploymentStatus } from "@/components/EmploymentSection";
 import ConnectedDevices from "@/components/ConnectedDevices";
 import QRShare from "@/components/QRShare";
 
@@ -159,6 +160,10 @@ export default function ProfilePage() {
 
   // ---- Telefon nömrələri (çoxlu, biri əsas) ----
   const [phones, setPhones] = useState<any[]>([]);
+  // Doğrulama kartları — hansı kartın paneli açıqdır (bir anda biri).
+  const [openCard, setOpenCard] = useState<"id" | "phone" | "work" | null>(null);
+  // İş yeri statusu — EmploymentSection öz məlumatını yükləyəndə kartı doldurur.
+  const [workStatus, setWorkStatus] = useState<EmploymentStatus>({ state: "none", label: "İş yeri əlavə edilməyib", hint: "Çalışdığınız şirkəti (VÖEN) qeyd edin" });
   const [newPhone, setNewPhone] = useState("");
   const [phoneCode, setPhoneCode] = useState("");
   const [phoneStep, setPhoneStep] = useState<"" | "code">("");
@@ -734,6 +739,12 @@ export default function ProfilePage() {
 
   const inputCls = "w-full px-4 py-3 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm";
 
+  // ── Doğrulama kartlarının vəziyyəti ──
+  const idState: VerifyState = profile.idVerifyStatus === "APPROVED" ? "ok" : profile.idVerifyStatus === "PENDING" ? "pending" : "none";
+  const primaryPhone: string = phones.find((p: any) => p.isPrimary)?.phone || profile.phone || "";
+  const phoneState: VerifyState = primaryPhone ? "ok" : "none";
+  const extraPhones = phones.filter((p: any) => !p.isPrimary).length;
+
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
       {/* Profile Card */}
@@ -878,8 +889,39 @@ export default function ProfilePage() {
 
       </div>
 
-      {/* Kimlik təsdiqi (şəxsiyyət vəsiqəsi + üz tanıma) */}
-      <div className="surface p-5 sm:p-7 mb-5">
+      {/* ── Doğrulama kartları (kimlik / telefon / iş yeri) ──
+          Uzun bölmələr əvəzinə orta ölçülü kartlar: təsdiqlənibsə yaşıl ✓,
+          gözləyirsə narıncı ⏳, yoxdursa qırmızı ✕ nişanı. Karta klikləyəndə
+          həmin bölmənin ətraflı paneli aşağıda açılır. */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-5">
+        <VerifyCard
+          variant="id" title="Kimlik təsdiqi"
+          state={idState}
+          value={idState === "ok" ? (profile.name || "Təsdiqlənmiş profil") : idState === "pending" ? "Yoxlanılır…" : "Təsdiqlənməyib"}
+          hint={idState === "ok"
+            ? `FIN: ${profile.idNumber ? String(profile.idNumber).slice(0, 2) + "•••••" : "—"} · Veriff ilə təsdiqlənib`
+            : idState === "pending" ? "Veriff yoxlaması davam edir" : "Veriff ilə şəxsiyyətinizi doğrulayın"}
+          open={openCard === "id"} onClick={() => setOpenCard(openCard === "id" ? null : "id")}
+        />
+        <VerifyCard
+          variant="phone" title="Telefon nömrəsi" cta="Nömrə əlavə et"
+          state={phoneState}
+          value={primaryPhone || "Nömrə yoxdur"}
+          hint={phoneState === "ok"
+            ? (extraPhones ? `Əsas nömrə · +${extraPhones} əlavə nömrə` : "Əsas nömrə — elanlarınızda göstərilir")
+            : "Nömrənizi kod ilə təsdiqləyin"}
+          open={openCard === "phone"} onClick={() => setOpenCard(openCard === "phone" ? null : "phone")}
+        />
+        <VerifyCard
+          variant="work" title="İş yerim" cta="Əlavə et"
+          state={workStatus.state} value={workStatus.label} hint={workStatus.hint}
+          open={openCard === "work"} onClick={() => setOpenCard(openCard === "work" ? null : "work")}
+        />
+      </div>
+
+      {/* Kimlik təsdiqi paneli */}
+      {openCard === "id" && (
+        <div className="surface p-5 sm:p-7 mb-5 animate-fade-in">
         <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
           <h2 className="text-lg font-semibold flex items-center gap-2">🪪 Kimlik təsdiqi</h2>
           {(() => {
@@ -975,10 +1017,12 @@ export default function ProfilePage() {
             )}
           </div>
         )}
-      </div>
+        </div>
+      )}
 
-      {/* Telefon nömrələri (çoxlu, biri əsas) */}
-      <div className="surface p-5 sm:p-7 mb-5">
+      {/* Telefon nömrələri paneli */}
+      {openCard === "phone" && (
+        <div className="surface p-5 sm:p-7 mb-5 animate-fade-in">
         <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">📱 Telefon nömrələri</h2>
         <p className="text-xs text-muted mb-3">Əsas nömrə elanlarınızda göstərilir. Hər nömrə doğrulama kodu ilə təsdiqlənir.</p>
 
@@ -1043,13 +1087,15 @@ export default function ProfilePage() {
             <span className="text-base leading-none">＋</span> Yeni nömrə əlavə et
           </button>
         )}
-      </div>
+        </div>
+      )}
 
-      {/* İş yerim — şirkətə işçi kimi bağlanma (sorğu/qəbul axını) */}
-      <div className="mb-5">
-        <EmploymentSection />
+      {/* İş yeri paneli — komponent HƏMİŞƏ mount olunur (kartdakı statusu o verir),
+          bağlı olanda yalnız gizlədilir. */}
+      <div className={openCard === "work" ? "surface p-5 sm:p-7 mb-5 animate-fade-in" : "hidden"}>
+        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">🏢 İş yerim</h2>
+        <EmploymentSection embedded onStatus={setWorkStatus} />
       </div>
-
       {/* Bağlı cihazlar — profilə daxil olan cihazlar, uzaqdan çıxarma */}
       <div className="mb-5">
         <ConnectedDevices />
