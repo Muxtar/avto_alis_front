@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
-import { CATEGORIES, getSubs, parseCat, buildCat, getCategoryAttrs } from "@/lib/categories";
+import { CATEGORIES, getSubs, getLeaves, parseCat, buildCat, getCategoryAttrs } from "@/lib/categories";
 import { formatPriceShort } from "@/lib/format";
 
 export default function AdminListingsPage() {
@@ -495,10 +495,11 @@ export default function AdminListingsPage() {
                 </div>
               </div>
               {(() => {
-                const { main, sub } = parseCat(modal.category);
+                const { main, sub, leaf } = parseCat(modal.category);
                 const mainName = main || CATEGORIES[0].name;
                 const subs = getSubs(mainName);
                 const subName = sub || subs[0] || "";
+                const leaves = getLeaves(mainName, subName);
                 const selectCls = "w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none";
                 return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -526,6 +527,19 @@ export default function AdminListingsPage() {
                         {subs.map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </div>
+                    {leaves.length > 0 && (
+                      <div className="sm:col-span-2">
+                        <label className="block text-xs font-medium text-muted mb-1">Alt-alt kateqoriya (istəyə bağlı)</label>
+                        <select
+                          value={leaf}
+                          onChange={(e) => setModal({ ...modal, category: buildCat(mainName, subName, e.target.value) })}
+                          className={selectCls}
+                        >
+                          <option value="">—</option>
+                          {leaves.map((l) => <option key={l} value={l}>{l}</option>)}
+                        </select>
+                      </div>
+                    )}
                   </div>
                 );
               })()}

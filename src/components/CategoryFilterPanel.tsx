@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronUp, ChevronDown } from "lucide-react";
 import { API } from "@/lib/api";
-import { parseCat, catToSlugs } from "@/lib/categories";
+import { parseCat, catToSlugs, buildCat, getSubs, getLeaves } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -32,7 +32,7 @@ function Section({ title, children, defaultOpen = true }: { title: string; child
 }
 
 export default function CategoryFilterPanel(p: Props) {
-  const { main, sub } = parseCat(p.category);
+  const { main, sub, leaf } = parseCat(p.category);
   const [brands, setBrands] = useState<string[]>([]);
   const [cities, setCities] = useState<string[]>([]);
   const [brandQuery, setBrandQuery] = useState("");
@@ -48,6 +48,20 @@ export default function CategoryFilterPanel(p: Props) {
 
   const shownBrands = brands.filter((b) => b.toLowerCase().includes(brandQuery.toLowerCase()));
   const mainSlug = catToSlugs(main).join("/");
+  const subSlug = sub ? catToSlugs(buildCat(main, sub)).join("/") : "";
+  // Cari səviyyənin uşaqları — ana səhifədəysə alt kateqoriyalar, alt kateqoriyadaysa
+  // alt-alt kateqoriyalar. Alt-alt seçilibsə qardaşları göstərilir (tez dəyişmək üçün).
+  const children: { name: string; href: string; active: boolean }[] = sub
+    ? getLeaves(main, sub).map((l) => ({
+        name: l,
+        href: `/elanlar/${catToSlugs(buildCat(main, sub, l)).join("/")}`,
+        active: leaf === l,
+      }))
+    : getSubs(main).map((s2) => ({
+        name: s2,
+        href: `/elanlar/${catToSlugs(buildCat(main, s2)).join("/")}`,
+        active: false,
+      }));
 
   return (
     <div className="surface p-4 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
@@ -61,12 +75,34 @@ export default function CategoryFilterPanel(p: Props) {
             <Link href={`/elanlar/${mainSlug}`} className="flex items-center gap-1.5 text-foreground hover:text-primary transition-colors">
               <ChevronLeft className="w-4 h-4 shrink-0" /> {main}
             </Link>
-            <p className="font-bold pl-5">{sub}</p>
+            {leaf ? (
+              <>
+                <Link href={`/elanlar/${subSlug}`} className="flex items-center gap-1.5 pl-5 text-foreground hover:text-primary transition-colors">
+                  <ChevronLeft className="w-4 h-4 shrink-0" /> {sub}
+                </Link>
+                <p className="font-bold pl-10">{leaf}</p>
+              </>
+            ) : (
+              <p className="font-bold pl-5">{sub}</p>
+            )}
           </>
         ) : (
           <p className="font-bold pl-5">{main}</p>
         )}
       </nav>
+
+      {/* Alt kateqoriyalar — bir səviyyə dərinə keçid (3 səviyyəli taksonomiya) */}
+      {children.length > 0 && (
+        <nav className="mb-4 border-t border-card-border pt-3 space-y-0.5 max-h-64 overflow-y-auto">
+          <p className="text-xs font-semibold text-muted mb-1.5">{sub ? "Alt kateqoriyalar" : "Kateqoriyalar"}</p>
+          {children.map((c) => (
+            <Link key={c.name} href={c.href}
+              className={cn("block py-1 text-sm transition-colors", c.active ? "text-primary font-semibold" : "text-foreground hover:text-primary")}>
+              {c.name}
+            </Link>
+          ))}
+        </nav>
+      )}
 
       {/* Başlıq + sıfırla */}
       <div className="flex items-center justify-between pt-2">

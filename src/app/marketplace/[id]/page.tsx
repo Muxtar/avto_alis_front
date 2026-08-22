@@ -254,7 +254,7 @@ export default function ListingDetailPage() {
     <div className="page-wrap py-4 sm:py-6">
       {/* Breadcrumb — kateqoriya yolu (birmarket üslubu) */}
       {(() => {
-        const { main, sub } = parseCat(listing.category);
+        const { main, sub, leaf } = parseCat(listing.category);
         const slugs = catToSlugs(listing.category);
         if (!main) return null;
         return (
@@ -263,6 +263,7 @@ export default function ListingDetailPage() {
             <span className="text-muted-foreground/50">›</span>
             <Link href={`/elanlar/${slugs[0]}`} className="hover:text-[var(--brand-to)] transition-colors">{main}</Link>
             {sub && (<><span className="text-muted-foreground/50">›</span><Link href={`/elanlar/${slugs[0]}/${slugs[1]}`} className="hover:text-[var(--brand-to)] transition-colors">{sub}</Link></>)}
+            {leaf && (<><span className="text-muted-foreground/50">›</span><Link href={`/elanlar/${slugs[0]}/${slugs[1]}/${slugs[2]}`} className="hover:text-[var(--brand-to)] transition-colors">{leaf}</Link></>)}
           </nav>
         );
       })()}

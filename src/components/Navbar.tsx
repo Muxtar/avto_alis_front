@@ -14,7 +14,7 @@ import { getSocket } from "@/lib/callSocket";
 import { yangoLabel } from "@/lib/yangoStatus";
 import NotificationBell from "@/components/NotificationBell";
 import { CATEGORIES, slugify } from "@/lib/categories";
-import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
+import CategoryMegaMenu from "@/components/CategoryMegaMenu";
 
 const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "az", label: "AZ", flag: "🇦🇿" },
@@ -34,6 +34,10 @@ for (const c of CATEGORIES) {
   CAT_SUGGEST.push({ label: c.name, context: "Kateqoriya", href: `/elanlar/${slugify(c.name)}` });
   for (const su of c.subs) {
     CAT_SUGGEST.push({ label: su.name, context: c.name, href: `/elanlar/${slugify(c.name)}/${slugify(su.name)}` });
+    // 3-cü səviyyə (alt-alt kateqoriyalar) da təklif olunur — məs. "Ağıllı rozetkalar".
+    for (const lf of su.subs || []) {
+      CAT_SUGGEST.push({ label: lf.name, context: `${c.name} › ${su.name}`, href: `/elanlar/${slugify(c.name)}/${slugify(su.name)}/${slugify(lf.name)}` });
+    }
   }
 }
 // Aksent-həssas olmayan uyğunlaşma üçün (ə→e, ş→s ...). slugify boşluğu "-" edir.
@@ -68,11 +72,6 @@ export default function Navbar() {
   const [outOpen, setOutOpen] = useState(false); // Məndən gedənlər (alışlar)
   const [inOpen, setInOpen] = useState(false);   // Məndən gələnlər (satışlar)
   const [catOpen, setCatOpen] = useState(false);
-  const [catHover, setCatHover] = useState<{ cat: any; top: number; left: number } | null>(null);
-  // TELEFONDA alt kateqoriyalar: hover yoxdur, ona görə sağdakı ox akkordeon
-  // kimi açılır. Əvvəl bütün sətir <Link> idi — oxa toxunanda birbaşa
-  // kateqoriyaya keçirdi və alt kateqoriyalara ümumiyyətlə çatmaq olmurdu.
-  const [catExpanded, setCatExpanded] = useState<string | null>(null);
   // Telefonda kataloq menyusu EKRANIN TAM ENİNDƏ açılır. Əvvəl düymənin altına
   // (absolute left-0, w-72) yapışırdı: 375px ekranda solda 60px boş qalır,
   // sağda cəmi 27px — menyu sağa sıxılmış görünürdü. Tam en üçün `fixed`
@@ -125,7 +124,6 @@ export default function Navbar() {
   // Alt-kateqoriya flyout-u siyahıdan çıxıb ayrıca render olunur (backdrop-blur +
   // overflow onu kəsməsin). Kursor siyahıdan flyout-a keçəndə bağlanmasın deyə
   // kiçik gecikmə ilə bağlanır (flyout-a girəndə ləğv olunur).
-  const catCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchNotifications = useCallback(() => {
     if (!token || !isLoggedIn) return;
@@ -160,7 +158,7 @@ export default function Navbar() {
     const handler = (e: MouseEvent) => {
       if (langRef.current && !langRef.current.contains(e.target as Node)) setLangOpen(false);
       if (userRef.current && !userRef.current.contains(e.target as Node)) setUserOpen(false);
-      if (catRef.current && !catRef.current.contains(e.target as Node)) { setCatOpen(false); setCatHover(null); }
+      if (catRef.current && !catRef.current.contains(e.target as Node)) setCatOpen(false);
       if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) setSearchFocused(false);
     };
     document.addEventListener("mousedown", handler);
@@ -412,7 +410,7 @@ export default function Navbar() {
               <button onClick={(e) => {
                   const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
                   setCatTop(r.bottom + 4);
-                  setCatOpen((v) => !v); setCatHover(null); setCatExpanded(null);
+                  setCatOpen((v) => !v);
                 }}
                 className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 h-11 rounded-md text-white font-bold text-sm sm:text-[15px] ring-1 transition-colors ${catOpen ? "ring-white/60 bg-white/10" : "ring-transparent hover:ring-white/40"}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
@@ -420,108 +418,16 @@ export default function Navbar() {
                 <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {catOpen && (
-                <>
+                /* Kataloq menyusu — birmarket üslubu mega menyu (3 səviyyə).
+                   Telefonda ekranın tam eninə açılır (fixed + --cat-top),
+                   masaüstündə düymənin altında 292px-lik reyd, alt/alt-alt
+                   sütunları isə hover ilə SAĞA açılır (CategoryMegaMenu). */
                 <div
-                  /* Yuxarı ofset CSS dəyişəni ilə verilir — inline `top` masaüstündə
-                     də tətbiq olunub `absolute` yerləşməni pozardı. Dəyişəni yalnız
-                     mobil klas oxuyur; `sm:top-auto` masaüstündə onu ləğv edir. */
                   style={{ ["--cat-top" as string]: `${catTop}px` } as React.CSSProperties}
-                  className="fixed top-[var(--cat-top)] left-2 right-2 w-auto max-h-[75vh] sm:absolute sm:top-auto sm:left-0 sm:right-auto sm:mt-1 sm:w-72 sm:max-h-[72vh] bg-card text-foreground border border-card-border shadow-2xl z-50 overflow-y-auto"
-                  onMouseLeave={() => { catCloseTimer.current = setTimeout(() => setCatHover(null), 180); }}>
-                  {/* Başlıq zolağı — header ilə eyni tünd ton */}
-                  <div className="sticky top-0 z-10 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: NAV_DARK }}>
-                    {t("navCatalog")}
-                  </div>
-                  {CATEGORIES.map((c) => {
-                    const hasSubs = c.subs && c.subs.length > 0;
-                    const expanded = catExpanded === c.name;
-                    return (
-                      <div key={c.name}>
-                        <div
-                          onMouseEnter={(e) => {
-                            if (catCloseTimer.current) clearTimeout(catCloseTimer.current);
-                            if (!hasSubs) { setCatHover(null); return; }
-                            const r = e.currentTarget.getBoundingClientRect();
-                            const vh = window.innerHeight;
-                            const est = Math.min((c.subs.length + 2) * 42, vh * 0.8);
-                            const top = Math.max(8, Math.min(r.top, vh - est - 12));
-                            setCatHover({ cat: c, top, left: r.right });
-                          }}
-                          className="group/cat flex items-center gap-3 px-4 py-2.5 text-sm hover:bg-[var(--brand-soft)] transition-colors text-foreground">
-                          {/* Adın özü — kateqoriyaya keçid */}
-                          <Link href={`/elanlar/${slugify(c.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
-                            className="flex items-center gap-3 min-w-0 flex-1">
-                            <span className="w-8 h-8 rounded-lg bg-input-bg text-muted group-hover/cat:bg-[var(--brand-to)] group-hover/cat:text-white flex items-center justify-center shrink-0 transition-colors"><CategoryIcon name={c.name} className="w-[18px] h-[18px]" /></span>
-                            <span className="truncate font-medium group-hover/cat:text-[var(--brand-to)]">{c.name}</span>
-                          </Link>
-                          {hasSubs && (
-                            <>
-                              {/* TELEFON: ox artıq keçid deyil — alt kateqoriyaları açır */}
-                              <button type="button" aria-label="Alt kateqoriyalar"
-                                aria-expanded={expanded}
-                                onClick={() => setCatExpanded(expanded ? null : c.name)}
-                                className="sm:hidden shrink-0 -mr-1 p-1.5 rounded-lg hover:bg-[var(--brand-soft)]">
-                                <svg className={`w-4 h-4 text-muted transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                              </button>
-                              {/* MASAÜSTÜ: ox yalnız göstəricidir, alt menyu hover ilə açılır */}
-                              <svg className="hidden sm:block w-4 h-4 text-muted shrink-0 group-hover/cat:text-[var(--brand-to)] group-hover/cat:translate-x-0.5 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Telefonda alt kateqoriyalar — sətirin altında açılır */}
-                        {hasSubs && expanded && (
-                          <div className="sm:hidden bg-input-bg/40 border-y border-card-border">
-                            <Link href={`/elanlar/${slugify(c.name)}`} onClick={() => { setCatOpen(false); setCatExpanded(null); }}
-                              className="block pl-14 pr-4 py-2 text-[13px] font-bold" style={{ color: PINK }}>
-                              Hamısına bax →
-                            </Link>
-                            {c.subs.map((sub: any) => (
-                              <Link key={sub.name} href={`/elanlar/${slugify(c.name)}/${slugify(sub.name)}`}
-                                onClick={() => { setCatOpen(false); setCatExpanded(null); }}
-                                className="flex items-center gap-2.5 pl-14 pr-4 py-2 text-[13px] text-foreground hover:bg-[var(--brand-soft)] transition-colors">
-                                <SubCategoryIcon name={sub.name} parent={c.name} className="w-4 h-4 shrink-0 text-muted" />
-                                <span className="truncate">{sub.name}</span>
-                              </Link>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <Link href="/elanlar" onClick={() => { setCatOpen(false); setCatHover(null); }} className="flex items-center gap-2 px-4 py-3 text-sm font-bold border-t border-card-border hover:bg-[var(--brand-soft)] transition-colors" style={{ color: PINK }}>
-                    Bütün kateqoriyalar →
-                  </Link>
+                  className="fixed top-[var(--cat-top)] left-2 right-2 w-auto max-h-[75vh] overflow-y-auto lg:overflow-visible lg:max-h-none lg:absolute lg:top-full lg:left-0 lg:right-auto lg:mt-1 lg:w-[292px] bg-card text-foreground border border-card-border shadow-2xl z-50"
+                >
+                  <CategoryMegaMenu variant="dropdown" onNavigate={() => setCatOpen(false)} />
                 </div>
-
-                {/* Alt-kateqoriya flyout-u — siyahıdan AYRICA (backdrop-blur + overflow
-                    kəsməsin). fixed koordinatlarla sağda açılır. */}
-                {catHover && (
-                  <div style={{ position: "fixed", top: catHover.top, left: catHover.left, maxHeight: `calc(100vh - ${catHover.top}px - 12px)` }}
-                    onMouseEnter={() => { if (catCloseTimer.current) clearTimeout(catCloseTimer.current); }}
-                    onMouseLeave={() => setCatHover(null)}
-                    className="z-[60] w-72 overflow-y-auto bg-card text-foreground border border-card-border border-l-0 shadow-2xl">
-                    {/* Başlıq zolağı — ana menyu ilə eyni tünd ton (bitişik görünsün) */}
-                    <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: NAV_DARK }}>
-                      <CategoryIcon name={catHover.cat.name} className="w-[18px] h-[18px] shrink-0" />
-                      <span className="truncate">{catHover.cat.name}</span>
-                    </div>
-                    <Link href={`/elanlar/${slugify(catHover.cat.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
-                      className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b border-card-border hover:bg-[var(--brand-soft)] transition-colors" style={{ color: PINK }}>
-                      Hamısına bax →
-                    </Link>
-                    {catHover.cat.subs.map((s: any) => (
-                      <Link key={s.name} href={`/elanlar/${slugify(catHover.cat.name)}/${slugify(s.name)}`} onClick={() => { setCatOpen(false); setCatHover(null); }}
-                        className="group/sub flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-[var(--brand-soft)] transition-colors">
-                        <span className="w-8 h-8 rounded-lg bg-input-bg text-muted group-hover/sub:bg-[var(--brand-to)] group-hover/sub:text-white flex items-center justify-center shrink-0 transition-colors">
-                          <SubCategoryIcon name={s.name} parent={catHover.cat.name} className="w-[18px] h-[18px]" />
-                        </span>
-                        <span className="truncate flex-1 font-medium group-hover/sub:text-[var(--brand-to)]">{s.name}</span>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-                </>
               )}
             </div>
             </div>{/* sol qrup sonu */}

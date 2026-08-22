@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
-import { CATEGORIES, CATEGORY_NAMES, getSubs, parseCat, buildCat } from "@/lib/categories";
+import { CATEGORIES, CATEGORY_NAMES, getSubs, getLeaves, parseCat, buildCat } from "@/lib/categories";
 
 // Excel sütun başlıqları — şablon faylındakı və oxunan başlıqlar.
 const COLUMNS = [
@@ -18,7 +18,11 @@ const REQUIRED = ["title", "price", "category"] as const;
 // Bütün etibarlı kateqoriyalar (ana + "Ana › Alt") — şablon vərəqi və validasiya üçün.
 const ALL_CATEGORY_PATHS: string[] = CATEGORIES.flatMap((c) => [
   c.name,
-  ...getSubs(c.name).map((s) => buildCat(c.name, s)),
+  ...getSubs(c.name).flatMap((s) => [
+    buildCat(c.name, s),
+    // 3-cü səviyyə də etibarlıdır: "Ana › Alt › Alt-alt"
+    ...getLeaves(c.name, s).map((l) => buildCat(c.name, s, l)),
+  ]),
 ]);
 const CATEGORY_SET = new Set(ALL_CATEGORY_PATHS);
 

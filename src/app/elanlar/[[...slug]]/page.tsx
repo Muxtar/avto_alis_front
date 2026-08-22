@@ -14,106 +14,13 @@ import AddListingMenu from "@/components/AddListingMenu";
 import ShareButton from "@/components/ShareButton";
 import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
 import CategoryFilterPanel from "@/components/CategoryFilterPanel";
+import CategoryMegaMenu from "@/components/CategoryMegaMenu";
 import { API, imgUrl } from "@/lib/api";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
-import { CATEGORIES, getSubs, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
+import { CATEGORIES, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
 import { IXTISAS_SECTORS } from "@/lib/ixtisas";
 
 type TypeFilter = "all" | "PRODUCT" | "SERVICE" | "PROFESSION";
-
-// Kateqoriya menyusu — ana səhifə hero blokunda və axtarış görünüşündə istifadə olunur.
-// `fill=true` → hero blokunda: absolute inset-0 ilə karuselin hündürlüyünə TAM oturur
-// (öz məzmunu sətri uzatmır, daxildə scroll olur). `fill=false` → adi yan panel.
-function CategoryMenu({
-  fill, selectedCategory, hoverCat, setHoverCat,
-}: {
-  fill: boolean;
-  selectedCategory: string | null;
-  hoverCat: { cat: any; top: number; left: number } | null;
-  setHoverCat: (v: { cat: any; top: number; left: number } | null) => void;
-}) {
-  return (
-    <div
-      onMouseLeave={() => setHoverCat(null)}
-      style={{ background: "var(--landing-tile)", borderColor: "var(--landing-line)" }}
-      className={fill
-        ? "absolute inset-0 flex flex-col border"
-        : "sticky top-20 z-30 flex flex-col border shadow-sm"}
-    >
-      {/* Başlıq zolağı — header ilə eyni tünd ton */}
-      <div className="shrink-0 px-3.5 py-2 text-white text-[12.5px] font-bold tracking-wide flex items-center gap-2" style={{ background: "var(--nav-dark)" }}>
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-        Kateqoriyalar
-      </div>
-      <nav className={fill ? "flex-1 min-h-0 overflow-y-auto" : "max-h-[62vh] overflow-y-auto"}>
-        {CATEGORIES.map((c) => {
-          const active = selectedCategory ? parseCat(selectedCategory).main === c.name : false;
-          const hasSubs = c.subs && c.subs.length > 0;
-          return (
-            <Link
-              key={c.name}
-              href={`/elanlar/${catToSlugs(c.name).join("/")}`}
-              onMouseEnter={(e) => {
-                if (!hasSubs) { setHoverCat(null); return; }
-                const r = e.currentTarget.getBoundingClientRect();
-                const vh = window.innerHeight;
-                // Panel ekrandan aşağı çıxmasın deyə yuxarı sürüşdürülür; qalan
-                // hündürlük maxHeight ilə məhdudlaşır (içəri scroll olur).
-                const est = Math.min((c.subs.length + 2) * 42, vh * 0.8);
-                const top = Math.max(8, Math.min(r.top, vh - est - 12));
-                setHoverCat({ cat: c, top, left: r.right });
-              }}
-              className={`group/c relative flex items-center gap-3 px-3.5 py-2 text-[13px] leading-tight transition-colors ${active ? "text-[var(--brand-to)] font-semibold" : "text-foreground"} hover:bg-[var(--landing-bg)] hover:text-[var(--brand-to)]`}
-            >
-              {active && <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: "var(--brand-to)" }} />}
-              {/* umico: 24px ikon, mətndən 40px-lik sabit sütun məsafəsi */}
-              <span className={`w-6 h-6 flex items-center justify-center shrink-0 transition-colors ${active ? "text-[var(--brand-to)]" : "text-muted group-hover/c:text-[var(--brand-to)]"}`}>
-                <CategoryIcon name={c.name} className="w-[18px] h-[18px]" />
-              </span>
-              <span className="flex-1 line-clamp-2 font-medium">{c.name}</span>
-              {/* umico "TurningArrowIcon" — 10px chevron, sağa döndərilmiş */}
-              {hasSubs && <svg className="w-2.5 h-2.5 shrink-0 text-[#bdbfcd] group-hover/c:text-[var(--brand-to)] transition-colors" viewBox="0 0 9 6" fill="currentColor" style={{ transform: "rotate(270deg)" }}><path fillRule="evenodd" clipRule="evenodd" d="M7.06 0L4 3.05333L0.94 0L0 0.94L4 4.94L8 0.94L7.06 0Z" /></svg>}
-            </Link>
-          );
-        })}
-      </nav>
-      <Link href="/elanlar" style={{ borderColor: "var(--landing-line)" }}
-        className="shrink-0 flex items-center gap-2 px-3.5 py-2.5 text-[12.5px] font-bold border-t text-[var(--brand-to)] hover:bg-[var(--landing-bg)] transition-colors">
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-        Bütün kateqoriyalar
-      </Link>
-
-      {/* Alt-kateqoriya flyout-u — fixed (scroll konteynerindən kənar, kəsilmir) */}
-      {hoverCat && (
-        <div
-          style={{ position: "fixed", top: hoverCat.top, left: hoverCat.left, maxHeight: `calc(100vh - ${hoverCat.top}px - 12px)` }}
-          className="z-[60] w-72 overflow-y-auto shadow-2xl bg-card border border-card-border border-l-0"
-        >
-          <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide" style={{ background: "var(--nav-dark)" }}>
-            <CategoryIcon name={hoverCat.cat.name} className="w-[18px] h-[18px] shrink-0" />
-            <span className="truncate">{hoverCat.cat.name}</span>
-          </div>
-          <Link href={`/elanlar/${catToSlugs(hoverCat.cat.name).join("/")}`}
-            className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b border-card-border text-[var(--brand-to)] hover:bg-[var(--brand-soft)] transition-colors">
-            Hamısına bax →
-          </Link>
-          {hoverCat.cat.subs.map((s: any) => (
-            <Link
-              key={s.name}
-              href={`/elanlar/${catToSlugs(buildCat(hoverCat.cat.name, s.name)).join("/")}`}
-              className="group/sub flex items-center gap-3 px-4 py-2.5 text-sm text-foreground hover:bg-[var(--brand-soft)] transition-colors"
-            >
-              <span className="w-8 h-8 rounded-lg bg-input-bg text-muted group-hover/sub:bg-[var(--brand-to)] group-hover/sub:text-white flex items-center justify-center shrink-0 transition-colors">
-                <SubCategoryIcon name={s.name} parent={hoverCat.cat.name} className="w-[18px] h-[18px]" />
-              </span>
-              <span className="truncate flex-1 font-medium group-hover/sub:text-[var(--brand-to)]">{s.name}</span>
-            </Link>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function MarketplacePageWrapper() {
   return (
@@ -195,8 +102,6 @@ function MarketplacePage() {
   const [showAllCats, setShowAllCats] = useState(false);
   const COLLAPSED_CATS = 11;
   const SHOW_TAPAZ_GRID: boolean = false; // tap.az grid söndürülüb — kateqoriyalar sol paneldədir
-  // Sol panel scroll edəndə flyout kəsilməsin deyə alt-kateqoriya menyusu fixed render olunur.
-  const [hoverCat, setHoverCat] = useState<{ cat: any; top: number; left: number } | null>(null);
   // Ana səhifə = kateqoriya seçilməyib və axtarış yoxdur.
   const isHome = !selectedCategory && !searchQuery.trim();
   // Filterler
@@ -601,7 +506,7 @@ function MarketplacePage() {
               <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)_280px] lg:gap-4">
                 {/* Left — kateqoriyalar (sətri uzatmasın deyə absolute) */}
                 <div className="hidden lg:block relative">
-                  <CategoryMenu fill selectedCategory={selectedCategory} hoverCat={hoverCat} setHoverCat={setHoverCat} />
+                  <CategoryMegaMenu variant="landing" fill selectedCategory={selectedCategory} />
                 </div>
                 {/* Middle — karusel */}
                 <HomeCarousel />
@@ -634,7 +539,7 @@ function MarketplacePage() {
                   activeCount={activeFilterCount}
                 />
               ) : (
-                <CategoryMenu fill={false} selectedCategory={selectedCategory} hoverCat={hoverCat} setHoverCat={setHoverCat} />
+                <CategoryMegaMenu variant="landing" selectedCategory={selectedCategory} />
               )}
             </aside>
           )}

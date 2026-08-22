@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
-import { CATEGORIES, getSubs, buildCat, parseCat, isServiceCat, getListingFields, getCategoryAttrs, getCat } from "@/lib/categories";
+import { CATEGORIES, getSubs, getLeaves, buildCat, parseCat, isServiceCat, getListingFields, getCategoryAttrs, getCat } from "@/lib/categories";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
 import LocationPicker from "@/components/LocationPickerWrapper";
@@ -568,8 +568,10 @@ function AccountPageInner() {
               <textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder={t("listingDesc")} className={inputCls + " resize-none"} />
             </div>
             {(() => {
-              const { main, sub } = parseCat(form.category);
+              const { main, sub, leaf } = parseCat(form.category);
               const subs = getSubs(main);
+              // 3-cü səviyyə (alt-alt kateqoriya) — varsa göstərilir, məcburi deyil.
+              const leaves = getLeaves(main, sub);
               // Məhsul/Xidmət artıq əvvəlki addımda seçilib — burada təkrar tip
               // seçimi yoxdur. Xidmət isə ana kateqoriya "Xidmətlər"-dir (dəyişmir),
               // yalnız alt kateqoriya seçilir. Məhsul üçün yalnız məhsul
@@ -611,6 +613,20 @@ function AccountPageInner() {
                       {subs.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
+                  {leaves.length > 0 && (
+                    <div className="sm:col-span-2">
+                      <label className="block text-sm font-medium mb-1.5">Növ (alt-alt kateqoriya)</label>
+                      <select
+                        value={leaf}
+                        onChange={(e) => setForm({ ...form, category: buildCat(main, sub, e.target.value) })}
+                        className={inputCls}
+                      >
+                        <option value="">— dəqiqləşdirin (istəyə bağlı) —</option>
+                        {leaves.map((l) => <option key={l} value={l}>{l}</option>)}
+                      </select>
+                      <p className="text-xs text-muted mt-1">Dəqiq növ seçsəniz, elanınız daha asan tapılır.</p>
+                    </div>
+                  )}
                 </div>
               );
             })()}
