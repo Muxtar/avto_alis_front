@@ -6,7 +6,7 @@ import { API, imgUrl } from "@/lib/api";
 
 interface Biz {
   id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
-  status: string; rejectionReason: string | null; createdAt: string; isActive: boolean;
+  status: string; rejectionReason: string | null; createdAt: string; isActive: boolean; deletedAt?: string | null;
   aiAuthorized: boolean | null; aiVoenMatch: boolean | null; aiConfidence: number | null; aiFraudSignals: string[]; aiReason: string | null; autoApproved: boolean;
   taxDocImage: string | null; companyDocImage: string | null; powerOfAttorneyImage: string | null; bankDocImage: string | null; idCardImage: string | null; selfieImage: string | null;
   user: {
@@ -40,6 +40,9 @@ export default function AdminBusinessesPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
+  // Silinmiş bizneslər normalda gizlidir. Onlara hesablaşma (bizim borcumuz)
+  // bağlı ola bilər — admin lazım olanda göstərir.
+  const [showDeleted, setShowDeleted] = useState(false);
   const [rejectReason, setRejectReason] = useState<{ [id: number]: string }>({});
   const [busyId, setBusyId] = useState<number | null>(null); // AI əməliyyatı gedən biznes
   const [edit, setEdit] = useState<{ id: number; name: string; voen: string; ownerName: string; founderName: string; phone: string } | null>(null);
@@ -59,12 +62,12 @@ export default function AdminBusinessesPage() {
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await fetch(`${API}/admin/businesses?status=${filter}&search=${encodeURIComponent(search)}`, { headers });
+      const res = await fetch(`${API}/admin/businesses?status=${filter}&search=${encodeURIComponent(search)}${showDeleted ? "&includeDeleted=1" : ""}`, { headers });
       const data = await res.json();
       setItems(data.businesses || []);
     } catch { toast(t("error"), "error"); } finally { if (!silent) setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, search]);
+  }, [filter, search, showDeleted]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -241,6 +244,11 @@ export default function AdminBusinessesPage() {
             </button>
           ))}
         </div>
+        {/* Silinmiş bizneslər — sətir bazada qalır (hesablaşma/borc üçün) */}
+        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none">
+          <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
+          Silinmişləri də göstər
+        </label>
       </div>
 
       {loading ? (
@@ -255,7 +263,10 @@ export default function AdminBusinessesPage() {
               <button onClick={() => setOpenId(openId === b.id ? null : b.id)} className="w-full flex items-center gap-2 text-left">
                 <span className="text-lg shrink-0">🏢</span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-sm truncate">{b.name || "Yeni biznes müraciəti"} <span className="text-[10px] font-normal text-muted">({b.kind === "LEGAL" ? "Hüquqi" : "Fiziki"})</span></p>
+                  <p className="font-semibold text-sm truncate">
+                    {b.name || "Yeni biznes müraciəti"} <span className="text-[10px] font-normal text-muted">({b.kind === "LEGAL" ? "Hüquqi" : "Fiziki"})</span>
+                    {b.deletedAt && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-bold">🗑 silinib</span>}
+                  </p>
                   <p className="text-[11px] text-muted truncate">{b.user?.name} · {b.user?.phone}{b.user?.publicId ? ` · ID ${b.user.publicId}` : ""}</p>
                 </div>
                 {b.autoApproved && <span className="hidden sm:inline px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-500" title="AI təsdiq tövsiyə edir">🤖</span>}

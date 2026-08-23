@@ -9,6 +9,7 @@ import LocationPicker from "@/components/LocationPickerWrapper";
 import SellerContract from "@/components/SellerContract";
 import ProfessionPicker from "@/components/ProfessionPicker";
 import QRShare from "@/components/QRShare";
+import VerifyCard from "@/components/VerifyCard";
 
 // Obyektin fəaliyyət sahələri — 16 əsas kateqoriya.
 const ACTIVITY_AREAS = [
@@ -86,6 +87,7 @@ export default function BusinessPage() {
   const [showAddBank, setShowAddBank] = useState<Record<number, boolean>>({}); // əl ilə bank əlavə (opsional)
   const [objInput, setObjInput] = useState<Record<number, { name: string; phone: string; address: string; city: string; activityAreas: string[]; latitude: number | null; longitude: number | null }>>({});
   const [editingObjId, setEditingObjId] = useState<number | null>(null); // redaktə olunan obyekt
+  const [openObjId, setOpenObjId] = useState<number | null>(null);       // açıq (genişlənmiş) obyekt kartı
   const [objEditInput, setObjEditInput] = useState<any>(null);
   const [memberInput, setMemberInput] = useState<Record<number, { publicId: string; objectId: string }>>({});
 
@@ -293,6 +295,28 @@ export default function BusinessPage() {
 
   const wrap = (fn: () => Promise<any>) => async () => { try { await fn(); load(); } catch (e: any) { toast(e.message || t("error"), "error"); } };
 
+  // Biznesi sil. Təsdiqlənmiş biznesdə silmə "yumşaqdır": elanlar arxivlənir,
+  // obyektlər bağlanır, biznes saytdan yox olur — amma bizim ona olan pul
+  // borcumuz (satışlardan yığılan qazanc) admin panelində qalır və ödənilir.
+  // Bitməmiş sifariş varsa server silməyə imkan vermir (alıcı malı gözləyir).
+  const deleteBusiness = async (b: any) => {
+    const approved = b.status === "APPROVED";
+    const msg = approved
+      ? `«${b.name}» silinsin?\n\n• Bütün elanları saytdan götürüləcək (arxivlənəcək)\n• Obyektləri (${b.objects?.length || 0}) bağlanacaq\n• Satışlardan qazandığınız və hələ ödənilməmiş pul İTMİR — hesablaşma qeydi bizdə qalır və bank hesabınıza köçürülür\n\nBu əməliyyat geri qaytarılmır.`
+      : "Bu biznes müraciəti ləğv edilsin?";
+    if (!confirm(msg)) return;
+    try {
+      const d = await jsonReq(`${API}/me/businesses/${b.id}`, "DELETE");
+      if (d.owed > 0) toast(`Biznes silindi. Sizə ödəniləcək ${d.owed} ₼ qeydə alınıb — bank hesabınıza köçürüləcək.`, "success");
+      else if (d.soft) toast(`Biznes silindi — ${d.archivedListings || 0} elan saytdan götürüldü.`, "success");
+      else toast("Biznes müraciəti ləğv edildi", "success");
+      setOpenBizId(null);
+      load();
+    } catch (e: any) {
+      toast(e.message || t("error"), "error");
+    }
+  };
+
   const statusBadge = (s: string) => s === "APPROVED" ? "bg-green-500/10 text-green-500 border-green-500/20" : s === "REJECTED" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20";
   const statusText = (s: string) => s === "APPROVED" ? (t("bizApproved") || "Təsdiqləndi") : s === "REJECTED" ? (t("bizRejected") || "Rədd edildi") : (t("bizPending") || "Gözləyir");
 
@@ -485,25 +509,46 @@ export default function BusinessPage() {
       ) : businesses.length === 0 ? (
         <div className="bg-card border border-card-border rounded-xl p-8 text-center text-muted">{t("bizNone") || "Hələ biznesiniz yoxdur"}</div>
       ) : (
-        <div className="space-y-4">
-          {businesses.map((b) => (
-            <div key={b.id} id={`biz-${b.id}`} className={`bg-card border border-card-border rounded-xl p-4 sm:p-5 ${!b.isActive ? "opacity-60" : ""}`}>
-              {/* Kompakt başlıq — sağ üstdə status, klik detalları açır */}
-              <button onClick={() => setOpenBizId(openBizId === b.id ? null : b.id)} className="w-full flex items-center gap-3 text-left">
+        <>
+          {/* Biznes kartları — profil səhifəsindəki doğrulama kartları ilə eyni dil:
+              təsdiqlənib ✓, admin gözləyir ⏳, rədd/deaktiv ✕. Karta klikləyəndə
+              həmin biznesin ətraflı paneli aşağıda açılır. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
+            {businesses.map((b) => (
+              <VerifyCard
+                key={b.id}
+                variant="business"
+                title={b.kind === "LEGAL" ? "Hüquqi şəxs" : "Fiziki şəxs"}
+                state={b.status === "APPROVED" ? (b.isActive ? "ok" : "none") : b.status === "REJECTED" ? "none" : "pending"}
+                value={b.name || "Yeni biznes müraciəti"}
+                hint={
+                  b.status === "APPROVED"
+                    ? `${b.voen ? `VÖEN: ${b.voen} · ` : ""}🏪 ${b.objects?.length || 0} obyekt${b.isActive ? "" : " · deaktiv"}`
+                    : b.status === "REJECTED"
+                      ? (b.rejectionReason ? `Rədd edildi: ${b.rejectionReason}` : "Müraciət rədd edildi")
+                      : "Admin təsdiqini gözləyir"
+                }
+                cta={b.status === "REJECTED" ? "Düzəliş et" : "Ətraflı"}
+                open={openBizId === b.id}
+                onClick={() => setOpenBizId(openBizId === b.id ? null : b.id)}
+              />
+            ))}
+          </div>
+
+          {/* Açıq biznesin paneli */}
+          {businesses.filter((b) => b.id === openBizId).map((b) => (
+            <div key={b.id} id={`biz-${b.id}`} className={`mt-4 bg-card border border-card-border rounded-xl p-4 sm:p-5 animate-fade-in ${!b.isActive ? "opacity-70" : ""}`}>
+              {/* Panel başlığı */}
+              <div className="flex items-center gap-3 mb-3">
                 <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 flex items-center justify-center text-xl shrink-0">🏢</div>
                 <div className="min-w-0 flex-1">
                   <h2 className="font-bold text-base truncate">{b.name || "Yeni biznes müraciəti"}</h2>
-                  <p className="text-[11px] text-muted truncate">
-                    {b.voen ? `VÖEN: ${b.voen}` : (b.status === "PENDING" ? "⏳ Admin təsdiqini gözləyir" : "—")}
-                    {b.status === "APPROVED" && b.objects?.length ? ` · 🏪 ${b.objects.length} obyekt` : ""}
-                  </p>
+                  <p className="text-[11px] text-muted truncate">{b.voen ? `VÖEN: ${b.voen}` : (b.status === "PENDING" ? "⏳ Admin təsdiqini gözləyir" : "—")}</p>
                 </div>
                 <span className={`px-3 py-1 rounded-lg text-xs font-bold border shrink-0 ${statusBadge(b.status)}`}>{statusText(b.status)}</span>
-                <span className="text-muted text-xs shrink-0 w-4 text-center">{openBizId === b.id ? "▲" : "▼"}</span>
-              </button>
-
-              {openBizId === b.id && (
-              <div className="mt-3">
+                <button onClick={() => setOpenBizId(null)} aria-label="Bağla" className="text-muted hover:text-foreground text-sm shrink-0">✕</button>
+              </div>
+              <div>
               {/* Detal məlumat + idarəetmə */}
               <div className="flex items-start justify-between gap-2 mb-3 pb-3 border-b border-card-border">
                 <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted">
@@ -527,13 +572,12 @@ export default function BusinessPage() {
                     {t("bizActive") || "Aktiv"}
                   </label>
                   <button onClick={() => { setBizEditDoc(null); setBizEditBank(null); setBizEdit(bizEdit?.id === b.id ? null : { id: b.id, name: b.name, ownerName: b.ownerName, founderName: b.founderName, phone: b.phone || "", proofType: b.proofType }); }} className="text-orange-500 text-xs">{bizEdit?.id === b.id ? "✕ Bağla" : "✏️ Redaktə"}</button>
-                  {/* Silmə YALNIZ hələ təsdiqlənməmiş biznes üçün. Təsdiqlənmiş biznesin
-                      arxasında satış və hesablaşma dayanır — server də bunu rədd edir. */}
-                  {b.status !== "APPROVED" ? (
-                    <button onClick={wrap(async () => { if (confirm("Bu biznes müraciəti ləğv edilsin?")) await jsonReq(`${API}/me/businesses/${b.id}`, "DELETE"); })} className="text-red-500 text-xs">Ləğv et</button>
-                  ) : (
-                    <span className="text-[11px] text-muted" title="Satış və hesablaşma tarixçəsi bu biznesə bağlıdır">Silinmir</span>
-                  )}
+                  {/* Biznesi silmək HƏMİŞƏ mümkündür. Təsdiqlənmiş biznes silinəndə
+                      sətir bazada qalır (saytda görünmür): bizim həmin biznesə olan
+                      pul borcumuz admin panelində qalır və köçürülür. */}
+                  <button onClick={() => deleteBusiness(b)} className="text-red-500 text-xs">
+                    {b.status === "APPROVED" ? "🗑 Biznesi sil" : "Ləğv et"}
+                  </button>
                 </div>
               </div>
 
@@ -612,8 +656,30 @@ export default function BusinessPage() {
                 {b.objects.length === 0 && editingObjId === null && (
                   <p className="text-xs text-amber-600 text-center py-2 bg-amber-500/10 border border-amber-500/20 rounded-lg mb-2">⚠️ Hələ obyekt yoxdur. VÖEN ilə (kartla ödənişli) satış üçün ən azı bir <b>obyekt (mağaza / filial)</b> əlavə etməlisiniz — elanlar həmişə bir obyektə bağlı satılır.</p>
                 )}
-                {b.objects.map((o) => (
-                  <div key={o.id} className={`rounded-xl mb-2 ${editingObjId === o.id ? "bg-input-bg/50 p-3" : `bg-input-bg/40 border border-card-border/60 p-3 ${!o.isActive ? "opacity-50" : ""}`}`}>
+                {/* Obyekt kartları — biznes kartları ilə eyni dil (aktiv ✓ / deaktiv ✕).
+                    Karta klikləyəndə obyektin idarəetmə paneli aşağıda açılır. */}
+                {b.objects.length > 0 && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {b.objects.map((o) => (
+                      <VerifyCard
+                        key={o.id}
+                        variant="object"
+                        compact
+                        title={`Obyekt №${o.id}`}
+                        state={o.isActive ? "ok" : "none"}
+                        value={o.name}
+                        hint={`${[o.city, o.address].filter(Boolean).join(", ") || "—"}${typeof o._count?.listings === "number" ? ` · 📦 ${o._count.listings} məhsul` : ""}${o.isActive ? "" : " · deaktiv"}`}
+                        cta="Ətraflı"
+                        open={openObjId === o.id}
+                        onClick={() => { setOpenObjId(openObjId === o.id ? null : o.id); setEditingObjId(null); }}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {/* Açıq obyektin paneli — redaktə / idarəetmə */}
+                {b.objects.filter((o) => o.id === openObjId).map((o) => (
+                  <div key={o.id} className="mt-3 rounded-xl bg-input-bg/40 border border-card-border/60 p-3 animate-fade-in">
                     {editingObjId === o.id ? (
                       <ObjectAdder bizId={b.id} input={objEditInput} setInput={setObjEditInput} inputCls={inputCls} t={t}
                         saveLabel="💾 Yadda saxla" onCancel={() => { setEditingObjId(null); setObjEditInput(null); }}
@@ -741,10 +807,9 @@ export default function BusinessPage() {
                 </div>
               )}
               </div>
-              )}
             </div>
           ))}
-        </div>
+        </>
       )}
     </div>
   );

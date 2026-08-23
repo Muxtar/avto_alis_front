@@ -17,6 +17,8 @@ import { API } from "@/lib/api";
 interface Row {
   key: string; businessId: number | null; sellerId: number;
   name: string; voen: string | null; isBusiness: boolean;
+  // Sahibi biznesi silib — borcumuz qalır, yenə də ödəməliyik.
+  deleted?: boolean; ownerName?: string | null; phone?: string | null;
   iban: string | null; bankTitle: string | null;
   unpaid: number; pending: number; commission: number; gross: number; orders: number;
 }
@@ -232,9 +234,13 @@ export default function AdminBusinessPayoutsPage() {
               className="surface p-4 text-left hover:border-orange-500/60 transition-colors">
               <div className="flex items-start justify-between gap-3 mb-2">
                 <div className="min-w-0">
-                  <p className="font-bold truncate">{r.name}</p>
+                  <p className="font-bold truncate">
+                    {r.name}
+                    {r.deleted && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-bold align-middle">🗑 silinib</span>}
+                  </p>
                   <p className="text-[11px] text-muted">
                     {r.isBusiness ? `VÖEN: ${r.voen || "—"}` : "Şəxsi satıcı"} · {r.orders} sifariş
+                    {r.phone ? ` · ${r.phone}` : ""}
                   </p>
                 </div>
                 <span className="shrink-0 text-right">
@@ -269,10 +275,19 @@ export default function AdminBusinessPayoutsPage() {
                 <div className="p-4 border-b border-card-border sticky top-0 bg-card z-10">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-bold text-lg truncate">{detail.name}</p>
+                      <p className="font-bold text-lg truncate">
+                        {detail.name}
+                        {detail.deleted && <span className="ml-2 px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-[11px] font-bold align-middle">🗑 silinib</span>}
+                      </p>
                       <p className="text-[11px] text-muted">
                         {detail.isBusiness ? `VÖEN: ${detail.voen || "—"}` : "Şəxsi satıcı"} · {detail.totals.count} sifariş
+                        {detail.phone ? ` · ${detail.phone}` : ""}
                       </p>
+                      {detail.deleted && (
+                        <p className="text-[11px] mt-1 px-2 py-1 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-500">
+                          Sahibi bu biznesi silib{detail.deletedAt ? ` (${new Date(detail.deletedAt).toLocaleDateString("az-AZ")})` : ""}, amma qazancı hələ ödənilməyib — aşağıdakı məbləği bank hesabına köçürün.
+                        </p>
+                      )}
                       {detail.iban ? (
                         <p className="text-[11px] mt-1">
                           Köçürmə hesabı: <span className="font-mono font-semibold">{detail.iban}</span>

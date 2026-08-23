@@ -9,12 +9,14 @@
 import React, { useId } from "react";
 
 export type VerifyState = "ok" | "pending" | "none";
-export type CardVariant = "id" | "phone" | "work";
+export type CardVariant = "id" | "phone" | "work" | "business" | "object";
 
 const GLYPH: Record<CardVariant, React.ReactNode> = {
   id: (<><rect x="2.5" y="4.5" width="19" height="15" rx="2.5" /><circle cx="8.5" cy="11" r="2.2" /><path d="M5 16.2c.7-1.4 2-2.2 3.5-2.2s2.8.8 3.5 2.2M14.5 9.5h4.5M14.5 12.5h4.5M14.5 15.5h3" /></>),
   phone: (<><rect x="6.5" y="2.5" width="11" height="19" rx="2.6" /><path d="M10.5 18.5h3" /></>),
   work: (<><path d="M3.5 20.5V9.2L12 4l8.5 5.2v11.3" /><path d="M9.5 20.5v-5h5v5" /><path d="M8 10.5h.01M12 10.5h.01M16 10.5h.01" /></>),
+  business: (<><rect x="2.8" y="8.5" width="8" height="12" rx="1.2" /><rect x="12.2" y="3.5" width="8" height="17" rx="1.2" /><path d="M5.3 12h3M5.3 16h3M14.7 7h3M14.7 11h3M14.7 15h3" /></>),
+  object: (<><path d="M4 9.8h16V20.5H4z" /><path d="M2.8 9.8L4.4 5.2h15.2l1.6 4.6" /><path d="M9.8 20.5V15h4.4v5.5" /><path d="M2.8 9.8a2.6 2.6 0 0 0 5.2 0 2.6 2.6 0 0 0 5.2 0 2.6 2.6 0 0 0 5.2 0" /></>),
 };
 
 function StatusBadge({ state, onDark }: { state: VerifyState; onDark: boolean }) {
@@ -33,7 +35,7 @@ function StatusBadge({ state, onDark }: { state: VerifyState; onDark: boolean })
 }
 
 export default function VerifyCard({
-  variant, title, value, hint, state, open, onClick, cta = "Təsdiqlə",
+  variant, title, value, hint, state, open, onClick, cta = "Təsdiqlə", compact = false,
 }: {
   variant: CardVariant;
   title: string;        // kartın üst etiketi (məs. "KİMLİK TƏSDİQİ")
@@ -43,6 +45,7 @@ export default function VerifyCard({
   open: boolean;
   onClick: () => void;
   cta?: string;         // təsdiq yoxdursa kartdakı çağırış ("Təsdiqlə", "Əlavə et")
+  compact?: boolean;    // daha alçaq kart (məs. obyekt siyahısı — çox sayda olur)
 }) {
   const ok = state === "ok";
   const chipId = useId(); // eyni səhifədə bir neçə kart olanda SVG id-ləri toqquşmasın
@@ -52,7 +55,7 @@ export default function VerifyCard({
       onClick={onClick}
       aria-expanded={open}
       className={`group relative w-full text-left rounded-2xl border overflow-hidden p-4 sm:p-[18px] flex flex-col justify-between
-        aspect-[1.62/1] min-h-[164px] transition-all duration-200
+        ${compact ? "min-h-[118px]" : "aspect-[1.62/1] min-h-[164px]"} transition-all duration-200
         ${ok ? "text-white border-transparent shadow-lg shadow-[var(--brand-to)]/25" : "bg-card border-card-border"}
         ${open ? "ring-2 ring-[var(--brand-to)] ring-offset-2 ring-offset-[var(--background)]" : "hover:-translate-y-0.5 hover:shadow-xl"}`}
       style={ok ? { backgroundImage: "linear-gradient(135deg, var(--brand-from) 0%, var(--brand-to) 55%, #7c3aed 100%)" } : undefined}
@@ -78,7 +81,7 @@ export default function VerifyCard({
       </div>
 
       {/* Orta — kimlik kartında "çip" + maskalanmış rəqəmlər; təsdiq yoxdursa CTA */}
-      <div className="relative flex items-center gap-2.5 min-h-[28px]">
+      <div className={`relative flex items-center gap-2.5 ${compact ? "mt-1.5" : "min-h-[28px]"}`}>
         {variant === "id" && (
           <>
             <svg viewBox="0 0 36 28" className={`w-9 h-7 shrink-0 ${ok ? "" : "opacity-60"}`} aria-hidden>
