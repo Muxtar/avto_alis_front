@@ -37,9 +37,15 @@ type Props = {
    * Default (hero=false) — kart rejimi: masaüstü 4 / planşet 2 / mobil 1.
    */
   hero?: boolean;
+  /**
+   * fill — hero slaydı 16:9 əvəzinə SÜTUNUN HÜNDÜRLÜYÜNÜ doldurur (yalnız lg+).
+   * Ana səhifə hero blokunda karusel, sol kateqoriya reydi və sağ promo plitələri
+   * eyni hündürlükdə olsun deyə lazımdır (birmarket/umico quruluşu).
+   */
+  fill?: boolean;
 };
 
-export default function ProductCarousel({ items = PROMO_ITEMS, hero = false }: Props) {
+export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fill: fillHeight = false }: Props) {
   const [emblaRef, emblaApi] = useEmblaCarousel(
     // watchDrag — Embla v8-də sürükləmə seçimi (köhnə adı: draggable).
     { loop: true, align: "start", duration: 25, watchDrag: true },
@@ -81,21 +87,26 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false }: P
     "hover:scale-110 active:scale-95";
 
   return (
-    <div>
+    <div className={cn(fillHeight && "lg:h-full lg:flex lg:flex-col")}>
       {/* Oxlar KARUSELƏ görə mərkəzlənsin deyə ayrıca relative sarğı —
           nöqtələr bu sarğının kənarındadır, əks halda oxlar aşağı sürüşürdü. */}
-      <div className="relative">
+      <div className={cn("relative", fillHeight && "lg:flex-1 lg:min-h-0")}>
         {/* Kart rejimində kartlar arası 16px boşluq (-ml-4 / pl-4); hero-da boşluq yoxdur */}
-        <div className="overflow-hidden" ref={emblaRef}>
-          <div className={cn("flex", !hero && "-ml-4")}>
+        <div className={cn("overflow-hidden", fillHeight && "lg:h-full")} ref={emblaRef}>
+          <div className={cn("flex", !hero && "-ml-4", fillHeight && "lg:h-full")}>
             {items.map((it) => {
               // 16:9-dan ±12% kənara çıxmayan şəkil "cover" ilə tam doldurulur
               // (kəsilmə gözlə seçilmir); daha fərqli nisbətlərdə kəsmirik.
               const ratio = ratios[String(it.id)];
-              const fill = ratio != null && ratio > 1.56 && ratio < 2.03;
+              // fillHeight rejimində sətrin nisbəti 16:9 deyil — "cover" bannerin
+              // kənarlarını kəsərdi, ona görə həmişə "contain" + bulanıq arxa fon.
+              const fill = !fillHeight && ratio != null && ratio > 1.56 && ratio < 2.03;
 
               const inner = hero ? (
-                <div className="relative w-full aspect-[16/9] max-h-[560px] overflow-hidden bg-input-bg">
+                <div className={cn(
+                  "relative w-full overflow-hidden bg-input-bg",
+                  fillHeight ? "aspect-[16/9] max-h-[560px] lg:aspect-auto lg:h-full lg:max-h-none" : "aspect-[16/9] max-h-[560px]",
+                )}>
                   {/* Bulanıq arxa fon — yalnız şəkil çərçivəni doldurmayanda lazımdır */}
                   {/* Öz kompozit qatı (translateZ): blur BİR DƏFƏ rasterləşir, hər
                       scroll kadrında yenidən hesablanmır — sticky header-də flash səbəbi. */}
@@ -160,6 +171,7 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false }: P
                   className={cn(
                     "min-w-0",
                     hero ? "flex-[0_0_100%]" : "pl-4 flex-[0_0_100%] md:flex-[0_0_50%] lg:flex-[0_0_25%]",
+                    fillHeight && "lg:h-full",
                   )}
                 >
                   {it.href ? (

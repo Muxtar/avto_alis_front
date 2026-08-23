@@ -503,13 +503,16 @@ function MarketplacePage() {
              `sticky` YOXDUR — scroll edəndə hamısı birlikdə yuxarı qalxır. */
           <div className="mb-3 sm:mb-4 border" style={{ background: "var(--landing-bg)", borderColor: "var(--landing-line)" }}>
             <div className="p-3 sm:p-4">
-              <div className="lg:grid lg:grid-cols-[232px_minmax(0,1fr)_280px] lg:gap-4">
+              {/* Sətrin hündürlüyü SABİTDİR (lg+): sol kateqoriya reydi, karusel və
+                  sağ promo plitələri eyni boyda olur. Kateqoriyalar bu hündürlüyü
+                  aşanda reydin İÇİNDƏ scroll olunur. */}
+              <div className="lg:grid lg:grid-cols-[272px_minmax(0,1fr)] xl:grid-cols-[272px_minmax(0,1fr)_280px] lg:gap-4 lg:h-[535px]">
                 {/* Left — kateqoriyalar (sətri uzatmasın deyə absolute) */}
                 <div className="hidden lg:block relative">
                   <CategoryMegaMenu variant="landing" fill selectedCategory={selectedCategory} />
                 </div>
                 {/* Middle — karusel */}
-                <HomeCarousel />
+                <HomeCarousel fill />
                 {/* Middle sağ — promo plitələri */}
                 <SideBanners />
               </div>

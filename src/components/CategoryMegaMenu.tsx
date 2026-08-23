@@ -86,13 +86,16 @@ export default function CategoryMegaMenu({
   const leaves = openSub?.subs || [];
   const panelW = SUB_COL + (leaves.length ? LEAF_COL : 0);
 
-  // Panelin yerləşməsi — ekrandan kənara çıxmasın.
+  // Panelin yerləşməsi və HÜNDÜRLÜYÜ.
+  // Panel reyddən UZUN OLMUR — alt/alt-alt siyahılar sığmayanda sütunun
+  // içində scroll olunur (əvvəl panel aşağı uzanıb səhifəni örtürdü).
   let panelLeft = anchor?.left ?? 0;
   let panelTop = anchor?.top ?? 0;
+  let panelH = anchor?.height ?? 0;
   if (typeof window !== "undefined" && anchor) {
     panelLeft = Math.max(GAP, Math.min(panelLeft, window.innerWidth - panelW - GAP));
-    const minH = Math.max(anchor.height, 380);
-    panelTop = Math.max(GAP, Math.min(panelTop, window.innerHeight - minH - GAP));
+    panelH = Math.min(Math.max(anchor.height, 260), window.innerHeight - GAP * 2);
+    panelTop = Math.max(GAP, Math.min(panelTop, window.innerHeight - panelH - GAP));
   }
 
   return (
@@ -226,11 +229,7 @@ export default function CategoryMegaMenu({
           <div
             onMouseEnter={clearTimer}
             onMouseLeave={closeSoon}
-            style={{
-              position: "fixed", top: panelTop, left: panelLeft, width: panelW,
-              minHeight: Math.max(anchor.height, 380),
-              maxHeight: `calc(100vh - ${panelTop}px - ${GAP}px)`,
-            }}
+            style={{ position: "fixed", top: panelTop, left: panelLeft, width: panelW, height: panelH }}
             className="hidden lg:flex z-[47] bg-card text-foreground border border-card-border shadow-2xl animate-fade-in"
           >
             {/* Sütun 1 — alt kateqoriyalar */}

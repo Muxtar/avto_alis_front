@@ -24,7 +24,7 @@ export default function SideBanners() {
       { href: "/locations", title: "Yer üzrə axtar", sub: "Yaxınlıqdakı elanlar", cls: "from-fuchsia-500 to-pink-500" },
     ];
     return (
-      <div className="hidden lg:flex flex-col gap-2 h-full">
+      <div className="hidden xl:flex flex-col gap-2 h-full">
         {tiles.map((tl) => (
           <a key={tl.href} href={tl.href}
             className={`relative flex-1 min-h-[122px] rounded overflow-hidden bg-gradient-to-br ${tl.cls} p-4 flex flex-col justify-center text-white hover:brightness-110 transition-all`}>
@@ -38,7 +38,7 @@ export default function SideBanners() {
   }
 
   return (
-    <motion.div className="hidden lg:flex flex-col gap-2 h-full" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}>
+    <motion.div className="hidden xl:flex flex-col gap-2 h-full" initial="hidden" animate="show" variants={{ hidden: {}, show: { transition: { staggerChildren: 0.1 } } }}>
       {items.map((b) => {
         const src = /^(https?:|data:)/.test(b.image) ? b.image : imgUrl(b.image);
         const inner = (

@@ -781,19 +781,28 @@ a[class*="btn-"]:not([class*="rounded-full"]),
   border-radius: 0;
 }
 
-/* ── SƏHİFƏ ENİ ────────────────────────────────────────────────────────────
-   Sayt tam ekran işləyir — sağ/sol boş zolaqlar yoxdur. Əvvəl hər səhifə
-   `max-w-7xl` (1280px) ilə məhdudlaşırdı: 1500–2000px ekranlarda hər iki
-   tərəfdə geniş boşluq qalırdı.
+/* ── SƏHİFƏ ENİ (birmarket.az ilə eyni) ───────────────────────────────────
+   Ölçülüb birmarket.az-dan götürülüb: konteyner mərkəzdədir və ekran
+   böyüdükcə pilləli şəkildə genişlənir, 1280px-dən sonra dayanır — yəni
+   geniş monitorda sağ/sol boşluq qalır (1920px-də hər tərəfdən 320px).
 
-   Üst hədd yalnız çox geniş monitorlarda sətirlərin oxunmaz dərəcədə
-   uzanmaması üçündür; adi noutbuk/masaüstündə praktiki olaraq tam endir. */
+     < 768px   → tam en + 16px daxili boşluq
+     ≥ 768px   → 704px
+     ≥ 1024px  → 960px
+     ≥ 1280px  → 1200px
+     ≥ 1366px  → 1280px  (üst hədd)
+
+   Başlıq (Navbar) və altlıq da eyni konteyneri işlədir ki, loqo/axtarış
+   səhifə məzmunu ilə eyni xətdə dursun. */
 .page-wrap {
   width: 100%;
-  max-width: var(--page-max, 1920px);
   margin-inline: auto;
-  padding-inline: clamp(12px, 1.6vw, 28px);
+  padding-inline: 16px;
 }
+@media (min-width: 768px)  { .page-wrap { max-width: 704px;  padding-inline: 0; } }
+@media (min-width: 1024px) { .page-wrap { max-width: 960px; } }
+@media (min-width: 1280px) { .page-wrap { max-width: 1200px; } }
+@media (min-width: 1366px) { .page-wrap { max-width: 1280px; } }
 
 /* ── MƏHSUL ŞƏBƏKƏSİ ───────────────────────────────────────────────────────
    Sayt tam enə keçəndən sonra 3 sütun kartları 600px enində edirdi — çox

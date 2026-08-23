@@ -8,7 +8,7 @@ type Banner = { id: number; image: string; link: string | null; title: string | 
 // Ana səhifə karuseli — embla ilə (ProductCarousel, hero rejimi).
 // Məzmun: admin panelindən idarə olunan MAIN bannerləri; heç biri yoxdursa
 // saytın öz reklam slaydları (public/promo) göstərilir ki, sahə boş qalmasın.
-export default function HomeCarousel() {
+export default function HomeCarousel({ fill = false }: { fill?: boolean } = {}) {
   const [items, setItems] = useState<CarouselItem[] | null>(null);
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function HomeCarousel() {
   }, []);
 
   // Yüklənənə qədər ölçü sabit qalsın ki, səhifə sıçramasın.
-  if (items === null) return <div className="w-full aspect-[16/9] max-h-[560px] bg-input-bg animate-pulse" />;
+  if (items === null) return <div className={`w-full bg-input-bg animate-pulse ${fill ? "aspect-[16/9] max-h-[560px] lg:aspect-auto lg:h-full lg:max-h-none" : "aspect-[16/9] max-h-[560px]"}`} />;
 
-  return <ProductCarousel items={items} hero />;
+  return <ProductCarousel items={items} hero fill={fill} />;
 }

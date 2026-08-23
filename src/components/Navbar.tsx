@@ -382,7 +382,7 @@ export default function Navbar() {
       {/* ── Əsas başlıq (Amazon üslubu — tünd) ──
           z-30: Kataloq menyusu alt naviqasiya sətrinin (z-20) ÜSTÜNDƏ açılsın. */}
       <div className="relative z-30 text-white" style={{ background: NAV_DARK }}>
-        <div className="w-full px-3 sm:px-5 lg:px-8">
+        <div className="page-wrap">
           {/* Telefonda iki sətir (flex-wrap): üstdə logo/kataloq/ikonlar,
               altda tam enli axtarış (order-last + basis-full). Masaüstündə
               tək sətir (sm:flex-nowrap). */}
@@ -414,7 +414,9 @@ export default function Navbar() {
                 }}
                 className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 h-11 rounded-md text-white font-bold text-sm sm:text-[15px] ring-1 transition-colors ${catOpen ? "ring-white/60 bg-white/10" : "ring-transparent hover:ring-white/40"}`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-                <span className="hidden xs:inline">{t("navCatalog")}</span>
+                {/* Planşet enində (704px konteyner) yer azdır — yalnız ikon qalır,
+                    mətn masaüstündən (lg) etibarən görünür. */}
+                <span className="hidden lg:inline">{t("navCatalog")}</span>
                 <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {catOpen && (
@@ -904,7 +906,7 @@ export default function Navbar() {
       </div>
       {/* ── Alt naviqasiya sətri (Amazon üslubu) ── */}
       <div className="hidden md:block relative z-20 text-white/90" style={{ background: NAV_DARK2 }}>
-        <div className="w-full px-3 sm:px-5 lg:px-8">
+        <div className="page-wrap">
           <div className="flex items-center justify-between h-10 text-[13px]">
             <div className="flex items-center gap-4">
               <Link href="/locations" className="text-white/85 hover:text-white transition-colors">{t("browseByLocation")}</Link>
