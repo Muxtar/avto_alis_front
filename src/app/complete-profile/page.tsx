@@ -9,7 +9,7 @@ import ConsentBox from "@/components/ConsentBox";
 import { compareFaces, FaceResult } from "@/lib/faceMatch";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import ProfessionPicker from "@/components/ProfessionPicker";
-import IdentityVerify from "@/components/IdentityVerify";
+import { openVeriff } from "@/lib/veriff";
 
 export default function CompleteProfilePage() {
   const { t } = useLanguage();
@@ -21,6 +21,7 @@ export default function CompleteProfilePage() {
   const [lastName, setLastName] = useState("");
   const [profession, setProfession] = useState("");
   const [loading, setLoading] = useState(false);
+  const [veriffBusy, setVeriffBusy] = useState(false);
   const [idReading, setIdReading] = useState(false); // AI vəsiqədən məlumat oxuyur
   const [idNameFilled, setIdNameFilled] = useState(false);
   const [birthDate, setBirthDate] = useState("");
@@ -237,16 +238,23 @@ export default function CompleteProfilePage() {
             />
           </div>
 
-          {/* Kimlik doğrulama — Veriff ilə (OPSİONAL). Etməsəniz profiliniz
-              "təsdiqlənməmiş" sayılır; etsəniz FIN, doğum tarixi və cins avtomatik dolur. */}
-          <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl space-y-2">
-            <p className="text-sm font-semibold">🛡️ Kimlik doğrulama <span className="text-[11px] font-normal text-muted">(opsional)</span></p>
-            <p className="text-[11px] text-muted">
-              Şəxsiyyət vəsiqəsi, sürücülük vəsiqəsi və ya pasport + video-selfie ilə kimliyinizi <b>Veriff</b> üzərindən
-              təsdiqləyin — <b>FIN, doğum tarixi və cins avtomatik dolar</b>. Etməsəniz profiliniz «təsdiqlənməmiş» sayılır
-              (profil səhifəsindən sonra da təsdiqləyə bilərsiniz).
-            </p>
-            <IdentityVerify token={token} onDone={() => toast("Kimlik təsdiqi göndərildi ✓", "success")} />
+          {/* Kimlik doğrulama — Veriff (opsional). Düymə birbaşa Veriff
+              pəncərəsini açır; ara ekran və izahat mətni yoxdur. */}
+          <div className="p-4 bg-blue-500/5 border border-blue-500/20 rounded-xl flex items-center justify-between gap-3 flex-wrap">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">🛡️ Kimlik doğrulama <span className="text-[11px] font-normal text-muted">(opsional)</span></p>
+              <p className="text-[11px] text-muted">Profiliniz «təsdiqlənmiş» olur, FIN və doğum tarixi avtomatik dolur.</p>
+            </div>
+            <button type="button" disabled={veriffBusy}
+              onClick={async () => {
+                setVeriffBusy(true);
+                const r = await openVeriff(token);
+                setVeriffBusy(false);
+                if (!r.ok) toast(r.message || "Kimlik doğrulama hazırda əlçatan deyil", "error");
+              }}
+              className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl text-sm font-semibold shrink-0 disabled:opacity-50">
+              {veriffBusy ? "..." : "Veriff ilə təsdiqlə"}
+            </button>
           </div>
 
           {/* Qaydaların qəbulu — MƏCBURİ DEYİL. İstifadəçi keçə bilər; alış

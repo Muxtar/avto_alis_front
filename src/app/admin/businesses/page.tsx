@@ -303,8 +303,8 @@ export default function AdminBusinessesPage() {
                   {/* Bu sahələr istifadəçinin təsdiqlənmiş KYC məlumatıdır —
                       biznes kartından dəyişdirilmir, "İstifadəçilər" bölməsindən
                       idarə olunur. Yanlış redaktə kimlik yoxlamasını mənasız edərdi. */}
-                  <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${b.user.idVerifyStatus === "APPROVED" ? "text-emerald-500 bg-emerald-500/10" : b.user.idVerifyStatus ? "text-amber-500 bg-amber-500/10" : "text-red-500 bg-red-500/10"}`}>
-                    {b.user.idVerifyStatus === "APPROVED" ? "✓ Təsdiqlənmiş kimlik" : b.user.idVerifyStatus ? "Kimlik yoxlanılır" : "Kimlik təsdiqlənməyib"}
+                  <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${b.user.idVerifyStatus === "APPROVED" ? "text-emerald-500 bg-emerald-500/10" : "text-red-500 bg-red-500/10"}`}>
+                    {b.user.idVerifyStatus === "APPROVED" ? "✓ Təsdiqlənmiş kimlik" : "Kimlik təsdiqlənməyib"}
                   </span>
                 </div>
                 {/* Etiket/dəyər cütləri — iki sütunlu şəbəkə. Etiket sütunu ən uzun

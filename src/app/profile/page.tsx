@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -10,7 +10,7 @@ import { rotateImageFile } from "@/lib/rotateImage";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
-import IdentityVerify from "@/components/IdentityVerify";
+import { openVeriff, checkVeriff } from "@/lib/veriff";
 import VerifyCard, { type VerifyState } from "@/components/VerifyCard";
 import ProfessionMultiPicker from "@/components/ProfessionMultiPicker";
 import EmploymentSection, { type EmploymentStatus } from "@/components/EmploymentSection";
@@ -29,7 +29,9 @@ export default function ProfilePage() {
   const [editing, setEditing] = useState(false);
   const [editData, setEditData] = useState<{ name: string; professions: string[]; bio: string; idNumber: string; birthDate: string; gender: string }>({ name: "", professions: [], bio: "", idNumber: "", birthDate: "", gender: "" });
   const [avatarBusy, setAvatarBusy] = useState(false);
-  const [showIdentity, setShowIdentity] = useState(false);
+  // Veriff pəncərəsi açılıb? Qayıdanda nəticəni özümüz soruşuruq.
+  const [veriffBusy, setVeriffBusy] = useState(false);
+  const veriffOpened = useRef(false);
 
   // Vehicles state — iki-addımlı flow:
   //   1) extract: kullanıcı şəkilləri yükləyir, AI sahələri qaytarır
@@ -157,6 +159,54 @@ export default function ProfilePage() {
       setEditData({ name: u.name || "", professions: u.professions?.length ? u.professions : (u.profession ? [u.profession] : []), bio: u.bio || "", idNumber: u.idNumber || "", birthDate: u.birthDate ? String(u.birthDate).slice(0, 10) : "", gender: u.gender || "" });
     }
   };
+
+  // ── Kimlik təsdiqi: kartın üstünə basanda BİRBAŞA Veriff pəncərəsi açılır.
+  // Ara ekran, izahat mətni və «Nəticəni yoxla» düyməsi yoxdur — istifadəçi
+  // Veriff-i bitirib tab-a qayıdanda nəticəni özümüz soruşuruq.
+  const startIdVerify = async () => {
+    if (veriffBusy) return;
+    setVeriffBusy(true);
+    const r = await openVeriff(token, { sameTab: true });
+    if (r.ok) { veriffOpened.current = true; return; } // səhifə Veriff-ə keçir
+    setVeriffBusy(false);
+    toast(r.message || "Kimlik doğrulama hazırda əlçatan deyil", "error");
+  };
+
+  const syncVeriffResult = useCallback(async () => {
+    if (!veriffOpened.current || !token) return;
+    const status = await checkVeriff(token);
+    if (status === "approved") {
+      veriffOpened.current = false;
+      toast("Kimliyiniz təsdiqləndi ✓", "success");
+      await refreshProfile();
+    } else if (status === "declined") {
+      veriffOpened.current = false;
+      toast("Doğrulama alınmadı — yenidən cəhd edin", "error");
+      await refreshProfile();
+    }
+    // "pending" → istifadəçiyə heç nə demirik, növbəti qayıdışda yenidən soruşulur.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  // Veriff bitəndən sonra bizə /profile?veriff=done ilə qaytarır.
+  useEffect(() => {
+    if (typeof window === "undefined" || !token) return;
+    const sp = new URLSearchParams(window.location.search);
+    if (sp.get("veriff") !== "done") return;
+    window.history.replaceState({}, "", "/profile");
+    veriffOpened.current = true;
+    syncVeriffResult();
+  }, [token, syncVeriffResult]);
+
+  useEffect(() => {
+    const onBack = () => { if (document.visibilityState === "visible") syncVeriffResult(); };
+    window.addEventListener("focus", onBack);
+    document.addEventListener("visibilitychange", onBack);
+    return () => {
+      window.removeEventListener("focus", onBack);
+      document.removeEventListener("visibilitychange", onBack);
+    };
+  }, [syncVeriffResult]);
 
   // ---- Telefon nömrələri (çoxlu, biri əsas) ----
   const [phones, setPhones] = useState<any[]>([]);
@@ -740,7 +790,9 @@ export default function ProfilePage() {
   const inputCls = "w-full px-4 py-3 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm";
 
   // ── Doğrulama kartlarının vəziyyəti ──
-  const idState: VerifyState = profile.idVerifyStatus === "APPROVED" ? "ok" : profile.idVerifyStatus === "PENDING" ? "pending" : "none";
+  // Yalnız İKİ hal: təsdiqlənib, ya təsdiqlənməyib. Veriff-də "gözləmə"
+  // vəziyyəti istifadəçiyə göstərilmir (nəticə saniyələr içində gəlir).
+  const idState: VerifyState = profile.idVerifyStatus === "APPROVED" ? "ok" : "none";
   const primaryPhone: string = phones.find((p: any) => p.isPrimary)?.phone || profile.phone || "";
   const phoneState: VerifyState = primaryPhone ? "ok" : "none";
   const extraPhones = phones.filter((p: any) => !p.isPrimary).length;
@@ -765,9 +817,9 @@ export default function ProfilePage() {
                 {profile.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}
               </div>
             )}
-            {profile.idCardImage && (
-              <span className="absolute top-1.5 right-1.5 w-9 h-9 bg-card rounded-full flex items-center justify-center shadow-md" title={profile.idVerifyStatus === "APPROVED" ? "Təsdiqlənmiş profil" : "Kimlik təqdim olunub"}>
-                <svg viewBox="0 0 24 24" className="w-8 h-8 text-blue-500" fill="currentColor">
+            {profile.idVerifyStatus === "APPROVED" && (
+              <span className="absolute top-1.5 right-1.5 w-9 h-9 bg-card rounded-full flex items-center justify-center shadow-md" title="Doğrulanmış profil">
+                <svg viewBox="0 0 24 24" className="w-8 h-8 text-emerald-500" fill="currentColor">
                   <path d="M12 2l2.39 1.74 2.95-.02 1.13 2.72 2.46 1.62-.62 2.88.62 2.88-2.46 1.62-1.13 2.72-2.95-.02L12 22l-2.39-1.74-2.95.02-1.13-2.72-2.46-1.62.62-2.88-.62-2.88 2.46-1.62 1.13-2.72 2.95.02L12 2z"/>
                   <path d="M10.6 14.6l-2.2-2.2-1.2 1.2 3.4 3.4 6-6-1.2-1.2-4.8 4.8z" fill="#fff"/>
                 </svg>
@@ -897,11 +949,14 @@ export default function ProfilePage() {
         <VerifyCard
           variant="id" title="Kimlik təsdiqi"
           state={idState}
-          value={idState === "ok" ? (profile.name || "Təsdiqlənmiş profil") : idState === "pending" ? "Yoxlanılır…" : "Təsdiqlənməyib"}
+          value={idState === "ok" ? "Təsdiqlənmiş profil" : "Təsdiqlənməmiş profil"}
           hint={idState === "ok"
-            ? `FIN: ${profile.idNumber ? String(profile.idNumber).slice(0, 2) + "•••••" : "—"} · Veriff ilə təsdiqlənib`
-            : idState === "pending" ? "Veriff yoxlaması davam edir" : "Veriff ilə şəxsiyyətinizi doğrulayın"}
-          open={openCard === "id"} onClick={() => setOpenCard(openCard === "id" ? null : "id")}
+            ? `${profile.name || ""}${profile.idNumber ? ` · FIN: ${String(profile.idNumber).slice(0, 2)}•••••` : ""}`
+            : veriffBusy ? "Veriff açılır…" : "Təsdiqləmək üçün toxunun"}
+          cta="Təsdiqlə"
+          open={openCard === "id"}
+          /* Təsdiqlənməyibsə panel açılmır — birbaşa Veriff pəncərəsinə keçir. */
+          onClick={() => (idState === "ok" ? setOpenCard(openCard === "id" ? null : "id") : startIdVerify())}
         />
         <VerifyCard
           variant="phone" title="Telefon nömrəsi" cta="Nömrə əlavə et"
@@ -919,104 +974,36 @@ export default function ProfilePage() {
         />
       </div>
 
-      {/* Kimlik təsdiqi paneli */}
-      {openCard === "id" && (
+      {/* Kimlik təsdiqi paneli — YALNIZ təsdiqlənmiş profil üçün açılır.
+          Təsdiqlənməyibsə kartın özü birbaşa Veriff pəncərəsini açır, ona görə
+          burada nə izahat mətni, nə də «Nəticəni yoxla» düyməsi var. */}
+      {openCard === "id" && idState === "ok" && (
         <div className="surface p-5 sm:p-7 mb-5 animate-fade-in">
-        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-          <h2 className="text-lg font-semibold flex items-center gap-2">🪪 Kimlik təsdiqi</h2>
-          {(() => {
-            const s = profile.idVerifyStatus;
-            // İki vəziyyət var: profil TƏSDİQLƏNİB, ya da təsdiqlənməyib.
-            // Əvvəl PENDING üçün "Yoxlanılır" yazılırdı — istifadəçi bunu
-            // "təsdiqlənib" kimi başa düşürdü, halbuki profil hələ təsdiqsizdir
-            // və biznes yaratmaq mümkün deyil. Gözləmə/rədd izahı aşağıdakı
-            // sətirdə verilir, nişanın özü isə birmənalıdır.
-            const ok = s === "APPROVED";
-            const cls = ok ? "bg-green-500/15 text-green-600" : s === "REJECTED" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-600";
-            const label = ok ? "✓ Təsdiqlənmiş profil" : "Təsdiqlənməmiş profil";
-            return <span className={`px-2.5 py-1 rounded-lg text-xs font-medium ${cls}`}>{label}</span>;
-          })()}
-        </div>
-        <p className="text-xs text-muted mb-3">Kimlik <b>Veriff</b> ilə təsdiqlənir — şəxsiyyət vəsiqəsi, sürücülük vəsiqəsi və ya pasport + video-selfie. Təsdiqdən sonra ad, FIN, doğum tarixi və cins avtomatik doldurulur.</p>
-        {profile.idVerifyStatus !== "APPROVED" && !showIdentity && (
-          <p className="text-[11px] text-amber-600 mb-3">
-            {profile.idVerifyStatus === "PENDING"
-              ? "ⓘ Kimlik yoxlamanız davam edir. Təsdiqlənənə qədər profil təsdiqlənməmiş sayılır və biznes yarada bilməzsiniz."
-              : profile.idVerifyStatus === "REJECTED"
-                ? "ⓘ Kimlik təsdiqiniz rədd edilib. «Kimliyi yenidən təsdiqlə» düyməsi ilə yenidən cəhd edin."
-                : "ⓘ Profiliniz təsdiqlənməyib. Təsdiq üçün «Profilini təsdiqlə» düyməsinə basın və Veriff ilə kimliyinizi doğrulayın. Biznes yaratmaq üçün bu tələb olunur."}
-          </p>
-        )}
-        {(profile.idCardImage || profile.selfieImage) && !showIdentity && (
-          <div className="mb-3">
-            <p className="text-[11px] text-muted mb-1">🔒 Bu şəkilləri yalnız siz görürsünüz (kimsə başqası görmür):</p>
-            <div className="flex gap-3 flex-wrap">
-              {profile.idCardImage && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${imgUrl(profile.idCardImage)}`} alt="vəsiqə ön" title="Vəsiqə (ön)" className="w-28 h-20 object-cover rounded-lg border border-input-border" />
-              )}
-              {profile.idCardBackImage && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${imgUrl(profile.idCardBackImage)}`} alt="vəsiqə arxa" title="Vəsiqə (arxa)" className="w-28 h-20 object-cover rounded-lg border border-input-border" />
-              )}
-              {profile.selfieImage && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${imgUrl(profile.selfieImage)}`} alt="selfie ön" title="Üz (ön)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
-              )}
-              {profile.selfieRightImage && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${imgUrl(profile.selfieRightImage)}`} alt="selfie sağ" title="Üz (sağ)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
-              )}
-              {profile.selfieLeftImage && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${imgUrl(profile.selfieLeftImage)}`} alt="selfie sol" title="Üz (sol)" className="w-20 h-20 object-cover rounded-lg border border-input-border" />
-              )}
-            </div>
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <h2 className="text-lg font-semibold flex items-center gap-2">🪪 Kimlik təsdiqi</h2>
+            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/15 text-green-600">✓ Təsdiqlənmiş profil</span>
           </div>
-        )}
-        {/* AI doğrulama nəticəsi */}
-        {(profile.idAiNameMatch !== null && profile.idAiNameMatch !== undefined || profile.idAiFaceMatch !== null && profile.idAiFaceMatch !== undefined || profile.idAiReason) && !showIdentity && (
-          <div className="mb-3 p-3 bg-input-bg border border-input-border rounded-xl">
-            <p className="text-[11px] font-semibold text-muted mb-1.5">🤖 AI yoxlaması</p>
-            <div className="flex flex-wrap gap-2">
-              {(profile.idAiNameMatch !== null && profile.idAiNameMatch !== undefined) && (
-                <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${profile.idAiNameMatch ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"}`}>
-                  {profile.idAiNameMatch ? "✓ Ad-soyad uyğundur" : "⚠ Ad-soyad uyğun deyil"}
-                  {typeof profile.idAiNameScore === "number" ? ` (${Math.round(profile.idAiNameScore * 100)}%)` : ""}
-                </span>
-              )}
-              {(profile.idAiFaceMatch !== null && profile.idAiFaceMatch !== undefined) && (
-                <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${profile.idAiFaceMatch ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"}`}>
-                  {profile.idAiFaceMatch ? "✓ Üz uyğundur" : "⚠ Üz uyğun deyil"}
-                  {typeof profile.idAiFaceScore === "number" ? ` (${Math.round(profile.idAiFaceScore * 100)}%)` : ""}
-                </span>
-              )}
-            </div>
-            {profile.idAiReason && <p className="text-[11px] text-muted mt-1.5 leading-snug">{profile.idAiReason}</p>}
-            {(profile.birthDate || profile.gender || profile.idNumber) && (
-              <p className="text-[11px] text-muted mt-1.5">
-                {profile.birthDate && <>Doğum tarixi: <b>{new Date(profile.birthDate).toLocaleDateString("az-AZ")}</b></>}
+          {/* Veriff-dən gələn doğrulanmış məlumatlar */}
+          {(profile.birthDate || profile.gender || profile.idNumber) && (
+            <div className="mb-4 p-3 bg-input-bg border border-input-border rounded-xl">
+              <p className="text-[11px] font-semibold text-muted mb-1.5">Doğrulanmış məlumatlar</p>
+              <p className="text-[13px] leading-relaxed">
+                {profile.name && <>Ad: <b>{profile.name}</b></>}
+                {profile.idNumber && <> · FIN: <b>{profile.idNumber}</b></>}
+                {profile.birthDate && <> · Doğum tarixi: <b>{new Date(profile.birthDate).toLocaleDateString("az-AZ")}</b></>}
                 {computeAge(profile.birthDate) !== null && <> · Yaş: <b>{computeAge(profile.birthDate)}</b></>}
                 {profile.gender && <> · Cins: <b>{profile.gender}</b></>}
-                {profile.idNumber && <> · FIN: <b>{profile.idNumber}</b></>}
               </p>
-            )}
-          </div>
-        )}
-        {showIdentity ? (
-          <IdentityVerify token={token} onDone={() => { setShowIdentity(false); refreshProfile(); }} />
-        ) : (
+            </div>
+          )}
           <div className="flex gap-2 flex-wrap">
-            <button onClick={() => setShowIdentity(true)} className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold hover:bg-orange-500/20 transition-colors">
-              {(profile.idCardImage || profile.idVerifyStatus) ? "Kimliyi yenidən təsdiqlə" : "Profilini təsdiqlə"}
+            <button onClick={removeIdentity} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500/20 transition-colors">
+              Təsdiqi sil
             </button>
-            {(profile.idCardImage || profile.idVerifyStatus === "APPROVED") && (
-              <button onClick={removeIdentity} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500/20 transition-colors">
-                Təsdiqi sil (yenidən doğrula)
-              </button>
-            )}
+            <button onClick={startIdVerify} disabled={veriffBusy} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold disabled:opacity-50">
+              {veriffBusy ? "..." : "Yenidən doğrula"}
+            </button>
           </div>
-        )}
         </div>
       )}
 

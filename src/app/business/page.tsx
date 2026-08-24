@@ -58,7 +58,6 @@ export default function BusinessPage() {
   const [bizEditBank, setBizEditBank] = useState<File | null>(null); // yeni bank sənədi
   const [busy, setBusy] = useState(false);
   // Kimlik statusu — istifadəçiyə dəqiq səbəb göstərmək üçün.
-  const [idStatus, setIdStatus] = useState<string | null>(null);
   const [idVerified, setIdVerified] = useState<boolean | null>(null); // kimlik təqdim olunub?
   const [identityReusable, setIdentityReusable] = useState(false); // kimlik+üz təsdiqlənib (>50%) → biznesdə təkrar istənilmir
 
@@ -107,7 +106,6 @@ export default function BusinessPage() {
       // Veriff-i sadəcə başladan (və hətta rədd edilən) istifadəçi biznes
       // yarada bilirdi. Server də eyni şərti yoxlayır.
       setIdVerified(me?.user?.idVerifyStatus === "APPROVED");
-      setIdStatus(me?.user?.idVerifyStatus || null);
       const u = me?.user || {};
       const faceOk = (u.faceMatchScore ?? 0) > 0.5 || u.idAiFaceMatch === true || (u.idAiFaceScore ?? 0) > 0.5;
       // Kimlik profildə edilib — biznesdə vəsiqə+selfie təkrar istənilmir.
@@ -375,21 +373,13 @@ export default function BusinessPage() {
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-5 flex items-start gap-3">
           <span className="text-2xl">🪪</span>
           <div className="flex-1">
-            <p className="font-semibold text-sm">
-              {idStatus === "PENDING" ? "Kimlik yoxlamanız davam edir" : "Biznes yaratmaq üçün əvvəlcə profilinizi təsdiqləyin"}
-            </p>
-            <p className="text-xs text-muted mt-0.5">
-              {idStatus === "PENDING"
-                ? "Veriff yoxlaması bitənə qədər profiliniz təsdiqlənməmiş sayılır. Təsdiqləndikdən sonra biznes əlavə edə biləcəksiniz."
-                : idStatus === "REJECTED"
-                  ? "Kimlik təsdiqiniz rədd edilib. Profil səhifəsindən yenidən cəhd edin — təsdiqdən sonra biznes yarada bilərsiniz."
-                  : "Profiliniz təsdiqlənməmiş profildir. Veriff ilə kimliyinizi doğrulayın — bundan sonra biznes əlavə edə bilərsiniz."}
-            </p>
-            {idStatus !== "PENDING" && (
-              <a href="/profile" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">
-                {idStatus === "REJECTED" ? "Yenidən təsdiqlə →" : "Profilini təsdiqlə →"}
-              </a>
-            )}
+            {/* İki hal: profil təsdiqlənib, ya təsdiqlənməyib. "Yoxlanılır"
+                vəziyyəti göstərilmir — Veriff nəticəni dərhal qaytarır. */}
+            <p className="font-semibold text-sm">Biznes yaratmaq üçün əvvəlcə profilinizi təsdiqləyin</p>
+            <p className="text-xs text-muted mt-0.5">Profiliniz təsdiqlənməmişdir — Veriff ilə kimliyinizi doğrulayın.</p>
+            <a href="/profile" className="inline-block mt-2 text-sm text-orange-500 font-semibold hover:text-orange-400">
+              Profilini təsdiqlə →
+            </a>
           </div>
         </div>
       )}
