@@ -66,12 +66,19 @@ export default function AdminUsersPage() {
   useEffect(() => { fetchUsers(); }, [typeFilter, page]);
   useEffect(() => { setPage(1); const tm = setTimeout(fetchUsers, 300); return () => clearTimeout(tm); }, [search]);
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: number, force = false) => {
     setDeleting(true);
     try {
-      const res = await fetch(`${API}/admin/users/${id}`, { method: "DELETE", headers });
+      const res = await fetch(`${API}/admin/users/${id}${force ? "?force=1" : ""}`, { method: "DELETE", headers });
       const data = await res.json();
+      // Satıcıya ödənilməmiş borc var: hesab silinir, borc "hesab silinib"
+      // nişanı ilə ödəniş ekranında qalır — admin bunu təsdiqləyir.
+      if (res.status === 409 && data.needsConfirm) {
+        if (confirm(`${data.message}\n\nDavam edilsin?`)) { setDeleting(false); return handleDelete(id, true); }
+        return;
+      }
       if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      if (data.owed > 0) toast(`Hesab silindi. Ödənilməmiş ${data.owed} ₼ borc ödəniş ekranında qaldı.`, "success");
       setUsers(users.filter((u) => u.id !== id));
       if (detailId === id) setDetailId(null);
       toast(t("adminDeleted") || "Silindi", "success");

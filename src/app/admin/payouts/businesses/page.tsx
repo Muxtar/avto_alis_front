@@ -19,6 +19,8 @@ interface Row {
   name: string; voen: string | null; isBusiness: boolean;
   // Sahibi biznesi silib — borcumuz qalır, yenə də ödəməliyik.
   deleted?: boolean; ownerName?: string | null; phone?: string | null;
+  // Hesab TAM silinib (istifadəçi/biznes sətri yoxdur) — məlumat arxiv surətindəndir.
+  accountDeleted?: boolean; archivedAt?: string | null;
   iban: string | null; bankTitle: string | null;
   unpaid: number; pending: number; commission: number; gross: number; orders: number;
 }
@@ -236,7 +238,9 @@ export default function AdminBusinessPayoutsPage() {
                 <div className="min-w-0">
                   <p className="font-bold truncate">
                     {r.name}
-                    {r.deleted && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-bold align-middle">🗑 silinib</span>}
+                    {r.accountDeleted
+                      ? <span className="ml-1.5 px-1.5 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-bold align-middle">🗑 hesab silinib</span>
+                      : r.deleted && <span className="ml-1.5 px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 text-[10px] font-bold align-middle">🗑 biznes silinib</span>}
                   </p>
                   <p className="text-[11px] text-muted">
                     {r.isBusiness ? `VÖEN: ${r.voen || "—"}` : "Şəxsi satıcı"} · {r.orders} sifariş
@@ -277,15 +281,19 @@ export default function AdminBusinessPayoutsPage() {
                     <div className="min-w-0">
                       <p className="font-bold text-lg truncate">
                         {detail.name}
-                        {detail.deleted && <span className="ml-2 px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-[11px] font-bold align-middle">🗑 silinib</span>}
+                        {detail.accountDeleted
+                          ? <span className="ml-2 px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-[11px] font-bold align-middle">🗑 hesab silinib</span>
+                          : detail.deleted && <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/10 text-amber-600 text-[11px] font-bold align-middle">🗑 biznes silinib</span>}
                       </p>
                       <p className="text-[11px] text-muted">
                         {detail.isBusiness ? `VÖEN: ${detail.voen || "—"}` : "Şəxsi satıcı"} · {detail.totals.count} sifariş
                         {detail.phone ? ` · ${detail.phone}` : ""}
                       </p>
-                      {detail.deleted && (
+                      {(detail.deleted || detail.accountDeleted) && (
                         <p className="text-[11px] mt-1 px-2 py-1 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-500">
-                          Sahibi bu biznesi silib{detail.deletedAt ? ` (${new Date(detail.deletedAt).toLocaleDateString("az-AZ")})` : ""}, amma qazancı hələ ödənilməyib — aşağıdakı məbləği bank hesabına köçürün.
+                          {detail.accountDeleted
+                            ? `Bu satıcı hesabını tam silib${detail.archivedAt ? ` (${new Date(detail.archivedAt).toLocaleDateString("az-AZ")})` : ""} — aşağıdaki ad/telefon/IBAN silinmə anındakı arxiv surətidir. Qazancı hələ ödənilməyib, məbləği bu hesaba köçürün.`
+                            : `Sahibi bu biznesi silib${detail.deletedAt ? ` (${new Date(detail.deletedAt).toLocaleDateString("az-AZ")})` : ""}, amma qazancı hələ ödənilməyib — aşağıdakı məbləği bank hesabına köçürün.`}
                         </p>
                       )}
                       {detail.iban ? (
