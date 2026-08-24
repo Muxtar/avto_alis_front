@@ -154,6 +154,14 @@ export default function AdminListingsPage() {
       const res = await fetch(`${API}/admin/listings/${id}`, { method: "DELETE", headers });
       const data = await res.json();
       if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      // Sifarişdə keçən elan silinmir, arxivlənir — sifariş sətirləri qorunsun.
+      if (data.archived) {
+        toast(data.message || "Elan arxivləndi (sifariş tarixçəsi qorunur)", "success");
+        setRows((prev) => ({ ...prev, [owner.key]: (prev[owner.key] || []).map((l) => l.id === id ? { ...l, status: "ARCHIVED" } : l) }));
+        bumpOwner(owner.key, oldStatus, "ARCHIVED", 0);
+        window.dispatchEvent(new Event("admin:pending-changed"));
+        return;
+      }
       toast(t("adminDeleted") || "Silindi", "success");
       // Yerində sil — siyahını yenidən çəkmirik.
       setRows((prev) => ({ ...prev, [owner.key]: (prev[owner.key] || []).filter((l) => l.id !== id) }));

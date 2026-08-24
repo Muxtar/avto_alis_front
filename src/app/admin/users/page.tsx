@@ -30,12 +30,20 @@ export default function AdminUsersPage() {
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
   const toggleSel = (id: number) => setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const bulkAction = async (action: "block" | "unblock" | "delete") => {
+  const bulkAction = async (action: "block" | "unblock" | "delete", force = false) => {
     if (selected.size === 0) return;
-    if (action === "delete" && !confirm(`${selected.size} istifadəçi silinsin? (admin/özünüz xaric)`)) return;
+    if (action === "delete" && !force && !confirm(`${selected.size} istifadəçi silinsin? (admin/özünüz xaric)`)) return;
     setBulkBusy(true);
     try {
-      const r = await fetch(`${API}/admin/users/bulk`, { method: "POST", headers, body: JSON.stringify({ ids: Array.from(selected), action }) }).then((x) => x.json());
+      const res = await fetch(`${API}/admin/users/bulk`, { method: "POST", headers, body: JSON.stringify({ ids: Array.from(selected), action, ...(force ? { force: "1" } : {}) }) });
+      const r = await res.json();
+      // Ödənilməmiş borcu olan satıcılar var — admin bilərək təsdiqləyir.
+      if (res.status === 409 && r.needsConfirm) {
+        setBulkBusy(false);
+        if (confirm(`${r.message}\n\nDavam edilsin?`)) return bulkAction(action, true);
+        if (r.deleted) { setSelected(new Set()); fetchUsers(); }
+        return;
+      }
       if (r.success) { toast(`${r.count} istifadəçi ${action === "delete" ? "silindi" : action === "block" ? "bloklandı" : "blok açıldı"}`, "success"); setSelected(new Set()); fetchUsers(); }
       else toast(r.message || "Xəta", "error");
     } catch { toast("Xəta", "error"); } finally { setBulkBusy(false); }

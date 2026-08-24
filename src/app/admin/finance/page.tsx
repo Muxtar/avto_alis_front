@@ -97,7 +97,10 @@ export default function AdminFinancePage() {
     if (!confirm(`Sifariş #${id} tamamilə silinsin? (geri qaytarıla bilməz)`)) return;
     setDeleting(true);
     try {
-      const d = await fetch(`${API}/admin/finance/${id}`, { method: "DELETE", headers: H() }).then((x) => x.json());
+      const res = await fetch(`${API}/admin/finance/${id}`, { method: "DELETE", headers: H() });
+      const d = await res.json();
+      // Maliyyə qeydi olan sifariş silinmir — uçotun bütövlüyü üçün saxlanılır.
+      if (res.status === 409 && d.code === "FINANCIAL_RECORD") { alert(d.message); return; }
       if (d.success) { toast("Silindi", "success"); setOpenId(null); setDetail(null); load(); }
       else toast(d.message || "Xəta", "error");
     } catch { toast("Xəta", "error"); } finally { setDeleting(false); }

@@ -31,12 +31,19 @@ export default function AdminOrdersPage() {
   useEffect(() => { fetchData(); }, [statusFilter, page]);
 
   const changeStatus = async (orderId: number, status: string) => {
+    // Ləğv = alıcıya pulun qaytarılması. Admin bunu bilərək təsdiqləsin.
+    if (status === "CANCELLED" && !confirm(`Sifariş #${orderId} ləğv edilsin?\n\nKartla ödənilibsə pul avtomatik alıcıya qaytarılacaq və satıcının qazanc qeydi geri alınacaq.`)) return;
     try {
       const res = await fetch(`${API}/admin/orders/${orderId}/status`, {
         method: "PUT", headers, body: JSON.stringify({ status }),
       });
       const data = await res.json();
-      if (res.ok && data.success) { toast(t("adminStatusUpdated") || "Status yeniləndi", "success"); fetchData(); }
+      if (res.ok && data.success) {
+        // Pul qaytarılmasa admin dərhal bilməlidir (fon işi təkrar cəhd edir).
+        if (data.refundPending) toast(data.message || "Ləğv edildi, lakin qaytarma alınmadı — təkrar cəhd ediləcək", "error");
+        else toast(status === "CANCELLED" ? "Ləğv edildi — ödəniş qaytarıldı" : (t("adminStatusUpdated") || "Status yeniləndi"), "success");
+        fetchData();
+      }
       else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); }
   };
