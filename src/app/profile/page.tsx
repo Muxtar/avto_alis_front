@@ -279,10 +279,14 @@ export default function ProfilePage() {
   };
 
   const removeIdentity = async () => {
-    if (!confirm("Təsdiqi silsəniz profiliniz təsdiqlənməmiş olacaq və kimliyinizi yenidən Veriff ilə doğrulamalısınız. Davam edək?")) return;
+    if (!confirm("Təsdiqi silsəniz profiliniz təsdiqlənməmiş olacaq, FIN/doğum tarixi/cins silinəcək və kimliyinizi yenidən Veriff ilə doğrulamalısınız. Davam edək?")) return;
     try {
-      const r = await fetch(`${API}/me/identity`, { method: "DELETE", headers }).then((x) => x.json());
-      if (r.success) { toast("Kimlik qaldırıldı — məlumatlar yenidən redaktə oluna bilər", "success"); await refreshProfile(); }
+      const res = await fetch(`${API}/me/identity`, { method: "DELETE", headers });
+      const r = await res.json();
+      // Biznesi olan istifadəçi kimliyini silə bilməz — biznes yalnız
+      // təsdiqlənmiş profillə işləyir (server 409 qaytarır).
+      if (res.status === 409 && r.code === "BUSINESS_EXISTS") { toast(r.message, "error"); return; }
+      if (r.success) { toast("Kimlik qaldırıldı — profiliniz təsdiqlənməmişdir", "success"); await refreshProfile(); }
       else toast(r.message || t("error"), "error");
     } catch { toast(t("error"), "error"); }
   };

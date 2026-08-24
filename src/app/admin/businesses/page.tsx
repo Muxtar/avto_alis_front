@@ -43,6 +43,9 @@ export default function AdminBusinessesPage() {
   // Silinmiş bizneslər normalda gizlidir. Onlara hesablaşma (bizim borcumuz)
   // bağlı ola bilər — admin lazım olanda göstərir.
   const [showDeleted, setShowDeleted] = useState(false);
+  // Sahibinin kimliyi TƏSDİQSİZ olan bizneslər — köhnə qayda ilə yaradılmış və
+  // ya sonradan kimliyini silmiş hesablar. Bunlar təsdiqlənməməlidir.
+  const [onlyUnverifiedOwner, setOnlyUnverifiedOwner] = useState(false);
   const [rejectReason, setRejectReason] = useState<{ [id: number]: string }>({});
   const [busyId, setBusyId] = useState<number | null>(null); // AI əməliyyatı gedən biznes
   const [edit, setEdit] = useState<{ id: number; name: string; voen: string; ownerName: string; founderName: string; phone: string } | null>(null);
@@ -71,10 +74,16 @@ export default function AdminBusinessesPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  const approve = async (id: number) => {
+  const approve = async (id: number, force = false) => {
     try {
-      const res = await fetch(`${API}/admin/businesses/${id}/approve`, { method: "PUT", headers });
-      if (res.ok) { toast(t("bizApproved") || "Təsdiqləndi", "success"); load(); } else toast(t("error"), "error");
+      const res = await fetch(`${API}/admin/businesses/${id}/approve${force ? "?force=1" : ""}`, { method: "PUT", headers });
+      const data = await res.json().catch(() => ({}));
+      // Sahibin kimliyi təsdiqsizdirsə server 409 qaytarır — admin bilərək təsdiqləyir.
+      if (res.status === 409 && data.code === "OWNER_ID_NOT_VERIFIED") {
+        if (confirm(`${data.message}\n\nYenə də təsdiqlənsin?`)) return approve(id, true);
+        return;
+      }
+      if (res.ok) { toast(t("bizApproved") || "Təsdiqləndi", "success"); load(); } else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); }
   };
   const reject = async (id: number) => {
@@ -227,6 +236,9 @@ export default function AdminBusinessesPage() {
 
   const statuses = ["PENDING", "APPROVED", "REJECTED", "all"];
 
+  // Süzgəc: yalnız sahibinin kimliyi təsdiqlənməmiş bizneslər.
+  const shown = onlyUnverifiedOwner ? items.filter((b) => b.user?.idVerifyStatus !== "APPROVED") : items;
+
   return (
     <div>
       <h1 className="text-2xl sm:text-3xl font-bold mb-1">{t("adminBusinesses") || "Biznes təsdiqi"}</h1>
@@ -249,15 +261,19 @@ export default function AdminBusinessesPage() {
           <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
           Silinmişləri də göstər
         </label>
+        <label className="flex items-center gap-2 text-xs font-medium cursor-pointer select-none" title="Sahibinin profili Veriff ilə təsdiqlənməyib">
+          <input type="checkbox" checked={onlyUnverifiedOwner} onChange={(e) => setOnlyUnverifiedOwner(e.target.checked)} />
+          ⚠ Sahibi təsdiqsiz
+        </label>
       </div>
 
       {loading ? (
         <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
-      ) : items.length === 0 ? (
+      ) : shown.length === 0 ? (
         <div className="text-center py-16 text-muted">{t("adminNoData")}</div>
       ) : (
         <div className="space-y-4">
-          {items.map((b) => (
+          {shown.map((b) => (
             <div key={b.id} className="bg-card border border-card-border rounded-xl p-4 sm:p-5">
               {/* Kompakt başlıq — klik detalları açır/bağlayır */}
               <button onClick={() => setOpenId(openId === b.id ? null : b.id)} className="w-full flex items-center gap-2 text-left">
@@ -304,9 +320,23 @@ export default function AdminBusinessesPage() {
                       biznes kartından dəyişdirilmir, "İstifadəçilər" bölməsindən
                       idarə olunur. Yanlış redaktə kimlik yoxlamasını mənasız edərdi. */}
                   <span className={`text-[10px] font-semibold rounded px-1.5 py-0.5 ${b.user.idVerifyStatus === "APPROVED" ? "text-emerald-500 bg-emerald-500/10" : "text-red-500 bg-red-500/10"}`}>
-                    {b.user.idVerifyStatus === "APPROVED" ? "✓ Təsdiqlənmiş kimlik" : "Kimlik təsdiqlənməyib"}
+                    {b.user.idVerifyStatus === "APPROVED"
+                      ? "✓ Təsdiqlənmiş kimlik"
+                      : b.user.idVerifyStatus === "REJECTED" ? "Kimlik rədd edilib"
+                        : b.user.idVerifyStatus ? "Kimlik yarımçıq (köhnə axın)" : "Kimlik təsdiqlənməyib"}
                   </span>
                 </div>
+                {/* Status təsdiqsiz, amma FIN/doğum/cins dolu ola bilər: bu məlumat
+                    ya köhnə (Veriff-dən əvvəlki) axından, ya da istifadəçinin
+                    sonradan sildiyi doğrulamadan qalıb — etibarlı sayılmır. */}
+                {b.user.idVerifyStatus !== "APPROVED" && (
+                  <p className="text-[11px] mb-2 px-2 py-1.5 rounded-lg bg-red-500/10 text-red-600 dark:text-red-400">
+                    ⚠ Bu profil hazırda <b>təsdiqlənməmişdir</b>
+                    {(b.user.idNumber || b.user.birthDate) && <> — aşağıdakı FIN/doğum məlumatı köhnə və ya silinmiş doğrulamadan qalıb, <b>etibarlı deyil</b></>}.
+                    Biznes ya qayda sərtləşməmişdən əvvəl yaradılıb, ya da sahibi sonradan kimliyini qaldırıb.
+                    Təsdiqləməzdən əvvəl istifadəçidən Veriff doğrulaması tələb edin.
+                  </p>
+                )}
                 {/* Etiket/dəyər cütləri — iki sütunlu şəbəkə. Etiket sütunu ən uzun
                     sözə görə ölçülür, ona görə BÜTÜN dəyərlər eyni şaquli xətdən
                     başlayır. Əvvəl 4 sütunlu şəbəkə idi və "Sənəddəki sahib" ayrıca
