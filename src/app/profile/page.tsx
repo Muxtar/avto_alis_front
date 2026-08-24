@@ -278,18 +278,6 @@ export default function ProfilePage() {
     try { await fetch(`${API}/me/credentials/${id}/public`, { method: "PUT", headers, body: JSON.stringify({ public: pub }) }); await refreshProfile(); } catch { toast(t("error"), "error"); }
   };
 
-  const removeIdentity = async () => {
-    if (!confirm("Təsdiqi silsəniz profiliniz təsdiqlənməmiş olacaq, FIN/doğum tarixi/cins silinəcək və kimliyinizi yenidən Veriff ilə doğrulamalısınız. Davam edək?")) return;
-    try {
-      const res = await fetch(`${API}/me/identity`, { method: "DELETE", headers });
-      const r = await res.json();
-      // Biznesi olan istifadəçi kimliyini silə bilməz — biznes yalnız
-      // təsdiqlənmiş profillə işləyir (server 409 qaytarır).
-      if (res.status === 409 && r.code === "BUSINESS_EXISTS") { toast(r.message, "error"); return; }
-      if (r.success) { toast("Kimlik qaldırıldı — profiliniz təsdiqlənməmişdir", "success"); await refreshProfile(); }
-      else toast(r.message || t("error"), "error");
-    } catch { toast(t("error"), "error"); }
-  };
 
   // ---- Rəy konsultasiyası təklifləri (çoxlu) ----
   const [offers, setOffers] = useState<any[]>([]);
@@ -848,7 +836,7 @@ export default function ProfilePage() {
                     <div>
                       <label className="block text-xs font-medium text-muted mb-1">{t("fullName")}</label>
                       <input value={editData.name} disabled readOnly placeholder="Ad Soyad" className={`${inputCls} opacity-60 cursor-not-allowed`} />
-                      <p className="text-[11px] text-muted mt-1">🔒 Ad-soyad, FIN, doğum tarixi və cins təsdiqlənmiş kimlikdən gəlir — dəyişmək üçün aşağıdakı «Kimliyi qaldır» düyməsini istifadə edin.</p>
+                      <p className="text-[11px] text-muted mt-1">🔒 Ad-soyad, FIN, doğum tarixi və cins Veriff təsdiqindən gəlir və dəyişdirilmir.</p>
                     </div>
                   </>
                 ) : (
@@ -882,7 +870,19 @@ export default function ProfilePage() {
             ) : (
               <>
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mb-2">
-                  <h1 className="text-2xl sm:text-2xl font-bold">{profile.name}</h1>
+                  <h1 className="text-2xl sm:text-2xl font-bold flex items-center gap-1.5">
+                    {profile.name}
+                    {/* Doğrulanmış profil nişanı — adın yanında (Facebook/Instagram üslubu).
+                        Veriff təsdiqindən sonra həmişəlik qalır. */}
+                    {idState === "ok" && (
+                      <span title="Doğrulanmış profil" className="shrink-0">
+                        <svg viewBox="0 0 24 24" className="w-5 h-5 text-emerald-500" fill="currentColor" aria-label="Doğrulanmış profil">
+                          <path d="M12 2l2.39 1.74 2.95-.02 1.13 2.72 2.46 1.62-.62 2.88.62 2.88-2.46 1.62-1.13 2.72-2.95-.02L12 22l-2.39-1.74-2.95.02-1.13-2.72-2.46-1.62.62-2.88-.62-2.88 2.46-1.62 1.13-2.72 2.95.02L12 2z" />
+                          <path d="M10.6 14.6l-2.2-2.2-1.2 1.2 3.4 3.4 6-6-1.2-1.2-4.8 4.8z" fill="#fff" />
+                        </svg>
+                      </span>
+                    )}
+                  </h1>
                   {profile.type !== "CAR_OWNER" && (
                     <span className={`px-3 py-1 bg-gradient-to-r ${typeColor(profile.type)} rounded-lg text-xs font-medium text-white`}>
                       {typeLabel(profile.type)}
@@ -1000,14 +1000,13 @@ export default function ProfilePage() {
               </p>
             </div>
           )}
-          <div className="flex gap-2 flex-wrap">
-            <button onClick={removeIdentity} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500/20 transition-colors">
-              Təsdiqi sil
-            </button>
-            <button onClick={startIdVerify} disabled={veriffBusy} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold disabled:opacity-50">
-              {veriffBusy ? "..." : "Yenidən doğrula"}
-            </button>
-          </div>
+          {/* Təsdiqlənmiş kimlik SİLİNMİR: Veriff doğrulaması bitibsə profil
+              həmişəlik doğrulanmış profildir (Facebook/Instagram təsdiqi kimi).
+              Ona görə burada nə «Təsdiqi sil», nə də «Yenidən doğrula» var. */}
+          <p className="text-[12px] text-muted flex items-start gap-1.5">
+            <span className="text-emerald-500 shrink-0">✓</span>
+            Kimliyiniz Veriff ilə doğrulanıb və profiliniz həmişəlik «doğrulanmış profil»dir — bu təsdiq geri qaytarılmır.
+          </p>
         </div>
       )}
 
