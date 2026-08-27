@@ -16,7 +16,9 @@ import { API } from "@/lib/api";
 
 type StepKey = "idCardImage" | "idCardBackImage" | "selfieImage";
 
-const STEPS: { key: StepKey; title: string; hint: string; facing: "environment" | "user" }[] = [
+type Facing = "environment" | "user";
+
+const STEPS: { key: StepKey; title: string; hint: string; facing: Facing }[] = [
   {
     key: "idCardImage",
     title: "Şəxsiyyət vəsiqəsi — ÖN tərəf",
@@ -49,6 +51,8 @@ export default function IdentityManualModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [camOn, setCamOn] = useState(false);
+  const [facing, setFacing] = useState<Facing>("environment");
+  const [starting, setStarting] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -56,34 +60,73 @@ export default function IdentityManualModal({
   const cur = STEPS[step];
   const done = STEPS.every((s) => shots[s.key]);
 
-  // Kamera axını — addım dəyişəndə (ön/arxa kamera fərqlidir) yenidən qurulur.
   const stopCam = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setCamOn(false);
   };
-  const startCam = async () => {
+
+  /* Kamera açılışı.
+     Vəsiqənin ön/arxa tərəfi ARXA kamera ilə çəkilir (facingMode: environment),
+     selfie isə ÖN kamera ilə (user). Telefon `exact` şərti qəbul etməsə
+     `ideal` ilə, o da alınmasa şərtsiz açılır — masaüstündə tək kamera var. */
+  const startCam = async (want: Facing = facing) => {
+    if (starting) return;
+    setStarting(true);
     setError("");
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: cur.facing } });
-      streamRef.current = stream;
-      setCamOn(true);
-      // Video elementi render olunandan sonra bağlanır.
-      setTimeout(() => { if (videoRef.current) videoRef.current.srcObject = stream; }, 0);
-    } catch {
-      setError("Kamera açılmadı — şəkli qalereyadan seçin.");
+    stopCam();
+    const tries: MediaStreamConstraints[] = [
+      { video: { facingMode: { exact: want } } },
+      { video: { facingMode: { ideal: want } } },
+      { video: true },
+    ];
+    for (const c of tries) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(c);
+        streamRef.current = stream;
+        setFacing(want);
+        setCamOn(true);
+        setStarting(false);
+        return;
+      } catch { /* növbəti variant */ }
     }
+    setStarting(false);
+    setError("Kamera açılmadı — icazəni yoxlayın və ya şəkli qalereyadan seçin.");
   };
-  useEffect(() => stopCam, []);       // modal bağlananda kameranı burax
-  useEffect(() => { stopCam(); }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /* Axını <video>-ya BURADA bağlayırıq.
+     Əvvəl `setTimeout` ilə bağlanırdı: element hələ DOM-a düşməmiş olurdu və
+     ekran qara qalırdı. İndi video render olunandan sonra effekt işləyir. */
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!camOn || !v || !streamRef.current) return;
+    v.srcObject = streamRef.current;
+    // Bəzi brauzerlər `autoPlay`-i bloklayır — açıq şəkildə oynadırıq.
+    v.play().catch(() => {});
+  }, [camOn]);
+
+  // Modal bağlananda kamera mütləq buraxılır (işıq yanıb qalmasın).
+  useEffect(() => stopCam, []);
+
+  // Addım dəyişəndə kamera bağlanır və həmin addıma uyğun kamera seçilir.
+  useEffect(() => {
+    stopCam();
+    setFacing(STEPS[step].facing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
 
   const capture = () => {
     const v = videoRef.current;
-    if (!v) return;
+    if (!v || !v.videoWidth) return;
     const canvas = document.createElement("canvas");
     canvas.width = v.videoWidth;
     canvas.height = v.videoHeight;
-    canvas.getContext("2d")?.drawImage(v, 0, 0);
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    // DİQQƏT: güzgü YALNIZ ekranda (CSS ilə) tətbiq olunur — kameradan gələn
+    // kadrın özü onsuz da düzdür. Burada çevirsək yadda saxlanan selfie tərs
+    // düşür və admin onu güzgüdə görür. Ona görə kadr olduğu kimi yazılır.
+    ctx.drawImage(v, 0, 0);
     canvas.toBlob((blob) => {
       if (!blob) return;
       const file = new File([blob], `${cur.key}.jpg`, { type: "image/jpeg" });
@@ -159,7 +202,19 @@ export default function IdentityManualModal({
               // eslint-disable-next-line @next/next/no-img-element
               <img src={shots[cur.key]!.url} alt="" className="w-full h-full object-contain" />
             ) : camOn ? (
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              <>
+                <video ref={videoRef} autoPlay playsInline muted
+                       className={`w-full h-full object-cover ${facing === "user" ? "scale-x-[-1]" : ""}`} />
+                {/* Kadr köməkçisi — vəsiqə çərçivəyə yerləşdirilsin */}
+                <div className={`pointer-events-none absolute inset-0 flex items-center justify-center`}>
+                  <div className={facing === "user"
+                        ? "w-40 h-52 rounded-[50%] border-2 border-white/70"
+                        : "w-[85%] aspect-[1.586/1] rounded-xl border-2 border-white/70"} />
+                </div>
+                <span className="absolute top-2 left-2 px-2 py-1 rounded-md bg-black/60 text-white text-[10px]">
+                  {facing === "user" ? "Ön kamera" : "Arxa kamera"}
+                </span>
+              </>
             ) : (
               <span className="text-muted text-sm">Şəkil seçilməyib</span>
             )}
@@ -180,20 +235,26 @@ export default function IdentityManualModal({
                         className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold">
                   📸 Çək
                 </button>
+                {/* Telefonda kameranı əl ilə dəyişmək (bəzi cihazlar facingMode-a tabe olmur) */}
+                <button onClick={() => startCam(facing === "user" ? "environment" : "user")}
+                        className="px-4 py-2.5 rounded-xl bg-input-bg border border-input-border text-sm">
+                  🔄 {facing === "user" ? "Arxa kamera" : "Ön kamera"}
+                </button>
                 <button onClick={stopCam} className="px-4 py-2.5 rounded-xl bg-input-bg border border-input-border text-sm">
                   Dayandır
                 </button>
               </>
             ) : (
-              <button onClick={startCam}
-                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold">
-                📷 Kamera aç
+              <button onClick={() => startCam(cur.facing)} disabled={starting}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold disabled:opacity-50">
+                {starting ? "Açılır…" : `📷 Kamera aç (${cur.facing === "user" ? "ön" : "arxa"})`}
               </button>
             )}
             <button onClick={() => fileRef.current?.click()}
                     className="px-4 py-2.5 rounded-xl bg-input-bg border border-input-border text-sm font-medium">
               🖼 Qalereyadan seç
             </button>
+            {/* Qalereya — `capture` QOYULMUR, yoxsa telefonda kamera açılır. */}
             <input ref={fileRef} type="file" accept="image/*" className="hidden"
                    onChange={(e) => { pickFile(e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
           </div>

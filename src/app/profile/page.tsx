@@ -799,9 +799,13 @@ export default function ProfilePage() {
   // ── Doğrulama kartlarının vəziyyəti ──
   // Yalnız İKİ hal: təsdiqlənib, ya təsdiqlənməyib. Veriff-də "gözləmə"
   // vəziyyəti istifadəçiyə göstərilmir (nəticə saniyələr içində gəlir).
+  // «Yoxlanılır» YALNIZ həqiqətən sənəd göndəriləndə göstərilir.
+  // Veriff sessiyası açılıb yarımçıq qalanda status PENDING olur, amma şəkil
+  // yoxdur — əvvəl kart «yoxlanılır» yazıb istifadəçini kilidləyirdi.
+  const idSubmitted = !!profile.idCardImage;
   const idState: VerifyState =
     profile.idVerifyStatus === "APPROVED" ? "ok"
-    : profile.idVerifyStatus === "PENDING" ? "pending"
+    : profile.idVerifyStatus === "PENDING" && idSubmitted ? "pending"
     : "none";
   const primaryPhone: string = phones.find((p: any) => p.isPrimary)?.phone || profile.phone || "";
   const phoneState: VerifyState = primaryPhone ? "ok" : "none";
@@ -974,7 +978,7 @@ export default function ProfilePage() {
           value={idState === "ok" ? "Təsdiqlənmiş profil" : "Təsdiqlənməmiş profil"}
           hint={idState === "ok"
             ? `${profile.name || ""}${profile.idNumber ? ` · FIN: ${String(profile.idNumber).slice(0, 2)}•••••` : ""}`
-            : profile.idVerifyStatus === "PENDING"
+            : profile.idVerifyStatus === "PENDING" && idSubmitted
               ? "⏳ Admin yoxlamasındadır"
               : profile.idVerifyStatus === "REJECTED"
                 ? "Rədd edildi — yenidən göndərin"
