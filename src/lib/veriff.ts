@@ -9,6 +9,25 @@ import { API } from "@/lib/api";
    soruşuruq (istifadəçi heç nə basmır).
    ────────────────────────────────────────────────────────────────────────── */
 
+/* Hansı kimlik axını işləyir?
+   - "veriff": Veriff pəncərəsi açılır, nəticə birbaşa Veriff-dən gəlir.
+   - "manual": Veriff söndürülüb (test mərhələsi) — istifadəçi vəsiqənin
+     ön/arxa şəklini və selfie-ni göndərir, ADMİN gözlə baxıb təsdiqləyir.
+   Açar admin paneldəki `veriff_enabled` tənzimləməsidir. */
+export type IdentityMode = "veriff" | "manual";
+
+export async function identityMode(token: string | null): Promise<IdentityMode> {
+  try {
+    const r = await fetch(`${API}/veriff/status`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then((x) => x.json());
+    return r?.mode === "veriff" ? "veriff" : "manual";
+  } catch {
+    // Şəbəkə xətasında əl ilə axına düşürük — istifadəçi heç olmasa göndərə bilsin.
+    return "manual";
+  }
+}
+
 // Veriff-ə keçid. `sameTab` → elə həmin tabda açılır (Veriff bitəndə özü
 // /profile?veriff=done ünvanına qaytarır). Doldurulmamış forma olan səhifədə
 // (məs. profili tamamlama) yeni tab işlədilir ki, yazılanlar itməsin.

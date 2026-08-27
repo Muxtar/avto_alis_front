@@ -10,7 +10,8 @@ import { rotateImageFile } from "@/lib/rotateImage";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
-import { openVeriff, checkVeriff } from "@/lib/veriff";
+import { openVeriff, checkVeriff, identityMode, type IdentityMode } from "@/lib/veriff";
+import IdentityManualModal from "@/components/IdentityManualModal";
 import VerifyCard, { type VerifyState } from "@/components/VerifyCard";
 import ProfessionMultiPicker from "@/components/ProfessionMultiPicker";
 import EmploymentSection, { type EmploymentStatus } from "@/components/EmploymentSection";
@@ -32,6 +33,10 @@ export default function ProfilePage() {
   // Veriff pəncərəsi açılıb? Qayıdanda nəticəni özümüz soruşuruq.
   const [veriffBusy, setVeriffBusy] = useState(false);
   const veriffOpened = useRef(false);
+  // Hansı kimlik axını işləyir — admin `veriff_enabled` açarına baxır.
+  // "manual" olanda Veriff çağırılmır, şəkillər admin yoxlamasına gedir.
+  const [idMode, setIdMode] = useState<IdentityMode | null>(null);
+  const [manualOpen, setManualOpen] = useState(false);
 
   // Vehicles state — iki-addımlı flow:
   //   1) extract: kullanıcı şəkilləri yükləyir, AI sahələri qaytarır
@@ -165,11 +170,15 @@ export default function ProfilePage() {
   // Veriff-i bitirib tab-a qayıdanda nəticəni özümüz soruşuruq.
   const startIdVerify = async () => {
     if (veriffBusy) return;
+    // Veriff söndürülübsə (test mərhələsi) — şəkil göndərmə pəncərəsi açılır.
+    const mode = idMode ?? (await identityMode(token));
+    if (mode !== "veriff") { setManualOpen(true); return; }
     setVeriffBusy(true);
     const r = await openVeriff(token, { sameTab: true });
     if (r.ok) { veriffOpened.current = true; return; } // səhifə Veriff-ə keçir
     setVeriffBusy(false);
-    toast(r.message || "Kimlik doğrulama hazırda əlçatan deyil", "error");
+    // Veriff başlamırsa istifadəçini kilidləmirik — əl ilə axına keçir.
+    setManualOpen(true);
   };
 
   const syncVeriffResult = useCallback(async () => {
@@ -186,6 +195,12 @@ export default function ProfilePage() {
     }
     // "pending" → istifadəçiyə heç nə demirik, növbəti qayıdışda yenidən soruşulur.
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  // Kimlik axını (veriff / manual) — səhifə açılanda bir dəfə soruşulur.
+  useEffect(() => {
+    if (!token) return;
+    identityMode(token).then(setIdMode).catch(() => setIdMode("manual"));
   }, [token]);
 
   // Veriff bitəndən sonra bizə /profile?veriff=done ilə qaytarır.
@@ -784,7 +799,10 @@ export default function ProfilePage() {
   // ── Doğrulama kartlarının vəziyyəti ──
   // Yalnız İKİ hal: təsdiqlənib, ya təsdiqlənməyib. Veriff-də "gözləmə"
   // vəziyyəti istifadəçiyə göstərilmir (nəticə saniyələr içində gəlir).
-  const idState: VerifyState = profile.idVerifyStatus === "APPROVED" ? "ok" : "none";
+  const idState: VerifyState =
+    profile.idVerifyStatus === "APPROVED" ? "ok"
+    : profile.idVerifyStatus === "PENDING" ? "pending"
+    : "none";
   const primaryPhone: string = phones.find((p: any) => p.isPrimary)?.phone || profile.phone || "";
   const phoneState: VerifyState = primaryPhone ? "ok" : "none";
   const extraPhones = phones.filter((p: any) => !p.isPrimary).length;
@@ -956,7 +974,13 @@ export default function ProfilePage() {
           value={idState === "ok" ? "Təsdiqlənmiş profil" : "Təsdiqlənməmiş profil"}
           hint={idState === "ok"
             ? `${profile.name || ""}${profile.idNumber ? ` · FIN: ${String(profile.idNumber).slice(0, 2)}•••••` : ""}`
-            : veriffBusy ? "Veriff açılır…" : "Təsdiqləmək üçün toxunun"}
+            : profile.idVerifyStatus === "PENDING"
+              ? "⏳ Admin yoxlamasındadır"
+              : profile.idVerifyStatus === "REJECTED"
+                ? "Rədd edildi — yenidən göndərin"
+                : veriffBusy ? "Veriff açılır…"
+                  : idMode === "veriff" ? "Veriff test — təsdiqləmək üçün toxunun"
+                    : "Vəsiqə + selfie göndərin (admin yoxlayır)"}
           cta="Təsdiqlə"
           open={openCard === "id"}
           /* Təsdiqlənməyibsə panel açılmır — birbaşa Veriff pəncərəsinə keçir. */
@@ -977,6 +1001,17 @@ export default function ProfilePage() {
           open={openCard === "work"} onClick={() => setOpenCard(openCard === "work" ? null : "work")}
         />
       </div>
+
+      {manualOpen && (
+        <IdentityManualModal
+          token={token}
+          onClose={() => setManualOpen(false)}
+          onSubmitted={() => {
+            toast("Kimlik müraciətiniz göndərildi — admin yoxlayacaq", "success");
+            refreshProfile();
+          }}
+        />
+      )}
 
       {/* Kimlik təsdiqi paneli — YALNIZ təsdiqlənmiş profil üçün açılır.
           Təsdiqlənməyibsə kartın özü birbaşa Veriff pəncərəsini açır, ona görə
