@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { API } from "@/lib/api";
+import { getAdminSocket } from "@/lib/callSocket";
 import AdminHeader from "@/components/AdminHeader";
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,23 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     const onChange = () => loadOverview();
     window.addEventListener("admin:pending-changed", onChange);
     return () => { clearInterval(id); window.removeEventListener("admin:pending-changed", onChange); };
+  }, [ready, pathname]);
+
+  /* ANLIQ BİLDİRİŞLƏR — panel açıq olduğu müddətdə serverdən push gəlir.
+     Bir soket bütün panel üçün: badge dərhal yenilənir, açıq səhifə isə
+     `window` hadisəsi ilə xəbər tutub siyahısını təzələyir (səhifə yenilənmir). */
+  useEffect(() => {
+    if (!ready || pathname === "/admin/login") return;
+    const token = localStorage.getItem("adminToken");
+    if (!token) return;
+    const socket = getAdminSocket(token);
+    const onIdentity = (p: unknown) => {
+      loadOverview();
+      window.dispatchEvent(new CustomEvent("admin:identity-new", { detail: p }));
+    };
+    socket.on("admin:identity", onIdentity);
+    return () => { socket.off("admin:identity", onIdentity); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, pathname]);
 
   useEffect(() => {

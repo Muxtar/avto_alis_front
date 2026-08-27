@@ -57,6 +57,8 @@ export default function AdminIdentityPage() {
   const [reasons, setReasons] = useState<Record<number, string>>({});
   const [preview, setPreview] = useState<string | null>(null);
   const [veriffOn, setVeriffOn] = useState<boolean | null>(null);
+  // Yeni müraciət gələndə sətri qısa müddət işıqlandırırıq (gözə çarpsın).
+  const [flash, setFlash] = useState<number | null>(null);
 
   const adminToken = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers = { Authorization: `Bearer ${adminToken}` };
@@ -66,6 +68,31 @@ export default function AdminIdentityPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
+
+  /* ANLIQ YENİLƏNMƏ — səhifə yenilənmədən yeni müraciət görünür.
+     Soketi AdminShell saxlayır (bütün panel üçün bir bağlantı) və hadisə
+     gələndə `admin:identity-new` yayımlayır; burada onu tuturuq. */
+  useEffect(() => {
+    const onNew = (e: Event) => {
+      const p = (e as CustomEvent).detail as { userId?: number; name?: string } | undefined;
+      toast(`Yeni kimlik müraciəti: ${p?.name || `#${p?.userId ?? ""}`}`, "info");
+      if (p?.userId) {
+        setFlash(p.userId);
+        setTimeout(() => setFlash(null), 6000);
+      }
+      // «Yoxlanılır» siyahısında deyiliksə ora keçirik — status dəyişimi
+      // onsuz da siyahını yenidən çəkir (aşağıdakı effekt), ona görə iki dəfə
+      // sorğu göndərmirik.
+      setStatus((cur) => {
+        if (cur !== "PENDING") return "PENDING";
+        refresh();
+        return cur;
+      });
+    };
+    window.addEventListener("admin:identity-new", onNew);
+    return () => window.removeEventListener("admin:identity-new", onNew);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Veriff açıqdırsa bu növbə istifadə olunmur — admini xəbərdar edirik.
   useEffect(() => {
@@ -189,7 +216,9 @@ export default function AdminIdentityPage() {
       ) : (
         <div className="space-y-4">
           {items.map((u) => (
-            <div key={u.id} className="bg-card border border-card-border rounded-2xl p-4 sm:p-5">
+            <div key={u.id}
+                 className={`bg-card border rounded-2xl p-4 sm:p-5 transition-colors ${
+                   flash === u.id ? "border-orange-500 ring-2 ring-orange-500/30" : "border-card-border"}`}>
               <div className="flex items-start justify-between flex-wrap gap-2 mb-3">
                 <div>
                   <p className="font-semibold">{u.name || "Ad yoxdur"} <span className="text-xs text-muted font-normal">#{u.id}</span></p>

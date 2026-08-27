@@ -22,3 +22,24 @@ export function getCallSocket(token: string): Socket {
 
 // Eyni socket çat üçün də istifadə olunur (real-time mesaj, "yazır...", oxundu).
 export const getSocket = getCallSocket;
+
+/* ADMİN PANELİ ÜÇÜN AYRICA BAĞLANTI.
+   Panel `adminToken`, sayt isə `userToken` işlədir. Əvvəl hər ikisi eyni
+   singleton-u çağırırdı: hansı sonra çağırsa, o birinin bağlantısını qapadırdı
+   (token fərqli olduğu üçün) — nəticədə admin panelə push gəlmirdi. İndi
+   panelin öz bağlantısı var, ikisi bir-birinə toxunmur. */
+let adminSocket: Socket | null = null;
+let adminToken: string | null = null;
+
+export function getAdminSocket(token: string): Socket {
+  if (adminSocket && adminToken === token) return adminSocket;
+  if (adminSocket) { try { adminSocket.disconnect(); } catch { /* boş */ } }
+  const base = API.replace(/\/api\/?$/, "");
+  adminSocket = io(base, {
+    auth: { token },
+    transports: ["websocket", "polling"],
+    reconnectionAttempts: 5,
+  });
+  adminToken = token;
+  return adminSocket;
+}
