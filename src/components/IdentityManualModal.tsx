@@ -34,7 +34,7 @@ const STEPS: { key: StepKey; title: string; hint: string; facing: Facing }[] = [
   {
     key: "selfieImage",
     title: "Selfie — üzünüz",
-    hint: "Üzünüz kadrın mərkəzində olsun. Eynək, maska və papaq olmasın.",
+    hint: "Üzünüzü ovala yerləşdirin — yalnız çərçivənin içi saxlanılır. Eynək, maska və papaq olmasın.",
     facing: "user",
   },
 ];
@@ -56,6 +56,8 @@ export default function IdentityManualModal({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Kadr köməkçi çərçivəsi — selfie məhz bu sahəyə görə kəsilir.
+  const guideRef = useRef<HTMLDivElement>(null);
 
   const cur = STEPS[step];
   const done = STEPS.every((s) => shots[s.key]);
@@ -115,18 +117,56 @@ export default function IdentityManualModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
+  /* Çərçivənin içindəki sahəni KAMERA PİKSELLƏRİNƏ çevirir.
+     Video `object-cover` ilə göstərilir: kadr qaba sığmaq üçün böyüdülüb
+     kənarları kəsilir. Ona görə ekrandakı ölçüləri birbaşa götürmək olmaz —
+     əvvəlcə miqyas və kəsilən kənar hesablanır, sonra çərçivənin yeri
+     mənbə şəklindəki koordinatlara çevrilir. */
+  const guideCrop = () => {
+    const v = videoRef.current;
+    const g = guideRef.current;
+    if (!v || !g || !v.videoWidth) return null;
+    const vr = v.getBoundingClientRect();
+    const gr = g.getBoundingClientRect();
+    if (!vr.width || !vr.height) return null;
+
+    const scale = Math.max(vr.width / v.videoWidth, vr.height / v.videoHeight);
+    const cutX = (v.videoWidth * scale - vr.width) / 2;   // soldan/sağdan kəsilən
+    const cutY = (v.videoHeight * scale - vr.height) / 2; // yuxarıdan/aşağıdan kəsilən
+
+    let sx = (gr.left - vr.left + cutX) / scale;
+    const sy = (gr.top - vr.top + cutY) / scale;
+    const sw = gr.width / scale;
+    const sh = gr.height / scale;
+    // Ön kamerada görüntü güzgüdür — sol/sağ yerini dəyişir.
+    // (Çərçivə mərkəzdədir, ona görə nəticə eynidir; düstur ümumi olsun deyə saxlanılır.)
+    if (facing === "user") sx = v.videoWidth - (sx + sw);
+
+    const x = Math.max(0, Math.min(sx, v.videoWidth));
+    const y = Math.max(0, Math.min(sy, v.videoHeight));
+    const w = Math.min(sw, v.videoWidth - x);
+    const h = Math.min(sh, v.videoHeight - y);
+    if (w < 40 || h < 40) return null;      // ölçü mənasızdırsa tam kadr saxlanılır
+    return { x, y, w, h };
+  };
+
   const capture = () => {
     const v = videoRef.current;
     if (!v || !v.videoWidth) return;
+    // Selfie YALNIZ çərçivənin içindən kəsilir — arxa fon və artıq sahə düşmür.
+    // Vəsiqədə tam kadr saxlanılır: kart çərçivədən bir az kənara çıxsa belə
+    // sənədin bir hissəsi itməsin (kəsilmiş vəsiqə yoxlamada rədd olunur).
+    const crop = cur.key === "selfieImage" ? guideCrop() : null;
     const canvas = document.createElement("canvas");
-    canvas.width = v.videoWidth;
-    canvas.height = v.videoHeight;
+    canvas.width = crop ? Math.round(crop.w) : v.videoWidth;
+    canvas.height = crop ? Math.round(crop.h) : v.videoHeight;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     // DİQQƏT: güzgü YALNIZ ekranda (CSS ilə) tətbiq olunur — kameradan gələn
     // kadrın özü onsuz da düzdür. Burada çevirsək yadda saxlanan selfie tərs
     // düşür və admin onu güzgüdə görür. Ona görə kadr olduğu kimi yazılır.
-    ctx.drawImage(v, 0, 0);
+    if (crop) ctx.drawImage(v, crop.x, crop.y, crop.w, crop.h, 0, 0, canvas.width, canvas.height);
+    else ctx.drawImage(v, 0, 0);
     canvas.toBlob((blob) => {
       if (!blob) return;
       const file = new File([blob], `${cur.key}.jpg`, { type: "image/jpeg" });
@@ -205,11 +245,13 @@ export default function IdentityManualModal({
               <>
                 <video ref={videoRef} autoPlay playsInline muted
                        className={`w-full h-full object-cover ${facing === "user" ? "scale-x-[-1]" : ""}`} />
-                {/* Kadr köməkçisi — vəsiqə çərçivəyə yerləşdirilsin */}
-                <div className={`pointer-events-none absolute inset-0 flex items-center justify-center`}>
-                  <div className={facing === "user"
-                        ? "w-40 h-52 rounded-[50%] border-2 border-white/70"
-                        : "w-[85%] aspect-[1.586/1] rounded-xl border-2 border-white/70"} />
+                {/* Kadr köməkçisi. Selfie məhz bu çərçivəyə görə kəsilir, ona görə
+                    kənar sahə tündləşdirilir — istifadəçi nəyin saxlanacağını görür. */}
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div ref={guideRef}
+                       className={facing === "user"
+                         ? "w-44 h-56 rounded-[50%] border-2 border-white shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]"
+                         : "w-[85%] aspect-[1.586/1] rounded-xl border-2 border-white/70"} />
                 </div>
                 <span className="absolute top-2 left-2 px-2 py-1 rounded-md bg-black/60 text-white text-[10px]">
                   {facing === "user" ? "Ön kamera" : "Arxa kamera"}
