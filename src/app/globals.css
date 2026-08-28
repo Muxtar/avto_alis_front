@@ -913,3 +913,85 @@ a[class*="btn-"]:not([class*="rounded-full"]),
   color: var(--muted-foreground);
   letter-spacing: .01em;
 }
+
+/* ============================================================
+   SEQMENT TABLARI (chat: Hamısı / Şəxsi / İş)
+   Modern "pill" üslubu: seçilmiş tab qradiyentlə dolur və tam yumru olur,
+   seçilməmiş tab isə yumşaq künclüdür — üzərinə gələndə həm rəngi, həm də
+   künc radiusu yumru vəziyyətə doğru "axır". Bütün keçidlər yumşaqdır.
+   ============================================================ */
+.seg-tabs {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 9999px;
+  background: var(--input-bg);
+  border: 1px solid var(--card-border);
+}
+
+.seg-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 10px;
+  border-radius: 10px;              /* sakit vəziyyət — yumşaq künc */
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--muted);
+  background: transparent;
+  white-space: nowrap;
+  transition:
+    border-radius .28s cubic-bezier(.4, 0, .2, 1),
+    background-color .2s ease,
+    color .2s ease,
+    box-shadow .2s ease,
+    transform .12s ease;
+}
+
+/* Üzərinə gələndə: rəng canlanır və künc yumrulaşır */
+.seg-tab:hover:not(.is-active) {
+  border-radius: 9999px;
+  color: var(--brand-from);
+  background: var(--brand-soft);
+}
+.seg-tab:active:not(.is-active) { transform: scale(.97); }
+
+/* Seçilmiş tab — brend qradiyenti, tam yumru */
+.seg-tab.is-active {
+  border-radius: 9999px;
+  color: #fff;
+  background-image: linear-gradient(135deg, var(--brand-from) 0%, var(--brand-to) 100%);
+  box-shadow: 0 4px 12px -4px var(--brand-to);
+}
+
+/* Oxunmamış sayğac — tabın küncündə kiçik nişan */
+.seg-badge {
+  position: absolute;
+  top: -3px;
+  right: -2px;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  background: #f97316;
+  color: #fff;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 0 0 2px var(--input-bg);
+}
+.seg-tab.is-active .seg-badge { box-shadow: 0 0 0 2px var(--card); }
+
+/* Klaviatura ilə gəzinmə görünsün */
+.seg-tab:focus-visible {
+  outline: 2px solid var(--brand-from);
+  outline-offset: 2px;
+  border-radius: 9999px;
+}

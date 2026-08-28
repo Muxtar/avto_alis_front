@@ -1003,16 +1003,17 @@ export default function MessagesPage() {
                     Eyni şəxs həm dost, həm müştəri ola bilər. Məhsul və ya
                     biznes obyekti üzərindən gələn yazışma ayrı sətirdə durur ki,
                     satış mesajı şəxsi söhbətlə qarışmasın. */}
-                <div className="mt-2 grid grid-cols-3 gap-1 bg-input-bg/60 rounded-xl p-1">
+                <div className="seg-tabs mt-2.5" role="tablist" aria-label="Söhbət bölmələri">
                   {([
-                    { k: "ALL" as const, label: "Hamısı", icon: null, n: 0 },
+                    { k: "ALL" as const, label: "Hamısı", icon: <Ico.Chat className="w-3.5 h-3.5" />, n: 0 },
                     { k: "PERSONAL" as const, label: "Şəxsi", icon: <Ico.User className="w-3.5 h-3.5" />, n: segUnread("PERSONAL") },
                     { k: "BUSINESS" as const, label: "İş", icon: <Ico.Store className="w-3.5 h-3.5" />, n: segUnread("BUSINESS") },
                   ]).map((s) => (
                     <button key={s.k} onClick={() => setSegTab(s.k)}
-                      className={`relative flex items-center justify-center gap-1 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${segTab === s.k ? "bg-card shadow-sm text-foreground" : "text-muted hover:text-foreground"}`}>
+                      role="tab" aria-selected={segTab === s.k}
+                      className={`seg-tab ${segTab === s.k ? "is-active" : ""}`}>
                       {s.icon}{s.label}
-                      {s.n > 0 && <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-orange-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold">{s.n}</span>}
+                      {s.n > 0 && <span className="seg-badge">{s.n > 99 ? "99+" : s.n}</span>}
                     </button>
                   ))}
                 </div>
