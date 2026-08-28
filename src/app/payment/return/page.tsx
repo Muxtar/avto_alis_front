@@ -24,6 +24,13 @@ export default function PaymentReturnPage() {
         window.location.replace(`/business?fee=${status}`);
         return;
       }
+      // Veriff kimlik doğrulaması haqqı — istifadəçi profilə qayıdır və
+      // ödəniş təsdiqlənən kimi doğrulama özü başlayır.
+      if (sessionStorage.getItem("veriffFeePay")) {
+        sessionStorage.removeItem("veriffFeePay");
+        window.location.replace(`/profile?veriffFee=${status}`);
+        return;
+      }
     } catch { /* sessionStorage bloklanıb */ }
 
     let shared: string | null = null;

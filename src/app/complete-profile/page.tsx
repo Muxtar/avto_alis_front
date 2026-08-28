@@ -244,6 +244,10 @@ export default function CompleteProfilePage() {
             <div className="min-w-0">
               <p className="text-sm font-semibold">🛡️ Kimlik doğrulama <span className="text-[11px] font-normal text-muted">(opsional)</span></p>
               <p className="text-[11px] text-muted">Profiliniz «təsdiqlənmiş» olur, FIN və doğum tarixi avtomatik dolur.</p>
+              <p className="text-[11px] text-muted mt-0.5">
+                Veriff ödənişli və dərhaldır. Pulsuz variant — admin yoxlaması (1–2 gün):
+                profili saxlayıb <b>Profil</b> səhifəsindən seçə bilərsiniz.
+              </p>
             </div>
             <button type="button" disabled={veriffBusy}
               onClick={async () => {

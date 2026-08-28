@@ -10,8 +10,9 @@ import { rotateImageFile } from "@/lib/rotateImage";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
-import { openVeriff, checkVeriff, identityMode, type IdentityMode } from "@/lib/veriff";
+import { openVeriff, checkVeriff, identityStatus, payVeriffFee, type IdentityStatus } from "@/lib/veriff";
 import IdentityManualModal from "@/components/IdentityManualModal";
+import IdentityChoiceModal from "@/components/IdentityChoiceModal";
 import VerifyCard, { type VerifyState } from "@/components/VerifyCard";
 import ProfessionMultiPicker from "@/components/ProfessionMultiPicker";
 import EmploymentSection, { type EmploymentStatus } from "@/components/EmploymentSection";
@@ -33,9 +34,9 @@ export default function ProfilePage() {
   // Veriff pəncərəsi açılıb? Qayıdanda nəticəni özümüz soruşuruq.
   const [veriffBusy, setVeriffBusy] = useState(false);
   const veriffOpened = useRef(false);
-  // Hansı kimlik axını işləyir — admin `veriff_enabled` açarına baxır.
-  // "manual" olanda Veriff çağırılmır, şəkillər admin yoxlamasına gedir.
-  const [idMode, setIdMode] = useState<IdentityMode | null>(null);
+  // Kimlik doğrulamasının vəziyyəti — hansı üsullar açıqdır və Veriff haqqı.
+  const [idStatus, setIdStatus] = useState<IdentityStatus | null>(null);
+  const [choiceOpen, setChoiceOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
 
   // Vehicles state — iki-addımlı flow:
@@ -168,17 +169,34 @@ export default function ProfilePage() {
   // ── Kimlik təsdiqi: kartın üstünə basanda BİRBAŞA Veriff pəncərəsi açılır.
   // Ara ekran, izahat mətni və «Nəticəni yoxla» düyməsi yoxdur — istifadəçi
   // Veriff-i bitirib tab-a qayıdanda nəticəni özümüz soruşuruq.
+  // Kartın üstünə basanda ÜSUL SEÇİMİ açılır (Veriff / admin yoxlaması).
   const startIdVerify = async () => {
     if (veriffBusy) return;
-    // Veriff söndürülübsə (test mərhələsi) — şəkil göndərmə pəncərəsi açılır.
-    const mode = idMode ?? (await identityMode(token));
-    if (mode !== "veriff") { setManualOpen(true); return; }
+    if (!idStatus) setIdStatus(await identityStatus(token));
+    setChoiceOpen(true);
+  };
+
+  /* Veriff yolu: haqq ödənilməyibsə əvvəlcə bank səhifəsinə keçirik
+     (qayıdanda ödəniş təsdiqlənən kimi doğrulama özü başlayır), ödənilibsə
+     birbaşa Veriff pəncərəsi açılır. */
+  const runVeriff = async () => {
+    if (veriffBusy) return;
     setVeriffBusy(true);
+    const st = idStatus ?? (await identityStatus(token));
+    setIdStatus(st);
+
+    if (st.fee.required && !st.fee.paid) {
+      const pay = await payVeriffFee(token);
+      if (pay.ok) return;                       // səhifə banka keçir (və ya artıq ödənilib)
+      setVeriffBusy(false);
+      toast(pay.message || "Ödəniş başladıla bilmədi", "error");
+      return;
+    }
+
     const r = await openVeriff(token, { sameTab: true });
-    if (r.ok) { veriffOpened.current = true; return; } // səhifə Veriff-ə keçir
+    if (r.ok) { veriffOpened.current = true; return; }  // səhifə Veriff-ə keçir
     setVeriffBusy(false);
-    // Veriff başlamırsa istifadəçini kilidləmirik — əl ilə axına keçir.
-    setManualOpen(true);
+    toast(r.message || "Veriff hazırda əlçatan deyil", "error");
   };
 
   const syncVeriffResult = useCallback(async () => {
@@ -197,10 +215,41 @@ export default function ProfilePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // Kimlik axını (veriff / manual) — səhifə açılanda bir dəfə soruşulur.
+  // Kimlik doğrulamasının vəziyyəti — səhifə açılanda bir dəfə soruşulur.
   useEffect(() => {
     if (!token) return;
-    identityMode(token).then(setIdMode).catch(() => setIdMode("manual"));
+    identityStatus(token).then(setIdStatus).catch(() => undefined);
+  }, [token]);
+
+  /* Veriff haqqının ödənişindən qayıdış: /payment/return bizi
+     `/profile?veriffFee=success` ünvanına gətirir. Ödənişin HƏQİQƏTƏN keçdiyini
+     serverdən soruşuruq (brauzerin «uğurlu» mesajına inanmırıq) və təsdiqlənən
+     kimi Veriff pəncərəsini özümüz açırıq — istifadəçi bir də düymə axtarmasın. */
+  useEffect(() => {
+    if (typeof window === "undefined" || !token) return;
+    const sp = new URLSearchParams(window.location.search);
+    const r = sp.get("veriffFee");
+    if (!r) return;
+    window.history.replaceState({}, "", "/profile");
+    if (r !== "success") { toast("Ödəniş baş tutmadı", "error"); return; }
+    (async () => {
+      setVeriffBusy(true);
+      for (let i = 0; i < 30; i++) {           // ~60 saniyə: callback gecikə bilər
+        const st = await identityStatus(token);
+        setIdStatus(st);
+        if (st.fee.paid) {
+          const v = await openVeriff(token, { sameTab: true });
+          if (v.ok) { veriffOpened.current = true; return; }
+          setVeriffBusy(false);
+          toast(v.message || "Veriff açılmadı — yenidən cəhd edin", "error");
+          return;
+        }
+        await new Promise((res) => setTimeout(res, 2000));
+      }
+      setVeriffBusy(false);
+      toast("Ödəniş hələ təsdiqlənməyib. Bir azdan yenidən cəhd edin.", "error");
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // Veriff bitəndən sonra bizə /profile?veriff=done ilə qaytarır.
@@ -982,9 +1031,8 @@ export default function ProfilePage() {
               ? "⏳ Admin yoxlamasındadır"
               : profile.idVerifyStatus === "REJECTED"
                 ? "Rədd edildi — yenidən göndərin"
-                : veriffBusy ? "Veriff açılır…"
-                  : idMode === "veriff" ? "Veriff test — təsdiqləmək üçün toxunun"
-                    : "Vəsiqə + selfie göndərin (admin yoxlayır)"}
+                : veriffBusy ? "Açılır…"
+                  : "Təsdiqləmək üçün toxunun — Veriff və ya admin yoxlaması"}
           cta="Təsdiqlə"
           open={openCard === "id"}
           /* Təsdiqlənməyibsə panel açılmır — birbaşa Veriff pəncərəsinə keçir. */
@@ -1005,6 +1053,16 @@ export default function ProfilePage() {
           open={openCard === "work"} onClick={() => setOpenCard(openCard === "work" ? null : "work")}
         />
       </div>
+
+      {choiceOpen && (
+        <IdentityChoiceModal
+          status={idStatus}
+          busy={veriffBusy}
+          onClose={() => setChoiceOpen(false)}
+          onVeriff={() => { setChoiceOpen(false); runVeriff(); }}
+          onManual={() => { setChoiceOpen(false); setManualOpen(true); }}
+        />
+      )}
 
       {manualOpen && (
         <IdentityManualModal

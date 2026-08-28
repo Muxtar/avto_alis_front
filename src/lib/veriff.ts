@@ -16,15 +16,59 @@ import { API } from "@/lib/api";
    Açar admin paneldəki `veriff_enabled` tənzimləməsidir. */
 export type IdentityMode = "veriff" | "manual";
 
-export async function identityMode(token: string | null): Promise<IdentityMode> {
+export interface IdentityStatus {
+  mode: IdentityMode;
+  /** Veriff seçimi istifadəçiyə təklif oluna bilərmi (admin açarı + konfiqurasiya). */
+  veriffAvailable: boolean;
+  /** Veriff ödənişi: tarif, tələb olunurmu, artıq ödənilibmi. */
+  fee: { amount: number; required: boolean; paid: boolean };
+}
+
+const OFFLINE: IdentityStatus = {
+  mode: "manual", veriffAvailable: false,
+  fee: { amount: 0, required: false, paid: false },
+};
+
+export async function identityStatus(token: string | null): Promise<IdentityStatus> {
   try {
     const r = await fetch(`${API}/veriff/status`, {
       headers: { Authorization: `Bearer ${token}` },
     }).then((x) => x.json());
-    return r?.mode === "veriff" ? "veriff" : "manual";
+    if (!r?.success) return OFFLINE;
+    return {
+      mode: r.mode === "veriff" ? "veriff" : "manual",
+      veriffAvailable: !!r.enabled,
+      fee: {
+        amount: Number(r.fee?.amount || 0),
+        required: !!r.fee?.required,
+        paid: !!r.fee?.paid,
+      },
+    };
   } catch {
-    // Şəbəkə xətasında əl ilə axına düşürük — istifadəçi heç olmasa göndərə bilsin.
-    return "manual";
+    // Şəbəkə xətasında əl ilə axın qalır — istifadəçi heç olmasa göndərə bilsin.
+    return OFFLINE;
+  }
+}
+
+/* Veriff haqqının ödənişini başlat. Bank səhifəsinə ELƏ HƏMİN tabda keçirik;
+   qayıdanda /payment/return bizi `/profile?veriffFee=success` ünvanına gətirir
+   və doğrulama özü başlayır. */
+export async function payVeriffFee(token: string | null): Promise<{ ok: boolean; message?: string }> {
+  try {
+    const r = await fetch(`${API}/me/veriff/fee/pay`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    }).then((x) => x.json());
+    if (r?.success && r.redirectUrl) {
+      try { sessionStorage.setItem("veriffFeePay", "1"); } catch { /* bloklanıb */ }
+      window.location.href = r.redirectUrl;
+      return { ok: true };
+    }
+    // Artıq ödənilibsə səhv deyil — doğrulama birbaşa başlaya bilər.
+    if (r?.code === "ALREADY_PAID") return { ok: true };
+    return { ok: false, message: r?.message };
+  } catch {
+    return { ok: false, message: "Ödəniş başladıla bilmədi" };
   }
 }
 
