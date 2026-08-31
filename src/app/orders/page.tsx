@@ -214,6 +214,16 @@ export default function OrdersPage() {
     o.deliveryType !== "PICKUP" && o.deliveryMethod === "COURIER" &&
     (o.status === "CONFIRMED" || o.status === "SHIPPED") &&
     (!o.yangoClaimId || yangoDead(o.yangoStatus));
+  // Çatdırılma dağılıb, sifariş isə SHIPPED-də ilişib qalıb.
+  //
+  // SHIPPED statusunu Yango `pickuped` siqnalı avtomatik qoyur. Kuryer sonra
+  // ləğv olsa (satıcı ləğv etdi / kuryer imtina etdi / mal geri qayıtdı)
+  // sifariş SHIPPED qalır və normal qaydada yalnız "Təhvil aldım" mümkündür —
+  // halbuki çatdıran yoxdur. Belə halda alıcı da sifarişi ləğv edib pulunu
+  // geri ala bilməlidir (bildiriş də ona məhz bunu vəd edir).
+  const deliveryCollapsed = (o: any) =>
+    o.status === "SHIPPED" && !!o.yangoClaimId && yangoDead(o.yangoStatus);
+
   // Wolt-tipli izləmə addımları (0-4).
   const YANGO_STEPS = ["Kuryer axtarılır", "Kuryer mağazaya gedir", "Mağazada", "Sizə gəlir", "Çatdırıldı"];
   const yangoStep = (s?: string): number => {
@@ -811,7 +821,7 @@ export default function OrdersPage() {
                       <button onClick={() => refreshYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-500/20 disabled:opacity-50">{yangoBusy === order.id ? "..." : "🛵 Kuryeri izlə"}</button>
                     )}
                     {/* Alıcı: gözləyən və ya təsdiqlənib GÖNDƏRİLMƏMİŞ sifarişi ləğv edə bilər. Ödənilibsə pul geri qaytarılır. */}
-                    {(order.status === "PENDING" || order.status === "CONFIRMED") && (
+                    {(order.status === "PENDING" || order.status === "CONFIRMED" || deliveryCollapsed(order)) && (
                       <button onClick={() => { if (confirm(order.paymentStatus === "PAID" ? "Sifarişi ləğv edib pulu geri almaq istəyirsiniz?" : "Sifarişi ləğv etmək istəyirsiniz?")) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">{order.paymentStatus === "PAID" ? "Ləğv et və geri al" : "Ləğv et"}</button>
                     )}
                     {order.status === "SHIPPED" && (
