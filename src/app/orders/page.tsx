@@ -241,7 +241,13 @@ export default function OrdersPage() {
     S.push({ label: "Satıcı qəbul etdi", state: "done" });
     if (isCourier) {
       if (!order.yangoClaimId) {
-        S.push({ label: order.yangoError ? "Yango: kuryer tapılmadı (yenidən cəhd ediləcək)" : "Yango-ya göndərilir…", state: order.yangoError ? "error" : "current", detail: order.yangoError || undefined });
+        {/* Claim ümumiyyətlə yaranmayıbsa «kuryer tapılmadı» yanlış olur —
+            sifariş Yango-ya çatmayıb. Səbəb `detail`-də göstərilir. */}
+        S.push({
+          label: order.yangoError ? "Yango: sifariş göndərilmədi" : "Yango-ya göndərilir…",
+          state: order.yangoError ? "error" : "current",
+          detail: order.yangoError ? `${order.yangoError} — düzəldib «Yango təkrar cəhd» edin` : undefined,
+        });
       } else {
         const step = yangoStep(yi.status || order.yangoStatus);
         S.push({ label: "Yango qəbul etdi", state: "done" });
