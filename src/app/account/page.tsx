@@ -10,6 +10,7 @@ import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import QRShare from "@/components/QRShare";
+import { INSTALLMENT_MONTHS, INSTALLMENT_MIN_AMOUNT } from "@/lib/installment";
 
 const MAX_IMAGES = 5;
 // Bu ölçüdən böyük şəkillər avtomatik sıxılır (rədd edilmir) — istifadəçi üçün ölçü fərq etməsin.
@@ -72,6 +73,10 @@ function AccountPageInner() {
   const [allowSelfDelivery, setAllowSelfDelivery] = useState(false); // satıcı özü də çatdıra bilər (Yango + götürmə həmişə var)
   const [selfDeliveryNote, setSelfDeliveryNote] = useState(""); // satıcı çatdırma qeydi/qiyməti
   const [pickupOnly, setPickupOnly] = useState(false); // yalnız alıcı gəlib götürsün (Yango + satıcı çatdırması bağlı)
+  // TAKSİT — satıcının seçimi. Yalnız VÖEN (biznes) elanlarında mənası var:
+  // kartla ödəniş də yalnız orada mümkündür. Default açıq (köhnə davranış).
+  const [installmentEnabled, setInstallmentEnabled] = useState(true);
+  const [installmentMaxMonths, setInstallmentMaxMonths] = useState<string>(""); // "" = limitsiz
   // Elana özəl konum (VÖEN-siz elanlar üçün — hər elanın öz xəritə nöqtəsi ola bilər).
   const [listingLat, setListingLat] = useState<number | null>(null);
   const [listingLng, setListingLng] = useState<number | null>(null);
@@ -268,6 +273,12 @@ function AccountPageInner() {
       }
       fd.append("listingMode", listingMode || "novoen");
       if (listingMode === "voen") { fd.append("pickupOnly", String(pickupOnly)); fd.append("allowSelfDelivery", String(!pickupOnly && allowSelfDelivery)); if (!pickupOnly && allowSelfDelivery) fd.append("selfDeliveryNote", selfDeliveryNote); }
+      // Taksit yalnız biznes elanında göndərilir; şəxsi elanda kartla ödəniş
+      // olmadığı üçün onsuz da tətbiq olunmur.
+      if (listingMode === "voen") {
+        fd.append("installmentEnabled", String(installmentEnabled));
+        fd.append("installmentMaxMonths", installmentEnabled ? installmentMaxMonths : "");
+      }
       if (weightKg) fd.append("weightKg", weightKg);
       // Biznes obyekti YALNIZ VÖEN-li elanda göndərilir — VÖEN-siz (fərdi) elan biznesə bağlanmır.
       if (listingMode === "voen" && selectedObjectId) fd.append("businessObjectId", selectedObjectId);
@@ -335,6 +346,8 @@ function AccountPageInner() {
     setAllowSelfDelivery(!!listing.allowSelfDelivery);
     setSelfDeliveryNote(listing.selfDeliveryNote || "");
     setPickupOnly(!!listing.pickupOnly);
+    setInstallmentEnabled(listing.installmentEnabled !== false);
+    setInstallmentMaxMonths(listing.installmentMaxMonths ? String(listing.installmentMaxMonths) : "");
     setListingLat(listing.latitude != null ? Number(listing.latitude) : null);
     setListingLng(listing.longitude != null ? Number(listing.longitude) : null);
     setWeightKg(listing.weightKg != null ? String(listing.weightKg) : "");
@@ -841,6 +854,42 @@ function AccountPageInner() {
                   )}
                   </>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* Taksit (hissəli alış) — yalnız VÖEN elanlarda.
+                Kartla ödəniş yalnız biznes məhsullarında mümkündür, taksit də
+                elə oradan gəlir. Şəxsi elanda bu bölmə göstərilmir. */}
+            {listingMode === "voen" && form.type !== "SERVICE" && (
+              <div>
+                <label className="block text-sm font-medium mb-1.5">Hissəli alış (taksit)</label>
+                <div className="px-4 py-3 rounded-xl border border-input-border bg-input-bg/50 space-y-2.5 text-sm">
+                  <label className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer transition-all ${installmentEnabled ? "border-orange-500/50 bg-orange-500/5" : "border-input-border bg-input-bg"}`}>
+                    <input type="checkbox" checked={installmentEnabled} onChange={(e) => setInstallmentEnabled(e.target.checked)} className="w-4 h-4 accent-orange-500" />
+                    <span>
+                      <span className="block text-sm font-medium">💳 Taksitlə satılsın</span>
+                      <span className="block text-[11px] text-muted">Məhsul səhifəsində hissəli alış kalkulyatoru göstərilir</span>
+                    </span>
+                  </label>
+
+                  {installmentEnabled && (
+                    <div>
+                      <label className="block text-xs font-medium text-muted mb-1">Ən çox neçə aya</label>
+                      <select value={installmentMaxMonths} onChange={(e) => setInstallmentMaxMonths(e.target.value)} className={inputCls}>
+                        <option value="">Limitsiz (18 aya qədər)</option>
+                        {INSTALLMENT_MONTHS.map((m) => <option key={m} value={m}>{m} aya qədər</option>)}
+                      </select>
+                      <p className="text-[11px] text-muted mt-1">Alıcı bundan uzun plan seçə bilməyəcək.</p>
+                    </div>
+                  )}
+
+                  {/* Dürüstlük qeydi — satıcı nə ilə razılaşdığını bilməlidir. */}
+                  <p className="text-[11px] text-muted leading-relaxed border-t border-card-border pt-2">
+                    ℹ️ Taksit <b>alıcının öz taksit kartı</b> (BirKart, Tamkart və s.) ilə tətbiq olunur.
+                    <b> Siz tam məbləği bir dəfəyə alırsınız</b> — bölgünü alıcının bankı edir.
+                    Minimal məbləğ <b>{INSTALLMENT_MIN_AMOUNT} AZN</b>-dır; bundan ucuz məhsulda taksit görünmür.
+                  </p>
                 </div>
               </div>
             )}

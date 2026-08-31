@@ -16,7 +16,7 @@ import ListingCard from "@/components/ListingCard";
 import ComplaintButton from "@/components/ComplaintButton";
 import { recordView } from "@/lib/recentlyViewed";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
-import { installmentAllowed, isBusinessListing } from "@/lib/installment";
+import { listingInstallmentAllowed, monthsForListing } from "@/lib/installment";
 
 
 export default function ListingDetailPage() {
@@ -718,13 +718,15 @@ export default function ListingDetailPage() {
               {listing.category}
             </div>
 
-            {/* Hissəli alış — yalnız BİZNES məhsullarında (şəxsi elanda taksit yoxdur) */}
-            {installmentAllowed(listing.price * cartQty, isBusinessListing(listing)) && (
+            {/* Hissəli alış — BİZNES məhsulu + SATICI icazə veribsə.
+                Satıcı elanda taksiti bağlaya və ya ay limiti qoya bilər. */}
+            {listingInstallmentAllowed(listing, listing.price * cartQty) && (
               <div className="mb-4">
                 <InstallmentCalculator
                   amount={listing.price * cartQty}
                   value={installMonths}
                   onChange={setInstallMonths}
+                  months={monthsForListing(listing)}
                 />
               </div>
             )}

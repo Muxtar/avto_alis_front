@@ -19,6 +19,29 @@ export const isBusinessListing = (l: any): boolean =>
 export const installmentAllowed = (amount: number, isBusiness: boolean): boolean =>
   isBusiness && amount >= INSTALLMENT_MIN_AMOUNT;
 
+// ── SATICININ SEÇİMİ ──
+// Taksit artıq hər biznes elanında avtomatik açıq deyil: elanı qoyan onu
+// bağlaya və ya ay limitini (məs. ən çox 6 ay) təyin edə bilər.
+// Köhnə elanlarda sahə boşdur → açıq sayılır (davranış dəyişmir).
+
+/** Bu elan üçün seçilə bilən ay variantları. */
+export const monthsForListing = (l: any): number[] => {
+  if (!isBusinessListing(l) || l?.installmentEnabled === false) return [];
+  const max = l?.installmentMaxMonths;
+  return INSTALLMENT_MONTHS.filter((m) => !max || m <= max);
+};
+
+/** Səbətdəki BÜTÜN məhsullar üçün ortaq variantlar (ən dar məhdudiyyət). */
+export const monthsForListings = (list: any[]): number[] =>
+  !list.length ? [] : list.reduce<number[]>(
+    (acc, l) => acc.filter((m) => monthsForListing(l).includes(m)),
+    [...INSTALLMENT_MONTHS],
+  );
+
+/** Elan taksitlə satılırmı (məbləğ də uyğundursa). */
+export const listingInstallmentAllowed = (l: any, amount: number): boolean =>
+  monthsForListing(l).length > 0 && amount >= INSTALLMENT_MIN_AMOUNT;
+
 // Aylıq ödəniş — 0% ilə bərabər bölgü. Yuvarlaqlaşdırma fərqi SON aya yazılır,
 // beləliklə ayların cəmi həmişə tam məbləğə bərabər olur.
 export function monthlyPayment(amount: number, months: number): { monthly: number; last: number } {

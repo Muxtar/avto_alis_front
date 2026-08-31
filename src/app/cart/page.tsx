@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
 import ConsentBox from "@/components/ConsentBox";
-import { installmentAllowed } from "@/lib/installment";
+import { installmentAllowed, monthsForListings } from "@/lib/installment";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import ShareButton from "@/components/ShareButton";
 
@@ -123,6 +123,8 @@ export default function CartPage() {
   // kartla ödəniş mümkündür. VÖEN məhsulunda ödəniş üsulu avtomatik KART seçilir.
   const checkoutItems = selItems.length ? selItems : inStockItems;
   const cardAllowed = checkoutItems.length > 0 && checkoutItems.every((i) => !!(i.listing?.businessId || i.listing?.businessObjectId));
+  // Satıcıların icazə verdiyi taksit ayları (ən dar məhdudiyyət qalır).
+  const installMonthOptions = monthsForListings(checkoutItems.map((i) => i.listing));
   useEffect(() => {
     if (!cardAllowed) { setPaymentMethod((m) => (m === "CARD" ? "CASH" : m)); return; }
     if (!paymentTouched) setPaymentMethod("CARD"); // VÖEN → default kart
@@ -903,16 +905,19 @@ export default function CartPage() {
                     )}
 
 
-                    {paymentMethod === "CARD" && installmentAllowed(selTotal, cardAllowed) && (
+                    {/* Taksit — səbətdəki BÜTÜN məhsullar icazə verirsə.
+                        Ay variantları ən dar məhdudiyyətə görə kəsilir: bir
+                        məhsulda satıcı «ən çox 6 ay» qoyubsa 9/12/18 çıxmır. */}
+                    {paymentMethod === "CARD" && installmentAllowed(selTotal, cardAllowed) && installMonthOptions.length > 0 && (
                       <div className="mt-3">
                         <label className="flex items-center gap-2 mb-2 cursor-pointer">
                           <input type="checkbox" checked={installMonths != null}
-                            onChange={(e) => setInstallMonths(e.target.checked ? 6 : null)}
+                            onChange={(e) => setInstallMonths(e.target.checked ? (installMonthOptions.includes(6) ? 6 : installMonthOptions[0]) : null)}
                             className="w-4 h-4 accent-orange-500" />
                           <span className="text-xs font-semibold">Hissəli (taksitlə) almaq istəyirəm</span>
                         </label>
                         {installMonths != null && (
-                          <InstallmentCalculator amount={selTotal} value={installMonths} onChange={setInstallMonths} compact />
+                          <InstallmentCalculator amount={selTotal} value={installMonths} onChange={setInstallMonths} months={installMonthOptions} compact />
                         )}
                       </div>
                     )}

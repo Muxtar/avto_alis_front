@@ -13,7 +13,7 @@ import ChatPeopleSearch from "@/components/ChatPeopleSearch";
 import Avatar from "@/components/Avatar";
 import { useCall } from "@/lib/CallContext";
 import { Ico } from "@/components/ChatIcons";
-import { installmentAllowed } from "@/lib/installment";
+import { listingInstallmentAllowed } from "@/lib/installment";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const CHAT_EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🥳","😉","🙂","😇","🤗","🤔","😴","😭","😡","😱","😳","🥰","😜","🤪","😏","🙄","😤","😢","😅","😬","🤯","🤒","🤕","👍","👎","👌","🙏","👏","🙌","💪","🤝","👋","✌️","🤟","🫶","❤️","🧡","💛","💚","💙","💜","🖤","🔥","✨","🎉","🎊","💯","⭐","🌟","💥","💐","🌹","☀️","🌙","⚡","☕","🍰","🍕","🎁","💰","✅","❌","❗","❓","💬","📍","🚗","⚽"];
@@ -1332,7 +1332,7 @@ export default function MessagesPage() {
                 <p className="text-xl font-extrabold mt-1">{activeListing.price.toLocaleString("az-AZ")} <span className="text-sm">AZN</span></p>
               )}
               {/* Taksit nişanı — biznes məhsulu və məbləğ uyğundursa. */}
-              {installmentAllowed(activeListing.price || 0, active.segment === "BUSINESS") && (
+              {listingInstallmentAllowed(activeListing, activeListing.price || 0) && (
                 <p className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-400/15 text-amber-600 text-[11px] font-bold">
                   <span className="w-4 h-4 rounded-full bg-amber-400/30 flex items-center justify-center text-[9px]">%</span>
                   Hissəli alış

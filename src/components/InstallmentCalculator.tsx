@@ -13,19 +13,26 @@ import { INSTALLMENT_MONTHS, monthlyPayment } from "@/lib/installment";
  * onu kart sahibi üçün aylara bölür.
  */
 export default function InstallmentCalculator({
-  amount, value, onChange, compact,
+  amount, value, onChange, compact, months: allowed,
 }: {
   amount: number;
   value?: number | null;
   onChange?: (months: number | null) => void;
   compact?: boolean;
+  /** Satıcının icazə verdiyi ay variantları. Verilməsə hamısı. */
+  months?: number[];
 }) {
+  // Satıcı ay limiti qoya bilər (məs. ən çox 6 ay) — kalkulyator yalnız
+  // icazəli variantları göstərməlidir, əks halda alıcı seçə bilməyəcəyi
+  // planın hesabını görür.
+  const OPTIONS = allowed && allowed.length ? allowed : [...INSTALLMENT_MONTHS];
+  const fallback = OPTIONS[Math.min(1, OPTIONS.length - 1)];
   // Kontrolsuz işlədilə bilsin deyə daxili vəziyyət də var.
-  const [own, setOwn] = useState<number | null>(INSTALLMENT_MONTHS[1]); // default 6 ay
+  const [own, setOwn] = useState<number | null>(fallback);
   const months = value !== undefined ? value : own;
   const set = (m: number | null) => { if (value === undefined) setOwn(m); onChange?.(m); };
 
-  const active = months ?? INSTALLMENT_MONTHS[1];
+  const active = months != null && OPTIONS.includes(months) ? months : fallback;
   const { monthly } = monthlyPayment(amount, active);
 
   return (
@@ -36,7 +43,7 @@ export default function InstallmentCalculator({
       <div className="flex items-stretch gap-3 flex-wrap sm:flex-nowrap">
         {/* Ay seçimi */}
         <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
-          {INSTALLMENT_MONTHS.map((m) => {
+          {OPTIONS.map((m) => {
             const on = m === active;
             return (
               <button
