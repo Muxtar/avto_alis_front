@@ -7,7 +7,7 @@ import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import Link from "next/link";
 import OrderMap from "@/components/OrderMapWrapper";
-import { yangoDead } from "@/lib/yangoStatus";
+import { yangoDead, yangoLabel as yangoStatusAz, YANGO_STATUS_AZ } from "@/lib/yangoStatus";
 
 export default function OrdersPage() {
   const { t } = useLanguage();
@@ -193,15 +193,22 @@ export default function OrdersPage() {
     });
     setYangoInfo((p) => { const n = { ...p }; delete n[orderId]; return n; });
   };
+  /* Etiketlər ORTAQ mənbədən (lib/yangoStatus) gəlir. Əvvəl bu səhifənin öz
+     siyahısı vardı və orada `performer_not_found` (kuryer tapılmadı) YOX idi —
+     Yango axtarışı dayandırsa belə ekranda «kuryer axtarılır» qalırdı. */
   const YANGO_LABEL: Record<string, string> = {
-    new: "yaradıldı", estimating: "hesablanır", ready_for_approval: "təsdiq gözləyir",
-    accepted: "qəbul edildi", performer_lookup: "kuryer axtarılır", performer_search: "kuryer axtarılır", performer_found: "kuryer tapıldı",
-    performer_draft: "kuryer təyin olunur", pickup_arrived: "kuryer mağazada", ready_for_pickup_confirmation: "mağazada təsdiq gözləyir",
-    pickuped: "götürüldü, yolda", delivery_arrived: "ünvanda", ready_for_delivery_confirmation: "təhvil təsdiqi gözləyir",
-    pay_waiting: "ödəniş gözlənilir", delivered: "çatdırıldı", delivered_finish: "çatdırıldı",
-    cancelled: "ləğv edildi", cancelled_by_taxi: "kuryer ləğv etdi", failed: "uğursuz",
+    ...YANGO_STATUS_AZ,
+    estimating: "qiymət hesablanır",
+    estimating_failed: "qiymətləndirilmədi",
+    ready_for_approval: "təsdiq gözləyir",
+    accepted: "qəbul edildi",
+    performer_lookup: "kuryer axtarılır",
+    pay_waiting: "ödəniş gözlənilir",
+    returned: "geri qaytarılır",
+    returned_finish: "geri qaytarıldı",
+    cancelled_with_items_on_hands: "ləğv edildi (məhsul kuryerdə)",
   };
-  const yangoLabel = (s?: string) => (s ? (YANGO_LABEL[s] || s) : "");
+  const yangoLabel = (s?: string) => (s ? (YANGO_LABEL[s] || yangoStatusAz(s)) : "");
   // Kuryer çağırıla bilərmi: heç göndərilməyib, YA DA əvvəlki cəhd ölüb.
   const canDispatch = (o: any) =>
     o.deliveryType !== "PICKUP" && o.deliveryMethod === "COURIER" &&
@@ -210,12 +217,16 @@ export default function OrdersPage() {
   // Wolt-tipli izləmə addımları (0-4).
   const YANGO_STEPS = ["Kuryer axtarılır", "Kuryer mağazaya gedir", "Mağazada", "Sizə gəlir", "Çatdırıldı"];
   const yangoStep = (s?: string): number => {
+    // ÖLÜ statuslar (kuryer tapılmadı, ləğv, uğursuz) -1 qaytarır. Əvvəl burada
+    // yalnız üç status sayılırdı: `performer_not_found` default-a düşüb 0 verirdi,
+    // yəni Yango axtarışı DAYANDIRSA da ekranda «Kuryer axtarılır» yanırdı və
+    // satıcı saatlarla gözləyirdi. İndi ortaq YANGO_DEAD siyahısı işlədilir.
+    if (yangoDead(s)) return -1;
     switch (s) {
       case "performer_found": return 1;
       case "pickup_arrived": case "ready_for_pickup_confirmation": return 2;
       case "pickuped": case "delivery_arrived": case "ready_for_delivery_confirmation": return 3;
       case "delivered": case "delivered_finish": return 4;
-      case "cancelled": case "cancelled_by_taxi": case "failed": return -1;
       default: return 0;
     }
   };
@@ -649,20 +660,35 @@ export default function OrdersPage() {
 
                       {/* Timeline — 5 addım */}
                       {step >= 0 ? (
-                        <div className="flex items-center gap-1 mb-2">
-                          {YANGO_STEPS.map((lbl, i) => (
-                            <div key={i} className="flex-1 flex flex-col items-center">
-                              <div className={`w-full h-1.5 rounded-full ${i <= step ? "bg-blue-500" : "bg-input-border"}`} />
-                              <span className={`mt-1 text-[9px] text-center leading-tight ${i === step ? "text-blue-500 font-semibold" : "text-muted"}`}>{lbl}</span>
-                            </div>
-                          ))}
+                        <div className="mb-2">
+                          <div className="flex items-center gap-1">
+                            {YANGO_STEPS.map((lbl, i) => (
+                              <div key={i} className="flex-1 flex flex-col items-center">
+                                <div className={`w-full h-1.5 rounded-full ${i <= step ? "bg-blue-500" : "bg-input-border"}`} />
+                                <span className={`mt-1 text-[9px] text-center leading-tight ${i === step ? "text-blue-500 font-semibold" : "text-muted"}`}>{lbl}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {/* Həqiqi Yango statusu — mərhələ göstəricisi ümumidir,
+                              problemi tapmaq üçün xam status lazım olur. */}
+                          <p className="text-[10px] text-muted mt-1.5 text-center">
+                            Yango: {yangoLabel(yi.status || order.yangoStatus) || "—"}
+                          </p>
                         </div>
                       ) : (
                         // Ölü claim — satıcıya dərhal çıxış yolu göstərilir,
                         // əks halda ekranda yalnız "ləğv edildi" qalıb heç nə
                         // edilə bilmirdi.
                         <div className="mb-1">
-                          <p className="text-sm text-red-500">Çatdırılma ləğv edildi / uğursuz oldu</p>
+                          {/* Səbəbi konkret yazırıq — «kuryer tapılmadı» ilə
+                              «ləğv edildi» satıcı üçün fərqli hallardır. */}
+                          <p className="text-sm text-red-500">
+                            {(yi.status || order.yangoStatus) === "performer_not_found"
+                              ? "Kuryer tapılmadı — Yango axtarışı dayandırdı"
+                              : (yi.status || order.yangoStatus) === "estimating_failed"
+                                ? "Yango qiymətləndirə bilmədi (ünvan və ya çəki uyğun deyil)"
+                                : "Çatdırılma ləğv edildi / uğursuz oldu"}
+                          </p>
                           {activeTab === "selling" && canDispatch(order) && (
                             <button onClick={() => dispatchYango(order.id)} disabled={yangoBusy === order.id}
                               className="mt-1.5 px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-semibold hover:bg-blue-500/20 disabled:opacity-50">
