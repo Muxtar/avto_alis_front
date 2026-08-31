@@ -20,6 +20,9 @@ export default function AdminListingsPage() {
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [rows, setRows] = useState<Record<string, any[]>>({});
   const [rowsLoading, setRowsLoading] = useState<string | null>(null);
+  // Serverin öz PENDING sayı — sidebar nişanı da bunu göstərir.
+  // Siyahının cəmi ilə üst-üstə düşmürsə admin bunu görməlidir.
+  const [serverPending, setServerPending] = useState<number | null>(null);
   // Bir elanın detalı (şəkillər + bütün sahələr) açıq olub-olmaması.
   const [openListing, setOpenListing] = useState<number | null>(null);
 
@@ -80,7 +83,7 @@ export default function AdminListingsPage() {
     if (statusFilter !== "all") params.set("status", statusFilter);
     fetch(`${API}/admin/listing-owners?${params}`, { headers })
       .then((r) => r.json())
-      .then((d) => setOwners(d.owners || []))
+      .then((d) => { setOwners(d.owners || []); setServerPending(typeof d.pendingTotal === "number" ? d.pendingTotal : null); })
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoading(false));
   };
@@ -258,6 +261,14 @@ export default function AdminListingsPage() {
           </div>
         </div>
 
+        {/* Nişan ilə siyahının cəmi fərqlidirsə — səbəbi gizlətmirik. */}
+        {statusFilter === "PENDING" && serverPending !== null && owners.length > 0 && totalPending !== serverPending && (
+          <p className="text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
+            ⚠️ Sistemdə {serverPending} gözləyən elan var, siyahıda isə {totalPending} görünür
+            {search || typeFilter !== "all" ? " — axtarış/tip filtri məhdudlaşdırır." : "."}
+          </p>
+        )}
+
         {/* Moderasiya vəziyyəti */}
         <div className="flex gap-1.5 flex-wrap">
           {[
@@ -278,7 +289,18 @@ export default function AdminListingsPage() {
       {loading ? (
         <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : owners.length === 0 ? (
-        <div className="text-center py-20 text-muted">{t("adminNoData")}</div>
+        <div className="text-center py-20 text-muted">
+          {t("adminNoData")}
+          {/* Nişan «N gözləyir» deyir, siyahı isə boşdur — bu, səssiz itki
+              deməkdir. Əvvəl admin sadəcə boş səhifə görürdü. */}
+          {statusFilter === "PENDING" && !!serverPending && (
+            <p className="mt-3 text-xs text-amber-600 max-w-md mx-auto">
+              ⚠️ Sistemdə {serverPending} gözləyən elan var, lakin bu siyahıda görünmür.
+              Axtarış/tip filtrini təmizləyin — problem davam edərsə elanların sahibi
+              silinmiş ola bilər.
+            </p>
+          )}
+        </div>
       ) : (
         <div className="flex flex-col gap-2">
           {owners.map((owner) => {

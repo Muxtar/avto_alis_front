@@ -83,6 +83,9 @@ export default function NotificationBell() {
       case 'MESSAGE': return '💬';
       case 'INQUIRY': return '🔍';
       case 'PROMO': return '🎁';
+      case 'LISTING': return '📢';
+      case 'BOOKING': return '📅';
+      case 'REFERRAL': return '🤝';
       default: return '🔔';
     }
   };
