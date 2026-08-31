@@ -138,6 +138,20 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
+              {/* NİYƏ BU SİFARİŞ «YOXDUR» — server izahı.
+                  Panel bütün sətirləri göstərir, tərəflərin siyahısı isə yox:
+                  ödənilməmiş kart sifarişi, uğursuz ödəniş və ya tərəfin
+                  gizlətdiyi sifariş admin üçün «xəyal» kimi görünürdü. */}
+              {Array.isArray(order.adminNotes) && order.adminNotes.length > 0 && (
+                <div className="px-4 pt-3 flex flex-col gap-1">
+                  {order.adminNotes.map((n: string, i: number) => (
+                    <p key={i} className="text-[11px] text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5">
+                      ⚠️ {n}
+                    </p>
+                  ))}
+                </div>
+              )}
+
               {/* Items */}
               <div className="p-4 space-y-2">
                 {order.items.map((item: any) => (
