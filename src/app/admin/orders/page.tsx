@@ -58,6 +58,54 @@ export default function AdminOrdersPage() {
     } catch { toast(t("error"), "error"); }
   };
 
+  // Tək sifarişi sil. Server ödənilmiş sifarişi rədd edir (maliyyə sənədidir) —
+  // burada da eyni şərti göstərib admini boş yerə klikləməyə məcbur etmirik.
+  const deleteOrder = async (order: any) => {
+    if (!confirm(
+      `Sifariş #${order.id} HƏMİŞƏLİK silinsin?\n\n` +
+      `Məhsul sətirləri, qaytarma sorğusu və satıcı hesablaşma qeydi də silinir. ` +
+      `Bu əməliyyat geri qaytarıla bilmir.`
+    )) return;
+    try {
+      const res = await fetch(`${API}/admin/orders/${order.id}`, { method: "DELETE", headers });
+      const data = await res.json();
+      if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      toast(`Sifariş #${order.id} silindi`, "success");
+      setOrders((prev) => prev.filter((o) => o.id !== order.id));
+    } catch { toast(t("error"), "error"); }
+  };
+
+  // Toplu təmizlik — ödənilməmiş, ləğv olunmuş köhnə sifarişlər.
+  // Əvvəlcə dryRun ilə neçə sətir gedəcəyini soruşuruq: admin rəqəmi görmədən
+  // toplu silməyə razılıq verməməlidir.
+  const [cleaning, setCleaning] = useState(false);
+  const cleanupOrders = async () => {
+    const ans = prompt("Neçə gündən köhnə, ödənilməmiş və ləğv olunmuş sifarişlər silinsin?\n(gün sayı — 0 yazsanız hamısı)", "30");
+    if (ans === null) return;
+    const days = parseInt(ans);
+    if (!Number.isFinite(days) || days < 0) { toast("Yanlış gün sayı", "error"); return; }
+    setCleaning(true);
+    try {
+      const probe = await fetch(`${API}/admin/orders/cleanup`, {
+        method: "POST", headers, body: JSON.stringify({ days, dryRun: true }),
+      }).then((r) => r.json());
+      if (!probe.success) { toast(probe.message || t("error"), "error"); return; }
+      if (!probe.count) { toast("Silinəcək sifariş yoxdur", "success"); return; }
+      if (!confirm(
+        `${probe.count} sifariş silinəcək (${days} gündən köhnə, ödənilməmiş və ləğv olunmuş).\n\n` +
+        `Ödənilmiş və iadə edilmiş sifarişlərə TOXUNULMUR.\n\nDavam edilsin?`
+      )) return;
+      const res = await fetch(`${API}/admin/orders/cleanup`, {
+        method: "POST", headers, body: JSON.stringify({ days }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      toast(`${data.deleted} sifariş silindi ✓`, "success");
+      fetchData();
+    } catch { toast(t("error"), "error"); }
+    finally { setCleaning(false); }
+  };
+
   const statusColor = (status: string) => {
     switch (status) {
       case "PENDING": return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
@@ -88,7 +136,14 @@ export default function AdminOrdersPage() {
 
   return (
     <div>
-      <h1 className="text-xl sm:text-2xl font-bold mb-6">{t("adminOrders")}</h1>
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold">{t("adminOrders")}</h1>
+        <button onClick={cleanupOrders} disabled={cleaning}
+          title="Ödənilməmiş, ləğv olunmuş köhnə sifarişləri toplu sil"
+          className="px-3 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-xs font-semibold hover:bg-red-500/20 disabled:opacity-50">
+          {cleaning ? "..." : "🧹 Köhnələri təmizlə"}
+        </button>
+      </div>
 
       {/* Status Filter */}
       <div className="flex gap-1.5 flex-wrap bg-input-bg border border-input-border rounded-xl p-1 mb-6 w-fit">
@@ -133,6 +188,15 @@ export default function AdminOrdersPage() {
                     <button onClick={() => refundOrder(order.id, order.total)}
                       className="px-2.5 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-xs font-medium hover:bg-red-500/20">
                       {t("adminRefund") || "İadə et"}
+                    </button>
+                  )}
+                  {/* Sil — yalnız pul sistemə girməmiş sifarişlər.
+                      Ödənilmiş sifariş maliyyə sənədidir: əvvəlcə iadə. */}
+                  {order.paymentStatus !== "PAID" && (
+                    <button onClick={() => deleteOrder(order)}
+                      title="Sifarişi həmişəlik sil"
+                      className="px-2.5 py-1 bg-input-bg border border-input-border text-muted rounded-lg text-xs font-medium hover:text-red-500 hover:border-red-500/40">
+                      🗑
                     </button>
                   )}
                 </div>
