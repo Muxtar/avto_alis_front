@@ -492,8 +492,13 @@ export default function OrdersPage() {
                   );
                 })()}
 
-                {/* Təhvil kodu — YALNIZ alıcıya görünür (satıcı/kuryer alıcıdan soruşur). */}
-                {activeTab === "buying" && order.pickupCode && order.status !== "CANCELLED" && (
+                {/* Təhvil kodu — YALNIZ alıcıya görünür (satıcı/kuryer alıcıdan soruşur).
+                    Yango kuryeri ilə gedən sifarişdə GÖSTƏRİLMİR: Yango öz rəqəmli
+                    kodunu istəyir (aşağıdakı kuryer blokunda çıxır). Bizim «TX-…»
+                    kodumuzu kuryerə deyəndə tətbiq «kod yalnız rəqəmlərdən ibarət
+                    olmalıdır» deyib rədd edirdi. */}
+                {activeTab === "buying" && order.pickupCode && order.status !== "CANCELLED" &&
+                  !(order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER" && !order.courierId) && (
                   <div className="p-4 border-t border-card-border">
                     <div className="flex items-center gap-3 bg-orange-500/5 border border-orange-500/20 rounded-xl p-3">
                       <span className="text-2xl">🔐</span>
@@ -724,11 +729,17 @@ export default function OrdersPage() {
                         <p className="text-xs text-muted mt-1.5">👤 <b className="text-foreground">{yi.performer.courier_name}</b>{yi.performer.car_model ? ` · ${yi.performer.car_model} ${yi.performer.car_number || ""}` : ""}</p>
                       )}
 
-                      {/* Alıcıya təhvil kodu — kuryerə deyir */}
+                      {/* Yango təsdiq kodu — kuryer soruşanda deyilir. Götürmədə
+                          satıcıya, təhvildə alıcıya göstərilir (server hansının
+                          vaxtı olduğunu `confirmationFor` ilə bildirir). */}
                       {yi.confirmationCode && (
                         <div className="mt-2 px-3 py-2 bg-amber-400/10 border border-amber-400/30 rounded-lg">
-                          <p className="text-[11px] text-muted">Kuryerə bu kodu deyin (təhvil təsdiqi):</p>
-                          <p className="text-lg font-bold tracking-widest text-amber-600">{yi.confirmationCode}</p>
+                          <p className="text-[11px] text-muted">
+                            {yi.confirmationFor === "pickup"
+                              ? "Kuryer mağazadadır — məhsulu verərkən bu kodu ona deyin:"
+                              : "Kuryer sizə çatıb — məhsulu alarkən bu kodu ona deyin:"}
+                          </p>
+                          <p className="text-2xl font-bold tracking-[0.3em] text-amber-600">{yi.confirmationCode}</p>
                         </div>
                       )}
 
