@@ -203,18 +203,6 @@ export default function OrderDetailPage() {
               <p className="text-[11px] text-muted mt-0.5">Kuryer çatanda sizə zəng edəcək — telefonunuz ona ötürülüb.</p>
             </div>
           )}
-          {/* Yango təsdiq kodu (yalnız rəqəmlər) — götürmədə satıcıya, təhvildə
-              alıcıya. Kuryer tətbiqi başqa kod (məs. «TX-…») qəbul etmir. */}
-          {yango?.confirmationCode && (
-            <div className="col-span-2 px-3 py-2 bg-amber-400/10 border border-amber-400/30 rounded-lg">
-              <p className="text-[11px] text-muted">
-                {yango.confirmationFor === 'pickup'
-                  ? 'Kuryer mağazadadır — məhsulu verərkən bu kodu ona deyin:'
-                  : 'Kuryer sizə çatıb — məhsulu alarkən bu kodu ona deyin:'}
-              </p>
-              <p className="text-2xl font-bold tracking-[0.3em] text-amber-600">{yango.confirmationCode}</p>
-            </div>
-          )}
         </div>
       </div>
 

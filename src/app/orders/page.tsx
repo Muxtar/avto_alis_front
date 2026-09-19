@@ -409,25 +409,10 @@ export default function OrdersPage() {
           {orders.map((order) => {
             const counterparty = activeTab === "buying" ? order.seller : order.buyer;
             const hasActiveReturn = order.returnRequests?.some((r: any) => !['CANCELLED', 'REJECTED', 'REFUNDED'].includes(r.status));
-            const yCode = yangoInfo[order.id]?.confirmationCode as string | undefined;
-            const yCodeFor = yangoInfo[order.id]?.confirmationFor as "pickup" | "delivery" | undefined;
+            // Yango sifarişi: kod YOXDUR (kod xüsusiyyəti ləğv edilib).
+            const isYangoOrder = order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER" && !order.courierId;
             return (
               <div key={order.id} className="surface overflow-hidden">
-                {/* YANGO KODU — kartın ƏN ÜSTÜNDƏ, iri. Kuryer soruşanda axtarmaq
-                    lazım olmasın. Götürmədə satıcıya, təhvildə alıcıya görünür. */}
-                {yCode && (
-                  <div className="px-4 py-3 bg-amber-400/15 border-b-2 border-amber-400/60 flex items-center gap-3">
-                    <span className="text-2xl">🔑</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-                        {yCodeFor === "pickup"
-                          ? "Yango kuryerinə bu kodu deyin — məhsulu verərkən"
-                          : "Yango kuryerinə bu kodu deyin — məhsulu alarkən"}
-                      </p>
-                      <p className="text-3xl font-extrabold tracking-[0.35em] text-amber-600 tabular-nums">{yCode}</p>
-                    </div>
-                  </div>
-                )}
                 {/* Header */}
                 <div className="p-4 border-b border-card-border flex items-center justify-between flex-wrap gap-2">
                   <div>
@@ -523,8 +508,7 @@ export default function OrdersPage() {
                     kodunu istəyir (aşağıdakı kuryer blokunda çıxır). Bizim «TX-…»
                     kodumuzu kuryerə deyəndə tətbiq «kod yalnız rəqəmlərdən ibarət
                     olmalıdır» deyib rədd edirdi. */}
-                {activeTab === "buying" && order.pickupCode && order.status !== "CANCELLED" &&
-                  !(order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER" && !order.courierId) && (
+                {activeTab === "buying" && order.pickupCode && order.status !== "CANCELLED" && !isYangoOrder && (
                   <div className="p-4 border-t border-card-border">
                     <div className="flex items-center gap-3 bg-orange-500/5 border border-orange-500/20 rounded-xl p-3">
                       <span className="text-2xl">🔐</span>
@@ -690,7 +674,7 @@ export default function OrdersPage() {
                   </div>
                 )}
 
-                {/* Yango kuryer izləmə — Wolt üslubu (timeline, ETA, zəng, canlı izlə, təhvil kodu) */}
+                {/* Yango kuryer izləmə — Wolt üslubu (timeline, ETA, zəng, canlı izlə) */}
                 {order.yangoClaimId && (() => {
                   const yi = yangoInfo[order.id] || {};
                   const step = yangoStep(order.yangoStatus);
@@ -755,7 +739,6 @@ export default function OrdersPage() {
                         <p className="text-xs text-muted mt-1.5">👤 <b className="text-foreground">{yi.performer.courier_name}</b>{yi.performer.car_model ? ` · ${yi.performer.car_model} ${yi.performer.car_number || ""}` : ""}</p>
                       )}
 
-                      {/* Yango təsdiq kodu kartın ən üstündə göstərilir (yCode). */}
 
                       {/* Əməllər — zəng, canlı izlə */}
                       {active && (
@@ -829,7 +812,14 @@ export default function OrdersPage() {
                       <button onClick={() => cancelYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-amber-500/10 text-amber-500 rounded-lg text-xs font-medium hover:bg-amber-500/20 disabled:opacity-50">Yango ləğv</button>
                     )}
                     {order.status === "SHIPPED" && (
-                      <button onClick={() => { setDeliverCode(""); setDeliverModal(order.id); }} className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">✓ Çatdırıldı olaraq işarələ</button>
+                      <button
+                        onClick={() => {
+                          // Yango sifarişində kod istənilmir — yalnız təsdiq.
+                          if (isYangoOrder) { if (confirm("Sifariş alıcıya təhvil verilib? Çatdırıldı olaraq işarələnsin?")) updateStatus(order.id, "DELIVERED"); return; }
+                          setDeliverCode(""); setDeliverModal(order.id);
+                        }}
+                        className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20"
+                      >✓ Çatdırıldı olaraq işarələ</button>
                     )}
                     {/* Ləğv — yalnız qəbul edilmiş/göndərilmiş sifariş üçün (PENDING-də 'Rədd et' var) */}
                     {(order.status === "CONFIRMED" || order.status === "SHIPPED") && (
