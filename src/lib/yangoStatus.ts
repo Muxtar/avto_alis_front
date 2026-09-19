@@ -16,7 +16,18 @@ export const YANGO_STATUS_AZ: Record<string, string> = {
   cancelled_by_taxi: "kuryer ləğv etdi",
   cancelled_with_payment: "ləğv edildi",
   failed: "uğursuz",
+  // Alıcı qəbul etmədi / ünvanda tapılmadı — mal satıcıya qaytarılır.
+  returning: "satıcıya qaytarılır",
+  return_arrived: "kuryer mağazaya qaytarır",
+  ready_for_return_confirmation: "qaytarma təhvilə hazır",
+  returned: "satıcıya qaytarıldı",
+  returned_finish: "satıcıya qaytarıldı",
+  cancelled_with_items_on_hands: "ləğv edildi (məhsul kuryerdə)",
 };
+
+// Mal geri gedir — nə "kuryer axtarılır", nə də "yenidən çağır" göstərilməməlidir.
+export const YANGO_RETURNING = ["returning", "return_arrived", "ready_for_return_confirmation"];
+export const yangoReturning = (s?: string | null): boolean => !!s && YANGO_RETURNING.includes(s);
 
 export const yangoLabel = (s?: string | null): string => (s ? (YANGO_STATUS_AZ[s] || s) : "");
 

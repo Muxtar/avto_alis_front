@@ -8,7 +8,7 @@ import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import Link from "next/link";
 import OrderMap from "@/components/OrderMapWrapper";
-import { yangoDead, yangoLabel as yangoStatusAz, YANGO_STATUS_AZ } from "@/lib/yangoStatus";
+import { yangoDead, yangoReturning, yangoLabel as yangoStatusAz, YANGO_STATUS_AZ } from "@/lib/yangoStatus";
 
 export default function OrdersPage() {
   const { t } = useLanguage();
@@ -247,6 +247,9 @@ export default function OrdersPage() {
     // yəni Yango axtarışı DAYANDIRSA da ekranda «Kuryer axtarılır» yanırdı və
     // satıcı saatlarla gözləyirdi. İndi ortaq YANGO_DEAD siyahısı işlədilir.
     if (yangoDead(s)) return -1;
+    // Geri qaytarma — ayrıca göstərilir (-2). Əvvəl default-a düşüb
+    // «Kuryer axtarılır» yanırdı.
+    if (yangoReturning(s)) return -2;
     switch (s) {
       case "performer_found": return 1;
       case "pickup_arrived": case "ready_for_pickup_confirmation": return 2;
@@ -287,6 +290,12 @@ export default function OrdersPage() {
       } else {
         const step = yangoStep(yi.status || order.yangoStatus);
         S.push({ label: "Yango qəbul etdi", state: "done" });
+        // Alıcı qəbul etmədi — mal geri gedir. Normal addımlar əvəzinə bunu göstər.
+        if (step === -2) {
+          S.push({ label: "Kuryer məhsulu götürdü", state: "done" });
+          S.push({ label: "↩️ Məhsul satıcıya qaytarılır", state: "error", detail: "Məhsul satıcıya çatan kimi sifariş avtomatik ləğv olunacaq." });
+          return S;
+        }
         S.push({ label: "Kuryer tapıldı" + (yi.performer?.courier_name ? ` — ${yi.performer.courier_name}` : ""), state: step >= 1 ? "done" : "current" });
         S.push({ label: "Kuryer məhsulu götürdü", state: step >= 3 ? "done" : (step >= 2 ? "current" : "pending") });
         S.push({ label: "Yolda sizə" + (etaText(yi.etaSeconds) ? ` · ${etaText(yi.etaSeconds)}` : ""), state: step >= 4 ? "done" : (step >= 3 ? "current" : "pending") });
@@ -690,7 +699,14 @@ export default function OrdersPage() {
                       </div>
 
                       {/* Timeline — 5 addım */}
-                      {step >= 0 ? (
+                      {step === -2 ? (
+                        <div className="mb-2 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                          <p className="text-sm font-semibold text-amber-600">↩️ Məhsul satıcıya qaytarılır</p>
+                          <p className="text-[11px] text-muted mt-0.5">
+                            Alıcı məhsulu qəbul etmədi və ya ünvanda tapılmadı. Məhsul satıcıya çatan kimi sifariş avtomatik ləğv olunacaq{order.paymentStatus === "PAID" ? " və ödəniş alıcıya qaytarılacaq" : ""}.
+                          </p>
+                        </div>
+                      ) : step >= 0 ? (
                         <div className="mb-2">
                           <div className="flex items-center gap-1">
                             {YANGO_STEPS.map((lbl, i) => (

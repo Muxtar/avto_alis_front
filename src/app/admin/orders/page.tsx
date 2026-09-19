@@ -34,14 +34,20 @@ export default function AdminOrdersPage() {
 
   useEffect(() => { fetchData(); }, [statusFilter, page]);
 
-  const changeStatus = async (orderId: number, status: string) => {
+  const changeStatus = async (orderId: number, status: string, force = false) => {
     // Ləğv = alıcıya pulun qaytarılması. Admin bunu bilərək təsdiqləsin.
-    if (status === "CANCELLED" && !confirm(`Sifariş #${orderId} ləğv edilsin?\n\nKartla ödənilibsə pul avtomatik alıcıya qaytarılacaq və satıcının qazanc qeydi geri alınacaq.`)) return;
+    if (!force && status === "CANCELLED" && !confirm(`Sifariş #${orderId} ləğv edilsin?\n\nKartla ödənilibsə pul avtomatik alıcıya qaytarılacaq və satıcının qazanc qeydi geri alınacaq.`)) return;
     try {
-      const res = await fetch(`${API}/admin/orders/${orderId}/status`, {
+      const res = await fetch(`${API}/admin/orders/${orderId}/status${force ? "?force=1" : ""}`, {
         method: "PUT", headers, body: JSON.stringify({ status }),
       });
       const data = await res.json();
+      // Yango kuryeri malı artıq götürüb — server dayandırdı. Admin bilərək
+      // davam edə bilər (məs. mal satıcıya qayıdıb, Yango statusu ilişib).
+      if (res.status === 409 && data.needsForce) {
+        if (confirm(`${data.message}`)) return changeStatus(orderId, status, true);
+        return;
+      }
       if (res.ok && data.success) {
         // Pul qaytarılmasa admin dərhal bilməlidir (fon işi təkrar cəhd edir).
         if (data.refundPending) toast(data.message || "Ləğv edildi, lakin qaytarma alınmadı — təkrar cəhd ediləcək", "error");
