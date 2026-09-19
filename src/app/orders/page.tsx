@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -124,16 +124,24 @@ export default function OrdersPage() {
     if (typeof window !== "undefined") window.location.href = `tel:${r.phone}${r.ext ? "," + r.ext : ""}`;
   };
 
-  // Wolt-tipli avtomatik canlı yeniləmə — aktiv Yango sifarişləri üçün hər 30 saniyədə.
+  // Wolt-tipli avtomatik canlı yeniləmə — aktiv Yango sifarişləri üçün.
+  //
+  // Əvvəl ilk sorğu yalnız 30 saniyə SONRA gedirdi, üstəlik hər cavabda
+  // (yangoInfo dəyişəndə) effekt yenidən qurulub taymer sıfırlanırdı. Səhifə
+  // açılanda kuryer kodu, kuryerin adı və s. yarım dəqiqə görünmürdü — kuryer
+  // mağazada kod soruşanda satıcı boş ekrana baxırdı. İndi: açılan kimi bir
+  // dəfə, sonra hər 15 saniyədə; effekt yalnız aktiv sifariş siyahısı
+  // dəyişəndə yenidən qurulur.
+  const yangoListRef = useRef<any[]>([]);
+  // Bitmiş claim üçün sorğu göndərmirik. "Ölü" statuslar ortaq siyahıdan gəlir.
+  const isYangoDone = (s?: string) => !!s && (yangoDead(s) || ["delivered", "delivered_finish"].includes(s));
+  const yangoList = activeTab === "buying" ? buyingOrders : sellingOrders;
+  const activeYangoKey = yangoList
+    .filter((o: any) => o.yangoClaimId && !isYangoDone(o.yangoStatus))
+    .map((o: any) => o.id).join(",");
+  useEffect(() => { yangoListRef.current = yangoList; });
   useEffect(() => {
-    const list = activeTab === "buying" ? buyingOrders : sellingOrders;
-    // Bitmiş claim üçün sorğu göndərmirik. "Ölü" statuslar ortaq siyahıdan
-    // gəlir — əvvəl `performer_not_found`/`estimating_failed` sayılmırdı və
-    // belə sifarişlər sonsuza qədər sorğulanırdı.
-    const isDone = (s?: string) => !!s && (yangoDead(s) || ["delivered", "delivered_finish"].includes(s));
-    const activeIds = list
-      .filter((o: any) => o.yangoClaimId && !isDone(yangoInfo[o.id]?.status || o.yangoStatus))
-      .map((o: any) => o.id);
+    const activeIds = activeYangoKey ? activeYangoKey.split(",").map(Number) : [];
     if (!token || activeIds.length === 0) return;
     const poll = () => activeIds.forEach((id: number) => {
       fetch(`${API}/orders/${id}/yango/status`, { headers }).then((x) => x.json()).then((r) => {
@@ -142,17 +150,18 @@ export default function OrdersPage() {
         // Sifarişin öz statusunu da yenilə — timeline canlı qalsın. YALNIZ
         // dəyişəndə: hər sorğuda massivi əvəz etsək bu effekt yenidən qurulub
         // taymeri sıfırlayardı.
-        const cur = list.find((o: any) => o.id === id);
+        const cur = yangoListRef.current.find((o: any) => o.id === id);
         if (r.status && cur && cur.yangoStatus !== r.status) {
           const apply = (l: any[]) => l.map((o) => (o.id === id ? { ...o, yangoStatus: r.status } : o));
           setBuyingOrders(apply); setSellingOrders(apply);
         }
       }).catch(() => {});
     });
-    const t = setInterval(poll, 30000);
+    poll();                                   // dərhal — gözləmədən
+    const t = setInterval(poll, 15000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buyingOrders, sellingOrders, activeTab, token, yangoInfo]);
+  }, [activeYangoKey, token]);
   const dispatchYango = async (orderId: number) => {
     setYangoBusy(orderId);
     const r = await fetch(`${API}/orders/${orderId}/yango/dispatch`, { method: "POST", headers }).then((x) => x.json()).catch(() => null);
@@ -400,8 +409,25 @@ export default function OrdersPage() {
           {orders.map((order) => {
             const counterparty = activeTab === "buying" ? order.seller : order.buyer;
             const hasActiveReturn = order.returnRequests?.some((r: any) => !['CANCELLED', 'REJECTED', 'REFUNDED'].includes(r.status));
+            const yCode = yangoInfo[order.id]?.confirmationCode as string | undefined;
+            const yCodeFor = yangoInfo[order.id]?.confirmationFor as "pickup" | "delivery" | undefined;
             return (
               <div key={order.id} className="surface overflow-hidden">
+                {/* YANGO KODU — kartın ƏN ÜSTÜNDƏ, iri. Kuryer soruşanda axtarmaq
+                    lazım olmasın. Götürmədə satıcıya, təhvildə alıcıya görünür. */}
+                {yCode && (
+                  <div className="px-4 py-3 bg-amber-400/15 border-b-2 border-amber-400/60 flex items-center gap-3">
+                    <span className="text-2xl">🔑</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                        {yCodeFor === "pickup"
+                          ? "Yango kuryerinə bu kodu deyin — məhsulu verərkən"
+                          : "Yango kuryerinə bu kodu deyin — məhsulu alarkən"}
+                      </p>
+                      <p className="text-3xl font-extrabold tracking-[0.35em] text-amber-600 tabular-nums">{yCode}</p>
+                    </div>
+                  </div>
+                )}
                 {/* Header */}
                 <div className="p-4 border-b border-card-border flex items-center justify-between flex-wrap gap-2">
                   <div>
@@ -729,19 +755,7 @@ export default function OrdersPage() {
                         <p className="text-xs text-muted mt-1.5">👤 <b className="text-foreground">{yi.performer.courier_name}</b>{yi.performer.car_model ? ` · ${yi.performer.car_model} ${yi.performer.car_number || ""}` : ""}</p>
                       )}
 
-                      {/* Yango təsdiq kodu — kuryer soruşanda deyilir. Götürmədə
-                          satıcıya, təhvildə alıcıya göstərilir (server hansının
-                          vaxtı olduğunu `confirmationFor` ilə bildirir). */}
-                      {yi.confirmationCode && (
-                        <div className="mt-2 px-3 py-2 bg-amber-400/10 border border-amber-400/30 rounded-lg">
-                          <p className="text-[11px] text-muted">
-                            {yi.confirmationFor === "pickup"
-                              ? "Kuryer mağazadadır — məhsulu verərkən bu kodu ona deyin:"
-                              : "Kuryer sizə çatıb — məhsulu alarkən bu kodu ona deyin:"}
-                          </p>
-                          <p className="text-2xl font-bold tracking-[0.3em] text-amber-600">{yi.confirmationCode}</p>
-                        </div>
-                      )}
+                      {/* Yango təsdiq kodu kartın ən üstündə göstərilir (yCode). */}
 
                       {/* Əməllər — zəng, canlı izlə */}
                       {active && (
