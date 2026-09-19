@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 interface CredDoc {
   id: number;
@@ -28,6 +29,9 @@ export default function AdminCredentialsPage() {
   const [filter, setFilter] = useState("PENDING");
 
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}` };
+
+  // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
+  useAdminLive(["credential"], () => { load(); });
 
   const load = useCallback(async () => {
     setLoading(true);

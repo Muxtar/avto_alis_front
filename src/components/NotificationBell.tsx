@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { API } from '@/lib/api';
+import { useLive } from '@/lib/live';
 
 interface Notification {
   id: number;
@@ -42,6 +43,9 @@ export default function NotificationBell() {
     document.addEventListener('mousedown', handler);
     return () => { clearInterval(i); document.removeEventListener('mousedown', handler); };
   }, [fetchNotifs]);
+
+  // Server nəyisə dəyişdi (təsdiq, cavab, sifariş…) — sayğac 30 saniyə gözləməsin.
+  useLive('*', fetchNotifs);
 
   const markAll = async () => {
     setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));

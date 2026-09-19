@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 export default function AdminReturnsPage() {
   const { t } = useLanguage();
@@ -28,6 +29,9 @@ export default function AdminReturnsPage() {
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoading(false));
   };
+
+  // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
+  useAdminLive(["return"], () => fetchReturns());
 
   useEffect(() => { fetchReturns(); }, [statusFilter, page]);
 

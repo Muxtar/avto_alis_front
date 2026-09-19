@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 export default function AdminOrdersPage() {
   const { t } = useLanguage();
@@ -27,6 +28,9 @@ export default function AdminOrdersPage() {
         setTotalPages(o.totalPages || 1);
       }).catch(() => { toast(t('error'), 'error'); }).finally(() => setLoading(false));
   };
+
+  // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
+  useAdminLive(["order"], () => fetchData());
 
   useEffect(() => { fetchData(); }, [statusFilter, page]);
 

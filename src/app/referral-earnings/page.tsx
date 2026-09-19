@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
+import { useLive } from "@/lib/live";
 import { API } from "@/lib/api";
 
 const STATUS: Record<string, string> = { PENDING: "Gözləyir", CONFIRMED: "Təsdiqlənib", SHIPPED: "Göndərilib", DELIVERED: "Çatdırılıb", CANCELLED: "Ləğv" };
@@ -14,14 +15,16 @@ export default function ReferralEarningsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const load = () => {
-    setLoading(true); setError(false);
+  const load = (silent = false) => {
+    if (!silent) { setLoading(true); setError(false); }
     fetch(`${API}/me/referral-earnings`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
       .then((d) => { if (d?.success === false) throw new Error(); setData(d); })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   };
+
+  useLive(["order", "payout"], () => load(true));
 
   useEffect(() => {
     if (authLoading) return;
@@ -36,7 +39,7 @@ export default function ReferralEarningsPage() {
     <div className="max-w-3xl mx-auto px-3 sm:px-6 py-6">
       <div className="surface p-8 text-center">
         <p className="text-sm text-muted mb-3">Qazanc məlumatı yüklənmədi. Yenidən cəhd edin.</p>
-        <button onClick={load} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">Yenidən cəhd et</button>
+        <button onClick={() => load()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">Yenidən cəhd et</button>
       </div>
     </div>
   );

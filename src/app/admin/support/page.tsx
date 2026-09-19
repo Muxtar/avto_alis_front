@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   OPEN: { label: "Açıq", cls: "bg-red-500/10 text-red-500" },
@@ -33,6 +34,18 @@ export default function AdminSupportPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
   useEffect(() => { load(); }, [load]);
+
+  // ANLIQ: yeni müraciət / istifadəçi cavabı — siyahı və açıq söhbət
+  // yenilənir. Admin yazmaqda olduğu cavab (reply) silinmir.
+  useAdminLive(["support"], async (d) => {
+    load();
+    if (sel && (!d?.id || Number(d.id) === sel.id)) {
+      try {
+        const r = await fetch(`${API}/admin/support/${sel.id}`, { headers: H() }).then((x) => x.json());
+        if (r.success) setSel(r.ticket);
+      } catch { /* növbəti hadisədə */ }
+    }
+  });
 
   const open = async (id: number) => {
     setSel(null); setUser(null); setReply("");

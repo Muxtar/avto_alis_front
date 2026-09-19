@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
+import { useLive } from "@/lib/live";
 import { API } from "@/lib/api";
 
 type ApplicationStatus = "NONE" | "PENDING" | "APPROVED" | "REJECTED";
@@ -37,6 +38,11 @@ export default function SellerApplyPage() {
       return;
     }
 
+    loadStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, user, authLoading, router, toast]);
+
+  function loadStatus() {
     fetch(`${API}/seller/status`, { headers: { Authorization: `Bearer ${token}` } })
       .then(r => r.json())
       .then(d => {
@@ -48,7 +54,10 @@ export default function SellerApplyPage() {
       })
       .catch(() => {})
       .finally(() => setFetching(false));
-  }, [token, user, authLoading, router, toast]);
+  }
+
+  // ANLIQ: admin ərizəni təsdiqləyən / rədd edən kimi nəticə burada görünür.
+  useLive(["seller"], () => { if (token) loadStatus(); });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

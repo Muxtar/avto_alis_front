@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { useLive } from "@/lib/live";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
@@ -66,6 +67,10 @@ export default function BusinessSalesPage() {
   }, [authLoading, isLoggedIn, loadScopes, router]);
 
   useEffect(() => { if (active) loadOrders(active); }, [active, loadOrders]);
+
+  // ANLIQ: yeni sifariş / status dəyişikliyi seçilmiş obyektin siyahısına düşsün.
+  useLive(["order", "return"], () => { if (active) loadOrders(active); });
+  useLive(["business", "object"], () => { loadScopes(); });
 
   const changeStatus = async (orderId: number, status: string) => {
     try {

@@ -16,6 +16,7 @@ import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
 import CategoryFilterPanel from "@/components/CategoryFilterPanel";
 import CategoryMegaMenu from "@/components/CategoryMegaMenu";
 import { API, imgUrl } from "@/lib/api";
+import { getSocket } from "@/lib/callSocket";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { CATEGORIES, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
 import { IXTISAS_SECTORS } from "@/lib/ixtisas";
@@ -267,6 +268,67 @@ function MarketplacePage() {
     return () => obs.disconnect();
   }, [hasMore, loadingMore, loading]);
 
+  /* ── ANLIQ VİTRİN ──
+     Admin elanı təsdiqləyəndə (və ya elan/biznes gizlədiləndə) server
+     `public:listings` göndərir. İstifadəçi siyahının başındadırsa birinci
+     səhifə səssizcə təzələnir. Aşağı sürüşdürübsə siyahını əlinin altından
+     dəyişmirik — yuxarıda "Yeni elanlar" düyməsi çıxır. */
+  const [freshAvailable, setFreshAvailable] = useState(false);
+  const reloadFirstPage = () => {
+    if (activeType === "PROFESSION") return;
+    fetch(`${API}/listings?${buildParams(1)}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setListings(data.listings || []);
+        setTotalPages(data.totalPages || 0);
+        setPage(1);
+        setFreshAvailable(false);
+      })
+      .catch(() => {});
+  };
+  const liveRef = useRef({ reload: reloadFirstPage, page, loading });
+  useEffect(() => { liveRef.current = { reload: reloadFirstPage, page, loading }; });
+  useEffect(() => {
+    if (!token) return;
+    const socket = getSocket(token);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    // Tab gizli ikən gələn xəbər — tab-a qayıdanda emal olunur.
+    let pendingReason: string | null = null;
+    const apply = (reason?: string) => {
+      const { reload, page: pg, loading: busy } = liveRef.current;
+      if (busy) return;
+      const atTop = window.scrollY < 400 && pg === 1;
+      if (atTop) reload();
+      else if (reason === "approved") setFreshAvailable(true);
+    };
+    const onPublic = (e: { reason?: string }) => {
+      if (timer) clearTimeout(timer);
+      // Hamı eyni anda sorğu göndərməsin — kiçik təsadüfi gecikmə.
+      timer = setTimeout(() => {
+        timer = null;
+        if (document.visibilityState === "hidden") {
+          // "approved" daha vacibdir — "removed" onu üstələməsin.
+          if (pendingReason !== "approved") pendingReason = e?.reason || "removed";
+          return;
+        }
+        apply(e?.reason);
+      }, 500 + Math.random() * 1500);
+    };
+    const onVisible = () => {
+      if (document.visibilityState !== "visible" || !pendingReason) return;
+      const r = pendingReason;
+      pendingReason = null;
+      apply(r);
+    };
+    socket.on("public:listings", onPublic);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      if (timer) clearTimeout(timer);
+      socket.off("public:listings", onPublic);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [token]);
+
   const typeButtons: { id: TypeFilter; label: string }[] = [
     { id: "PRODUCT", label: t("productsFilter") },
     { id: "SERVICE", label: t("servicesFilter") },
@@ -277,6 +339,14 @@ function MarketplacePage() {
 
   return (
     <div className="min-h-[calc(100vh-56px)] sm:min-h-[calc(100vh-64px)]">
+      {freshAvailable && (
+        <button
+          onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); reloadFirstPage(); }}
+          className="fixed top-20 left-1/2 -translate-x-1/2 z-40 px-4 py-2 rounded-full bg-orange-500 text-white text-sm font-semibold shadow-lg hover:bg-orange-600"
+        >
+          ⬆ Yeni elanlar var
+        </button>
+      )}
       {/* Hero / Search Section */}
       <div className="hero-bg border-b border-card-border">
         <div className="page-wrap py-2 sm:py-2.5">

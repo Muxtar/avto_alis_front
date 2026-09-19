@@ -1,5 +1,5 @@
 "use client";
-import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, ReactNode } from "react";
 import { API } from "@/lib/api";
 import { getSocket } from "@/lib/callSocket";
 
@@ -24,6 +24,7 @@ interface AuthContextType {
   authLoading: boolean;
   unreadMessages: number;      // oxunmamış mesaj sayı (qlobal, real-time)
   refreshUnread: () => void;   // sayı yenidən çək (məs. söhbət açılıb oxunanda)
+  refreshUser: () => void;     // /me yenidən çək (təsdiq, rol, blok dəyişəndə)
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -33,6 +34,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [unreadMessages, setUnreadMessages] = useState(0);
+  // refreshUser (useCallback) logout-u ondan ƏVVƏL tanıdılan funksiyadan çağırır.
+  const logoutRef = useRef<() => void>(() => {});
 
   // Oxunmamış mesaj sayını serverdən çək.
   const refreshUnread = useCallback(() => {
@@ -42,22 +45,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then((r) => r.json()).then((d) => setUnreadMessages(d.count || 0)).catch(() => {});
   }, [token]);
 
+  // İstifadəçi məlumatını (/me) təzələ. Admin kimliyi/satıcılığı/biznesi
+  // təsdiqləyəndə, rolu dəyişəndə və ya bloklayanda səhifə yenilənmədən
+  // bütün sayt (menyu, düymələr, "təsdiqli" nişanları) yeni vəziyyəti görsün.
+  const refreshUser = useCallback(() => {
+    const t = token || (typeof localStorage !== "undefined" ? localStorage.getItem("userToken") : null);
+    if (!t) return;
+    fetch(`${API}/me`, { headers: { Authorization: `Bearer ${t}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.user) return;
+        // Admin hesabı bloklayıb — açıq sessiya da dərhal bağlanır.
+        if (d.user.isBlocked) {
+          try { window.alert("Hesabınız administrator tərəfindən bloklanıb."); } catch { /* boş */ }
+          logoutRef.current();
+          return;
+        }
+        setUser(d.user);
+        localStorage.setItem("userData", JSON.stringify(d.user));
+      })
+      .catch(() => {});
+  }, [token]);
+
   // Qlobal socket bağlantısı — istifadəçi hansı səhifədə olsa da onlayn sayılır
   // (presence işləsin) və gələn mesaj chat badge-ini real-time yeniləsin.
+  // `user` deyil `userId` asılılığı: /me təzələnəndə socket abunəliyi yenidən
+  // qurulmasın.
+  const userId = user?.id;
   useEffect(() => {
-    if (!token || !user) { setUnreadMessages(0); return; }
+    if (!token || !userId) { setUnreadMessages(0); return; }
     refreshUnread();
     const socket = getSocket(token);           // qoşulmanı qur (singleton)
     const bump = () => refreshUnread();
+    const PROFILE_KINDS = ["account", "identity", "seller", "business"];
+    const onLive = (e: { kind?: string }) => { if (e?.kind && PROFILE_KINDS.includes(e.kind)) refreshUser(); };
     socket.on("chat:message", bump);
     socket.on("chat:read", bump);
     socket.on("chat:deleted", bump);
+    socket.on("live:update", onLive);
     return () => {
       socket.off("chat:message", bump);
       socket.off("chat:read", bump);
       socket.off("chat:deleted", bump);
+      socket.off("live:update", onLive);
     };
-  }, [token, user, refreshUnread]);
+  }, [token, userId, refreshUnread, refreshUser]);
 
   useEffect(() => {
     // Check userToken first, then fallback to adminToken for admin auto-login
@@ -124,9 +156,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.location.href = "/";
     }
   };
+  useEffect(() => { logoutRef.current = logout; });
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isLoggedIn: !!user, authLoading, unreadMessages, refreshUnread }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isLoggedIn: !!user, authLoading, unreadMessages, refreshUnread, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

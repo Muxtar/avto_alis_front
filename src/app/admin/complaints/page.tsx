@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 const CAT_LABEL: Record<string, string> = {
   TIME_WASTED: "Vaxtı boşa xərclədi", FRAUD: "Fırıldaq", RUDE: "Kobud davranış", FAKE_INFO: "Saxta məlumat", OTHER: "Başqa",
@@ -27,6 +28,9 @@ export default function AdminComplaintsPage() {
   const [busy, setBusy] = useState(false);
 
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
+
+  // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
+  useAdminLive(["complaint"], () => { load(); });
 
   const load = useCallback(async () => {
     setLoading(true);

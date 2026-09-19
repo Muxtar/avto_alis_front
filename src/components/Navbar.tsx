@@ -147,8 +147,15 @@ export default function Navbar() {
       const bad = p.yangoStatus === "failed" || String(p.yangoStatus).startsWith("cancelled");
       toast(`🛵 Sifariş #${p.orderId}: ${yangoLabel(p.yangoStatus)}`, bad ? "error" : "success");
     };
+    // Admin təsdiqi / rəddi, dəstək cavabı, yeni sifariş və s. — istifadəçi
+    // hansı səhifədə olsa da qısa xəbər görür (səhifənin öz məlumatını isə
+    // həmin səhifə `useLive` ilə yeniləyir).
+    const onLive = (e: { toast?: string; tone?: "success" | "error" | "info" }) => {
+      if (e?.toast) toast(e.toast, e.tone || "info");
+    };
     socket.on("order:yango", onYango);
-    return () => { socket.off("order:yango", onYango); };
+    socket.on("live:update", onLive);
+    return () => { socket.off("order:yango", onYango); socket.off("live:update", onLive); };
   }, [isLoggedIn, token, toast]);
 
   const totalUnread = unreadMessages + unreadInquiries;

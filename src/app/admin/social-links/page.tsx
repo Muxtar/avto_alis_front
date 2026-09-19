@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
 
@@ -20,6 +21,9 @@ export default function AdminSocialLinksPage() {
   const [filter, setFilter] = useState("PENDING");
 
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}` };
+
+  // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
+  useAdminLive(["social"], () => { load(); });
 
   const load = useCallback(async () => {
     setLoading(true);

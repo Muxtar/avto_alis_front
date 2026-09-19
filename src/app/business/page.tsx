@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { useLive } from "@/lib/live";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
@@ -92,8 +93,8 @@ export default function BusinessPage() {
 
   const authH: any = { Authorization: `Bearer ${token}` };
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await fetch(`${API}/me/businesses`, { headers: authH });
       const data = await res.json();
@@ -122,6 +123,10 @@ export default function BusinessPage() {
     if (!isLoggedIn) { router.push("/"); return; }
     load();
   }, [authLoading, isLoggedIn, load, router]);
+
+  // ANLIQ: admin biznesi təsdiqləyən / rədd edən / deaktiv edən, kimliyi
+  // təsdiqləyən kimi status burada dəyişir — səhifəni yeniləmək lazım deyil.
+  useLive(["business", "object", "identity"], () => load(true));
 
   // Deep-link: /business?new=1 → add forması açıq; /business?edit=<id> → həmin
   // biznesin redaktə forması açıq. (Elan səhifəsindən gələndə təkrar klik olmasın.)

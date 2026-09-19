@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 interface Biz {
   id: number; kind: string; proofType: string; name: string; voen: string; ownerName: string; founderName: string; phone: string | null;
@@ -62,6 +63,9 @@ export default function AdminBusinessesPage() {
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
 
   // silent=true → spinner göstərmə, siyahını sakitcə yenilə (açıq kart bağlanmasın).
+  // ANLIQ: yeni biznes müraciəti / yenidən təsdiqə düşən biznes.
+  useAdminLive(["business", "object"], () => { load(true); });
+
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {

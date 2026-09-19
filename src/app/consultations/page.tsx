@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/AuthContext";
+import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 
@@ -46,6 +47,8 @@ export default function ConsultationsPage() {
       setSessions(r.sessions || []);
     } catch { toast("Xəta", "error"); } finally { setLoading(false); }
   };
+
+  useLive(["consultation", "complaint"], () => { load(); });
 
   useEffect(() => {
     if (authLoading) return;

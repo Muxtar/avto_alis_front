@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { API } from "@/lib/api";
 import { getAdminSocket } from "@/lib/callSocket";
+import { useToast } from "@/components/Toast";
 import AdminHeader from "@/components/AdminHeader";
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,9 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // Gözləyən elan sayının son bilinən dəyəri — dəyişəndə açıq səhifələrə
   // xəbər verilir ki, siyahılarını özləri təzələsin.
   const pendingListingsRef = useRef<number | null>(null);
+  const { toast } = useToast();
+  const toastRef = useRef(toast);
+  useEffect(() => { toastRef.current = toast; }, [toast]);
 
   const loadOverview = () => {
     const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
@@ -64,8 +68,23 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       loadOverview();
       window.dispatchEvent(new CustomEvent("admin:identity-new", { detail: p }));
     };
+    // Ümumi kanal: yeni elan, satıcı/biznes müraciəti, şikayət, dəstək,
+    // iadə, sifariş və s. Badge dərhal, açıq səhifənin siyahısı isə
+    // `useAdminLive` (lib/live.ts) ilə yenilənir.
+    let overviewTimer: ReturnType<typeof setTimeout> | null = null;
+    const onLive = (p: { kind?: string; toast?: string }) => {
+      if (overviewTimer) clearTimeout(overviewTimer);
+      overviewTimer = setTimeout(loadOverview, 300);   // toplu hadisədə bir sorğu
+      window.dispatchEvent(new CustomEvent("admin:live", { detail: p }));
+      if (p?.toast) toastRef.current(`🔔 ${p.toast}`, "info");
+    };
     socket.on("admin:identity", onIdentity);
-    return () => { socket.off("admin:identity", onIdentity); };
+    socket.on("admin:live", onLive);
+    return () => {
+      if (overviewTimer) clearTimeout(overviewTimer);
+      socket.off("admin:identity", onIdentity);
+      socket.off("admin:live", onLive);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, pathname]);
 

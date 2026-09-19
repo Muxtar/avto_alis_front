@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
+import { useLive } from "@/lib/live";
 import { API, imgUrl } from "@/lib/api";
 import { rotateImageFile } from "@/lib/rotateImage";
 import LocationPicker from "@/components/LocationPickerWrapper";
@@ -422,6 +423,22 @@ export default function ProfilePage() {
     const res = await fetch(`${API}/me/listings`, { headers }).then((r) => r.json());
     setListings(res.listings || []);
   };
+
+  // ── ANLIQ YENİLƏNMƏ ──
+  // Admin kimliyi / peşə sənədini / sosial linki təsdiqləyəndə, elanı
+  // moderasiya edəndə — bu səhifə yenilənmədən yeni statusu göstərir.
+  // Redaktə rejimindədirsə formdakı yazılar SİLİNMİR: yalnız `profile` dəyişir.
+  useLive(["identity", "credential", "social", "account", "seller", "business", "consultation"], async () => {
+    try {
+      const res = await fetch(`${API}/me`, { headers }).then((r) => r.json());
+      if (!res.user) return;
+      if (editing) setProfile(res.user);
+      else await refreshProfile();
+    } catch { /* növbəti hadisədə yenə cəhd olunur */ }
+    if (token) identityStatus(token).then(setIdStatus).catch(() => undefined);
+    loadOffers().catch(() => undefined);
+  });
+  useLive(["listing"], () => { refreshListings().catch(() => undefined); });
 
   // OAuth: konfiqurasiya olunmuş platformaları çək + callback qayıdışını idarə et.
   useEffect(() => {

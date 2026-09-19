@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
+import { useLive } from "@/lib/live";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
@@ -231,6 +232,16 @@ export default function ListingDetailPage() {
       .finally(() => setLoading(false));
     // token deps-də — async yüklənəndə yenidən çəkilib canReview düzgün gəlsin.
   }, [params.id, token]);
+
+  // ANLIQ: sahib öz elanına baxarkən admin onu təsdiqləsə / redaktə etsə —
+  // səhifə yenilənmədən dəyişir (bu hadisə yalnız elanın sahibinə gəlir).
+  useLive(["listing"], (e) => {
+    if (e?.id != null && String(e.id) !== String(params.id)) return;
+    fetch(`${API}/listings/${params.id}`, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined)
+      .then((r) => r.json())
+      .then((d) => { if (d?.id) setListing(d); })
+      .catch(() => {});
+  });
 
   if (loading) {
     return (

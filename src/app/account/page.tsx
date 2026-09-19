@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
+import { useLive } from "@/lib/live";
 import { API, imgUrl } from "@/lib/api";
 import { CATEGORIES, getSubs, getLeaves, buildCat, parseCat, isServiceCat, getListingFields, getCategoryAttrs, getCat } from "@/lib/categories";
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
@@ -111,6 +112,19 @@ function AccountPageInner() {
     if (authLoading) return;
     if (!isLoggedIn) { router.push("/"); return; }
     fetchListings();
+    loadBusinesses();
+    fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.user) {
+          setMyLocation({ city: d.user.city || "", address: d.user.address || "" });
+        }
+      })
+      .catch(() => undefined);
+  }, [isLoggedIn, authLoading]);
+
+  // Təsdiqli bizneslər və obyektlər (elan formundakı obyekt seçimi üçün).
+  const loadBusinesses = () => {
     fetch(`${API}/me/businesses`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => {
@@ -129,24 +143,22 @@ function AccountPageInner() {
       })
       .catch(() => undefined)
       .finally(() => setBizLoading(false));
-    fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((r) => r.json())
-      .then((d) => {
-        if (d.user) {
-          setMyLocation({ city: d.user.city || "", address: d.user.address || "" });
-        }
-      })
-      .catch(() => undefined);
-  }, [isLoggedIn, authLoading]);
+  };
 
-  const fetchListings = () => {
-    setLoading(true);
+  // `silent` — fonda (anlıq yeniləmədə) spinner göstərmə, siyahı yerində dəyişsin.
+  const fetchListings = (silent = false) => {
+    if (!silent) setLoading(true);
     fetch(`${API}/me/listings`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => setListings(d.listings || []))
-      .catch(() => { toast(t('error'), 'error'); })
-      .finally(() => setLoading(false));
+      .catch(() => { if (!silent) toast(t('error'), 'error'); })
+      .finally(() => { if (!silent) setLoading(false); });
   };
+
+  // ANLIQ: admin elanı təsdiqləyən/rədd edən kimi statusu burada dəyişir;
+  // biznes/obyekt təsdiqlənəndə elan formundakı obyekt siyahısı açılır.
+  useLive(["listing"], () => fetchListings(true));
+  useLive(["business", "object"], () => { loadBusinesses(); fetchListings(true); });
 
   useEffect(() => {
     if (!editIdParam || listings.length === 0) return;

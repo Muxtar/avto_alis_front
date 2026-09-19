@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
+import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 
@@ -18,15 +19,17 @@ export default function EarningsPage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!token) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const r = await fetch(`${API}/me/earnings`, { headers: { Authorization: `Bearer ${token}` } }).then((x) => x.json());
       if (r.success) setData(r);
     } catch { toast("Xəta", "error"); } finally { setLoading(false); }
   }, [token, toast]);
   useEffect(() => { load(); }, [load]);
+  // Admin ödəniş edəndə / sifariş statusu dəyişəndə balans dərhal yenilənsin.
+  useLive(["payout", "order", "return"], () => load(true));
 
   if (!isLoggedIn) return <div className="max-w-2xl mx-auto p-6 text-muted">Qazancınızı görmək üçün daxil olun.</div>;
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;

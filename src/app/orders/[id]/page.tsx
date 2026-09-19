@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/AuthContext';
+import { useLive } from '@/lib/live';
 import { useLanguage } from '@/lib/LanguageContext';
 import { useToast } from '@/components/Toast';
 import { API, imgUrl } from '@/lib/api';
@@ -49,6 +50,9 @@ export default function OrderDetailPage() {
 
     return () => { if (refreshTimer.current) clearInterval(refreshTimer.current); };
   }, [isLoggedIn, authLoading, params.id]);
+
+  // ANLIQ: 10 saniyəlik sorğunu gözləmədən — status dəyişən kimi.
+  useLive(["order", "return"], () => { fetchOrder(true); });
 
   const fetchOrder = async (silent = false) => {
     if (!silent) setLoading(true);

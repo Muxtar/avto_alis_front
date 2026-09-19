@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
+import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import Link from "next/link";
@@ -57,16 +58,21 @@ export default function OrdersPage() {
     window.history.replaceState({}, "", "/orders");
   }, []);
 
-  const fetchOrders = () => {
-    setLoading(true);
+  // `silent` — anlıq yeniləmədə spinner göstərmə, siyahı yerində dəyişsin.
+  const fetchOrders = (silent = false) => {
+    if (!silent) setLoading(true);
     Promise.all([
       fetch(`${API}/orders/buying`, { headers }).then((r) => r.json()),
       fetch(`${API}/orders/selling`, { headers }).then((r) => r.json()),
     ]).then(([b, s]) => {
       setBuyingOrders(b.orders || []);
       setSellingOrders(s.orders || []);
-    }).catch(() => { toast(t('error'), 'error'); }).finally(() => setLoading(false));
+    }).catch(() => { if (!silent) toast(t('error'), 'error'); }).finally(() => setLoading(false));
   };
+
+  // ANLIQ: yeni sifariş, qarşı tərəfin təsdiqi/ləğvi, iadə, admin dəyişikliyi,
+  // kuryer statusu — siyahı səhifə yenilənmədən dəyişir.
+  useLive(["order", "return"], () => fetchOrders(true));
 
   const updateStatus = async (orderId: number, status: string, code?: string): Promise<boolean> => {
     const r = await fetch(`${API}/orders/${orderId}/status`, {

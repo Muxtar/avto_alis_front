@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/lib/AuthContext";
+import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 
@@ -24,15 +25,17 @@ export default function MyComplaintsPage() {
   const [busy, setBusy] = useState<number | null>(null);
   const fileRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!token) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const r = await fetch(`${API}/me/complaints`, { headers: { Authorization: `Bearer ${token}` } }).then((x) => x.json());
       setItems(r.complaints || []);
     } catch { toast("Xəta", "error"); } finally { setLoading(false); }
   }, [token, toast]);
   useEffect(() => { load(); }, [load]);
+  // Admin sübut istəyəndə / şikayəti bağlayanda status dərhal dəyişsin.
+  useLive(["complaint"], () => load(true));
 
   const addEvidence = async (id: number, files: FileList | null) => {
     const list = Array.from(files || []).filter((f) => /^image\//.test(f.type) && f.size < 8 * 1024 * 1024);

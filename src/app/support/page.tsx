@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
+import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 
@@ -30,9 +31,9 @@ export default function SupportPage() {
 
   const H = () => ({ Authorization: `Bearer ${token}` });
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (silent = false) => {
     if (!token) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const r = await fetch(`${API}/support/tickets`, { headers: H() }).then((x) => x.json());
       if (r.success) setTickets(r.tickets || []);
@@ -47,6 +48,18 @@ export default function SupportPage() {
       if (r.success) { setSel(r.ticket); setReply(""); }
     } catch { toast("Xəta", "error"); }
   };
+
+  // ANLIQ: dəstək cavab yazan kimi açıq söhbətdə görünür. Yazılmaqda olan
+  // cavab (reply) SİLİNMİR — yalnız ticket-in mesajları təzələnir.
+  useLive(["support"], async (e) => {
+    load(true);
+    if (sel && (!e?.id || Number(e.id) === sel.id)) {
+      try {
+        const r = await fetch(`${API}/support/tickets/${sel.id}`, { headers: H() }).then((x) => x.json());
+        if (r.success) setSel(r.ticket);
+      } catch { /* növbəti hadisədə */ }
+    }
+  });
 
   const create = async () => {
     if (!subject.trim() || body.trim().length < 5) { toast("Mövzu və mesaj yazın", "error"); return; }

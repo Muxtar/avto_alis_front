@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 /**
  * QAYTARILMALI PUL.
@@ -40,6 +41,9 @@ export default function AdminRefundsPage() {
   const [busy, setBusy] = useState<number | null>(null);
 
   const H = () => ({ Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" });
+
+  // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
+  useAdminLive(["refund", "order"], () => { load(); });
 
   const load = useCallback(async () => {
     setLoading(true);

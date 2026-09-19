@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 /**
  * OBYEKTLƏR — biznesə bağlı mağaza/filial siyahısı.
@@ -36,6 +37,9 @@ export default function AdminObjectsPage() {
     Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`,
     "Content-Type": "application/json",
   }), []);
+
+  // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
+  useAdminLive(["object", "business"], () => { load(); });
 
   const load = useCallback(async () => {
     setLoading(true);

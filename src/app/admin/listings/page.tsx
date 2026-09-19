@@ -122,8 +122,14 @@ export default function AdminListingsPage() {
       const cur = owners.find((o) => o.key === openKey);
       if (cur) fetchRows(cur);
     };
+    // `admin:live` — yeni elan göndərilən kimi (30 saniyəlik sorğunu gözləmədən).
+    const onLive = (ev: Event) => { if ((ev as CustomEvent).detail?.kind === "listing") onChanged(); };
     window.addEventListener("admin:listings-changed", onChanged);
-    return () => window.removeEventListener("admin:listings-changed", onChanged);
+    window.addEventListener("admin:live", onLive);
+    return () => {
+      window.removeEventListener("admin:listings-changed", onChanged);
+      window.removeEventListener("admin:live", onLive);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openKey, owners, statusFilter, typeFilter, search]);
   useEffect(() => { const tm = setTimeout(() => { fetchOwners(); setRows({}); setOpenKey(null); }, 300); return () => clearTimeout(tm); }, [search]);

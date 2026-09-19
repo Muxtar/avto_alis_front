@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/lib/LanguageContext";
 import { API, imgUrl } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 interface Application {
   id: number;
@@ -38,6 +39,9 @@ export default function AdminSellerApplicationsPage() {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
+
+  // ANLIQ: yeni satıcı ərizəsi gələn kimi siyahıya düşür.
+  useAdminLive(["seller"], () => { refresh(); });
 
   const refresh = async () => {
     setLoading(true);
