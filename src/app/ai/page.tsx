@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
+import { useCart } from "@/lib/CartContext";
 import { API } from "@/lib/api";
 
 interface Msg { role: "user" | "assistant"; content: string }
@@ -22,6 +23,7 @@ function renderText(text: string) {
 export default function AIAssistantPage() {
   const { token, isLoggedIn } = useAuth();
   const { toast } = useToast();
+  const { refreshCart } = useCart();
   const router = useRouter();
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -52,6 +54,12 @@ export default function AIAssistantPage() {
       if (res.ok && d?.success) {
         setMessages((m) => [...m, { role: "assistant", content: d.reply || "..." }]);
         if (d.pendingAction) setPending(d.pendingAction);
+        // Təsdiqsiz icra olunan əməllər (səbət, seçilmişlər, bildiriş) —
+        // header sayğacları dərhal yenilənsin, istifadəçi nəticəni görsün.
+        if (Array.isArray(d.executed) && d.executed.length) {
+          refreshCart();
+          toast(`✓ ${d.executed[d.executed.length - 1].summary}`, "success");
+        }
       } else {
         const detail = d?.message || `cavab alınmadı (HTTP ${res.status})`;
         setMessages((m) => [...m, { role: "assistant", content: `⚠️ ${detail}` }]);
