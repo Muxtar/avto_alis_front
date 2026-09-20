@@ -105,6 +105,11 @@ function AccountPageInner() {
   const [bizLoading, setBizLoading] = useState(true); // /me/businesses yüklənənə qədər (görünüm sabit olsun)
   const [selectedBizId, setSelectedBizId] = useState<number | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string>("");
+  /* ── ÇOX ALANDA UCUZ (könüllü) ──
+     Satıcı say-qiymət pilləsi qoyur: «100 ədəd → 800 AZN». Aralıq saylar
+     (məs. 50) serverdə düsturla hesablanır. Pillə qoyulan elanda alıcılar
+     üçün BİRGƏ ALIŞ da açılır (link paylaşıb birlikdə ucuz almaq). */
+  const [tiers, setTiers] = useState<{ minQty: string; price: string }[]>([]);
   // ?new=1 sorğusunun təkrar emalının qarşısını alır (bax: aşağıdakı effekt).
   const handledNewRef = useRef<string | null>(null);
 
@@ -198,6 +203,7 @@ function AccountPageInner() {
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
     setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "" });
+    setTiers([]);
     setBarter(false); setForRent(false);
     setBookable(false); setBookingType("RESERVATION"); setMaxGuests(""); setOpenTime(""); setCloseTime("");
     setAllowSelfDelivery(false); setWeightKg("");
@@ -284,6 +290,12 @@ function AccountPageInner() {
         }
       }
       fd.append("listingMode", listingMode || "novoen");
+      // Pillələr: boş sətirlər atılır. Redaktədə boş massiv = pillələri sil.
+      fd.append("tiers", JSON.stringify(
+        tiers
+          .filter((t) => String(t.minQty).trim() && String(t.price).trim())
+          .map((t) => ({ minQty: Number(t.minQty), price: Number(t.price) })),
+      ));
       if (listingMode === "voen") { fd.append("pickupOnly", String(pickupOnly)); fd.append("allowSelfDelivery", String(!pickupOnly && allowSelfDelivery)); if (!pickupOnly && allowSelfDelivery) fd.append("selfDeliveryNote", selfDeliveryNote); }
       // Taksit yalnız biznes elanında göndərilir; şəxsi elanda kartla ödəniş
       // olmadığı üçün onsuz da tətbiq olunmur.
@@ -341,6 +353,8 @@ function AccountPageInner() {
       fuelType: listing.fuelType || "",
       paymentType: listing.paymentType || "",
     });
+    // Mövcud say-qiymət pillələri (varsa) forma sahəsinə yüklənir.
+    setTiers(((listing.priceTiers as any[]) || []).map((t) => ({ minQty: String(t.minQty), price: String(t.price) })));
     setBarter(!!listing.barter); setForRent(!!listing.forRent);
     setBookable(!!listing.bookable);
     setBookingType(listing.bookingType === "STAY" ? "STAY" : "RESERVATION");
@@ -735,6 +749,48 @@ function AccountPageInner() {
               </div>
               )}
             </div>
+            )}
+
+            {/* ── ÇOX ALANDA UCUZ (könüllü) ── */}
+            {form.type === "PRODUCT" && (
+              <div className="rounded-2xl border border-card-border bg-input-bg/40 p-4">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <p className="font-semibold text-sm">📉 Çox alanda ucuz <span className="text-muted font-normal">(könüllü)</span></p>
+                    <p className="text-xs text-muted mt-0.5 max-w-xl">
+                      «100 ədəd alana 800 AZN» kimi pillə qoyun. Aralıq saylar (məs. 50 ədəd) sistem tərəfindən
+                      avtomatik hesablanır. Pillə qoysanız alıcılar <b>birgə alış</b> linki paylaşıb birlikdə
+                      ucuz ala bilər.
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => setTiers([...tiers, { minQty: "", price: "" }])}
+                    className="px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-xs font-semibold hover:bg-orange-500/20">+ Pillə əlavə et</button>
+                </div>
+
+                {tiers.length > 0 && (
+                  <div className="mt-3 space-y-2">
+                    {tiers.map((tr, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input type="number" min="2" value={tr.minQty} placeholder="Say (məs. 100)"
+                          onChange={(e) => setTiers(tiers.map((x, i) => (i === idx ? { ...x, minQty: e.target.value } : x)))}
+                          className={`${inputCls} flex-1`} />
+                        <span className="text-muted text-sm shrink-0">ədəddən →</span>
+                        <input type="number" min="0" step="0.01" value={tr.price} placeholder="Qiymət (AZN)"
+                          onChange={(e) => setTiers(tiers.map((x, i) => (i === idx ? { ...x, price: e.target.value } : x)))}
+                          className={`${inputCls} flex-1`} />
+                        <button type="button" onClick={() => setTiers(tiers.filter((_, i) => i !== idx))}
+                          className="shrink-0 w-9 h-9 rounded-lg bg-red-500/10 text-red-500 text-sm">✕</button>
+                      </div>
+                    ))}
+                    {form.price && tiers.some((t) => t.minQty && t.price) && (
+                      <p className="text-[11px] text-muted">
+                        Nümunə: {tiers.filter((t) => t.minQty && t.price).map((t) => `${t.minQty} ədəd → ${t.price} AZN`).join(" · ")}
+                        {" · "}aralıq saylar avtomatik hesablanır.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
             {(showField("brand") || showField("country")) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

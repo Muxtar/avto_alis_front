@@ -8,7 +8,8 @@ interface CartContextType {
   /** Seçilmişlərin sayı — header nişanı üçün. */
   favCount: number;
   refreshFavorites: () => Promise<void>;
-  addToCart: (listingId: number, quantity?: number) => Promise<{ success: boolean; message?: string }>;
+  // `groupCode` — birgə alış linki ilə əlavə (səbətdə ayrı sətir kimi düşür).
+  addToCart: (listingId: number, quantity?: number, groupCode?: string) => Promise<{ success: boolean; message?: string }>;
   refreshCart: () => Promise<void>;
 }
 
@@ -55,13 +56,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("favorites-changed", onChanged);
   }, [refreshFavorites]);
 
-  const addToCart = useCallback(async (listingId: number, quantity = 1) => {
+  const addToCart = useCallback(async (listingId: number, quantity = 1, groupCode?: string) => {
     if (!token) return { success: false, message: "Daxil olun" };
     try {
       const res = await fetch(`${API}/cart/add`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ listingId, quantity }),
+        body: JSON.stringify({ listingId, quantity, ...(groupCode ? { groupCode } : {}) }),
       });
       const data = await res.json();
       if (res.ok) {

@@ -38,6 +38,13 @@ export default function ListingDetailPage() {
   const [commentRating, setCommentRating] = useState(0); // 5 ulduzlu rəy
   const [commentSending, setCommentSending] = useState(false);
   const [cartQty, setCartQty] = useState(1);
+  /* ── ÇOX ALANDA UCUZ + BİRGƏ ALIŞ ──
+     Qiymət düsturu YALNIZ serverdədir: seçilən say üçün qiyməti /listings/:id/price
+     qaytarır (hər yerdə eyni hesablansın). `groupBuyAvailable` — elanda pillə
+     varsa birgə alış düyməsi görünür. */
+  const [tierPrice, setTierPrice] = useState<any>(null);
+  const [groupBusy, setGroupBusy] = useState(false);
+  const [groupLink, setGroupLink] = useState<string | null>(null);
   // Hissəli alış planı — səbətə əlavə edərkən ötürülür.
   const [installMonths, setInstallMonths] = useState<number | null>(6);
   const [cartAdding, setCartAdding] = useState(false);
@@ -93,6 +100,32 @@ export default function ListingDetailPage() {
       }
       window.dispatchEvent(new Event("favorites-changed"));
     } catch { toast(t("error"), "error"); } finally { setFavBusy(false); }
+  };
+
+  // Seçilən say dəyişəndə qiyməti serverdən al (pillə varsa).
+  useEffect(() => {
+    if (!listing?.id) return;
+    const t = setTimeout(() => {
+      fetch(`${API}/listings/${listing.id}/price?qty=${cartQty}`)
+        .then((r) => r.json()).then((d) => { if (d?.success) setTierPrice(d); }).catch(() => {});
+    }, 200);
+    return () => clearTimeout(t);
+  }, [listing?.id, cartQty]);
+
+  // Birgə alış yarat — link alıcıya verilir, paylaşdıqca qiymət düşür.
+  const createGroupBuy = async () => {
+    if (!token) { toast("Birgə alış üçün daxil olun", "error"); return; }
+    setGroupBusy(true);
+    try {
+      const r = await fetch(`${API}/listings/${listing.id}/group-buy`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: "{}",
+      }).then((x) => x.json());
+      if (!r?.success) { toast(r?.message || t("error"), "error"); return; }
+      const link = `${window.location.origin}/g/${r.code}`;
+      setGroupLink(link);
+      try { await navigator.clipboard.writeText(link); toast("Birgə alış linki kopyalandı ✓", "success"); }
+      catch { toast("Birgə alış yaradıldı ✓", "success"); }
+    } catch { toast(t("error"), "error"); } finally { setGroupBusy(false); }
   };
 
   const handleAddToCart = async () => {
@@ -813,6 +846,56 @@ export default function ListingDetailPage() {
                   ))}
                 </div>
 
+                {/* ── ÇOX ALANDA UCUZ ── */}
+                {(listing.priceTiers?.length > 0) && (
+                  <div className="mb-3 rounded-2xl border border-orange-500/30 bg-orange-500/5 p-3">
+                    <p className="text-sm font-bold text-orange-600">📉 Çox alanda ucuz</p>
+                    <div className="mt-2 space-y-1">
+                      {listing.priceTiers.map((tr: any) => (
+                        <div key={tr.minQty} className="flex items-center justify-between text-xs">
+                          <span className="text-muted">{tr.minQty} ədəddən</span>
+                          <span className="font-bold">{formatPrice(tr.price)} {t("azn")} <span className="text-muted font-normal">/ ədəd</span></span>
+                        </div>
+                      ))}
+                    </div>
+                    {tierPrice && (
+                      <div className="mt-2 pt-2 border-t border-orange-500/20 text-xs">
+                        <p>
+                          <b>{cartQty} ədəd</b> üçün qiymət:{" "}
+                          <b className="text-orange-600">{formatPrice(tierPrice.unitPrice)} {t("azn")}</b> / ədəd
+                          {tierPrice.saved > 0 && <span className="text-green-600 font-semibold"> · {formatPrice(tierPrice.saved)} {t("azn")} qənaət</span>}
+                        </p>
+                        {tierPrice.nextTier && (
+                          <p className="text-muted mt-0.5">
+                            Daha {tierPrice.nextTier.need} ədəd alsanız qiymət {formatPrice(tierPrice.nextTier.price)} {t("azn")} olacaq.
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    {/* Birgə alış — yalnız pilləsi olan elanda */}
+                    {isLoggedIn && user?.id !== listing.user.id && (
+                      <div className="mt-3">
+                        {groupLink ? (
+                          <div className="rounded-xl bg-card border border-card-border p-2.5">
+                            <p className="text-[11px] text-muted mb-1">Bu linki paylaşın — link ilə alanların sayı toplanır və qiymət hamıya düşür:</p>
+                            <div className="flex items-center gap-2">
+                              <input readOnly value={groupLink} className="flex-1 min-w-0 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-[11px]" />
+                              <button onClick={() => { navigator.clipboard.writeText(groupLink); toast("Kopyalandı ✓", "success"); }}
+                                className="shrink-0 px-2.5 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-[11px] font-bold">Kopyala</button>
+                              <a href={groupLink} className="shrink-0 px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-[11px] font-bold">Aç</a>
+                            </div>
+                          </div>
+                        ) : (
+                          <button onClick={createGroupBuy} disabled={groupBusy}
+                            className="w-full py-2.5 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 disabled:opacity-50">
+                            {groupBusy ? "..." : "👥 Birgə alış başlat — linki paylaş, birlikdə ucuz al"}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {listing.businessId && isLoggedIn && user?.id !== listing.user.id && listing.stock > 0 && (
                   <>
                     {cartAdded && <div className="mb-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg text-green-500 text-xs text-center">{t("addedToCart")}</div>}
@@ -824,7 +907,7 @@ export default function ListingDetailPage() {
                     <button onClick={handleBuyNow} disabled={cartAdding}
                       className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl cta-gradient font-bold text-[15px] shadow-lg shadow-[var(--cta-from)]/25 mb-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12A1.125 1.125 0 0119.75 21.75H4.25a1.125 1.125 0 01-1.119-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" /></svg>
-                      {t("buyNow")} — {formatPrice(listing.price * cartQty)} {t("azn")}
+                      {t("buyNow")} — {formatPrice(tierPrice?.totalPrice ?? listing.price * cartQty)} {t("azn")}
                     </button>
                     <button onClick={handleAddToCart} disabled={cartAdding}
                       className="w-full flex items-center justify-center gap-2 py-3 bg-input-bg border border-input-border rounded-xl font-semibold text-foreground hover:border-[var(--brand-to)]/50 transition-all disabled:opacity-50 mb-2">
