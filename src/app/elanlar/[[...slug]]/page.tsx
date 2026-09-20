@@ -91,6 +91,14 @@ function MarketplacePage() {
   const [professionals, setProfessionals] = useState<any[]>([]);
   // Üst axtarışdan ixtisas/ad üzrə tapılan mütəxəssislər (məhsul/xidmət rejimində də göstərilir)
   const [matchedPros, setMatchedPros] = useState<any[]>([]);
+  /* İNTERNET NƏTİCƏLƏRİ — saytdakı elanlardan SONRA, ayrıca bölmədə.
+     Sayt nəticələri həmişə yuxarıda qalır; internet nəticələri onları
+     əvəz etmir, aşağıda əlavə olunur. Sorğu 12 saat serverdə keşlənir. */
+  const [webResults, setWebResults] = useState<any[]>([]);
+  const [webSummary, setWebSummary] = useState("");
+  const [webLoading, setWebLoading] = useState(false);
+  const [webNeedLogin, setWebNeedLogin] = useState(false);
+  const webForQuery = useRef("");
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -99,6 +107,11 @@ function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeType, setActiveType] = useState<TypeFilter>("PRODUCT");
+  /* İstifadəçi növ düyməsinə (Məhsullar / Xidmətlər) ÖZÜ basıbmı.
+     Axtarışda basmayıbsa həm məhsul, həm xidmət göstərilir: ana ekrandakı
+     axtarış «məhsul və xidmət» axtarışıdır, açılışda isə növ PRODUCT olduğu
+     üçün xidmət elanları nəticələrdən kənarda qalırdı. */
+  const [typeTouched, setTypeTouched] = useState(false);
   // Kateqoriya gridini yığcam göstər (çox olduqda "Daha çox" ilə aç).
   const [showAllCats, setShowAllCats] = useState(false);
   const COLLAPSED_CATS = 11;
@@ -167,11 +180,38 @@ function MarketplacePage() {
   // Grid konteksti dəyişəndə (kateqoriya/tip) yenidən yığcam göstər.
   useEffect(() => { setShowAllCats(false); }, [slugKey, activeType]);
 
+  // Saytdakı nəticələr göstərildikdən sonra internetdən də axtar.
+  const runWebSearch = async (q: string) => {
+    if (!q || webForQuery.current === q) return;
+    webForQuery.current = q;
+    setWebResults([]); setWebSummary(""); setWebNeedLogin(false);
+    if (!token) { setWebNeedLogin(true); return; }
+    setWebLoading(true);
+    try {
+      const r = await fetch(`${API}/search/web`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ query: q, mode: "product" }),
+      }).then((x) => x.json());
+      if (r?.success) { setWebResults(r.results || []); setWebSummary(r.summary || ""); }
+      else setWebSummary(r?.message || "İnternetdə nəticə tapılmadı.");
+    } catch { setWebSummary("İnternet axtarışı alınmadı."); } finally { setWebLoading(false); }
+  };
+  // Axtarış dəyişəndə (debounce ilə) internet bölməsi də yenilənir.
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (!q || activeType === "PROFESSION") { setWebResults([]); setWebSummary(""); setWebNeedLogin(false); webForQuery.current = ""; return; }
+    const id = setTimeout(() => runWebSearch(q), 900);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, activeType]);
+
   const buildParams = (pageNum: number) => {
     const params = new URLSearchParams();
     if (searchQuery) params.set("search", searchQuery);
     if (selectedCategory) params.set("category", selectedCategory);
-    if (activeType !== "all") params.set("type", activeType);
+    // Axtarış var və növ əl ilə seçilməyibsə — məhsul + xidmət birlikdə.
+    if (activeType !== "all" && !(searchQuery.trim() && !typeTouched)) params.set("type", activeType);
     if (conditionFilter) params.set("condition", conditionFilter);
     if (brandFilter) params.set("brand", brandFilter);
     if (modelFilter) params.set("model", modelFilter);
@@ -231,7 +271,7 @@ function MarketplacePage() {
 
     return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, selectedCategory, activeType, sortBy, conditionFilter, brandFilter, modelFilter, cityFilter, fuelFilter, paymentFilter, minYear, maxYear, minPrice, maxPrice]);
+  }, [searchQuery, selectedCategory, activeType, typeTouched, sortBy, conditionFilter, brandFilter, modelFilter, cityFilter, fuelFilter, paymentFilter, minYear, maxYear, minPrice, maxPrice]);
 
   // Fetch additional pages when `page` increments past 1.
   useEffect(() => {
@@ -357,7 +397,7 @@ function MarketplacePage() {
               {typeButtons.map((btn) => (
                 <button
                   key={btn.id}
-                  onClick={() => { setActiveType(btn.id); goCat(null); }}
+                  onClick={() => { setActiveType(btn.id); setTypeTouched(true); goCat(null); }}
                   className={activeType === btn.id ? "active" : ""}
                 >
                   {btn.label}
@@ -767,6 +807,45 @@ function MarketplacePage() {
                   <p className="text-center text-muted text-xs py-8">— {t("noMoreListings")} —</p>
                 )}
               </>
+            )}
+
+            {/* ── DİGƏR SAYTLARDAN ── həmişə saytın öz elanlarından SONRA ── */}
+            {searchQuery.trim() && activeType !== "PROFESSION" && (
+              <div className="mt-8 pt-6 border-t border-card-border">
+                <div className="flex items-center gap-2 mb-1">
+                  <h2 className="text-sm font-bold">🌐 Digər saytlardan</h2>
+                  <span className="text-[11px] text-muted">tap.az · turbo.az və digər saytlar</span>
+                </div>
+                <p className="text-xs text-muted mb-3">«{searchQuery}» üçün internet nəticələri</p>
+
+                {webLoading ? (
+                  <div className="flex items-center gap-3 py-6 text-sm text-muted">
+                    <span className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                    İnternetdə axtarılır...
+                  </div>
+                ) : webNeedLogin ? (
+                  <p className="text-sm text-muted py-3">İnternet nəticələri üçün hesabınıza daxil olun.</p>
+                ) : webResults.length === 0 ? (
+                  <p className="text-sm text-muted py-3">{webSummary || "İnternetdə uyğun nəticə tapılmadı."}</p>
+                ) : (
+                  <>
+                    {webSummary && <p className="text-sm text-foreground/90 mb-3">{webSummary}</p>}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {webResults.slice(0, 12).map((w: any, i: number) => (
+                        <a key={`${w.url}-${i}`} href={w.url} target="_blank" rel="noopener noreferrer"
+                          className="surface p-3 hover:border-orange-500/50 transition-colors">
+                          <p className="text-sm font-semibold line-clamp-2">{w.title || w.url}</p>
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                            {w.price != null && <span className="text-sm font-bold text-orange-500">{typeof w.price === "number" ? `${w.price} AZN` : w.price}</span>}
+                            {w.site && <span className="text-[11px] text-muted">{w.site}</span>}
+                          </div>
+                          {w.snippet && <p className="text-xs text-muted line-clamp-2 mt-1">{w.snippet}</p>}
+                        </a>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
 

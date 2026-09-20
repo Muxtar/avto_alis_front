@@ -452,7 +452,7 @@ export default function Navbar() {
                 onFocus={() => setSearchFocused(true)}
                 onKeyDown={onSearchKeyDown}
                 autoComplete="off"
-                placeholder="Məhsul, xidmət, ad-soyad, şirkət — hər şeyi axtar"
+                placeholder="Məhsul, xidmət axtar"
                 className="flex-1 min-w-0 px-3.5 bg-white text-[#0f172a] text-sm sm:text-[15px] focus:outline-none placeholder-[#8a94a6]"
               />
 
