@@ -147,7 +147,10 @@ export default function AdminHeader({ overview, adminName, onRefresh, onLogout }
           {pendingOpen && (
             <>
               <div className="fixed inset-0 z-[39]" onClick={() => setPendingOpen(false)} />
-              <div className="absolute right-0 mt-1 z-[40] w-64 bg-card border border-card-border rounded-xl shadow-xl p-2">
+              {/* Telefonda menyu ekranın eninə yayılır. Əvvəl `right-0 w-64`
+                  düymənin sağına yapışırdı və düymə soldan ~200px-də olduğu
+                  üçün menyunun sol tərəfi ekrandan kənara çıxırdı. */}
+              <div className="absolute right-0 mt-1 z-[40] w-64 max-sm:fixed max-sm:inset-x-2 max-sm:top-14 max-sm:w-auto max-sm:max-h-[70vh] max-sm:overflow-y-auto bg-card border border-card-border rounded-xl shadow-xl p-2">
                 <p className="text-xs font-semibold px-2 py-1.5 text-muted">Gözləyən işlər</p>
                 {PENDING_LINKS.map((p) => (
                   <Link key={p.key} href={p.href} onClick={() => setPendingOpen(false)} className="flex items-center justify-between px-2 py-2 rounded-lg hover:bg-input-bg text-sm">
@@ -167,7 +170,7 @@ export default function AdminHeader({ overview, adminName, onRefresh, onLogout }
           {actionsOpen && (
             <>
               <div className="fixed inset-0 z-[39]" onClick={() => setActionsOpen(false)} />
-              <div className="absolute right-0 mt-1 z-[40] w-56 bg-card border border-card-border rounded-xl shadow-xl p-1.5 text-sm">
+              <div className="absolute right-0 mt-1 z-[40] w-56 max-sm:fixed max-sm:inset-x-2 max-sm:top-14 max-sm:w-auto bg-card border border-card-border rounded-xl shadow-xl p-1.5 text-sm">
                 <button onClick={() => { setActionsOpen(false); router.push("/admin/broadcast"); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg">📢 Bildiriş göndər</button>
                 <button onClick={reactivateExpired} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg">♻️ Vaxtı bitmiş elanları uzat</button>
                 <button onClick={() => { setActionsOpen(false); router.push("/admin/promo"); }} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg">🎟️ Promo kodları</button>

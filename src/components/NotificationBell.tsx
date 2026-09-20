@@ -23,6 +23,14 @@ export default function NotificationBell() {
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  /* TELEFONDA PANEL EKRANIN TAM ENİNDƏ AÇILIR.
+     Əvvəl panel (320px) düymənin SAĞ kənarına yapışırdı (`absolute right-0`).
+     375px-lik ekranda düymə ortada olduğu üçün panelin sol tərəfi ekrandan
+     kənara çıxırdı — bildirişin başlığı və mətni kəsilirdi. Tam en üçün
+     `fixed` lazımdır, o da düymənin altındakı yuxarı ofseti tələb edir. */
+  const [panelTop, setPanelTop] = useState(0);
+  const [narrow, setNarrow] = useState(false);
 
   const fetchNotifs = useCallback(() => {
     if (!token || !isLoggedIn) return;
@@ -69,6 +77,9 @@ export default function NotificationBell() {
     const willOpen = !open;
     setOpen(willOpen);
     if (willOpen) {
+      const isNarrow = window.innerWidth < 640;          // Tailwind `sm`
+      setNarrow(isNarrow);
+      if (isNarrow) setPanelTop((btnRef.current?.getBoundingClientRect().bottom ?? 56) + 8);
       fetchNotifs();
       if (unreadCount > 0) {
         setUnreadCount(0);
@@ -97,6 +108,7 @@ export default function NotificationBell() {
   return (
     <div ref={ref} className="relative">
       <button
+        ref={btnRef}
         onClick={openBell}
         className="relative p-1.5 rounded-md text-white/85 hover:text-white hover:ring-1 hover:ring-white/40 transition-colors"
         title={t('notifications')}
@@ -112,7 +124,17 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-h-[500px] bg-card border border-card-border rounded-xl shadow-xl overflow-hidden z-50">
+        <div
+          className={
+            /* `text-foreground` MÜTLƏQDİR: panel header-in içindədir və oradan
+               AĞ mətn rəngini miras alırdı — ağ kartda bildiriş başlıqları
+               işıqlı rejimdə ümumiyyətlə görünmürdü. */
+            narrow
+              ? 'fixed left-3 right-3 max-h-[70vh] bg-card text-foreground border border-card-border rounded-xl shadow-xl overflow-hidden z-50'
+              : 'absolute right-0 mt-2 w-80 max-h-[500px] bg-card text-foreground border border-card-border rounded-xl shadow-xl overflow-hidden z-50'
+          }
+          style={narrow ? { top: panelTop } : undefined}
+        >
           <div className="flex items-center justify-between p-3 border-b border-card-border">
             <span className="font-semibold text-sm">{t('notifications')}</span>
             {unreadCount > 0 && (
@@ -121,7 +143,7 @@ export default function NotificationBell() {
               </button>
             )}
           </div>
-          <div className="overflow-y-auto max-h-[420px]">
+          <div className={narrow ? 'overflow-y-auto max-h-[calc(70vh-3rem)]' : 'overflow-y-auto max-h-[420px]'}>
             {notifs.length === 0 ? (
               <div className="p-6 text-center text-muted text-sm">{t('noNotifications')}</div>
             ) : (
