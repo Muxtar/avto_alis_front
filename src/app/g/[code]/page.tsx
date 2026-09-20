@@ -75,7 +75,7 @@ export default function GroupBuyPage() {
           <p className="text-sm font-bold">👥 Birgə alış</p>
           <p className="text-xs text-muted mt-0.5">
             {g.creator?.name ? `${g.creator.name} başlatdı · ` : ""}
-            link ilə alanların sayı toplanır, qiymət hamıya düşür
+            link ilə alanların sayı toplanır, endirim hamıya verilir
           </p>
         </div>
 
@@ -88,9 +88,18 @@ export default function GroupBuyPage() {
             <Link href={`/marketplace/${g.listing.id}`} className="font-bold hover:text-orange-500 line-clamp-2">{g.listing.title}</Link>
             <p className="text-xs text-muted mt-0.5">Satıcı: {g.listing.businessObject?.name || g.listing.seller?.name}</p>
             <div className="mt-2 flex items-end gap-2 flex-wrap">
-              <span className="text-2xl font-extrabold text-orange-500">{p.unitPrice} AZN</span>
-              {p.unitPrice < p.basePrice && <span className="text-sm text-muted line-through">{p.basePrice} AZN</span>}
-              {p.discountPercent > 0 && <span className="px-2 py-0.5 rounded-lg bg-green-500/10 text-green-600 text-xs font-bold">−{p.discountPercent}%</span>}
+              <span className="text-2xl font-extrabold">{g.fullPrice} AZN</span>
+              <span className="text-xs text-muted">indi ödənilir</span>
+            </div>
+            <div className="mt-1 text-sm">
+              {g.settledAt ? (
+                <span className="text-green-600 font-semibold">Hesablaşdı: son qiymət {g.finalUnitPrice} AZN — fərq qaytarıldı ✓</span>
+              ) : (
+                <>
+                  <span className="text-orange-600 font-semibold">Gözlənilən qiymət: {p.unitPrice} AZN</span>
+                  {p.discountPercent > 0 && <span className="ml-2 px-2 py-0.5 rounded-lg bg-green-500/10 text-green-600 text-xs font-bold">−{p.discountPercent}%</span>}
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -108,7 +117,19 @@ export default function GroupBuyPage() {
           </div>
           <div className="mt-2 text-[11px] text-muted">
             {closed ? "Bu birgə alış bağlanıb — yeni qoşulma mümkün deyil."
-              : `Bitmə vaxtı: ${new Date(g.expiresAt).toLocaleString("az-AZ")}`}
+              : `Qoşulma bitir: ${new Date(g.expiresAt).toLocaleString("az-AZ")}`}
+            {!g.settledAt && g.settleEta && (
+              <> · Endirim hesablanması: <b>{new Date(g.settleEta).toLocaleDateString("az-AZ")}</b></>
+            )}
+          </div>
+
+          {/* Necə işləyir — fırıldağın qarşısını alan qayda açıq yazılır. */}
+          <div className="mt-3 rounded-xl bg-input-bg/60 border border-card-border p-3 text-[11px] leading-relaxed">
+            <p className="font-semibold text-foreground mb-1">Necə işləyir</p>
+            <p>1. Hər iştirakçı indi <b>tam qiyməti</b> ({g.fullPrice} AZN) ödəyir.</p>
+            <p>2. Məhsulu {g.returnWindowDays} gün ərzində geri qaytarmaq olar (mağazaya təhvil verilir, satıcı təsdiqləyir).</p>
+            <p>3. Müddət bitəndə məhsulu <b>saxlayanların</b> sayına görə son qiymət hesablanır və fərq hər kəsin kartına qaytarılır.</p>
+            <p className="text-muted mt-1">Qaytaran şəxs qrupdan çıxır — onun sayı endirimə daxil edilmir.</p>
           </div>
         </div>
 
@@ -138,10 +159,11 @@ export default function GroupBuyPage() {
             </div>
             <button onClick={join} disabled={busy}
               className="w-full py-3 rounded-2xl cta-gradient font-bold text-[15px] disabled:opacity-50">
-              {busy ? "..." : `Qrupa qoşul — ${qty} ədəd`}
+              {busy ? "..." : `Qrupa qoşul — ${qty} ədəd · ${(g.fullPrice * qty).toFixed(0)} AZN`}
             </button>
             <p className="text-[11px] text-muted mt-2 text-center">
-              Qrup böyüdükcə qiymət düşür. Sizdən əvvəl alanlara fərq avtomatik qaytarılır.
+              İndi {g.fullPrice} AZN ödəyirsiniz. Endirim {g.returnWindowDays} günlük qaytarma müddəti
+              bitəndən sonra kartınıza qaytarılır.
             </p>
           </div>
         )}
@@ -160,7 +182,9 @@ export default function GroupBuyPage() {
                     ? <img src={imgUrl(pt.user.avatar)} alt="" className="w-8 h-8 rounded-full object-cover" />
                     : <span className="w-8 h-8 rounded-full bg-input-bg flex items-center justify-center text-xs font-bold">{(pt.user.name || "?").slice(0, 1).toUpperCase()}</span>}
                   <span className="text-sm font-medium truncate flex-1">{pt.user.name}</span>
-                  <span className="text-xs text-muted shrink-0">{pt.quantity} ədəd</span>
+                  <span className="text-xs text-muted shrink-0">
+                    {pt.quantity} ədəd{pt.returned > 0 ? ` · ${pt.returned} qaytarıldı` : ""}
+                  </span>
                 </div>
               ))}
             </div>

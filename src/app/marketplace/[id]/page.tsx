@@ -877,7 +877,10 @@ export default function ListingDetailPage() {
                       <div className="mt-3">
                         {groupLink ? (
                           <div className="rounded-xl bg-card border border-card-border p-2.5">
-                            <p className="text-[11px] text-muted mb-1">Bu linki paylaşın — link ilə alanların sayı toplanır və qiymət hamıya düşür:</p>
+                            <p className="text-[11px] text-muted mb-1">
+                              Bu linki paylaşın. Hamı əvvəlcə tam qiyməti ödəyir; qaytarma müddəti bitəndən
+                              sonra məhsulu saxlayanların sayına görə endirim hesablanıb kartlara qaytarılır:
+                            </p>
                             <div className="flex items-center gap-2">
                               <input readOnly value={groupLink} className="flex-1 min-w-0 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-[11px]" />
                               <button onClick={() => { navigator.clipboard.writeText(groupLink); toast("Kopyalandı ✓", "success"); }}
@@ -888,7 +891,7 @@ export default function ListingDetailPage() {
                         ) : (
                           <button onClick={createGroupBuy} disabled={groupBusy}
                             className="w-full py-2.5 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 disabled:opacity-50">
-                            {groupBusy ? "..." : "👥 Birgə alış başlat — linki paylaş, birlikdə ucuz al"}
+                            {groupBusy ? "..." : "👥 Birgə alış başlat — linki paylaş, endirimi sonra geri al"}
                           </button>
                         )}
                       </div>

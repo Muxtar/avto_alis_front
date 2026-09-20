@@ -632,6 +632,13 @@ export default function CartPage() {
                               <a href={`/g/${item.groupCode}`} className="text-[11px] font-semibold text-orange-500 hover:underline">linki aç →</a>
                             </div>
                           )}
+                          {item.groupRefundLater && (
+                            <p className="mt-1 text-[11px] text-muted">
+                              İndi tam qiymət ödənilir · endirim {item.returnWindowDays || 14} günlük qaytarma
+                              müddəti bitəndən sonra kartınıza qaytarılır
+                              {item.pricing?.discountPercent > 0 && <span className="text-green-600 font-semibold"> (gözlənilən: −{item.pricing.discountPercent}%)</span>}
+                            </p>
+                          )}
                           {!item.groupCode && item.pricing?.discountPercent > 0 && (
                             <div className="mt-1.5 text-[11px] text-green-600 font-semibold">
                               📉 Çox alanda ucuz: −{item.pricing.discountPercent}%
@@ -655,7 +662,7 @@ export default function CartPage() {
                         <div className="text-right flex flex-col justify-between items-end">
                           <div className="text-right">
                             <p className={`font-bold text-sm ${out ? "text-muted line-through" : "text-orange-500"}`}>{Number(item.lineTotal ?? item.listing.price * item.quantity).toFixed(2)} AZN</p>
-                            {item.unitPrice != null && item.unitPrice < item.listing.price && (
+                            {!item.groupCode && item.unitPrice != null && item.unitPrice < item.listing.price && (
                               <p className="text-[11px] text-muted"><s>{item.listing.price} AZN</s> → <b>{item.unitPrice} AZN</b>/əd</p>
                             )}
                           </div>
