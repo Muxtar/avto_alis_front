@@ -17,6 +17,8 @@ export default function OrdersPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"buying" | "selling">("buying");
   const [buyingOrders, setBuyingOrders] = useState<any[]>([]);
+  // Alıcının yazdığı məhsul rəyləri (listingId üzrə) — «Rəy yaz» / «Rəyi dəyiş».
+  const [myReviews, setMyReviews] = useState<any[]>([]);
   const [sellingOrders, setSellingOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,12 +69,61 @@ export default function OrdersPage() {
     ]).then(([b, s]) => {
       setBuyingOrders(b.orders || []);
       setSellingOrders(s.orders || []);
+      setMyReviews(b.myReviews || []);
     }).catch(() => { if (!silent) toast(t('error'), 'error'); }).finally(() => setLoading(false));
   };
 
   // ANLIQ: yeni sifariş, qarşı tərəfin təsdiqi/ləğvi, iadə, admin dəyişikliyi,
   // kuryer statusu — siyahı səhifə yenilənmədən dəyişir.
   useLive(["order", "return"], () => fetchOrders(true));
+
+  /* ── MƏHSULA RƏY ──
+     Əvvəl «Rəy yaz» düyməsi elan səhifəsinə aparırdı. Elan vaxtı bitəndə və
+     ya satıcı onu gizlədəndə həmin səhifə açılmırdı və alıcı aldığı məhsula
+     rəy yaza bilmirdi. İndi rəy elə burada, sifarişin içində yazılır. */
+  const [reviewFor, setReviewFor] = useState<{ listingId: number; title: string; commentId?: number } | null>(null);
+  const [revText, setRevText] = useState("");
+  const [revStars, setRevStars] = useState(0);
+  const [revBusy, setRevBusy] = useState(false);
+  const myReviewOf = (listingId: number) => myReviews.find((r) => r.listingId === listingId);
+  const openReview = (listingId: number, title: string) => {
+    const mine = myReviewOf(listingId);
+    setRevText(mine?.content || "");
+    setRevStars(mine?.rating || 0);
+    setReviewFor({ listingId, title, commentId: mine?.id });
+  };
+  const sendReview = async () => {
+    if (!reviewFor || !revText.trim()) { toast("Rəy mətnini yazın", "error"); return; }
+    setRevBusy(true);
+    const body = JSON.stringify({ content: revText.trim(), rating: revStars || undefined });
+    const r = await fetch(
+      reviewFor.commentId ? `${API}/comments/${reviewFor.commentId}` : `${API}/listings/${reviewFor.listingId}/comments`,
+      { method: reviewFor.commentId ? "PUT" : "POST", headers, body },
+    ).then((x) => x.json()).catch(() => null);
+    setRevBusy(false);
+    if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
+    toast(reviewFor.commentId ? "Rəyiniz yeniləndi ✓" : "Rəyiniz yazıldı ✓", "success");
+    setReviewFor(null);
+    fetchOrders(true);
+  };
+
+  // Satıcıya qiymət (sifariş üzrə, bir dəfə).
+  const [rateOrder, setRateOrder] = useState<any>(null);
+  const [rateStars, setRateStars] = useState(0);
+  const [rateText, setRateText] = useState("");
+  const [rateBusy, setRateBusy] = useState(false);
+  const sendSellerRating = async () => {
+    if (!rateOrder || rateStars < 1) { toast("Ulduz seçin", "error"); return; }
+    setRateBusy(true);
+    const r = await fetch(`${API}/orders/${rateOrder.id}/rating`, {
+      method: "POST", headers, body: JSON.stringify({ rating: rateStars, comment: rateText.trim() || undefined }),
+    }).then((x) => x.json()).catch(() => null);
+    setRateBusy(false);
+    if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return; }
+    toast("Satıcıya qiymətiniz göndərildi ✓", "success");
+    setRateOrder(null); setRateStars(0); setRateText("");
+    fetchOrders(true);
+  };
 
   const updateStatus = async (orderId: number, status: string, code?: string): Promise<boolean> => {
     const r = await fetch(`${API}/orders/${orderId}/status`, {
@@ -865,9 +916,25 @@ export default function OrdersPage() {
                       <button onClick={() => { if (confirm("Məhsulu təhvil aldığınızı təsdiqləyirsiniz?")) updateStatus(order.id, "DELIVERED"); }} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20">✓ Təhvil aldım</button>
                     )}
                     {/* Təhvil alındıqdan sonra məhsula rəy/5 ulduz (like/dislike) — hər məhsul üçün */}
-                    {order.status === "DELIVERED" && (order.items || []).map((it: any) => (
-                      <Link key={it.id} href={`/marketplace/${it.listingId}#reviews`} className="px-3 py-1.5 bg-amber-400/10 text-amber-600 rounded-lg text-xs font-medium hover:bg-amber-400/20">⭐ Rəy yaz{(order.items || []).length > 1 ? `: ${String(it.title).slice(0, 14)}` : ""}</Link>
-                    ))}
+                    {order.status === "DELIVERED" && (order.items || []).map((it: any) => {
+                      const mine = myReviewOf(it.listingId);
+                      return (
+                        <button key={it.id} onClick={() => openReview(it.listingId, it.title)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium ${mine ? "bg-input-bg border border-input-border text-muted hover:text-foreground" : "bg-amber-400/10 text-amber-600 hover:bg-amber-400/20"}`}>
+                          {mine ? "✎ Rəyi dəyiş" : "⭐ Rəy yaz"}{(order.items || []).length > 1 ? `: ${String(it.title).slice(0, 14)}` : ""}
+                        </button>
+                      );
+                    })}
+                    {order.status === "DELIVERED" && (
+                      order.sellerRating ? (
+                        <span className="px-3 py-1.5 rounded-lg text-xs font-medium bg-input-bg border border-input-border text-muted">
+                          Satıcıya qiymətiniz: {"★".repeat(order.sellerRating.rating)}
+                        </span>
+                      ) : (
+                        <button onClick={() => { setRateOrder(order); setRateStars(0); setRateText(""); }}
+                          className="px-3 py-1.5 bg-amber-400/10 text-amber-600 rounded-lg text-xs font-medium hover:bg-amber-400/20">⭐ Satıcıya qiymət ver</button>
+                      )
+                    )}
                     {(order.status === "DELIVERED" || order.status === "CANCELLED") && (
                       <button onClick={() => deleteOrder(order.id)} className="px-3 py-1.5 bg-input-bg border border-input-border text-muted rounded-lg text-xs font-medium hover:text-red-500 hover:border-red-500/40 ml-auto">🗑 Sil</button>
                     )}
@@ -876,6 +943,58 @@ export default function OrdersPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Məhsula rəy modalı (alıcı) ── */}
+      {reviewFor && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setReviewFor(null)}>
+          <div className="surface w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-1">⭐ Məhsula rəy</h3>
+            <p className="text-xs text-muted mb-3 line-clamp-2">{reviewFor.title}</p>
+            <div className="flex gap-1 mb-3">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} onClick={() => setRevStars(n)} className="text-2xl leading-none">
+                  <span className={n <= revStars ? "text-amber-400" : "text-muted/40"}>★</span>
+                </button>
+              ))}
+            </div>
+            <textarea value={revText} onChange={(e) => setRevText(e.target.value)} rows={4} maxLength={1000}
+              placeholder="Məhsul haqqında təcrübənizi yazın — digər alıcılara kömək edir"
+              className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-3" />
+            <div className="flex gap-2">
+              <button onClick={() => setReviewFor(null)} className="flex-1 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium">Bağla</button>
+              <button onClick={sendReview} disabled={revBusy || !revText.trim()} className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                {revBusy ? "..." : reviewFor.commentId ? "Yadda saxla" : "Göndər"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Satıcıya qiymət modalı (alıcı, sifariş üzrə) ── */}
+      {rateOrder && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setRateOrder(null)}>
+          <div className="surface w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-lg mb-1">⭐ Satıcıya qiymət</h3>
+            <p className="text-xs text-muted mb-3">Sifariş №{rateOrder.id} · {rateOrder.seller?.name}</p>
+            <div className="flex gap-1 mb-3">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button key={n} onClick={() => setRateStars(n)} className="text-2xl leading-none">
+                  <span className={n <= rateStars ? "text-amber-400" : "text-muted/40"}>★</span>
+                </button>
+              ))}
+            </div>
+            <textarea value={rateText} onChange={(e) => setRateText(e.target.value)} rows={3} maxLength={1000}
+              placeholder="Satıcı ilə təcrübəniz (istəyə bağlı)"
+              className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-3" />
+            <div className="flex gap-2">
+              <button onClick={() => setRateOrder(null)} className="flex-1 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium">Bağla</button>
+              <button onClick={sendSellerRating} disabled={rateBusy || rateStars < 1} className="flex-1 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                {rateBusy ? "..." : "Göndər"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

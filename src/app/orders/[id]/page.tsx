@@ -287,7 +287,17 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Rating (only for DELIVERED orders, only the buyer can rate) */}
-      {order.status === 'DELIVERED' && user?.id === order.buyerId && !hasRated && (
+      {/* Verilmiş qiymət serverdən gəlir (order.sellerRating) — əvvəl yalnız
+          yerli `hasRated` vardı: səhifə yenilənəndə forma yenidən açılır,
+          göndərəndə isə «artıq rating vermisiniz» xətası çıxırdı. */}
+      {order.status === 'DELIVERED' && user?.id === order.buyerId && order.sellerRating && (
+        <div className="bg-card border border-card-border rounded-2xl p-4">
+          <h2 className="font-semibold text-sm mb-1">⭐ {t('rateSeller')}</h2>
+          <p className="text-amber-400 text-lg leading-none">{'★'.repeat(order.sellerRating.rating)}<span className="text-muted/40">{'★'.repeat(5 - order.sellerRating.rating)}</span></p>
+          {order.sellerRating.comment && <p className="text-xs text-muted mt-1">{order.sellerRating.comment}</p>}
+        </div>
+      )}
+      {order.status === 'DELIVERED' && user?.id === order.buyerId && !order.sellerRating && !hasRated && (
         <div className="bg-card border border-card-border rounded-2xl p-4">
           <h2 className="font-semibold text-sm mb-3">⭐ {t('rateSeller')}</h2>
           <div className="flex gap-1 mb-3">
