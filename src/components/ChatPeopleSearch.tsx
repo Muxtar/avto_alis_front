@@ -92,38 +92,54 @@ export default function ChatPeopleSearch({
 
   return (
     <>
-      {/* ── Axtarış qutusu ── */}
-      <div className="relative">
-        <input
-          value={q}
-          onChange={(e) => { setQ(e.target.value); setWeb(null); setWebErr(null); }}
-          onKeyDown={(e) => e.key === "Enter" && searchWeb()}
-          placeholder="🔍 Şəxs axtar — ad və ya istifadəçi adı"
-          className="w-full pl-3 pr-8 py-2 bg-input-bg border border-input-border rounded-xl text-xs"
-        />
-        {q && (
-          <button onClick={() => { setQ(""); setWeb(null); setWebErr(null); }}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted hover:text-foreground text-sm">✕</button>
-        )}
+      {/* ── Axtarış qutusu ──
+          Əvvəl adi, kiçik (py-2, text-xs) sahə idi və yan paneldə gözə
+          dəymirdi. İndi daha iri, rəngli çərçivəli və fokusda işıqlanan
+          qutudur: içində axtarış ikonu, altında qısa izah. */}
+      <div className="rounded-2xl p-[2px] bg-gradient-to-r from-orange-500 via-fuchsia-500 to-sky-500 shadow-md transition-shadow focus-within:shadow-[0_0_0_4px_rgba(249,115,22,0.15)]">
+        <div className="relative bg-card rounded-[14px]">
+          <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-orange-500">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 110-16 8 8 0 010 16z" />
+            </svg>
+          </span>
+          <input
+            value={q}
+            onChange={(e) => { setQ(e.target.value); setWeb(null); setWebErr(null); }}
+            onKeyDown={(e) => e.key === "Enter" && searchWeb()}
+            placeholder="Şəxs axtar…"
+            className="w-full pl-11 pr-10 py-3.5 bg-transparent rounded-[14px] text-sm font-medium placeholder:text-muted/80 focus:outline-none"
+          />
+          {q ? (
+            <button onClick={() => { setQ(""); setWeb(null); setWebErr(null); }} aria-label="Təmizlə"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-input-bg text-muted hover:text-foreground flex items-center justify-center text-sm">✕</button>
+          ) : null}
+        </div>
       </div>
+      {!q.trim() && (
+        <p className="mt-2 px-1 text-[11px] text-muted leading-snug">
+          Ad və ya istifadəçi adı yazın — əvvəl söhbətlərinizdə, sonra
+          <span className="font-semibold text-foreground/80"> Instagram · Facebook · X · LinkedIn</span> hesablarında axtarılır.
+        </p>
+      )}
 
       {q.trim() && (
-        <div className="mt-2 max-h-[45vh] overflow-y-auto space-y-2">
+        <div className="mt-3 max-h-[45vh] overflow-y-auto space-y-3">
           {/* ── Chat-dakılar ── */}
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-wide text-muted px-1 mb-1">Söhbətlərim</p>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-orange-500 px-1 mb-1">Söhbətlərim</p>
             {local.length === 0 ? (
               <p className="text-[11px] text-muted px-1 py-1">Söhbətlərinizdə tapılmadı.</p>
             ) : local.map((p) => (
               <button key={p.id} onClick={() => onOpenChat(p)}
-                className="w-full flex items-center gap-2 px-1 py-1.5 rounded-lg hover:bg-input-bg text-left">
+                className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-input-bg text-left transition-colors">
                 {p.avatar
                   // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={imgUrl(p.avatar)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                   : <span className="w-8 h-8 rounded-full bg-input-bg flex items-center justify-center text-[11px] font-bold shrink-0">{(p.name || "?").slice(0, 1).toUpperCase()}</span>}
                 <span className="min-w-0">
-                  <span className="block text-xs font-semibold truncate">{p.name}</span>
-                  {p.sub && <span className="block text-[10px] text-muted truncate">{p.sub}</span>}
+                  <span className="block text-sm font-semibold truncate">{p.name}</span>
+                  {p.sub && <span className="block text-[11px] text-muted truncate">{p.sub}</span>}
                 </span>
               </button>
             ))}
@@ -132,7 +148,7 @@ export default function ChatPeopleSearch({
           {/* ── Sosial media ── */}
           <div className="border-t border-card-border pt-2">
             <div className="flex items-center justify-between gap-2 px-1 mb-1">
-              <p className="text-[10px] font-bold uppercase tracking-wide text-muted">Sosial media</p>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Sosial media</p>
               <button onClick={searchWeb} disabled={webLoading}
                 className="text-[11px] font-bold text-[var(--brand-to)] disabled:opacity-50">
                 {webLoading ? "axtarılır…" : web ? "yenidən axtar" : "🌐 internetdə axtar"}
