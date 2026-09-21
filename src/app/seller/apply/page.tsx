@@ -145,6 +145,14 @@ export default function SellerApplyPage() {
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setIdFront(f); setIdFrontPreview(URL.createObjectURL(f)); } }} />
                 </label>
               )}
+              {!idFrontPreview && (
+                /* Android-də adi seçim qalereyanı açır — kamera üçün ayrıca
+                   `capture` input lazımdır. */
+                <label className="mt-2 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-input-bg border border-input-border text-xs font-medium cursor-pointer">
+                  📷 Kamera ilə çək
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setIdFront(f); setIdFrontPreview(URL.createObjectURL(f)); } }} />
+                </label>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium mb-2">{t("idImageBack")}</label>
@@ -157,6 +165,12 @@ export default function SellerApplyPage() {
                 <label className="flex items-center justify-center h-32 border-2 border-dashed border-input-border rounded-xl cursor-pointer hover:border-orange-500/30 text-sm text-muted">
                   {t("uploadPhoto")}
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setIdBack(f); setIdBackPreview(URL.createObjectURL(f)); } }} />
+                </label>
+              )}
+              {!idBackPreview && (
+                <label className="mt-2 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-input-bg border border-input-border text-xs font-medium cursor-pointer">
+                  📷 Kamera ilə çək
+                  <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setIdBack(f); setIdBackPreview(URL.createObjectURL(f)); } }} />
                 </label>
               )}
             </div>

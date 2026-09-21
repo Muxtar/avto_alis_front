@@ -157,6 +157,8 @@ export default function MessagesPage() {
   }, []);
   const inputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  // Telefonda kamera ilə dərhal şəkil çəkmək üçün ayrıca input.
+  const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeRef = useRef<any>(null);
   const userIdRef = useRef<number | undefined>(undefined);
@@ -1256,7 +1258,10 @@ export default function MessagesPage() {
                       {/* Xaricə klik — menyu bağlansın */}
                       <div className="fixed inset-0 z-[15]" onClick={() => setAttachOpen(false)} />
                       <div className="absolute bottom-12 left-0 bg-card border border-card-border rounded-xl p-1.5 space-y-0.5 z-20 shadow-lg">
-                        <button onClick={() => imageInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">🖼️ Şəkil</button>
+                        {/* Kamera AYRICA sətirdir: Android-də adi şəkil seçimi
+                            birbaşa qalereyanı açır, kamera çıxmır. */}
+                        <button onClick={() => { setAttachOpen(false); cameraInputRef.current?.click(); }} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">📷 Kamera</button>
+                        <button onClick={() => imageInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">🖼️ Qalereya</button>
                         <button onClick={openVideoRec} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">🎥 Video mesaj</button>
                         <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">📄 Sənəd / Fayl</button>
                         <button onClick={sendLocation} disabled={sendingLocation} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap disabled:opacity-50">📍 {sendingLocation ? "Konum alınır…" : "Konum"}</button>
@@ -1286,6 +1291,9 @@ export default function MessagesPage() {
                       </button>
                     )}
                     <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { onPickImage(e.target.files?.[0] || null); e.target.value = ""; }} />
+                    {/* Android-də `accept="image/*"` birbaşa qalereyanı açır —
+                        kamera üçün AYRICA `capture` input lazımdır. */}
+                    <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { onPickImage(e.target.files?.[0] || null); e.target.value = ""; }} />
                     <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => { onPickFile(e.target.files?.[0] || null); e.target.value = ""; }} />
                   </div>
                 )}

@@ -81,6 +81,20 @@ export default function Navbar() {
   const [search, setSearch] = useState("");
   const [imgBusy, setImgBusy] = useState(false);
   const imgInputRef = useRef<HTMLInputElement>(null);
+  /* KAMERA AYRI İNPUT İSTƏYİR.
+     `accept="image/*"` iOS-da «Şəkil çək / Qalereya» menyusu göstərir, Android
+     Chrome-da isə birbaşa qalereya (foto seçici) açılır — kamera seçimi olmur.
+     Android-də kameranı açmaq üçün `capture="environment"` lazımdır, amma o,
+     qalereyanı bağlayır. Ona görə İKİ input var və toxunma cihazında
+     istifadəçi özü seçir. */
+  const camInputRef = useRef<HTMLInputElement>(null);
+  const [imgMenu, setImgMenu] = useState(false);
+  // Menyu axtarış qutusunun İÇİNDƏ render olunsa, qutunun `overflow-hidden`
+  // çərçivəsi onu kəsir və görünmür. Ona görə `fixed` yerləşdirilir —
+  // mövqe düymənin rect-indən hesablanır.
+  const [imgMenuPos, setImgMenuPos] = useState<{ top: number; right: number } | null>(null);
+  const imgMenuRef = useRef<HTMLDivElement>(null);
+  const imgBtnRef = useRef<HTMLButtonElement>(null);
   // Avtomatik-tamamlama (təkliflər)
   const [suggestions, setSuggestions] = useState<Suggest[]>([]);
   const [searchFocused, setSearchFocused] = useState(false);
@@ -167,6 +181,7 @@ export default function Navbar() {
       if (userRef.current && !userRef.current.contains(e.target as Node)) setUserOpen(false);
       if (catRef.current && !catRef.current.contains(e.target as Node)) setCatOpen(false);
       if (searchBoxRef.current && !searchBoxRef.current.contains(e.target as Node)) setSearchFocused(false);
+      if (imgMenuRef.current && !imgMenuRef.current.contains(e.target as Node)) setImgMenu(false);
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
@@ -459,9 +474,24 @@ export default function Navbar() {
               {/* Şəkillə axtarış — axtarış sahəsinin içində */}
               <input ref={imgInputRef} type="file" accept="image/*" className="hidden"
                 onChange={(e) => { const f = e.target.files?.[0]; if (f) searchByImage(f); }} />
+              {/* Kamera: `capture` Android-də birbaşa kameranı açır. */}
+              <input ref={camInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) searchByImage(f); }} />
+              <div ref={imgMenuRef} className="flex">
               <button
+                ref={imgBtnRef}
                 type="button"
-                onClick={() => imgInputRef.current?.click()}
+                onClick={() => {
+                  // Toxunma cihazı (telefon/planşet) → seçim menyusu; kompüterdə
+                  // kamera mənasızdır, birbaşa fayl pəncərəsi açılır.
+                  const touch = typeof window !== "undefined"
+                    && ((window.matchMedia && window.matchMedia("(pointer: coarse)").matches) || "ontouchstart" in window);
+                  if (touch) {
+                    const r = imgBtnRef.current?.getBoundingClientRect();
+                    if (r) setImgMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+                    setImgMenu((v) => !v);
+                  } else imgInputRef.current?.click();
+                }}
                 disabled={imgBusy}
                 title="Şəkil ilə axtar"
                 aria-label="Şəkil ilə axtar"
@@ -473,6 +503,25 @@ export default function Navbar() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
                 )}
               </button>
+              {/* Telefonda seçim: kamera, yoxsa qalereya. */}
+              {imgMenu && imgMenuPos && (
+                <div
+                  className="fixed z-[60] w-44 bg-card text-foreground border border-card-border rounded-xl shadow-xl overflow-hidden"
+                  style={{ top: imgMenuPos.top, right: imgMenuPos.right }}
+                >
+                  <button type="button"
+                    onClick={() => { setImgMenu(false); camInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-input-bg text-left">
+                    📷 Kamera ilə çək
+                  </button>
+                  <button type="button"
+                    onClick={() => { setImgMenu(false); imgInputRef.current?.click(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-input-bg text-left border-t border-card-border">
+                    🖼 Qalereyadan seç
+                  </button>
+                </div>
+              )}
+              </div>
 
               <button type="submit" className="px-5 sm:px-7 text-white font-semibold text-[15px] flex items-center gap-1.5 hover:opacity-90 transition-opacity" style={{ background: PINK }}>
                 <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
