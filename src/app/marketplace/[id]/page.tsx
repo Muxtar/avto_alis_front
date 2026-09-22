@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -19,6 +19,18 @@ import { recordView } from "@/lib/recentlyViewed";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
 import { listingInstallmentAllowed, monthsForListing } from "@/lib/installment";
 
+
+/** «2 gün 04:12:33» — birgə alış pəncərəsinin geri sayımı. */
+function countdown(until: string | Date, now: number): string {
+  const ms = new Date(until).getTime() - now;
+  if (ms <= 0) return "bitdi";
+  const s = Math.floor(ms / 1000);
+  const d = Math.floor(s / 86400);
+  const h = String(Math.floor((s % 86400) / 3600)).padStart(2, "0");
+  const m = String(Math.floor((s % 3600) / 60)).padStart(2, "0");
+  const sec = String(s % 60).padStart(2, "0");
+  return d > 0 ? `${d} gün ${h}:${m}:${sec}` : `${h}:${m}:${sec}`;
+}
 
 export default function ListingDetailPage() {
   const { t, locale } = useLanguage();
@@ -40,11 +52,12 @@ export default function ListingDetailPage() {
   const [cartQty, setCartQty] = useState(1);
   /* ── ÇOX ALANDA UCUZ + BİRGƏ ALIŞ ──
      Qiymət düsturu YALNIZ serverdədir: seçilən say üçün qiyməti /listings/:id/price
-     qaytarır (hər yerdə eyni hesablansın). `groupBuyAvailable` — elanda pillə
-     varsa birgə alış düyməsi görünür. */
+     qaytarır (hər yerdə eyni hesablansın).
+     BİRGƏ ALIŞ AVTOMATİKDİR: satıcı açıbsa ilk sifariş pəncərəni başladır və
+     burada geri sayım göstərilir — hamı eyni sayı və eyni qiyməti görür. */
   const [tierPrice, setTierPrice] = useState<any>(null);
-  const [groupBusy, setGroupBusy] = useState(false);
-  const [groupLink, setGroupLink] = useState<string | null>(null);
+  const [gb, setGb] = useState<any>(null);          // /listings/:id/group-buy
+  const [nowTs, setNowTs] = useState(() => Date.now()); // geri sayım üçün saniyə döyüntüsü
   // Hissəli alış planı — səbətə əlavə edərkən ötürülür.
   const [installMonths, setInstallMonths] = useState<number | null>(6);
   const [cartAdding, setCartAdding] = useState(false);
@@ -112,21 +125,31 @@ export default function ListingDetailPage() {
     return () => clearTimeout(t);
   }, [listing?.id, cartQty]);
 
-  // Birgə alış yarat — link alıcıya verilir, paylaşdıqca qiymət düşür.
-  const createGroupBuy = async () => {
-    if (!token) { toast("Birgə alış üçün daxil olun", "error"); return; }
-    setGroupBusy(true);
+  // ── BİRGƏ ALIŞ PƏNCƏRƏSİ ──
+  // Serverdən oxunur: açıq pəncərə varsa nə qədər vaxt qalıb, indiyə qədər
+  // neçə ədəd alınıb və gözlənilən qiymət nədir.
+  const loadGroupBuy = useCallback(async () => {
+    if (!listing?.id) return;
     try {
-      const r = await fetch(`${API}/listings/${listing.id}/group-buy`, {
-        method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: "{}",
-      }).then((x) => x.json());
-      if (!r?.success) { toast(r?.message || t("error"), "error"); return; }
-      const link = `${window.location.origin}/g/${r.code}`;
-      setGroupLink(link);
-      try { await navigator.clipboard.writeText(link); toast("Birgə alış linki kopyalandı ✓", "success"); }
-      catch { toast("Birgə alış yaradıldı ✓", "success"); }
-    } catch { toast(t("error"), "error"); } finally { setGroupBusy(false); }
-  };
+      const r = await fetch(`${API}/listings/${listing.id}/group-buy`).then((x) => x.json());
+      if (r?.success) setGb(r);
+    } catch { /* şəbəkə */ }
+  }, [listing?.id]);
+
+  useEffect(() => { loadGroupBuy(); }, [loadGroupBuy]);
+  // Kimsə alanda say/qiymət dərhal yenilənsin + hər 30 saniyədən bir yoxla.
+  useLive(["order"], () => loadGroupBuy());
+  useEffect(() => {
+    if (!gb?.group) return;
+    const iv = setInterval(loadGroupBuy, 30000);
+    return () => clearInterval(iv);
+  }, [gb?.group?.code, loadGroupBuy]);
+  // Geri sayım — saniyədə bir yenilənir (pəncərə açıq olduqca).
+  useEffect(() => {
+    if (!gb?.group) return;
+    const iv = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, [gb?.group?.code]);
 
   const handleAddToCart = async () => {
     if (!listing) return;
@@ -872,27 +895,57 @@ export default function ListingDetailPage() {
                         )}
                       </div>
                     )}
-                    {/* Birgə alış — yalnız pilləsi olan elanda */}
-                    {isLoggedIn && user?.id !== listing.user.id && (
-                      <div className="mt-3">
-                        {groupLink ? (
-                          <div className="rounded-xl bg-card border border-card-border p-2.5">
-                            <p className="text-[11px] text-muted mb-1">
-                              Bu linki paylaşın. Hamı əvvəlcə tam qiyməti ödəyir; qaytarma müddəti bitəndən
-                              sonra məhsulu saxlayanların sayına görə endirim hesablanıb kartlara qaytarılır:
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <input readOnly value={groupLink} className="flex-1 min-w-0 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-[11px]" />
-                              <button onClick={() => { navigator.clipboard.writeText(groupLink); toast("Kopyalandı ✓", "success"); }}
-                                className="shrink-0 px-2.5 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-[11px] font-bold">Kopyala</button>
-                              <a href={groupLink} className="shrink-0 px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-[11px] font-bold">Aç</a>
+                    {/* ── BİRGƏ ALIŞ (avtomatik pəncərə) ── */}
+                    {gb?.enabled && (
+                      <div className="mt-3 rounded-xl bg-card border border-card-border p-3">
+                        {gb.group ? (
+                          <>
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <p className="text-sm font-bold">👥 Birgə alış davam edir</p>
+                              <span className="px-2 py-1 rounded-lg bg-orange-500/10 text-orange-600 text-xs font-extrabold tabular-nums">
+                                ⏳ {countdown(gb.group.expiresAt, nowTs)}
+                              </span>
                             </div>
-                          </div>
+                            <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                              <div className="rounded-lg bg-input-bg p-2">
+                                <p className="text-muted">Bu pəncərədə alınıb</p>
+                                <p className="font-bold text-sm">{gb.group.totalQty} ədəd</p>
+                              </div>
+                              <div className="rounded-lg bg-input-bg p-2">
+                                <p className="text-muted">Gözlənilən qiymət</p>
+                                <p className="font-bold text-sm text-orange-600">
+                                  {formatPrice(gb.group.pricing.unitPrice)} {t("azn")}
+                                  {gb.group.pricing.discountPercent > 0 && (
+                                    <span className="ml-1 text-green-600">−{gb.group.pricing.discountPercent}%</span>
+                                  )}
+                                </p>
+                              </div>
+                            </div>
+                            {gb.group.pricing.nextTier && (
+                              <p className="mt-2 text-[11px] text-muted">
+                                Daha {gb.group.pricing.nextTier.need} ədəd alınsa qiymət{" "}
+                                {formatPrice(gb.group.pricing.nextTier.price)} {t("azn")} olacaq — hamı üçün.
+                              </p>
+                            )}
+                            <p className="mt-2 text-[11px] text-muted leading-relaxed">
+                              İndi <b>tam qiymət</b> ({formatPrice(listing.price)} {t("azn")}) ödənilir. Vaxt bitəndə
+                              bu pəncərədə alınan ümumi saya görə son qiymət hesablanır;{" "}
+                              <b>{gb.returnWindowDays} günlük</b> qaytarma müddəti də bitəndən sonra fərq kartınıza
+                              qaytarılır. Məhsulu qaytaran qrupdan çıxır.
+                            </p>
+                            <Link href={`/g/${gb.group.code}`} className="mt-2 inline-block text-[11px] font-bold text-orange-600 hover:underline">
+                              Pəncərəni tam gör →
+                            </Link>
+                          </>
                         ) : (
-                          <button onClick={createGroupBuy} disabled={groupBusy}
-                            className="w-full py-2.5 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 disabled:opacity-50">
-                            {groupBusy ? "..." : "👥 Birgə alış başlat — linki paylaş, endirimi sonra geri al"}
-                          </button>
+                          <>
+                            <p className="text-sm font-bold">👥 Birgə alış</p>
+                            <p className="mt-1 text-[11px] text-muted leading-relaxed">
+                              İlk alan <b>{gb.windowDays} günlük</b> birgə alışı başladır: həmin müddətdə bu elandan
+                              nə qədər çox alınsa, qiymət yuxarıdakı cədvələ görə hamı üçün bir o qədər ucuz olur.
+                              Hər kəs əvvəlcə tam qiyməti ödəyir, fərq sonra kartа qaytarılır (yalnız kartla ödəniş).
+                            </p>
+                          </>
                         )}
                       </div>
                     )}

@@ -622,24 +622,34 @@ export default function CartPage() {
                         </Link>
                         <div className="flex-1 min-w-0">
                           <Link href={`/marketplace/${item.listing.id}`} aria-disabled={out} tabIndex={out ? -1 : undefined} className={`font-medium text-sm block truncate ${out ? "pointer-events-none text-muted" : "hover:text-orange-500"}`}>{item.listing.title}</Link>
-                          {/* BİRGƏ ALIŞ sətri — adi sətirdən ayrıdır və öz linki var. */}
-                          {item.groupCode && (
+                          {/* BİRGƏ ALIŞ — elanda açıqdırsa alış avtomatik pəncərəyə qoşulur. */}
+                          {item.groupRefundLater && (
                             <div className="mt-1.5 flex items-center gap-2 flex-wrap">
                               <span className="px-2 py-0.5 rounded-lg bg-orange-500/10 text-orange-600 text-[11px] font-bold">👥 Birgə alış</span>
-                              {typeof item.groupTotalQty === "number" && (
-                                <span className="text-[11px] text-muted">qrupda {item.groupTotalQty + item.quantity} ədəd</span>
+                              {item.groupStartsNow ? (
+                                <span className="text-[11px] text-muted">
+                                  siz başladırsınız — {item.groupWindowDays || 3} günlük geri sayım
+                                </span>
+                              ) : (
+                                <>
+                                  {typeof item.groupTotalQty === "number" && (
+                                    <span className="text-[11px] text-muted">pəncərədə {item.groupTotalQty + item.quantity} ədəd</span>
+                                  )}
+                                  {item.groupCode && (
+                                    <a href={`/g/${item.groupCode}`} className="text-[11px] font-semibold text-orange-500 hover:underline">pəncərəni aç →</a>
+                                  )}
+                                </>
                               )}
-                              <a href={`/g/${item.groupCode}`} className="text-[11px] font-semibold text-orange-500 hover:underline">linki aç →</a>
                             </div>
                           )}
                           {item.groupRefundLater && (
                             <p className="mt-1 text-[11px] text-muted">
-                              İndi tam qiymət ödənilir · endirim {item.returnWindowDays || 14} günlük qaytarma
-                              müddəti bitəndən sonra kartınıza qaytarılır
+                              İndi tam qiymət ödənilir · pəncərə bitib {item.returnWindowDays || 14} günlük qaytarma
+                              müddəti keçəndən sonra endirim fərqi kartınıza qaytarılır
                               {item.pricing?.discountPercent > 0 && <span className="text-green-600 font-semibold"> (gözlənilən: −{item.pricing.discountPercent}%)</span>}
                             </p>
                           )}
-                          {!item.groupCode && item.pricing?.discountPercent > 0 && (
+                          {!item.groupRefundLater && item.pricing?.discountPercent > 0 && (
                             <div className="mt-1.5 text-[11px] text-green-600 font-semibold">
                               📉 Çox alanda ucuz: −{item.pricing.discountPercent}%
                             </div>
@@ -662,7 +672,7 @@ export default function CartPage() {
                         <div className="text-right flex flex-col justify-between items-end">
                           <div className="text-right">
                             <p className={`font-bold text-sm ${out ? "text-muted line-through" : "text-orange-500"}`}>{Number(item.lineTotal ?? item.listing.price * item.quantity).toFixed(2)} AZN</p>
-                            {!item.groupCode && item.unitPrice != null && item.unitPrice < item.listing.price && (
+                            {!item.groupRefundLater && item.unitPrice != null && item.unitPrice < item.listing.price && (
                               <p className="text-[11px] text-muted"><s>{item.listing.price} AZN</s> → <b>{item.unitPrice} AZN</b>/əd</p>
                             )}
                           </div>

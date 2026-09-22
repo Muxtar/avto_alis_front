@@ -107,9 +107,14 @@ function AccountPageInner() {
   const [selectedObjectId, setSelectedObjectId] = useState<string>("");
   /* ── ÇOX ALANDA UCUZ (könüllü) ──
      Satıcı say-qiymət pilləsi qoyur: «100 ədəd → 800 AZN». Aralıq saylar
-     (məs. 50) serverdə düsturla hesablanır. Pillə qoyulan elanda alıcılar
-     üçün BİRGƏ ALIŞ da açılır (link paylaşıb birlikdə ucuz almaq). */
+     (məs. 50) serverdə düsturla hesablanır. */
   const [tiers, setTiers] = useState<{ minQty: string; price: string }[]>([]);
+  /* ── BİRGƏ ALIŞ (avtomatik) ──
+     Stok 1-dən çoxdursa satıcı birgə alışı açıb pəncərə uzunluğunu seçir.
+     İlk sifariş pəncərəni başladır: elanın altında geri sayım işləyir, o
+     müddətdə alanların sayı toplanır və hamı eyni endirimi alır. */
+  const [groupBuyOn, setGroupBuyOn] = useState(false);
+  const [groupBuyDays, setGroupBuyDays] = useState("3");
   // ?new=1 sorğusunun təkrar emalının qarşısını alır (bax: aşağıdakı effekt).
   const handledNewRef = useRef<string | null>(null);
 
@@ -204,6 +209,7 @@ function AccountPageInner() {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
     setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "" });
     setTiers([]);
+    setGroupBuyOn(false); setGroupBuyDays("3");
     setBarter(false); setForRent(false);
     setBookable(false); setBookingType("RESERVATION"); setMaxGuests(""); setOpenTime(""); setCloseTime("");
     setAllowSelfDelivery(false); setWeightKg("");
@@ -296,6 +302,8 @@ function AccountPageInner() {
           .filter((t) => String(t.minQty).trim() && String(t.price).trim())
           .map((t) => ({ minQty: Number(t.minQty), price: Number(t.price) })),
       ));
+      // Birgə alış pəncərəsi: bağlıdırsa boş göndərilir (server null yazır).
+      fd.append("groupBuyDays", listingMode === "voen" && groupBuyOn && tiers.some((t) => t.minQty && t.price) && Number(form.stock) > 1 ? String(groupBuyDays || "3") : "");
       if (listingMode === "voen") { fd.append("pickupOnly", String(pickupOnly)); fd.append("allowSelfDelivery", String(!pickupOnly && allowSelfDelivery)); if (!pickupOnly && allowSelfDelivery) fd.append("selfDeliveryNote", selfDeliveryNote); }
       // Taksit yalnız biznes elanında göndərilir; şəxsi elanda kartla ödəniş
       // olmadığı üçün onsuz da tətbiq olunmur.
@@ -355,6 +363,8 @@ function AccountPageInner() {
     });
     // Mövcud say-qiymət pillələri (varsa) forma sahəsinə yüklənir.
     setTiers(((listing.priceTiers as any[]) || []).map((t) => ({ minQty: String(t.minQty), price: String(t.price) })));
+    setGroupBuyOn(!!listing.groupBuyDays);
+    setGroupBuyDays(listing.groupBuyDays ? String(listing.groupBuyDays) : "3");
     setBarter(!!listing.barter); setForRent(!!listing.forRent);
     setBookable(!!listing.bookable);
     setBookingType(listing.bookingType === "STAY" ? "STAY" : "RESERVATION");
@@ -759,8 +769,8 @@ function AccountPageInner() {
                     <p className="font-semibold text-sm">📉 Çox alanda ucuz <span className="text-muted font-normal">(könüllü)</span></p>
                     <p className="text-xs text-muted mt-0.5 max-w-xl">
                       «100 ədəd alana 800 AZN» kimi pillə qoyun. Aralıq saylar (məs. 50 ədəd) sistem tərəfindən
-                      avtomatik hesablanır. Pillə qoysanız alıcılar <b>birgə alış</b> linki paylaşıb birlikdə
-                      ucuz ala bilər.
+                      avtomatik hesablanır. Cədvəli <b>stokun tam sayına qədər</b> yazın (stok 1000-dirsə
+                      1000 ədədə qədər hansı endirimləri verdiyiniz bilinsin).
                     </p>
                   </div>
                   <button type="button" onClick={() => setTiers([...tiers, { minQty: "", price: "" }])}
@@ -789,6 +799,43 @@ function AccountPageInner() {
                       </p>
                     )}
                   </div>
+                )}
+
+                {/* ── BİRGƏ ALIŞ (avtomatik) ── */}
+                {listingMode === "voen" && Number(form.stock) > 1 && tiers.some((t) => t.minQty && t.price) && (
+                  <div className="mt-4 pt-4 border-t border-card-border">
+                    <label className="flex items-start gap-2.5 cursor-pointer">
+                      <input type="checkbox" checked={groupBuyOn} onChange={(e) => setGroupBuyOn(e.target.checked)}
+                        className="mt-0.5 w-4 h-4 accent-orange-500 shrink-0" />
+                      <span>
+                        <span className="font-semibold text-sm">👥 Birgə alış</span>
+                        <span className="block text-xs text-muted mt-0.5 max-w-xl">
+                          İlk alıcı sifariş verəndə elanın altında geri sayım başlayır və bunu bütün alıcılar görür.
+                          Pəncərə boyu alanların sayı toplanır — nə qədər çox satılsa, qiymət yuxarıdakı cədvələ
+                          görə bir o qədər aşağı düşür. Hamı əvvəlcə tam qiyməti ödəyir; pəncərə bitib
+                          14 günlük qaytarma müddəti keçəndən sonra fərq alıcıların kartına qaytarılır.
+                          Pəncərə bitəndən sonra növbəti alıcı təzə pəncərə başladır.
+                        </span>
+                      </span>
+                    </label>
+                    {groupBuyOn && (
+                      <div className="mt-3 flex items-center gap-2 flex-wrap pl-7">
+                        <span className="text-sm">Pəncərə müddəti:</span>
+                        <select value={groupBuyDays} onChange={(e) => setGroupBuyDays(e.target.value)}
+                          className={`${inputCls} w-auto`}>
+                          {[1, 2, 3, 5, 7, 10, 14, 30].map((d) => <option key={d} value={d}>{d} gün</option>)}
+                        </select>
+                        <span className="text-[11px] text-muted">
+                          Birgə alış yalnız kartla ödənişlə işləyir (fərq kartla qaytarılır).
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {listingMode === "voen" && Number(form.stock) <= 1 && (
+                  <p className="mt-3 text-[11px] text-muted">
+                    👥 Birgə alış üçün stok 1-dən çox olmalıdır.
+                  </p>
                 )}
               </div>
             )}
