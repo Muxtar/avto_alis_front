@@ -364,7 +364,11 @@ export default function OrdersPage() {
     try {
       const body: any = { orderId, reason: returnReason, reasonText: returnReasonText, quantity: returnQuantity };
       if (returnItemId) body.orderItemId = returnItemId;
-      await fetch(`${API}/returns`, { method: "POST", headers, body: JSON.stringify(body) });
+      // Cavab OXUNUR: əvvəl «müddət bitib», «miqdar çoxdur» kimi xətalar
+      // səssizcə udulurdu və pəncərə uğur kimi bağlanırdı.
+      const r = await fetch(`${API}/returns`, { method: "POST", headers, body: JSON.stringify(body) }).then((x) => x.json());
+      if (!r?.success) { toast(r?.message || t('error'), 'error'); return; }
+      toast("İadə sorğusu göndərildi ✓", "success");
       setReturnModal(null);
       setReturnItemId(""); setReturnReason("DEFECTIVE"); setReturnReasonText(""); setReturnQuantity("1");
       fetchOrders();
@@ -372,7 +376,10 @@ export default function OrdersPage() {
   };
 
   const returnAction = async (returnId: number, action: string, body?: any) => {
-    await fetch(`${API}/returns/${returnId}/${action}`, { method: "PUT", headers, body: body ? JSON.stringify(body) : undefined });
+    // Bank xətası (502) və digər rədd cavabları istifadəçiyə göstərilir.
+    const r = await fetch(`${API}/returns/${returnId}/${action}`, { method: "PUT", headers, body: body ? JSON.stringify(body) : undefined })
+      .then((x) => x.json()).catch(() => null);
+    if (!r?.success) toast(r?.message || t('error'), 'error');
     fetchOrders();
   };
 
@@ -621,7 +628,13 @@ export default function OrdersPage() {
                               <p className="text-xs text-muted italic">{t("waitingSellerConfirm")}</p>
                             )}
                             {ret.status === "REFUNDED" && (
-                              <p className="text-xs text-green-500 font-medium">{ret.refundAmount?.toFixed(2)} AZN {t("returnRefunded")}</p>
+                              ret.cashRefund ? (
+                                <p className="text-xs text-amber-600 font-medium">
+                                  {ret.refundAmount?.toFixed(2)} AZN — nağd ödəniş olduğu üçün pulu satıcı nağd qaytarır
+                                </p>
+                              ) : (
+                                <p className="text-xs text-green-500 font-medium">{ret.refundAmount?.toFixed(2)} AZN {t("returnRefunded")}</p>
+                              )
                             )}
                           </div>
                         )}
@@ -671,7 +684,13 @@ export default function OrdersPage() {
                               </button>
                             )}
                             {ret.status === "REFUNDED" && (
-                              <p className="text-xs text-green-500 font-medium">{ret.refundAmount?.toFixed(2)} AZN {t("returnRefunded")}</p>
+                              ret.cashRefund ? (
+                                <p className="text-xs text-amber-600 font-medium">
+                                  {ret.refundAmount?.toFixed(2)} AZN — alıcıya NAĞD qaytarmalısınız
+                                </p>
+                              ) : (
+                                <p className="text-xs text-green-500 font-medium">{ret.refundAmount?.toFixed(2)} AZN {t("returnRefunded")}</p>
+                              )
                             )}
                           </div>
                         )}
