@@ -7,6 +7,7 @@ import { useCart } from "@/lib/CartContext";
 import { API, imgUrl } from "@/lib/api";
 import { formatPrice, formatPriceShort } from "@/lib/format";
 import { COUNTRY_BY_CODE } from "@/lib/countries";
+import { useCardGroupBuy } from "@/lib/groupBuyCard";
 
 interface Listing {
   id: number;
@@ -55,6 +56,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   // Yalnız VÖEN-li (biznes obyektinə bağlı) elanlarda kartla alış (səbət/indi al).
   // VÖEN-siz (fərdi) elanlarda alıcı yalnız satıcı ilə əlaqə saxlayır.
   const canBuy = !isService && isLoggedIn && !isOwner && !outOfStock && !!listing.businessObject;
+  // BİRGƏ ALIŞ — elanda pəncərə açıqdırsa kartda geri sayım göstərilir.
+  // Yalnız biznes məhsullarında ola bilər, ona görə boş yerə soruşmuruq.
+  const { group: gb, left: gbLeft } = useCardGroupBuy(listing.id, !isService && !!listing.businessObject);
 
   // Favori durumunu kontrol et
   useEffect(() => {
@@ -306,6 +310,24 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               )}
             </div>
           </div>
+
+          {/* ── BİRGƏ ALIŞ zolağı — geri sayım + qrupun hazırkı qiyməti ── */}
+          {gb && (
+            <div className="mt-2.5 rounded-xl border border-orange-500/30 bg-orange-500/5 px-2 py-1.5"
+              title={`Birgə alış — ${gb.windowDays} günlük pəncərə · indiyə qədər ${gb.totalQty} ədəd alınıb`}>
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-[11px] font-bold text-orange-600 whitespace-nowrap">👥 Birgə alış</span>
+                <span className="shrink-0 text-[11px] font-extrabold text-orange-600 tabular-nums whitespace-nowrap">⏳ {gbLeft}</span>
+              </div>
+              <div className="mt-0.5 flex items-center justify-between gap-1.5 text-[10px] text-muted">
+                <span className="whitespace-nowrap"><b className="text-foreground">{gb.totalQty}</b> ədəd alınıb</span>
+                <span className="shrink-0 whitespace-nowrap">
+                  <b className="text-foreground">{formatPrice(gb.unitPrice)} {t("azn")}</b>
+                  {gb.discountPercent > 0 && <span className="ml-1 font-bold text-green-600">−{gb.discountPercent}%</span>}
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Tam enli CTA — referans dizayn */}
           {canBuy && (
