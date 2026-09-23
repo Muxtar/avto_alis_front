@@ -901,11 +901,18 @@ export default function ListingDetailPage() {
                         {gb.group ? (
                           <>
                             <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <p className="text-sm font-bold">👥 Birgə alış davam edir</p>
+                              <p className="text-sm font-bold">
+                                👥 Birgə alış davam edir
+                                <span className="ml-1 font-normal text-muted">· {gb.group.windowDays} günlük</span>
+                              </p>
                               <span className="px-2 py-1 rounded-lg bg-orange-500/10 text-orange-600 text-xs font-extrabold tabular-nums">
                                 ⏳ {countdown(gb.group.expiresAt, nowTs)}
                               </span>
                             </div>
+                            <p className="mt-0.5 text-[11px] text-muted">
+                              Endirimi bu <b>{gb.group.windowDays} günlük</b> geri sayım müəyyən edir — vaxt bitəndə
+                              qiymət yekunlaşır.
+                            </p>
                             <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
                               <div className="rounded-lg bg-input-bg p-2">
                                 <p className="text-muted">Bu pəncərədə alınıb</p>
@@ -928,10 +935,10 @@ export default function ListingDetailPage() {
                               </p>
                             )}
                             <p className="mt-2 text-[11px] text-muted leading-relaxed">
-                              İndi <b>tam qiymət</b> ({formatPrice(listing.price)} {t("azn")}) ödənilir. Vaxt bitəndə
-                              bu pəncərədə alınan ümumi saya görə son qiymət hesablanır;{" "}
-                              <b>{gb.returnWindowDays} günlük</b> qaytarma müddəti də bitəndən sonra fərq kartınıza
-                              qaytarılır. Məhsulu qaytaran qrupdan çıxır.
+                              İndi <b>tam qiymət</b> ({formatPrice(listing.price)} {t("azn")}) ödənilir. Geri sayım
+                              bitəndə bu pəncərədə alınan ümumi saya görə son qiymət hesablanır. Sonrakı{" "}
+                              <b>{gb.returnWindowDays} gün</b> yalnız qaytarma müddətidir (qaytaran qrupdan çıxır) —
+                              o da bitəndən sonra fərq kartınıza qaytarılır.
                             </p>
                             <Link href={`/g/${gb.group.code}`} className="mt-2 inline-block text-[11px] font-bold text-orange-600 hover:underline">
                               Pəncərəni tam gör →
@@ -941,7 +948,7 @@ export default function ListingDetailPage() {
                           <>
                             <p className="text-sm font-bold">👥 Birgə alış</p>
                             <p className="mt-1 text-[11px] text-muted leading-relaxed">
-                              İlk alan <b>{gb.windowDays} günlük</b> birgə alışı başladır: həmin müddətdə bu elandan
+                              İlk alan <b>{gb.windowDays} günlük</b> geri sayımı başladır: həmin müddətdə bu elandan
                               nə qədər çox alınsa, qiymət yuxarıdakı cədvələ görə hamı üçün bir o qədər ucuz olur.
                               Hər kəs əvvəlcə tam qiyməti ödəyir, fərq sonra kartа qaytarılır (yalnız kartla ödəniş).
                             </p>

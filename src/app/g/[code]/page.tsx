@@ -87,7 +87,9 @@ export default function GroupBuyPage() {
       <div className="surface overflow-hidden">
         <div className="px-5 py-4 bg-gradient-to-r from-orange-500/15 to-fuchsia-500/10 border-b border-card-border">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <p className="text-sm font-bold">👥 Birgə alış pəncərəsi</p>
+            <p className="text-sm font-bold">
+              👥 Birgə alış <span className="font-normal text-muted">· {g.windowDays} günlük pəncərə</span>
+            </p>
             {!closed && (
               <span className="px-2 py-1 rounded-lg bg-orange-500/15 text-orange-600 text-xs font-extrabold tabular-nums">
                 ⏳ {left}
@@ -140,7 +142,8 @@ export default function GroupBuyPage() {
             {closed ? "Bu pəncərə bağlanıb — yeni alış təzə pəncərə başladır."
               : `Pəncərə bitir: ${new Date(g.expiresAt).toLocaleString("az-AZ")}`}
             {!g.settledAt && g.settleEta && (
-              <> · Endirim hesablanması: <b>{new Date(g.settleEta).toLocaleDateString("az-AZ")}</b></>
+              <> · Endirim {g.returnWindowDays} günlük qaytarma müddətindən sonra hesablanır:{" "}
+                <b>{new Date(g.settleEta).toLocaleDateString("az-AZ")}</b></>
             )}
           </div>
 
