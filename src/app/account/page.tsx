@@ -389,6 +389,10 @@ function AccountPageInner() {
     setWeightKg(listing.weightKg != null ? String(listing.weightKg) : "");
     setListingKind(listing.type === "SERVICE" ? "service" : "product-form");
     setSelectedObjectId(listing.businessObjectId ? String(listing.businessObjectId) : "");
+    // Redaktədə rejim elanın özündən oxunur. Əvvəl boş qalırdı, ona görə
+    // VÖEN-ə aid bölmələr (birgə alış, taksit, çatdırılma seçimləri)
+    // redaktə zamanı ümumiyyətlə görünmürdü.
+    setListingMode(listing.businessId || listing.businessObjectId ? "voen" : "novoen");
     setEditingId(listing.id);
     setShowForm(true);
     window.scrollTo(0, 0);
@@ -802,39 +806,55 @@ function AccountPageInner() {
                 )}
 
                 {/* ── BİRGƏ ALIŞ (avtomatik) ── */}
-                {listingMode === "voen" && Number(form.stock) > 1 && tiers.some((t) => t.minQty && t.price) && (
-                  <div className="mt-4 pt-4 border-t border-card-border">
-                    <label className="flex items-start gap-2.5 cursor-pointer">
-                      <input type="checkbox" checked={groupBuyOn} onChange={(e) => setGroupBuyOn(e.target.checked)}
-                        className="mt-0.5 w-4 h-4 accent-orange-500 shrink-0" />
-                      <span>
-                        <span className="font-semibold text-sm">👥 Birgə alış</span>
-                        <span className="block text-xs text-muted mt-0.5 max-w-xl">
-                          İlk alıcı sifariş verəndə elanın altında geri sayım başlayır və bunu bütün alıcılar görür.
-                          Pəncərə boyu alanların sayı toplanır — nə qədər çox satılsa, qiymət yuxarıdakı cədvələ
-                          görə bir o qədər aşağı düşür. Hamı əvvəlcə tam qiyməti ödəyir; pəncərə bitib
-                          14 günlük qaytarma müddəti keçəndən sonra fərq alıcıların kartına qaytarılır.
-                          Pəncərə bitəndən sonra növbəti alıcı təzə pəncərə başladır.
+                {listingMode === "voen" && (() => {
+                  const hasTier = tiers.some((t) => t.minQty && t.price);
+                  const enoughStock = Number(form.stock) > 1;
+                  const ready = hasTier && enoughStock;
+                  return (
+                    <div className="mt-4 pt-4 border-t border-card-border">
+                      <label className={`flex items-start gap-2.5 ${ready ? "cursor-pointer" : "opacity-60 cursor-not-allowed"}`}>
+                        <input type="checkbox" checked={groupBuyOn && ready} disabled={!ready}
+                          onChange={(e) => setGroupBuyOn(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 accent-orange-500 shrink-0" />
+                        <span>
+                          <span className="font-semibold text-sm">👥 Birgə alış <span className="text-muted font-normal">(könüllü)</span></span>
+                          <span className="block text-xs text-muted mt-0.5 max-w-xl">
+                            İlk alıcı sifariş verəndə elanın altında geri sayım başlayır və bunu bütün alıcılar görür.
+                            Pəncərə boyu alanların sayı toplanır — nə qədər çox satılsa, qiymət yuxarıdakı cədvələ
+                            görə bir o qədər aşağı düşür. Hamı əvvəlcə tam qiyməti ödəyir; pəncərə bitib
+                            14 günlük qaytarma müddəti keçəndən sonra fərq alıcıların kartına qaytarılır.
+                            Pəncərə bitəndən sonra növbəti alıcı təzə pəncərə başladır.
+                          </span>
                         </span>
-                      </span>
-                    </label>
-                    {groupBuyOn && (
-                      <div className="mt-3 flex items-center gap-2 flex-wrap pl-7">
-                        <span className="text-sm">Pəncərə müddəti:</span>
-                        <select value={groupBuyDays} onChange={(e) => setGroupBuyDays(e.target.value)}
-                          className={`${inputCls} w-auto`}>
-                          {[1, 2, 3, 5, 7, 10, 14, 30].map((d) => <option key={d} value={d}>{d} gün</option>)}
-                        </select>
-                        <span className="text-[11px] text-muted">
-                          Birgə alış yalnız kartla ödənişlə işləyir (fərq kartla qaytarılır).
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {listingMode === "voen" && Number(form.stock) <= 1 && (
+                      </label>
+
+                      {/* Şərt ödənmirsə nəyin çatışmadığını açıq yaz. */}
+                      {!ready && (
+                        <div className="mt-2 ml-7 rounded-xl bg-orange-500/5 border border-orange-500/20 p-2.5 text-[11px] text-muted space-y-0.5">
+                          <p className="font-semibold text-foreground">Aktiv etmək üçün:</p>
+                          <p>{enoughStock ? "✓" : "•"} Stok 1-dən çox olmalıdır {enoughStock ? "" : `(indi: ${form.stock || 1})`}</p>
+                          <p>{hasTier ? "✓" : "•"} Yuxarıda ən azı bir say-qiymət pilləsi əlavə edin (məs. «100 ədəddən → 900 AZN»)</p>
+                        </div>
+                      )}
+
+                      {ready && groupBuyOn && (
+                        <div className="mt-3 flex items-center gap-2 flex-wrap pl-7">
+                          <span className="text-sm">Pəncərə müddəti:</span>
+                          <select value={groupBuyDays} onChange={(e) => setGroupBuyDays(e.target.value)}
+                            className={`${inputCls} w-auto`}>
+                            {[1, 2, 3, 5, 7, 10, 14, 30].map((d) => <option key={d} value={d}>{d} gün</option>)}
+                          </select>
+                          <span className="text-[11px] text-muted">
+                            Birgə alış yalnız kartla ödənişlə işləyir (fərq kartla qaytarılır).
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+                {listingMode !== "voen" && (
                   <p className="mt-3 text-[11px] text-muted">
-                    👥 Birgə alış üçün stok 1-dən çox olmalıdır.
+                    👥 Birgə alış yalnız VÖEN ilə qoyulan elanlarda mümkündür — endirim fərqi kartla qaytarılır.
                   </p>
                 )}
               </div>
