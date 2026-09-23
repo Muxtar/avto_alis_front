@@ -772,9 +772,10 @@ function AccountPageInner() {
                   <div>
                     <p className="font-semibold text-sm">📉 Çox alanda ucuz <span className="text-muted font-normal">(könüllü)</span></p>
                     <p className="text-xs text-muted mt-0.5 max-w-xl">
-                      «100 ədəd alana 800 AZN» kimi pillə qoyun. Aralıq saylar (məs. 50 ədəd) sistem tərəfindən
-                      avtomatik hesablanır. Cədvəli <b>stokun tam sayına qədər</b> yazın (stok 1000-dirsə
-                      1000 ədədə qədər hansı endirimləri verdiyiniz bilinsin).
+                      «100 ədəddən alana 1 ədəd 8 AZN» kimi pillə qoyun. Sağdakı xanaya
+                      <b> bir ədədin qiyməti</b> yazılır, cəmi məbləğ yox — sistem cəmini özü hesablayır.
+                      Aralıq saylar (məs. 50 ədəd) avtomatik hesablanır. Cədvəli
+                      <b> stokun tam sayına qədər</b> yazın.
                     </p>
                   </div>
                   <button type="button" onClick={() => setTiers([...tiers, { minQty: "", price: "" }])}
@@ -784,16 +785,35 @@ function AccountPageInner() {
                 {tiers.length > 0 && (
                   <div className="mt-3 space-y-2">
                     {tiers.map((tr, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
+                      <div key={idx} className="space-y-1">
+                      <div className="flex items-center gap-2">
                         <input type="number" min="2" value={tr.minQty} placeholder="Say (məs. 100)"
                           onChange={(e) => setTiers(tiers.map((x, i) => (i === idx ? { ...x, minQty: e.target.value } : x)))}
                           className={`${inputCls} flex-1`} />
                         <span className="text-muted text-sm shrink-0">ədəddən →</span>
-                        <input type="number" min="0" step="0.01" value={tr.price} placeholder="Qiymət (AZN)"
+                        <input type="number" min="0" step="0.01" value={tr.price} placeholder="1 ədədin qiyməti (AZN)"
                           onChange={(e) => setTiers(tiers.map((x, i) => (i === idx ? { ...x, price: e.target.value } : x)))}
                           className={`${inputCls} flex-1`} />
                         <button type="button" onClick={() => setTiers(tiers.filter((_, i) => i !== idx))}
                           className="shrink-0 w-9 h-9 rounded-lg bg-red-500/10 text-red-500 text-sm">✕</button>
+                      </div>
+                      {/* Səhv anlaşılmanın qarşısını alır: sahəyə cəmi məbləğ
+                          yazanda dərhal görünür ki, bu, bir ədədin qiymətidir. */}
+                      {tr.minQty && tr.price && (
+                        Number(tr.price) >= Number(form.price || 0) ? (
+                          <p className="text-[11px] text-red-500 pl-1">
+                            Bu xanaya <b>bir ədədin</b> qiyməti yazılır və o, adi qiymətdən ({form.price || 0} AZN) kiçik olmalıdır.
+                            {Number(tr.minQty) > 0 && (
+                              <> {tr.minQty} ədədə cəmi {tr.price} AZN istəyirsinizsə bura{" "}
+                                <b>{(Number(tr.price) / Number(tr.minQty)).toFixed(2)}</b> yazın.</>
+                            )}
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-muted pl-1">
+                            {tr.minQty} ədəd × {tr.price} AZN = <b>{(Number(tr.minQty) * Number(tr.price)).toFixed(2)} AZN</b> cəmi
+                          </p>
+                        )
+                      )}
                       </div>
                     ))}
                     {form.price && tiers.some((t) => t.minQty && t.price) && (
