@@ -710,6 +710,34 @@ export default function MessagesPage() {
       } else toast(t('error'), 'error');
     } catch { toast(t('error'), 'error'); }
   };
+  /**
+   * BÜTÜN SÖHBƏTLƏRİ MƏNDƏ SİL.
+   * Aktiv sekməyə hörmət edir: «İş» sekməsində yalnız iş yazışmaları,
+   * «Şəxsi»də yalnız şəxsi söhbətlər silinir, «Hamısı»nda isə qruplar da
+   * daxil olmaqla hər şey. Qarşı tərəfdə mesajlar qalır; qrupdan çıxılmır.
+   */
+  const [wipeBusy, setWipeBusy] = useState(false);
+  const deleteAllThreads = async () => {
+    const total = visibleChats.length;
+    if (!total) { toast("Silinəcək söhbət yoxdur", "info"); return; }
+    const what = segTab === "BUSINESS" ? "BÜTÜN İŞ söhbətləri"
+      : segTab === "PERSONAL" ? "BÜTÜN ŞƏXSİ söhbətlər"
+      : "BÜTÜN söhbətlər (qruplar daxil)";
+    if (!confirm(`${what} sizdə silinsin? (${total} söhbət)\n\nQarşı tərəfdə mesajlar qalacaq, qruplardan çıxmırsınız.`)) return;
+    setWipeBusy(true);
+    try {
+      const qs = new URLSearchParams();
+      if (segTab !== "ALL") qs.set("segment", segTab);
+      qs.set("scope", segTab === "ALL" ? "all" : "direct");
+      const r = await fetch(`${API}/messages/threads/all?${qs.toString()}`, { method: "DELETE", headers })
+        .then((x) => x.json()).catch(() => null);
+      if (!r?.success) { toast(r?.message || t('error'), 'error'); return; }
+      setActive(null); setMessages([]);
+      await fetchAll();
+      toast(`${total} söhbət silindi ✓`, "success");
+    } finally { setWipeBusy(false); }
+  };
+
   // Söhbətdəki şəxsi kontaktlarıma əlavə et (userId ilə — telefon bilinməsə də işləyir, WhatsApp üslubu).
   const saveContact = async () => {
     if (!active || active.type !== "direct") return;
@@ -989,6 +1017,13 @@ export default function MessagesPage() {
                       <button onClick={() => { setNewMenuOpen(false); openGroupModal(); }}
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-input-bg text-left border-t border-card-border">
                         <Ico.Plus className="w-4 h-4 text-muted" />Yeni qrup
+                      </button>
+                      {/* Toplu silmə — əvvəl söhbətləri yalnız bir-bir silmək olurdu. */}
+                      <button onClick={() => { setNewMenuOpen(false); deleteAllThreads(); }} disabled={wipeBusy}
+                        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-red-500/10 text-red-500 text-left border-t border-card-border disabled:opacity-50">
+                        <Ico.Trash className="w-4 h-4" />
+                        {wipeBusy ? "silinir…" : segTab === "BUSINESS" ? "İş söhbətlərini sil"
+                          : segTab === "PERSONAL" ? "Şəxsi söhbətləri sil" : "Bütün söhbətləri sil"}
                       </button>
                     </div>
                   </>
