@@ -234,8 +234,11 @@ export default function Navbar() {
     router.push(`/elanlar${q ? `?search=${encodeURIComponent(q)}` : ""}`);
     if (!q) return;
 
-    // Ana səhifə axtarışı YALNIZ MƏHSUL üçündür.
-    // Şəxs axtarışı Chat bölməsinə köçürülüb (orada kontaktlar + sosial media).
+    // Ana səhifə axtarışı MƏHSUL və XİDMƏT üçündür.
+    // ŞƏXSİ AD ilə axtarış Chat bölməsindədir (orada kontaktlar + sosial media).
+    // Amma İXTİSAS özü bir XİDMƏTDİR: «proqramçı», «santexnik» yazanda həmin
+    // xidməti verən profillər burada da çıxmalıdır — ona görə peşə üzrə
+    // (ad üzrə YOX) axtarış aparılır: match=profession.
     const person = false;
 
     // ── 1) ƏVVƏLCƏ SAYTDAN (tradixai) ──
@@ -245,10 +248,10 @@ export default function Navbar() {
     try {
       // Rejimə görə yalnız lazım olan sorğu gedir (boş yerə istək atılmır).
       const wantListings = true;
-      const wantPros = false;   // ixtisas/şəxs axtarışı Chat bölməsindədir
+      const wantPros = true;    // peşə (xidmət) üzrə — ad üzrə axtarış chat-dadır
       const [lr, pr] = await Promise.all([
         wantListings ? fetch(`${API}/listings?search=${encodeURIComponent(q)}&limit=6`) : Promise.resolve(null),
-        wantPros ? fetch(`${API}/professionals?q=${encodeURIComponent(q)}`) : Promise.resolve(null),
+        wantPros ? fetch(`${API}/professionals?q=${encodeURIComponent(q)}&match=profession`) : Promise.resolve(null),
       ]);
       if (lr) { const ld = await lr.json(); setSiteListings(Array.isArray(ld?.listings) ? ld.listings : []); }
       if (pr) { const pd = await pr.json().catch(() => null); setSitePeople(Array.isArray(pd?.professionals) ? pd.professionals.slice(0, 6) : []); }
@@ -580,12 +583,12 @@ export default function Navbar() {
                     </button>
                   </div>
 
-                  {/* ── 1) SAYTDAN · İXTİSAS (ƏN BAŞDA) ──
-                      Ad axtarılanda əvvəlcə saytda qeydiyyatlı mütəxəssis varsa o çıxır,
-                      yalnız sonra sosial media hesabları. */}
+                  {/* ── 1) SAYTDAN · İXTİSAS = XİDMƏT (ƏN BAŞDA) ──
+                      Axtarılan söz bir peşədirsə (məs. «proqramçı»), həmin xidməti
+                      verən saytdakı profillər internet nəticələrindən ƏVVƏL çıxır. */}
                   {sitePeople.length > 0 && (
                     <div className="border-b border-card-border">
-                      <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-teal-600">tradixai · ixtisas</p>
+                      <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-teal-600">tradixai · ixtisas (xidmət)</p>
                       {sitePeople.map((u) => (
                         <Link key={`u${u.id}`} href={`/seller/${u.id}?from=ixtisas`} onClick={() => setWebOpen(false)}
                           className="flex items-center gap-3 px-4 py-2.5 hover:bg-input-bg transition-colors">

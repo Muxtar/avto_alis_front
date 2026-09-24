@@ -43,9 +43,16 @@ function MarketplacePage() {
     ? ((params as any).slug as string[]).join("/")
     : ((params as any)?.slug || "");
   // Kateqoriya kartına klikləyəndə URL-i dəyişdir (state slug-dan törəyir).
+  //
+  // AXTARIŞ SAXLANILIR: əvvəl bura yalnız `/elanlar` yazılırdı, ona görə
+  // «Məhsullar → Xidmətlər» sekməsinə keçəndə (goCat(null)) URL-dən `?search=`
+  // düşürdü və axtarış İTİRDİ — istifadəçi «xidmət axtarışında saytdakı
+  // nəticələr çıxmır» vəziyyəti ilə qarşılaşırdı.
   const goCat = (cat: string | null) => {
     const slugs = cat ? catToSlugs(cat) : [];
-    router.push(slugs.length ? `/elanlar/${slugs.join("/")}` : "/elanlar");
+    const base = slugs.length ? `/elanlar/${slugs.join("/")}` : "/elanlar";
+    const q = searchQuery.trim();
+    router.push(q ? `${base}?search=${encodeURIComponent(q)}` : base);
   };
   // Cheap-search inquiry modal
   const [cheapModalOpen, setCheapModalOpen] = useState(false);
@@ -262,9 +269,11 @@ function MarketplacePage() {
         })
         .catch(() => { toast(t('error'), 'error'); })
         .finally(() => setLoading(false));
-      // Axtarış varsa — ixtisas/ad üzrə mütəxəssisləri də tap (növ seçmədən).
+      // Axtarış varsa — həmin XİDMƏTİ verən mütəxəssisləri də tap (növ seçmədən).
+      // `match=profession`: ad üzrə axtarış ana səhifəyə deyil, chat-a aiddir;
+      // burada yalnız peşə (xidmət) uyğunluğu axtarılır.
       if (searchQuery.trim()) {
-        const pp = new URLSearchParams(); pp.set("q", searchQuery.trim()); if (cityFilter) pp.set("city", cityFilter);
+        const pp = new URLSearchParams(); pp.set("q", searchQuery.trim()); pp.set("match", "profession"); if (cityFilter) pp.set("city", cityFilter);
         fetch(`${API}/professionals?${pp.toString()}`).then((r) => r.json()).then((d) => setMatchedPros(d.professionals || [])).catch(() => {});
       } else setMatchedPros([]);
     }, 300);
@@ -674,7 +683,7 @@ function MarketplacePage() {
             {/* Üst axtarışdan tapılan mütəxəssislər (məhsul/xidmət nəticələrinin üstündə) */}
             {searchQuery && activeType !== "PROFESSION" && matchedPros.length > 0 && (
               <div className="mb-5">
-                <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">👤 İxtisas üzrə tapılanlar</p>
+                <p className="text-sm font-semibold mb-2 flex items-center gap-1.5">👤 Bu xidməti verən ixtisas sahibləri</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                   {matchedPros.slice(0, 8).map((p) => (
                     <Link key={p.id} href={`/seller/${p.id}?from=ixtisas`} className="surface p-3 flex items-center gap-2.5 hover:border-orange-500/50 transition-all">
