@@ -90,6 +90,8 @@ export default function MessagesPage() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [sideTab, setSideTab] = useState<"chats" | "contacts">("chats");
+  // Axtarış üçün kontakt siyahısı (id + ad + avatar).
+  const [contactPeople, setContactPeople] = useState<{ id: number; name: string; avatar?: string | null; sub?: string }[]>([]);
   // Söhbət siyahısının seqmenti: hamısı / şəxsi / iş.
   const [segTab, setSegTab] = useState<"ALL" | Seg>("ALL");
   const { startCall, startGroupCall } = useCall();
@@ -265,6 +267,11 @@ export default function MessagesPage() {
         const list = d.contacts || (Array.isArray(d) ? d : []);
         setContactDigits(new Set(list.map((c: any) => onlyDigits(c.phone)).filter(Boolean)));
         setContactUserIds(new Set(list.map((c: any) => c.user?.id).filter((x: any) => typeof x === "number")));
+        // Axtarışda kontaktlar da görünsün: əvvəl yalnız MÖVCUD söhbətlər
+        // süzülürdü, ona görə heç yazışmadığım kontakt tapılmırdı.
+        setContactPeople(list
+          .filter((c: any) => c.user?.id)
+          .map((c: any) => ({ id: c.user.id, name: c.name || c.user.name, avatar: c.user.avatar, sub: "kontakt" })));
       })
       .catch(() => {});
     fetch(`${API}/me/blocked`, { headers }).then((r) => r.json())
@@ -994,10 +1001,21 @@ export default function MessagesPage() {
                     Ana səhifə axtarışından bura köçürüldü (orada yalnız məhsul qaldı). */}
                 <div className="mt-2">
                   <ChatPeopleSearch
-                    people={chatList
-                      .filter((c: any) => c.type === "direct")
-                      .map((c: any) => ({ id: c.id, name: c.name, avatar: c.avatar, sub: c.partnerType || undefined }))}
-                    onOpenChat={(p) => openChat({ type: "direct", id: p.id, name: p.name, avatar: p.avatar, segment: "PERSONAL", key: `${p.id}:PERSONAL` })}
+                    people={(() => {
+                      // Söhbətlər + kontaktlar (təkrarsız).
+                      const rows: { id: number; name: string; avatar?: string | null; sub?: string }[] = chatList
+                        .filter((c: any) => c.type === "direct")
+                        .map((c: any) => ({ id: c.id, name: c.name, avatar: c.avatar, sub: c.partnerType || undefined }));
+                      const seen = new Set(rows.map((r: any) => r.id));
+                      for (const c of contactPeople) if (!seen.has(c.id)) { rows.push(c); seen.add(c.id); }
+                      return rows;
+                    })()}
+                    onOpenChat={(p) => {
+                      // «İş» sekməsindən açılan söhbət İŞ axınında qalsın —
+                      // əvvəl hər halda PERSONAL açılırdı.
+                      const seg: Seg = segTab === "BUSINESS" ? "BUSINESS" : "PERSONAL";
+                      openChat({ type: "direct", id: p.id, name: p.name, avatar: p.avatar, segment: seg, key: `${p.id}:${seg}` });
+                    }}
                   />
                 </div>
 

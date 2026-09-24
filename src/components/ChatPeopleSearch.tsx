@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
@@ -10,7 +10,11 @@ import { API, imgUrl } from "@/lib/api";
  * Sıra:
  *   1. ƏVVƏLCƏ chat-dakı/kontaktlardakı şəxslər — yazdıqca dərhal süzülür,
  *      şəbəkə sorğusu getmir.
- *   2. SONRA sosial media — "İnternetdə axtar" ilə. Nəticələr şəkilləri,
+ *   2. SONRA SAYTDAKI İXTİSAS SAHİBLƏRİ — profilində ixtisas göstərən hər kəs
+ *      ad və ya peşə ilə tapılır (məs. «santexnik» və ya «Elvin»), tanış
+ *      olmasa belə. Əvvəl bu axtarış yox idi: saytda qeydiyyatdan keçmiş
+ *      usta yalnız kontaktımda olsaydı tapılırdı.
+ *   3. SONRA sosial media — "İnternetdə axtar" ilə. Nəticələr şəkilləri,
  *      platforması və "tradixai istifadəçisi" nişanı ilə gəlir; tanımadığın
  *      şəxsə mesaj yazmaq üçün admin panelə düşən sorğu göndərilir.
  *
@@ -35,9 +39,11 @@ export default function ChatPeopleSearch({
   people: LocalPerson[];                       // chat + kontakt siyahısı
   onOpenChat: (p: LocalPerson) => void;
 }) {
-  const { token, isLoggedIn } = useAuth();
+  const { token, isLoggedIn, user } = useAuth();
   const { toast } = useToast();
   const [q, setQ] = useState("");
+  const [site, setSite] = useState<any[] | null>(null);      // saytdakı ixtisas sahibləri
+  const [siteLoading, setSiteLoading] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [web, setWeb] = useState<any[] | null>(null);
   const [webErr, setWebErr] = useState<string | null>(null);
@@ -53,7 +59,31 @@ export default function ChatPeopleSearch({
     return people.filter((p) => (p.name || "").toLowerCase().includes(s)).slice(0, 20);
   }, [q, people]);
 
-  // ── 2) Sosial media axtarışı — yalnız düymə ilə ──
+  // ── 2) Saytdakı ixtisas sahibləri — ad VƏ YA peşə ilə (avtomatik) ──
+  // Pulsuzdur (daxili baza), ona görə internetdən fərqli olaraq yazdıqca
+  // özü işə düşür; 350 ms gözləyir ki, hər hərfdə sorğu getməsin.
+  useEffect(() => {
+    const s = q.trim();
+    if (s.length < 2) { setSite(null); return; }
+    let alive = true;
+    setSiteLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`${API}/professionals?q=${encodeURIComponent(s)}`).then((x) => x.json());
+        if (alive) setSite(r?.success ? (r.professionals || []) : []);
+      } catch { if (alive) setSite([]); } finally { if (alive) setSiteLoading(false); }
+    }, 350);
+    return () => { alive = false; clearTimeout(timer); };
+  }, [q]);
+
+  // Söhbətlərimdə onsuz da görünənləri və özümü təkrar göstərmirik.
+  const siteList = useMemo(() => {
+    if (!site) return [];
+    const shown = new Set(people.map((p) => p.id));
+    return site.filter((u: any) => u.id !== user?.id && !shown.has(u.id)).slice(0, 20);
+  }, [site, people, user?.id]);
+
+  // ── 3) Sosial media axtarışı — yalnız düymə ilə ──
   const searchWeb = async () => {
     const s = q.trim();
     if (s.length < 2) { toast("Ən azı 2 hərf yazın", "error"); return; }
@@ -107,7 +137,7 @@ export default function ChatPeopleSearch({
             value={q}
             onChange={(e) => { setQ(e.target.value); setWeb(null); setWebErr(null); }}
             onKeyDown={(e) => e.key === "Enter" && searchWeb()}
-            placeholder="Şəxs axtar…"
+            placeholder="Ad və ya ixtisas axtar…"
             className="w-full pl-11 pr-10 py-3.5 bg-transparent rounded-[14px] text-sm font-medium placeholder:text-muted/80 focus:outline-none"
           />
           {q ? (
@@ -118,8 +148,9 @@ export default function ChatPeopleSearch({
       </div>
       {!q.trim() && (
         <p className="mt-2 px-1 text-[11px] text-muted leading-snug">
-          Ad və ya istifadəçi adı yazın — əvvəl söhbətlərinizdə, sonra
-          <span className="font-semibold text-foreground/80"> Instagram · Facebook · X · LinkedIn</span> hesablarında axtarılır.
+          Ad və ya ixtisas yazın (məs. «Elvin» və ya «santexnik») — əvvəl söhbətlərinizdə,
+          sonra <span className="font-semibold text-foreground/80">saytdakı ixtisas sahiblərində</span>,
+          sonra <span className="font-semibold text-foreground/80">Instagram · Facebook · X · LinkedIn</span> hesablarında axtarılır.
         </p>
       )}
 
@@ -143,6 +174,52 @@ export default function ChatPeopleSearch({
                 </span>
               </button>
             ))}
+          </div>
+
+          {/* ── Saytdakı ixtisas sahibləri ── */}
+          <div className="border-t border-card-border pt-2">
+            <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--brand-to)] px-1 mb-1">
+              Saytdakı ixtisas sahibləri
+            </p>
+            {siteLoading && <p className="text-[11px] text-muted px-1 py-1">axtarılır…</p>}
+            {!siteLoading && siteList.length === 0 && (
+              <p className="text-[11px] text-muted px-1 py-1">
+                {q.trim().length < 2 ? "Ən azı 2 hərf yazın." : "Bu ad və ya ixtisas üzrə qeydiyyatlı şəxs tapılmadı."}
+              </p>
+            )}
+            {siteList.map((u: any) => {
+              // `profession` çox vaxt `professions[0]` ilə eynidir — təkrarı atırıq
+              // («Santexnik · Santexnik» kimi görünməsin).
+              const profs: string[] = Array.from(new Set([u.profession, ...(u.professions || [])].filter(Boolean)));
+              return (
+                <div key={u.id} className="flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-input-bg transition-colors">
+                  {u.avatar
+                    // eslint-disable-next-line @next/next/no-img-element
+                    ? <img src={imgUrl(u.avatar)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                    : <span className="w-9 h-9 rounded-full bg-input-bg flex items-center justify-center text-[11px] font-bold shrink-0">{(u.name || "?").slice(0, 1).toUpperCase()}</span>}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold truncate">
+                      {u.name}
+                      {u.idVerifyStatus === "APPROVED" && <span className="ml-1 text-[10px] text-green-600" title="Təsdiqlənmiş profil">✓</span>}
+                    </p>
+                    <p className="text-[11px] text-muted truncate">
+                      {profs.slice(0, 2).join(" · ") || "ixtisas"}
+                      {u.city ? ` · ${u.city}` : ""}
+                      {u.ratingCount > 0 ? ` · ⭐ ${Number(u.avgRating || 0).toFixed(1)}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button onClick={() => onOpenChat({ id: u.id, name: u.name, avatar: u.avatar })}
+                      className="px-2.5 py-1.5 rounded-lg bg-[var(--brand-soft)] text-[var(--brand-to)] text-[11px] font-bold">
+                      💬 Chat
+                    </button>
+                    <a href={`/seller/${u.id}`} className="px-2 py-1.5 rounded-lg bg-input-bg border border-card-border text-[11px] font-semibold">
+                      Profil
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           {/* ── Sosial media ── */}
