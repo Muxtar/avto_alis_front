@@ -2,10 +2,18 @@
 import { useEffect, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { useToast } from "@/components/Toast";
+import { useAuth } from "@/lib/AuthContext";
+import { API } from "@/lib/api";
 
 // Hər profil / biznes / obyekt üçün unikal QR kod.
 // QR-in içi həmin səhifənin tam linkidir — skan edən birbaşa o səhifəyə düşür.
-// Paylaş (link + QR şəkli) və şəkil yüklə imkanları var.
+//
+// Üç imkan var:
+//   • ÇATDA PAYLAŞ — QR ŞƏKLİ tətbiqdaxili mesaj kimi göndərilir (söhbətlərim
+//     + kontaktlarım siyahısından seçilir). Əvvəl bu yox idi: QR yalnız
+//     kopyalanır və ya xaricə paylaşılırdı, öz çatımıza göndərmək olmurdu.
+//   • Paylaş — cihazın öz paylaşım pəncərəsi (dəstəklənməsə link kopyalanır).
+//   • Şəkil yüklə — QR PNG kimi endirilir.
 export default function QRShare({
   path,
   title,
@@ -22,9 +30,16 @@ export default function QRShare({
   className?: string;
 }) {
   const { toast } = useToast();
+  const { token, isLoggedIn } = useAuth();
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState("");
   const wrapRef = useRef<HTMLDivElement>(null);
+  // Çatda paylaşma — alıcı seçimi
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [recipients, setRecipients] = useState<{ id: number; name: string }[]>([]);
+  const [loadingR, setLoadingR] = useState(false);
+  const [sendingId, setSendingId] = useState<number | null>(null);
+  const [q, setQ] = useState("");
 
   useEffect(() => {
     if (typeof window !== "undefined") setUrl(`${window.location.origin}${path}`);
@@ -82,6 +97,48 @@ export default function QRShare({
     }, "image/png");
   };
 
+  // ── ÇATDA PAYLAŞ ──
+  // Siyahı: mövcud söhbətlərim + qeydiyyatlı kontaktlarım (ShareButton ilə eyni).
+  const openPicker = async () => {
+    if (!isLoggedIn || !token) { toast("Çatda paylaşmaq üçün daxil olun", "error"); return; }
+    setPickerOpen(true); setLoadingR(true); setQ("");
+    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      const [convs, contacts] = await Promise.all([
+        fetch(`${API}/messages/conversations`, { headers }).then((r) => r.json()).catch(() => ({})),
+        fetch(`${API}/me/contacts`, { headers }).then((r) => r.json()).catch(() => ({})),
+      ]);
+      const map = new Map<number, { id: number; name: string }>();
+      (convs.conversations || []).forEach((c: any) => { if (c.partner?.id) map.set(c.partner.id, { id: c.partner.id, name: c.partner.name }); });
+      (contacts.contacts || []).forEach((c: any) => { if (c.user?.id && !map.has(c.user.id)) map.set(c.user.id, { id: c.user.id, name: c.name || c.user.name }); });
+      setRecipients(Array.from(map.values()));
+    } catch { toast("Siyahı yüklənmədi", "error"); } finally { setLoadingR(false); }
+  };
+
+  // QR ŞƏKLİNİ mesaj kimi göndər (altında ad + link yazılır).
+  const sendQrTo = (rid: number) => {
+    const canvas = getCanvas();
+    if (!canvas || !token) return;
+    setSendingId(rid);
+    canvas.toBlob(async (blob) => {
+      try {
+        if (!blob) { toast("QR şəkli hazırlanmadı", "error"); return; }
+        const fd = new FormData();
+        fd.append("media", new File([blob], "tradixai-qr.png", { type: "image/png" }));
+        fd.append("receiverId", String(rid));
+        fd.append("type", "IMAGE");
+        fd.append("caption", `${title ? title + "\n" : ""}${url}`);
+        const r = await fetch(`${API}/messages/media`, {
+          method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd,
+        }).then((x) => x.json());
+        if (r?.success) { toast("QR kod çatda paylaşıldı ✓", "success"); setPickerOpen(false); setOpen(false); }
+        else toast(r?.message || "Göndərilmədi", "error");
+      } catch { toast("Göndərilmədi", "error"); } finally { setSendingId(null); }
+    }, "image/png");
+  };
+
+  const filtered = recipients.filter((r) => (r.name || "").toLowerCase().includes(q.toLowerCase()));
+
   return (
     <>
       <button
@@ -129,12 +186,19 @@ export default function QRShare({
 
             <p className="text-[10px] text-muted mt-2 break-all">{url}</p>
 
-            <div className="grid grid-cols-2 gap-2 mt-4">
+            {/* Əsas əməliyyat — ÇATDA paylaşmaq (ən çox istənən). */}
+            <button
+              onClick={openPicker}
+              className="mt-4 w-full py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-2"
+            >
+              💬 Çatda paylaş
+            </button>
+            <div className="grid grid-cols-2 gap-2 mt-2">
               <button
                 onClick={shareImage}
-                className="py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 text-white text-sm font-semibold hover:opacity-90 active:scale-95 transition-all"
+                className="py-2.5 rounded-xl bg-input-bg border border-input-border text-foreground text-sm font-medium hover:border-orange-500/50 transition-all"
               >
-                Paylaş
+                Xaricdə paylaş
               </button>
               <button
                 onClick={download}
@@ -147,6 +211,42 @@ export default function QRShare({
               onClick={() => setOpen(false)}
               className="mt-2 w-full py-2 text-sm text-muted hover:text-foreground transition-colors"
             >
+              Bağla
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Kimə göndərilsin? — söhbətlərim + kontaktlarım ── */}
+      {pickerOpen && (
+        <div className="fixed inset-0 z-[1001] flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4"
+          onClick={() => setPickerOpen(false)}>
+          <div className="bg-background border border-input-border rounded-t-2xl sm:rounded-2xl w-full sm:max-w-sm p-4 shadow-xl"
+            onClick={(e) => e.stopPropagation()}>
+            <p className="font-semibold text-sm mb-1">QR kodu kimə göndərək?</p>
+            <p className="text-[11px] text-muted mb-3">QR şəkli və link mesaj kimi göndərilir.</p>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ad üzrə axtar…"
+              className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm mb-2 focus:outline-none focus:ring-2 focus:ring-orange-500/30" />
+            <div className="max-h-[45vh] overflow-y-auto">
+              {loadingR ? (
+                <p className="text-xs text-muted py-3 text-center">yüklənir…</p>
+              ) : filtered.length === 0 ? (
+                <p className="text-xs text-muted py-3 text-center">
+                  {recipients.length === 0 ? "Hələ söhbət və ya kontaktınız yoxdur." : "Tapılmadı."}
+                </p>
+              ) : filtered.map((r) => (
+                <button key={r.id} onClick={() => sendQrTo(r.id)} disabled={sendingId !== null}
+                  className="w-full flex items-center gap-2.5 px-2 py-2.5 rounded-xl hover:bg-input-bg text-left transition-colors disabled:opacity-50">
+                  <span className="w-8 h-8 rounded-full bg-input-bg flex items-center justify-center text-[11px] font-bold shrink-0">
+                    {(r.name || "?").slice(0, 1).toUpperCase()}
+                  </span>
+                  <span className="flex-1 text-sm font-medium truncate">{r.name}</span>
+                  {sendingId === r.id && <span className="text-[11px] text-muted shrink-0">göndərilir…</span>}
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setPickerOpen(false)}
+              className="mt-2 w-full py-2 text-sm text-muted hover:text-foreground transition-colors">
               Bağla
             </button>
           </div>
