@@ -9,6 +9,11 @@ import { API } from "@/lib/api";
 
 interface Scope { businessId: number; objectId: number | null; label: string; owned: boolean }
 const STATUSES = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"];
+// Götürmədə «göndərmək» yoxdur — satıcı mağazada təhvil verir, alıcı təsdiqləyir.
+const statusAz = (s: string, pickup: boolean) => ({
+  PENDING: "Gözləyir", CONFIRMED: pickup ? "Qəbul edildi — hazırdır" : "Qəbul edildi",
+  SHIPPED: pickup ? "Mağazada təhvil verdim" : "Göndərildi", DELIVERED: pickup ? "Götürüldü" : "Çatdırıldı", CANCELLED: "Ləğv edildi",
+} as Record<string, string>)[s] || s;
 
 export default function BusinessSalesPage() {
   const router = useRouter();
@@ -133,7 +138,7 @@ export default function BusinessSalesPage() {
                   <div className="flex items-center gap-2 flex-wrap border-t border-card-border pt-2">
                     <span className="text-xs text-muted">{t("adminChangeStatus") || "Status"}:</span>
                     <select value={o.status} onChange={(e) => changeStatus(o.id, e.target.value)} className="px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs">
-                      {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      {STATUSES.map((s) => <option key={s} value={s}>{statusAz(s, o.deliveryType === "PICKUP")}</option>)}
                     </select>
                   </div>
                 </div>

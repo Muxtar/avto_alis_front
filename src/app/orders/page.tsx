@@ -140,6 +140,16 @@ export default function OrdersPage() {
     fetchOrders(true);
   };
 
+  // Götürmə: satıcı «təhvil verdim» dedi, alıcı almayıb → mübahisə açılır.
+  const pickupNotReceived = async (orderId: number) => {
+    const d = prompt("Nə baş verdi? (məs. mağazaya getdim, məhsul verilmədi)");
+    if (!d || d.trim().length < 5) { if (d !== null) toast("Qısaca izah yazın (ən azı 5 simvol)", "error"); return; }
+    const r = await fetch(`${API}/orders/${orderId}/pickup-not-received`, { method: "POST", headers, body: JSON.stringify({ description: d.trim() }) }).then((x) => x.json()).catch(() => null);
+    if (!r?.success) { toast(r?.message || t("error"), "error"); return; }
+    toast("Şikayət açıldı — satıcıya cavab üçün 48 saat verildi", "success");
+    fetchOrders();
+  };
+
   const updateStatus = async (orderId: number, status: string, code?: string): Promise<boolean> => {
     const r = await fetch(`${API}/orders/${orderId}/status`, {
       method: "PUT", headers,
@@ -367,9 +377,9 @@ export default function OrdersPage() {
         S.push({ label: "Yolda sizə" + (etaText(yi.etaSeconds) ? ` · ${etaText(yi.etaSeconds)}` : ""), state: step >= 4 ? "done" : (step >= 3 ? "current" : "pending") });
       }
     } else {
-      S.push({ label: "Satıcı göndərdi", state: ["SHIPPED", "DELIVERED"].includes(st) ? "done" : "current" });
+      S.push({ label: order.deliveryType === "PICKUP" ? "Mağazada təhvil verildi" : "Satıcı göndərdi", state: ["SHIPPED", "DELIVERED"].includes(st) ? "done" : "current" });
     }
-    S.push({ label: "Çatdırıldı", state: st === "DELIVERED" ? "done" : "pending" });
+    S.push({ label: order.deliveryType === "PICKUP" ? "Alıcı götürdü" : "Çatdırıldı", state: st === "DELIVERED" ? "done" : "pending" });
     return S;
   };
 
@@ -529,7 +539,7 @@ export default function OrdersPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${statusColor(order.status)}`}>
-                      {statusLabel(order.status)}
+                      {order.deliveryType === "PICKUP" && order.status === "SHIPPED" ? (activeTab === "buying" ? "Təhvil verildi — təsdiqləyin" : "Təhvil verildi") : order.deliveryType === "PICKUP" && order.status === "CONFIRMED" ? "Hazırdır — götürülə bilər" : statusLabel(order.status)}
                     </span>
                     <span className="text-orange-500 font-bold text-sm">{order.total.toFixed(2)} AZN</span>
                     {order.installmentMonths ? (
@@ -972,7 +982,14 @@ export default function OrdersPage() {
                         <button onClick={() => { if (confirm("Sifarişi rədd etmək istəyirsiniz?")) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-500/20">✕ Rədd et</button>
                       </>
                     )}
-                    {order.status === "CONFIRMED" && (
+                    {order.status === "CONFIRMED" && order.deliveryType === "PICKUP" && (
+                      <>
+                        {/* Götürmədə «göndərmək» yoxdur — satıcı təhvil verir, alıcı təsdiqləyir. */}
+                        <button onClick={() => { if (confirm("Məhsulu mağazada alıcıya təhvil verdiniz? Alıcıya təsdiq sorğusu gedəcək.")) updateStatus(order.id, "SHIPPED"); }} className="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-semibold hover:bg-purple-500/20">🏪 Mağazada təhvil verdim</button>
+                        <button onClick={() => { setDeliverCode(""); setDeliverModal(order.id); }} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-medium hover:bg-green-500/20">🔢 Alıcının kodu ilə tamamla</button>
+                      </>
+                    )}
+                    {order.status === "CONFIRMED" && order.deliveryType !== "PICKUP" && (
                       <button onClick={() => updateStatus(order.id, "SHIPPED")} className="px-3 py-1.5 bg-purple-500/10 text-purple-500 rounded-lg text-xs font-medium hover:bg-purple-500/20">📦 Göndərildi olaraq işarələ</button>
                     )}
                     {/* Yango təsdiqdə avtomatik çağırılır. Claim yaranmayıbsa —
@@ -987,7 +1004,13 @@ export default function OrdersPage() {
                     {order.yangoClaimId && !yangoDead(order.yangoStatus) && !["delivered", "delivered_finish"].includes(order.yangoStatus) && (
                       <button onClick={() => cancelYango(order.id)} disabled={yangoBusy === order.id} className="px-3 py-1.5 bg-amber-500/10 text-amber-500 rounded-lg text-xs font-medium hover:bg-amber-500/20 disabled:opacity-50">Yango ləğv</button>
                     )}
-                    {order.status === "SHIPPED" && (
+                    {order.status === "SHIPPED" && order.deliveryType === "PICKUP" && (
+                      <>
+                        <span className="px-3 py-1.5 rounded-lg text-xs bg-amber-500/10 text-amber-600">⏳ Təhvil verildi — alıcının təsdiqi gözlənilir{order.pickupConfirmBy ? ` (${new Date(order.pickupConfirmBy).toLocaleString("az-AZ", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}-dək, sonra avtomatik)` : ""}</span>
+                        <button onClick={() => { setDeliverCode(""); setDeliverModal(order.id); }} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-medium hover:bg-green-500/20">🔢 Kodla tamamla</button>
+                      </>
+                    )}
+                    {order.status === "SHIPPED" && order.deliveryType !== "PICKUP" && (
                       <button
                         onClick={() => {
                           // Yango sifarişində kod istənilmir — yalnız təsdiq.
@@ -1021,8 +1044,19 @@ export default function OrdersPage() {
                     {(order.status === "PENDING" || order.status === "CONFIRMED" || deliveryCollapsed(order)) && (
                       <button onClick={() => { if (confirm(order.paymentStatus === "PAID" ? "Sifarişi ləğv edib pulu geri almaq istəyirsiniz?" : "Sifarişi ləğv etmək istəyirsiniz?")) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">{order.paymentStatus === "PAID" ? "Ləğv et və geri al" : "Ləğv et"}</button>
                     )}
-                    {order.status === "SHIPPED" && (
+                    {order.status === "SHIPPED" && order.deliveryType !== "PICKUP" && (
                       <button onClick={() => { if (confirm("Məhsulu təhvil aldığınızı təsdiqləyirsiniz?")) updateStatus(order.id, "DELIVERED"); }} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20">✓ Təhvil aldım</button>
+                    )}
+                    {/* MAĞAZADAN GÖTÜRMƏ: alıcı götürəndə təsdiqləyir. */}
+                    {order.status === "CONFIRMED" && order.deliveryType === "PICKUP" && (
+                      <button onClick={() => { if (confirm("Məhsulu mağazadan götürdüyünüzü təsdiqləyirsiniz?")) updateStatus(order.id, "DELIVERED"); }} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20">✓ Məhsulu götürdüm</button>
+                    )}
+                    {order.status === "SHIPPED" && order.deliveryType === "PICKUP" && (
+                      <div className="w-full rounded-xl border border-amber-500/40 bg-amber-500/10 p-2.5 flex flex-wrap items-center gap-2">
+                        <span className="text-xs flex-1 min-w-[180px]">🏪 Satıcı məhsulu mağazada sizə təhvil verdiyini bildirdi. <b>Götürdünüz?</b>{order.pickupConfirmBy ? <span className="text-muted"> Cavab verilməsə {new Date(order.pickupConfirmBy).toLocaleString("az-AZ", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} təsdiqlənmiş sayılır.</span> : null}</span>
+                        <button onClick={() => updateStatus(order.id, "DELIVERED")} className="px-3 py-1.5 bg-green-500/15 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/25">✓ Bəli, götürdüm</button>
+                        <button onClick={() => pickupNotReceived(order.id)} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-500/20">✕ Götürmədim</button>
+                      </div>
                     )}
                     {/* Təhvil alındıqdan sonra məhsula rəy/5 ulduz (like/dislike) — hər məhsul üçün */}
                     {order.status === "DELIVERED" && (order.items || []).map((it: any) => {
