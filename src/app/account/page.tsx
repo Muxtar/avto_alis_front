@@ -115,6 +115,11 @@ function AccountPageInner() {
      müddətdə alanların sayı toplanır və hamı eyni endirimi alır. */
   const [groupBuyOn, setGroupBuyOn] = useState(false);
   const [groupBuyDays, setGroupBuyDays] = useState("3");
+  /* ── REFERAL SATIŞ ── elan satıcının referal proqramına daxil olsun/olmasın
+     və fərdi faiz. Proqramlar: fərdi elanlar (objectId=null) və ya mağaza (objectId). */
+  const [referralMode, setReferralMode] = useState<"DEFAULT" | "ON" | "OFF">("DEFAULT");
+  const [referralPercent, setReferralPercent] = useState("");
+  const [refPrograms, setRefPrograms] = useState<{ objectId: number | null; name: string; programId: number | null; enabled: boolean; audience?: string; defaultPercent?: number | null }[]>([]);
   // ?new=1 sorğusunun təkrar emalının qarşısını alır (bax: aşağıdakı effekt).
   const handledNewRef = useRef<string | null>(null);
 
@@ -123,6 +128,10 @@ function AccountPageInner() {
     if (!isLoggedIn) { router.push("/"); return; }
     fetchListings();
     loadBusinesses();
+    fetch(`${API}/me/referral/programs`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => setRefPrograms(d?.programs || []))
+      .catch(() => undefined);
     fetch(`${API}/me`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
       .then((d) => {
@@ -214,6 +223,7 @@ function AccountPageInner() {
     setBookable(false); setBookingType("RESERVATION"); setMaxGuests(""); setOpenTime(""); setCloseTime("");
     setAllowSelfDelivery(false); setWeightKg("");
     setPickupOnly(false); setListingLat(null); setListingLng(null);
+    setReferralMode("DEFAULT"); setReferralPercent("");
     setAttrs({});
     imagePreviews.forEach((url) => URL.revokeObjectURL(url));
     setImages([]);
@@ -312,6 +322,9 @@ function AccountPageInner() {
         fd.append("installmentMaxMonths", installmentEnabled ? installmentMaxMonths : "");
       }
       if (weightKg) fd.append("weightKg", weightKg);
+      // Referal satış: DEFAULT = proqramın qaydası; faiz boşdursa standart faiz.
+      fd.append("referralMode", referralMode);
+      fd.append("referralPercent", referralMode === "OFF" ? "" : referralPercent.trim());
       // Biznes obyekti YALNIZ VÖEN-li elanda göndərilir — VÖEN-siz (fərdi) elan biznesə bağlanmır.
       if (listingMode === "voen" && selectedObjectId) fd.append("businessObjectId", selectedObjectId);
       // VÖEN-siz elanlarda elana özəl konum göndərilir (seçilibsə). VÖEN elanlarda konum obyektdən gəlir.
@@ -387,6 +400,8 @@ function AccountPageInner() {
     setListingLat(listing.latitude != null ? Number(listing.latitude) : null);
     setListingLng(listing.longitude != null ? Number(listing.longitude) : null);
     setWeightKg(listing.weightKg != null ? String(listing.weightKg) : "");
+    setReferralMode(listing.referralMode === "ON" || listing.referralMode === "OFF" ? listing.referralMode : "DEFAULT");
+    setReferralPercent(listing.referralPercent != null ? String(listing.referralPercent) : "");
     setListingKind(listing.type === "SERVICE" ? "service" : "product-form");
     setSelectedObjectId(listing.businessObjectId ? String(listing.businessObjectId) : "");
     // Redaktədə rejim elanın özündən oxunur. Əvvəl boş qalırdı, ona görə
@@ -1058,6 +1073,44 @@ function AccountPageInner() {
                 </div>
               </div>
             )}
+
+            {/* 🤝 Referal satış — başqaları link paylaşıb bu elanı satsın, komissiya alsın. */}
+            {(() => {
+              const objId = listingMode === "voen" && selectedObjectId ? Number(selectedObjectId) : null;
+              const prog = refPrograms.find((p) => (p.objectId ?? null) === objId);
+              return (
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">🤝 Referal satış</label>
+                  {prog?.enabled ? (
+                    <div className="px-4 py-3 rounded-xl border border-input-border bg-input-bg/50 space-y-2.5 text-sm">
+                      <div>
+                        <label className="block text-xs font-medium text-muted mb-1">Bu elan referal proqramında</label>
+                        <select value={referralMode} onChange={(e) => setReferralMode(e.target.value as "DEFAULT" | "ON" | "OFF")} className={inputCls}>
+                          <option value="DEFAULT">Proqramın qaydası</option>
+                          <option value="ON">Referala daxil et</option>
+                          <option value="OFF">Referaldan çıxar</option>
+                        </select>
+                      </div>
+                      {referralMode !== "OFF" && (
+                        <div>
+                          <label className="block text-xs font-medium text-muted mb-1">Fərdi komissiya % <span className="font-normal">(istəyə bağlı)</span></label>
+                          <input type="number" min={0} max={100} step="0.1" value={referralPercent} onChange={(e) => setReferralPercent(e.target.value)}
+                            placeholder={prog.defaultPercent != null ? `standart: ${prog.defaultPercent}%` : "boş = standart"} className={inputCls} />
+                          <p className="text-[11px] text-muted mt-1">
+                            Boş qalsa proqramın standart faizi{prog.defaultPercent != null ? ` (${prog.defaultPercent}%)` : ""} tətbiq olunur.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <a href={`/referral/manage${objId ? `?objectId=${objId}` : ""}`}
+                      className="block px-4 py-3 rounded-xl border border-dashed border-input-border bg-input-bg/50 text-[12px] text-muted hover:border-orange-500/40">
+                      Başqaları sizin yerinizə satsın — <span className="text-orange-500 font-semibold">Referal proqramını aktiv edin →</span>
+                    </a>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Barter + İcarə seçimləri */}
             {form.type !== "SERVICE" && (
