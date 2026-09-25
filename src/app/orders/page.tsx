@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
@@ -29,6 +29,21 @@ export default function OrdersPage() {
   const [returnReasonText, setReturnReasonText] = useState("");
   const [returnQuantity, setReturnQuantity] = useState("1");
   const [returnLoading, setReturnLoading] = useState(false);
+  // İadə fotoları (maks. 6) — qüsur/yanlış məhsul iddiasını sübut edir.
+  const [returnFiles, setReturnFiles] = useState<File[]>([]);
+  const previewCache = useRef(new WeakMap<File, string>());
+  const returnPreviews = useMemo(() => returnFiles.map((f) => {
+    let u = previewCache.current.get(f);
+    if (!u) { u = URL.createObjectURL(f); previewCache.current.set(f, u); }
+    return u;
+  }), [returnFiles]);
+  const addReturnFiles = (files: FileList | null) => {
+    const list = Array.from(files || []).filter((f) => /^image\//.test(f.type) && f.size < 8 * 1024 * 1024);
+    if (!list.length) return;
+    setReturnFiles((prev) => [...prev, ...list].slice(0, 6));
+  };
+  // Satıcı rədd edəndə səbəb məcburidir (min 10 simvol).
+  const [rejectFor, setRejectFor] = useState<number | null>(null);
 
   // Seller refund amount
   const [refundInput, setRefundInput] = useState<{ [key: number]: string }>({});
@@ -362,24 +377,46 @@ export default function OrdersPage() {
   const submitReturn = async (orderId: number) => {
     setReturnLoading(true);
     try {
-      const body: any = { orderId, reason: returnReason, reasonText: returnReasonText, quantity: returnQuantity };
-      if (returnItemId) body.orderItemId = returnItemId;
+      if (returnReasonText.trim().length < 5) { toast("Səbəbi ətraflı yazın (ən azı 5 simvol)", "error"); return; }
+      // Multipart — fotolarla birlikdə. Content-Type-ı brauzer özü qoyur.
+      const fd = new FormData();
+      fd.append("orderId", String(orderId));
+      fd.append("reason", returnReason);
+      fd.append("reasonText", returnReasonText.trim());
+      fd.append("quantity", returnQuantity);
+      if (returnItemId) fd.append("orderItemId", returnItemId);
+      returnFiles.forEach((f) => fd.append("images", f));
       // Cavab OXUNUR: əvvəl «müddət bitib», «miqdar çoxdur» kimi xətalar
       // səssizcə udulurdu və pəncərə uğur kimi bağlanırdı.
-      const r = await fetch(`${API}/returns`, { method: "POST", headers, body: JSON.stringify(body) }).then((x) => x.json());
+      const r = await fetch(`${API}/returns`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd }).then((x) => x.json());
       if (!r?.success) { toast(r?.message || t('error'), 'error'); return; }
-      toast("İadə sorğusu göndərildi ✓", "success");
+      toast("İadə sorğusu göndərildi ✓ Vəziyyəti «İadələr» bölməsində izləyə bilərsiniz", "success");
       setReturnModal(null);
-      setReturnItemId(""); setReturnReason("DEFECTIVE"); setReturnReasonText(""); setReturnQuantity("1");
+      setReturnItemId(""); setReturnReason("DEFECTIVE"); setReturnReasonText(""); setReturnQuantity("1"); setReturnFiles([]);
       fetchOrders();
     } catch { toast(t('error'), 'error'); } finally { setReturnLoading(false); }
   };
 
   const returnAction = async (returnId: number, action: string, body?: any) => {
+    // Rədd — backend səbəbi (sellerNote, min 10) multipart kimi tələb edir.
+    const isReject = action === "reject";
+    if (isReject && String(body?.sellerNote || "").trim().length < 10) {
+      toast("Rədd səbəbini yazın (ən azı 10 simvol)", "error");
+      return;
+    }
+    let init: RequestInit;
+    if (isReject) {
+      const fd = new FormData();
+      fd.append("sellerNote", String(body.sellerNote).trim());
+      init = { method: "PUT", headers: { Authorization: `Bearer ${token}` }, body: fd };
+    } else {
+      init = { method: "PUT", headers, body: body ? JSON.stringify(body) : undefined };
+    }
     // Bank xətası (502) və digər rədd cavabları istifadəçiyə göstərilir.
-    const r = await fetch(`${API}/returns/${returnId}/${action}`, { method: "PUT", headers, body: body ? JSON.stringify(body) : undefined })
+    const r = await fetch(`${API}/returns/${returnId}/${action}`, init)
       .then((x) => x.json()).catch(() => null);
     if (!r?.success) toast(r?.message || t('error'), 'error');
+    else if (isReject) { setRejectFor(null); setSellerNoteInput((p) => ({ ...p, [returnId]: "" })); }
     fetchOrders();
   };
 
@@ -403,6 +440,7 @@ export default function OrdersPage() {
       case "RETURN_RECEIVED": return "bg-teal-500/10 text-teal-500 border-teal-500/20";
       case "REFUNDED": return "bg-green-500/10 text-green-500 border-green-500/20";
       case "CANCELLED": return "bg-gray-500/10 text-gray-500 border-gray-500/20";
+      case "DISPUTED": return "bg-orange-500/10 text-orange-500 border-orange-500/20";
       default: return "bg-gray-500/10 text-gray-500";
     }
   };
@@ -427,6 +465,7 @@ export default function OrdersPage() {
       case "RETURN_RECEIVED": return t("returnReceived");
       case "REFUNDED": return t("returnRefunded");
       case "CANCELLED": return t("returnCancelled");
+      case "DISPUTED": return "Mübahisə — sistem baxır";
       default: return status;
     }
   };
@@ -591,7 +630,10 @@ export default function OrdersPage() {
                 {/* Return Requests Display */}
                 {order.returnRequests?.length > 0 && (
                   <div className="p-4 border-t border-card-border space-y-3">
-                    <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider">{t("returnRequest")}</p>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-amber-500 uppercase tracking-wider">{t("returnRequest")}</p>
+                      <Link href={activeTab === "selling" ? "/iadeler?tab=selling" : "/iadeler"} className="text-xs text-muted hover:text-orange-500">Bütün iadələr →</Link>
+                    </div>
                     {order.returnRequests.map((ret: any) => (
                       <div key={ret.id} className="bg-input-bg/50 rounded-xl p-3 space-y-2">
                         <div className="flex items-center justify-between flex-wrap gap-2">
@@ -601,9 +643,13 @@ export default function OrdersPage() {
                             </span>
                             <span className="text-xs text-muted">{returnReasonLabel(ret.reason)}</span>
                           </div>
-                          {ret.refundAmount && (
-                            <span className="text-sm font-bold text-orange-500">{ret.refundAmount.toFixed(2)} AZN</span>
-                          )}
+                          <div className="flex items-center gap-3">
+                            {ret.refundAmount && (
+                              <span className="text-sm font-bold text-orange-500">{ret.refundAmount.toFixed(2)} AZN</span>
+                            )}
+                            <Link href={`/iadeler?id=${ret.id}${activeTab === "selling" ? "&tab=selling" : ""}`}
+                              className="text-xs font-semibold text-orange-500 hover:underline">İzlə →</Link>
+                          </div>
                         </div>
                         {ret.reasonText && <p className="text-xs text-muted">{ret.reasonText}</p>}
                         {ret.orderItem && <p className="text-xs text-muted">{ret.orderItem.title} x{ret.quantity}</p>}
@@ -654,18 +700,28 @@ export default function OrdersPage() {
                                   className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">
                                   {t("approveReturn")}
                                 </button>
-                                <div className="flex items-end gap-1">
-                                  <div className="min-w-[100px]">
-                                    <label className="text-[10px] text-muted">{t("sellerNote")}</label>
-                                    <input value={sellerNoteInput[ret.id] ?? ""}
+                                {rejectFor === ret.id ? (
+                                  <div className="w-full space-y-1.5">
+                                    <label className="text-[10px] text-muted">Rədd səbəbi (məcburi, ən azı 10 simvol) — alıcı bununla mübahisə aça bilər</label>
+                                    <textarea value={sellerNoteInput[ret.id] ?? ""} rows={2}
                                       onChange={(e) => setSellerNoteInput({ ...sellerNoteInput, [ret.id]: e.target.value })}
-                                      className={inputCls + " !py-1.5"} placeholder="..." />
+                                      className={inputCls + " !py-1.5 resize-none"} placeholder="Məs: məhsul işlək vəziyyətdə göndərilib, zədə alıcıda yaranıb..." />
+                                    <div className="flex gap-2">
+                                      <button onClick={() => returnAction(ret.id, "reject", { sellerNote: sellerNoteInput[ret.id] || "" })}
+                                        disabled={(sellerNoteInput[ret.id] || "").trim().length < 10}
+                                        className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 disabled:opacity-50">
+                                        {t("rejectReturn")}
+                                      </button>
+                                      <button onClick={() => setRejectFor(null)} className="px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs">{t("adminCancel")}</button>
+                                      <Link href={`/iadeler?id=${ret.id}&tab=selling`} className="px-3 py-1.5 text-xs text-muted hover:text-foreground">Foto ilə rədd →</Link>
+                                    </div>
                                   </div>
-                                  <button onClick={() => returnAction(ret.id, "reject", { sellerNote: sellerNoteInput[ret.id] || "" })}
+                                ) : (
+                                  <button onClick={() => setRejectFor(ret.id)}
                                     className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">
                                     {t("rejectReturn")}
                                   </button>
-                                </div>
+                                )}
                               </>
                             )}
                             {ret.status === "APPROVED" && (
@@ -731,11 +787,40 @@ export default function OrdersPage() {
                           </div>
                         </div>
                         <div>
-                          <label className="text-xs text-muted">{t("returnReasonText")}</label>
-                          <input value={returnReasonText} onChange={(e) => setReturnReasonText(e.target.value)} className={inputCls} placeholder="..." />
+                          <label className="text-xs text-muted">{t("returnReasonText")} <span className="text-red-500">*</span></label>
+                          <textarea value={returnReasonText} onChange={(e) => setReturnReasonText(e.target.value)} rows={3}
+                            className={inputCls + " resize-none"} placeholder="Problemi ətraflı yazın (ən azı 5 simvol)..." />
+                          {returnReasonText.trim().length > 0 && returnReasonText.trim().length < 5 && (
+                            <p className="text-[11px] text-red-500 mt-0.5">Ən azı 5 simvol yazın</p>
+                          )}
+                        </div>
+                        <div>
+                          <label className="text-xs text-muted">Fotolar ({returnFiles.length}/6)</label>
+                          {["DEFECTIVE", "WRONG_ITEM", "NOT_AS_DESCRIBED"].includes(returnReason) && (
+                            <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-2.5 py-1.5 my-1">
+                              📷 Qüsurun / fərqin aydın fotolarını əlavə edin — mübahisə olarsa, sistem qərarı əsasən fotolara görə verir.
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {returnPreviews.map((u, i) => (
+                              <div key={u} className="relative">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={u} alt="" className="w-16 h-16 rounded-lg object-cover border border-input-border" />
+                                <button type="button" onClick={() => setReturnFiles((p) => p.filter((_, j) => j !== i))}
+                                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-red-500 text-white text-[10px] leading-none">✕</button>
+                              </div>
+                            ))}
+                            {returnFiles.length < 6 && (
+                              <label className="w-16 h-16 rounded-lg border-2 border-dashed border-input-border flex items-center justify-center text-muted text-xl cursor-pointer hover:border-orange-500">
+                                +
+                                <input type="file" accept="image/*" multiple className="hidden"
+                                  onChange={(e) => { addReturnFiles(e.target.files); e.target.value = ""; }} />
+                              </label>
+                            )}
+                          </div>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => submitReturn(order.id)} disabled={returnLoading}
+                          <button onClick={() => submitReturn(order.id)} disabled={returnLoading || returnReasonText.trim().length < 5}
                             className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-xs font-medium disabled:opacity-50">
                             {returnLoading ? "..." : t("submitReturn")}
                           </button>

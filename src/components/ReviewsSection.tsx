@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { API, imgUrl } from "@/lib/api";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
+import SellerReply from "@/components/SellerReply";
 
 // Yenidən istifadə olunan rəy bölməsi — obyekt (/objects/:id) və ixtisas profili (/professionals/:id).
 // Faiz (məmnunluq), 5 ulduz, bir dəfə, redaktə/sil. Gating serverdə yoxlanır (403 mesajı göstərilir).
@@ -18,7 +19,10 @@ function Stars({ value, onPick }: { value: number; onPick?: (n: number) => void 
   );
 }
 
-export default function ReviewsSection({ base, title = "Rəylər" }: { base: string; title?: string }) {
+// ownerId: səhifənin sahibi (məs. peşəkarın öz profili) — cavab yaza bilər.
+// ownerId verilməyibsə (obyekt səhifəsi) giriş etmiş istifadəçinin «aldığı rəylər»
+// siyahısından hansı rəylərə cavab verə biləcəyi müəyyən edilir.
+export default function ReviewsSection({ base, title = "Rəylər", ownerId }: { base: string; title?: string; ownerId?: number | null }) {
   const { user, token, isLoggedIn } = useAuth();
   const { toast } = useToast();
   const [comments, setComments] = useState<any[]>([]);
@@ -35,6 +39,22 @@ export default function ReviewsSection({ base, title = "Rəylər" }: { base: str
     fetch(`${API}${base}/reviews`).then((r) => r.json()).then((d) => { setComments(d.comments || []); setStats(d.stats || { percent: null, count: 0 }); }).catch(() => {});
   }, [base]);
   useEffect(() => { load(); }, [load]);
+
+  // Obyekt üçün sahiblik: /me/reviews-received-dəki rəy id-ləri.
+  const [ownedIds, setOwnedIds] = useState<Set<number>>(new Set());
+  useEffect(() => {
+    if (ownerId !== undefined || !isLoggedIn || !token || comments.length === 0) return;
+    fetch(`${API}/me/reviews-received`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => { if (d.success) setOwnedIds(new Set((d.reviews || []).map((r: any) => r.id))); })
+      .catch(() => {});
+  }, [ownerId, isLoggedIn, token, comments.length]);
+  const canReplyTo = (c: any) => {
+    if (!isLoggedIn || c.user?.id === user?.id) return false;
+    if (ownerId !== undefined) return ownerId != null && user?.id === ownerId;
+    return ownedIds.has(c.id);
+  };
+  const patchComment = (id: number, patch: any) => setComments((cs) => cs.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   const mine = isLoggedIn && comments.find((c) => c.user?.id === user?.id);
 
@@ -127,6 +147,7 @@ export default function ReviewsSection({ base, title = "Rəylər" }: { base: str
                           <button onClick={() => del(c.id)} className="text-[11px] text-red-500">Sil</button>
                         </div>
                       )}
+                      <SellerReply comment={c} canReply={canReplyTo(c)} onChange={(patch) => patchComment(c.id, patch)} />
                     </>
                   )}
                 </div>

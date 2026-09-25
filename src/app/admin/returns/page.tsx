@@ -2,8 +2,28 @@
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
-import { API } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import { useAdminLive } from "@/lib/live";
+
+const RET_METHOD: Record<string, string> = { COURIER: "Kuryer", IN_PERSON: "Şəxsən", POST: "Poçt", YANGO: "Yango" };
+const ACTOR: Record<string, string> = { BUYER: "Alıcı", SELLER: "Satıcı", SYSTEM: "Sistem", ADMIN: "Admin" };
+const EVENT_EXTRA: Record<string, string> = { DISPUTE_RESPONSE: "Mübahisəyə cavab", ESCALATED: "Adminə ötürüldü", APPEALED: "Müraciət edildi" };
+
+// Hazırkı mərhələnin aktiv müddəti — keçəndə sistem özü addım atır.
+function activeDeadline(ret: any): { label: string; at: string } | null {
+  if (ret.status === "REQUESTED" && ret.sellerRespondBy) return { label: "Satıcının cavab müddəti", at: ret.sellerRespondBy };
+  if (ret.status === "APPROVED" && ret.shipBy) return { label: "Alıcının göndərmə müddəti", at: ret.shipBy };
+  if (ret.status === "RETURN_SHIPPED" && ret.receiveBy) return { label: "Satıcının qəbul müddəti", at: ret.receiveBy };
+  if (ret.status === "RETURN_RECEIVED" && ret.refundBy) return { label: "Pulun qaytarılma müddəti", at: ret.refundBy };
+  const at = ret.sellerRespondBy || ret.shipBy || ret.receiveBy || ret.refundBy;
+  return at ? { label: "Müddət", at } : null;
+}
+function leftText(at: string) {
+  const ms = new Date(at).getTime() - Date.now();
+  if (ms <= 0) return "müddət bitib";
+  const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
+  return d > 0 ? `${d} gün ${h} saat qalıb` : `${h} saat ${m} dəq qalıb`;
+}
 
 export default function AdminReturnsPage() {
   const { t } = useLanguage();
@@ -15,6 +35,8 @@ export default function AdminReturnsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [adminNotes, setAdminNotes] = useState<{ [key: number]: string }>({});
   const [refundAmounts, setRefundAmounts] = useState<{ [key: number]: string }>({});
+  const [openEvents, setOpenEvents] = useState<{ [key: number]: boolean }>({});
+  const [lightbox, setLightbox] = useState<string | null>(null);
 
   const headers: any = {
     Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`,
@@ -52,6 +74,7 @@ export default function AdminReturnsPage() {
       case "RETURN_RECEIVED": return "bg-teal-500/10 text-teal-500 border-teal-500/20";
       case "REFUNDED": return "bg-green-500/10 text-green-500 border-green-500/20";
       case "CANCELLED": return "bg-gray-500/10 text-gray-500 border-gray-500/20";
+      case "DISPUTED": return "bg-orange-500/10 text-orange-500 border-orange-500/20";
       default: return "bg-gray-500/10 text-gray-500";
     }
   };
@@ -65,7 +88,8 @@ export default function AdminReturnsPage() {
       case "RETURN_RECEIVED": return t("returnReceived");
       case "REFUNDED": return t("returnRefunded");
       case "CANCELLED": return t("returnCancelled");
-      default: return status;
+      case "DISPUTED": return "Mübahisə";
+      default: return EVENT_EXTRA[status] || status;
     }
   };
 
@@ -80,7 +104,7 @@ export default function AdminReturnsPage() {
     }
   };
 
-  const statuses = ["all", "REQUESTED", "APPROVED", "REJECTED", "RETURN_SHIPPED", "RETURN_RECEIVED", "REFUNDED", "CANCELLED"];
+  const statuses = ["all", "REQUESTED", "APPROVED", "REJECTED", "RETURN_SHIPPED", "RETURN_RECEIVED", "REFUNDED", "CANCELLED", "DISPUTED"];
   const inputCls = "w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-sm";
 
   if (loading) {
@@ -147,6 +171,56 @@ export default function AdminReturnsPage() {
                 )}
                 {ret.sellerNote && <p className="text-xs text-red-400">{t("sellerNote")}: {ret.sellerNote}</p>}
                 {ret.adminNote && <p className="text-xs text-blue-400">{t("adminNote")}: {ret.adminNote}</p>}
+
+                {(ret.returnMethod || ret.trackingCode) && (
+                  <p className="text-xs"><span className="text-muted">Geri göndərmə:</span> <b>{RET_METHOD[ret.returnMethod] || ret.returnMethod || "—"}</b>{ret.trackingCode && <> · <span className="text-muted">izləmə kodu:</span> <b className="font-mono">{ret.trackingCode}</b></>}</p>
+                )}
+                {(() => {
+                  const dl = activeDeadline(ret);
+                  if (!dl || ["REFUNDED", "CANCELLED", "REJECTED"].includes(ret.status)) return null;
+                  const over = new Date(dl.at).getTime() <= Date.now();
+                  return (
+                    <p className={`text-xs rounded-lg px-2.5 py-1.5 w-fit ${over ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-600"}`}>
+                      ⏳ {dl.label}: {new Date(dl.at).toLocaleString("az-AZ")} ({leftText(dl.at)})
+                    </p>
+                  );
+                })()}
+                {ret.disputeId && (
+                  <a href={`/admin/complaints?id=${ret.disputeId}`} className="inline-block text-xs font-semibold px-2.5 py-1 rounded-lg bg-orange-500/10 text-orange-500 hover:bg-orange-500/20">
+                    ⚖ Mübahisəyə bax (şikayət #{ret.disputeId}) →
+                  </a>
+                )}
+
+                {[["Alıcının şəkilləri", ret.images], ["Satıcının şəkilləri", ret.sellerImages]].map(([label, list]: any) => list?.length > 0 && (
+                  <div key={label}>
+                    <p className="text-[11px] text-muted mb-1">{label} ({list.length})</p>
+                    <div className="flex flex-wrap gap-2">
+                      {list.map((img: string, i: number) => (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img key={i} src={imgUrl(img)} alt="" onClick={() => setLightbox(imgUrl(img))} className="w-16 h-16 rounded-lg object-cover cursor-pointer border border-input-border hover:border-orange-500" />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {ret.events?.length > 0 && (
+                  <div>
+                    <button onClick={() => setOpenEvents({ ...openEvents, [ret.id]: !openEvents[ret.id] })} className="text-xs text-muted hover:text-foreground">
+                      {openEvents[ret.id] ? "▾" : "▸"} Tarixçə ({ret.events.length})
+                    </button>
+                    {openEvents[ret.id] && (
+                      <ol className="mt-1.5 space-y-1 border-l border-input-border ml-1 pl-3 text-xs">
+                        {[...ret.events].sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()).map((ev: any, i: number) => (
+                          <li key={ev.id ?? i} className="relative">
+                            <span className="absolute -left-[17px] top-1 w-2 h-2 rounded-full bg-orange-500" />
+                            <span className="text-muted">{new Date(ev.createdAt).toLocaleString("az-AZ")}</span> · <b>{ACTOR[ev.actor] || ev.actor}</b>: {returnStatusLabel(ev.status)}
+                            {ev.note && <span className="block text-muted whitespace-pre-wrap">{ev.note}</span>}
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Admin Override Actions */}
@@ -196,6 +270,13 @@ export default function AdminReturnsPage() {
               {p}
             </button>
           ))}
+        </div>
+      )}
+
+      {lightbox && (
+        <div className="fixed inset-0 z-[3000] bg-black/80 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={lightbox} alt="" className="max-w-full max-h-full rounded-lg" />
         </div>
       )}
     </div>

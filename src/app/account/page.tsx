@@ -442,6 +442,11 @@ function AccountPageInner() {
           {user?.id && (
             <QRShare path={`/seller/${user.id}`} title={user.name} subtitle="Profil" compact className="shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-xl bg-input-bg border border-input-border text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all" />
           )}
+          {/* Aldığım rəylər — mənfi rəylərə cavab / müştəri ilə əlaqə */}
+          <a href="/reviews" title="Aldığım rəylər"
+            className="shrink-0 inline-flex items-center gap-1 h-9 px-3 rounded-xl bg-input-bg border border-input-border text-xs font-semibold text-muted hover:text-orange-500 hover:border-orange-500/50 transition-all">
+            ⭐ <span className="hidden sm:inline">Aldığım rəylər</span>
+          </a>
         </div>
         {!showForm && canAddListing && (
           <button onClick={() => { resetForm(); setShowForm(true); }}

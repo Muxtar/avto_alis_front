@@ -448,7 +448,7 @@ export const translations = {
     returnReasonDefective: "Qüsurlu / Zədələnmiş",
     returnReasonWrongItem: "Yanlış məhsul",
     returnReasonNotAsDescribed: "Təsvirə uyğun deyil",
-    returnReasonChangedMind: "Fikrimi dəyişdim",
+    returnReasonChangedMind: "Bəyənmədim / fikrimi dəyişdim",
     returnReasonOther: "Digər",
     returnReasonText: "Ətraflı izah",
     returnQuantity: "Qaytarılan miqdar",

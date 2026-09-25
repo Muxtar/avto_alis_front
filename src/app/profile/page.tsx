@@ -1807,7 +1807,10 @@ export default function ProfilePage() {
       {/* My Listings */}
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">{t("myListings")} ({listings.length})</h2>
-        <Link href="/account" className="text-sm text-orange-500 hover:text-orange-400 transition-colors">{t("addListing")} &rarr;</Link>
+        <div className="flex items-center gap-4">
+          <Link href="/reviews" className="text-sm text-muted hover:text-orange-500 transition-colors">⭐ Aldığım rəylər</Link>
+          <Link href="/account" className="text-sm text-orange-500 hover:text-orange-400 transition-colors">{t("addListing")} &rarr;</Link>
+        </div>
       </div>
 
       {/* Tabs: Active / Expired */}

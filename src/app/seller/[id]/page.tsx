@@ -400,7 +400,7 @@ export default function SellerProfilePage() {
       )}
 
       {/* İxtisas / rəy profili rəyləri — yalnız peşəkardan rəy/konsultasiya alan yaza bilər */}
-      {user?.profession && <ReviewsSection base={`/professionals/${params.id}`} title="İxtisas / rəy rəyləri" />}
+      {user?.profession && <ReviewsSection base={`/professionals/${params.id}`} title="İxtisas / rəy rəyləri" ownerId={Number(params.id)} />}
     </div>
   );
 }

@@ -15,6 +15,7 @@ import OrderMap from "@/components/OrderMapWrapper";
 import ShareButton from "@/components/ShareButton";
 import ListingCard from "@/components/ListingCard";
 import ComplaintButton from "@/components/ComplaintButton";
+import SellerReply from "@/components/SellerReply";
 import { recordView } from "@/lib/recentlyViewed";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
 import { listingInstallmentAllowed, monthsForListing } from "@/lib/installment";
@@ -703,6 +704,12 @@ export default function ListingDetailPage() {
                               className="text-[11px] text-muted hover:text-red-500 font-medium transition-colors disabled:opacity-50">✕ Sil</button>
                           </div>
                         )}
+                        {/* Satıcının ictimai cavabı; elan sahibi burada cavab yaza/dəyişə bilər */}
+                        <SellerReply
+                          comment={c}
+                          canReply={isLoggedIn && !isMine && user?.id === listing.user?.id}
+                          onChange={(patch) => setListing((l: any) => ({ ...l, comments: (l.comments || []).map((x: any) => (x.id === c.id ? { ...x, ...patch } : x)) }))}
+                        />
                       </div>
                     </div>
                   );
