@@ -995,3 +995,9 @@ a[class*="btn-"]:not([class*="rounded-full"]),
   outline-offset: 2px;
   border-radius: 9999px;
 }
+
+/* Sifarişlər siyahısı — nazik, brend rəngli sürüşdürmə zolağı (chat üslubu). */
+.orders-scroll { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--brand-from) 45%, transparent) transparent; overscroll-behavior: contain; }
+.orders-scroll::-webkit-scrollbar { width: 6px; }
+.orders-scroll::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--brand-from) 45%, transparent); border-radius: 9999px; }
+.orders-scroll::-webkit-scrollbar-track { background: transparent; }

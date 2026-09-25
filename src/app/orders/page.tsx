@@ -12,12 +12,12 @@ import { yangoDead, yangoReturning, yangoLabel as yangoStatusAz, YANGO_STATUS_AZ
 
 // ── Sifariş kartlarının rəng qrupları ──
 type OrderCat = "PENDING" | "ACTIVE" | "DONE" | "RETURN" | "CANCELLED";
-const ORDER_CATS: Record<OrderCat, { label: string; bar: string; pill: string; chip: string; chipOn: string }> = {
-  PENDING:   { label: "⏳ Gözləyir",   bar: "border-l-amber-400",  pill: "bg-amber-500/10 text-amber-600 border-amber-500/30",   chip: "border-amber-500/30 text-amber-600",  chipOn: "bg-amber-500 text-white border-amber-500" },
-  ACTIVE:    { label: "🔵 Davam edir", bar: "border-l-blue-500",   pill: "bg-blue-500/10 text-blue-600 border-blue-500/30",      chip: "border-blue-500/30 text-blue-600",    chipOn: "bg-blue-500 text-white border-blue-500" },
-  DONE:      { label: "✅ Tamamlandı", bar: "border-l-green-500",  pill: "bg-green-500/10 text-green-600 border-green-500/30",   chip: "border-green-500/30 text-green-600",  chipOn: "bg-green-500 text-white border-green-500" },
-  RETURN:    { label: "↩️ İadə",       bar: "border-l-purple-500", pill: "bg-purple-500/10 text-purple-600 border-purple-500/30", chip: "border-purple-500/30 text-purple-600", chipOn: "bg-purple-500 text-white border-purple-500" },
-  CANCELLED: { label: "✕ Ləğv / rədd", bar: "border-l-red-500",    pill: "bg-red-500/10 text-red-600 border-red-500/30",         chip: "border-red-500/30 text-red-600",      chipOn: "bg-red-500 text-white border-red-500" },
+const ORDER_CATS: Record<OrderCat, { label: string; bar: string; accent: string; pill: string; chip: string; chipOn: string }> = {
+  PENDING:   { label: "⏳ Gözləyir",   accent: "bg-gradient-to-b from-amber-300 to-amber-500", bar: "border-l-amber-400",  pill: "bg-amber-500/10 text-amber-600 border-amber-500/30",   chip: "border-amber-500/30 text-amber-600",  chipOn: "bg-amber-500 text-white border-amber-500" },
+  ACTIVE:    { label: "🔵 Davam edir", accent: "bg-gradient-to-b from-sky-400 to-blue-600", bar: "border-l-blue-500",   pill: "bg-blue-500/10 text-blue-600 border-blue-500/30",      chip: "border-blue-500/30 text-blue-600",    chipOn: "bg-blue-500 text-white border-blue-500" },
+  DONE:      { label: "✅ Tamamlandı", accent: "bg-gradient-to-b from-emerald-400 to-green-600", bar: "border-l-green-500",  pill: "bg-green-500/10 text-green-600 border-green-500/30",   chip: "border-green-500/30 text-green-600",  chipOn: "bg-green-500 text-white border-green-500" },
+  RETURN:    { label: "↩️ İadə",       accent: "bg-gradient-to-b from-fuchsia-400 to-purple-600", bar: "border-l-purple-500", pill: "bg-purple-500/10 text-purple-600 border-purple-500/30", chip: "border-purple-500/30 text-purple-600", chipOn: "bg-purple-500 text-white border-purple-500" },
+  CANCELLED: { label: "✕ Ləğv / rədd", accent: "bg-gradient-to-b from-rose-400 to-red-600", bar: "border-l-red-500",    pill: "bg-red-500/10 text-red-600 border-red-500/30",         chip: "border-red-500/30 text-red-600",      chipOn: "bg-red-500 text-white border-red-500" },
 };
 function orderCat(o: any): OrderCat {
   if (o.status === "CANCELLED") return "CANCELLED";
@@ -529,43 +529,56 @@ export default function OrdersPage() {
   const orders = allOrders.filter((o: any) => catFilter === "ALL" ? true : catFilter === "ACTION" ? needsMyAction(o, activeTab) : orderCat(o) === catFilter);
 
   return (
-    <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
-      <h1 className="text-xl sm:text-2xl font-bold mb-6">{t("orders")}</h1>
+    <div className="max-w-4xl mx-auto px-0 sm:px-6 py-0 sm:py-5">
+      {/* Chat üslubunda çərçivə: başlıq + seqment tabları + filtr, altında sürüşən siyahı. */}
+      <div className="surface overflow-hidden sm:rounded-2xl rounded-none">
+        <div className="p-3 sm:p-4 border-b border-card-border">
+          <div className="flex items-center gap-2 px-1">
+            <p className="font-bold text-base flex-1 truncate">{t("orders")}</p>
+            <span className="text-[11px] text-muted">{allOrders.length} sifariş</span>
+          </div>
 
-      {/* Tabs */}
-      <div className="flex gap-1.5 bg-input-bg border border-input-border rounded-xl p-1 mb-6 w-full sm:w-fit">
-        <button onClick={() => setActiveTab("buying")}
-          className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${activeTab === "buying" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>
-          {t("buyingOrders")} ({buyingOrders.length})
-        </button>
-        <button onClick={() => setActiveTab("selling")}
-          className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${activeTab === "selling" ? "bg-orange-500 text-white" : "text-muted hover:text-foreground"}`}>
-          {t("sellingOrders")} ({sellingOrders.length})
-        </button>
-      </div>
+          {/* ── SEQMENT: alışlarım / satışlarım — chat-dakı «Hamısı / Şəxsi / İş» ilə eyni ── */}
+          <div className="seg-tabs mt-2.5" role="tablist" aria-label="Sifariş bölmələri">
+            {([
+              { k: "buying" as const, label: `${t("buyingOrders")}`, icon: "🛍", n: buyingOrders.length, act: buyingOrders.filter((o: any) => needsMyAction(o, "buying")).length },
+              { k: "selling" as const, label: `${t("sellingOrders")}`, icon: "🏪", n: sellingOrders.length, act: sellingOrders.filter((o: any) => needsMyAction(o, "selling")).length },
+            ]).map((tb) => (
+              <button key={tb.k} onClick={() => { setActiveTab(tb.k); setCatFilter("ALL"); }}
+                role="tab" aria-selected={activeTab === tb.k}
+                className={`seg-tab ${activeTab === tb.k ? "is-active" : ""}`}>
+                <span aria-hidden>{tb.icon}</span>{tb.label}
+                <span className="opacity-70 font-medium">{tb.n}</span>
+                {tb.act > 0 && <span className="seg-badge">{tb.act > 99 ? "99+" : tb.act}</span>}
+              </button>
+            ))}
+          </div>
 
-      {/* Rəngli filtr — statusu bir baxışda ayırmaq üçün (kartın sol zolağı eyni rəngdədir). */}
-      {allOrders.length > 0 && (
-        <div className="flex gap-1.5 flex-wrap mb-4">
-          {actionCount > 0 && (
-            <button onClick={() => setCatFilter("ACTION")} className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${catFilter === "ACTION" ? "bg-orange-500 text-white border-orange-500" : "border-orange-500/40 text-orange-600 bg-orange-500/5"}`}>⚡ Addım gözləyir ({actionCount})</button>
+          {/* Rəngli status filtri — sürüşən sıra */}
+          {allOrders.length > 0 && (
+            <div className="flex gap-1.5 mt-2.5 overflow-x-auto no-scrollbar -mx-1 px-1 pb-0.5">
+              {actionCount > 0 && (
+                <button onClick={() => setCatFilter("ACTION")} className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all ${catFilter === "ACTION" ? "bg-orange-500 text-white border-orange-500 shadow-sm" : "border-orange-500/40 text-orange-600 bg-orange-500/5 hover:bg-orange-500/10"}`}>⚡ Addım gözləyir · {actionCount}</button>
+              )}
+              <button onClick={() => setCatFilter("ALL")} className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all ${catFilter === "ALL" ? "text-white border-transparent shadow-sm bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)]" : "border-card-border text-muted hover:text-[var(--brand-from)] hover:bg-[var(--brand-soft)]"}`}>Hamısı · {allOrders.length}</button>
+              {(Object.keys(ORDER_CATS) as OrderCat[]).filter((k) => catCounts[k]).map((k) => (
+                <button key={k} onClick={() => setCatFilter(k)} className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-all ${catFilter === k ? ORDER_CATS[k].chipOn + " shadow-sm" : ORDER_CATS[k].chip + " hover:brightness-95"}`}>
+                  {ORDER_CATS[k].label} · {catCounts[k]}
+                </button>
+              ))}
+            </div>
           )}
-          <button onClick={() => setCatFilter("ALL")} className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${catFilter === "ALL" ? "bg-foreground text-background border-foreground" : "border-card-border text-muted"}`}>Hamısı ({allOrders.length})</button>
-          {(Object.keys(ORDER_CATS) as OrderCat[]).filter((k) => catCounts[k]).map((k) => (
-            <button key={k} onClick={() => setCatFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${catFilter === k ? ORDER_CATS[k].chipOn : ORDER_CATS[k].chip}`}>
-              {ORDER_CATS[k].label} ({catCounts[k]})
-            </button>
-          ))}
         </div>
-      )}
 
+        {/* Sürüşən siyahı — çox sifariş olanda səhifə yox, bu hissə sürüşür. */}
+        <div className="orders-scroll overflow-y-auto max-h-[calc(100dvh-220px)] sm:max-h-[calc(100dvh-240px)] p-2.5 sm:p-3 bg-input-bg/40">
       {orders.length === 0 ? (
-        <div className="text-center py-16 surface text-muted">
-          <svg className="w-16 h-16 text-muted-foreground/20 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
-          <p>{t("adminNoData")}</p>
+        <div className="text-center py-16 text-muted">
+          <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-[var(--brand-soft)] flex items-center justify-center text-3xl">📦</div>
+          <p className="text-sm">{catFilter === "ALL" ? t("adminNoData") : "Bu bölmədə sifariş yoxdur"}</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-2.5">
           {orders.map((order) => {
             const counterparty = activeTab === "buying" ? order.seller : order.buyer;
             const hasActiveReturn = order.returnRequests?.some((r: any) => !['CANCELLED', 'REJECTED', 'REFUNDED'].includes(r.status));
@@ -576,11 +589,13 @@ export default function OrdersPage() {
             const firstImg: string | undefined = order.items?.[0]?.listing?.images?.[0];
             const needsAction = needsMyAction(order, activeTab);
             return (
-              <div key={order.id} className={`surface overflow-hidden border-l-4 ${cat.bar} ${isOpen ? "ring-1 ring-orange-500/30" : ""}`}>
+              <div key={order.id} className={`relative rounded-2xl bg-card border border-card-border overflow-hidden transition-all duration-200 ${isOpen ? "shadow-lg ring-2 ring-[var(--brand-from)]/35" : "shadow-sm hover:shadow-md hover:-translate-y-px"}`}>
+                {/* Status rəngli vurğu zolağı */}
+                <span className={`absolute left-0 top-0 bottom-0 w-1.5 ${cat.accent}`} aria-hidden />
                 {/* KART — qısa xülasə; klikləyəndə bütün detallar açılır. */}
                 <button type="button" onClick={() => toggleOpen(order.id)} aria-expanded={isOpen}
-                  className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-input-bg/40 transition-colors">
-                  <div className="w-14 h-14 rounded-xl bg-input-bg border border-input-border overflow-hidden shrink-0 flex items-center justify-center">
+                  className="w-full text-left pl-4 pr-3 sm:pl-5 sm:pr-4 py-3 flex items-center gap-3">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl bg-input-bg overflow-hidden shrink-0 flex items-center justify-center ring-1 ring-card-border">
                     {firstImg ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={firstImg.startsWith("http") ? firstImg : imgUrl(firstImg)} alt="" className="w-full h-full object-cover" loading="lazy" />
@@ -599,14 +614,16 @@ export default function OrdersPage() {
                     <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cat.pill}`}>
                       {order.deliveryType === "PICKUP" && order.status === "SHIPPED" ? (activeTab === "buying" ? "Təhvil verildi — təsdiqləyin" : "Təhvil verildi") : order.deliveryType === "PICKUP" && order.status === "CONFIRMED" ? "Hazırdır — götürülə bilər" : hasActiveReturn && order.status === "DELIVERED" ? "İadə gedir" : statusLabel(order.status)}
                     </span>
-                    <span className="font-bold text-sm">{order.total.toFixed(2)} AZN</span>
+                    <span className="font-extrabold text-sm sm:text-base bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] bg-clip-text text-transparent">{order.total.toFixed(2)} ₼</span>
                     {order.installmentMonths ? <span className="text-[10px] text-amber-600">💳 {order.installmentMonths} ay</span> : null}
                   </div>
-                  <svg className={`w-4 h-4 text-muted shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                  <span className={`w-7 h-7 rounded-full shrink-0 flex items-center justify-center transition-all ${isOpen ? "rotate-180 text-white bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)]" : "bg-input-bg text-muted"}`}>
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                  </span>
                 </button>
 
                 {isOpen && (<>
-                <div className="px-4 py-2 border-t border-card-border flex items-center justify-between flex-wrap gap-2 bg-input-bg/30">
+                <div className="pl-5 pr-4 py-2 border-t border-card-border flex items-center justify-between flex-wrap gap-2 bg-[var(--brand-soft)]">
                   <p className="text-muted text-xs">{new Date(order.createdAt).toLocaleString("az-AZ")}</p>
                   <div className="flex items-center gap-3">
                     {order.installmentMonths ? (
@@ -1154,6 +1171,8 @@ export default function OrdersPage() {
           })}
         </div>
       )}
+        </div>
+      </div>
 
       {/* ── Məhsula rəy modalı (alıcı) ── */}
       {reviewFor && (
