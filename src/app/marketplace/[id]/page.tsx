@@ -15,6 +15,7 @@ import OrderMap from "@/components/OrderMapWrapper";
 import ShareButton from "@/components/ShareButton";
 import ListingCard from "@/components/ListingCard";
 import ComplaintButton from "@/components/ComplaintButton";
+import SellerReputation from "@/components/SellerReputation";
 import SellerReply from "@/components/SellerReply";
 import { recordView } from "@/lib/recentlyViewed";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
@@ -900,6 +901,7 @@ export default function ListingDetailPage() {
                       ) : (
                         <span className="text-muted">Yeni satıcı</span>
                       )}
+                      {listing.sellerReputation?.score != null && <SellerReputation reputation={listing.sellerReputation} />}
                       <span className="text-muted-foreground/50">·</span>
                       <Link href={profHref} className="text-muted hover:text-[var(--brand-to)] underline-offset-2 hover:underline">Digər elanları</Link>
                       {canMsg && (
@@ -1241,6 +1243,11 @@ export default function ListingDetailPage() {
                 <p className="text-muted text-xs">{t("sellerProfile")} &rarr;</p>
               </div>
             </Link>
+            {listing.sellerReputation && (
+              <div className="mb-3">
+                <SellerReputation reputation={listing.sellerReputation} />
+              </div>
+            )}
             {isLoggedIn && user?.id !== listing.user.id && (
               <div className="mb-3">
                 <ComplaintButton listingId={listing.id} label="⚠ Bu məhsul haqqında şikayət et" className="text-xs text-red-500 hover:underline" />

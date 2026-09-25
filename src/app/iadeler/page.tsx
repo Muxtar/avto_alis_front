@@ -6,11 +6,13 @@ import { useAuth } from "@/lib/AuthContext";
 import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import { complaintStatusLabel } from "@/lib/complaints";
 
 /* ── İADƏLƏR ──
    Alıcı və satıcı üçün iadənin bütün yolu: sorğu → təsdiq → göndərmə →
-   qəbul → pulun qaytarılması, hər mərhələnin son müddəti, tarixçə və
-   (varsa) mübahisə — kim, nə vaxt, niyə qərar verdi. */
+   qəbul → pulun qaytarılması, hər mərhələnin son müddəti və tarixçə.
+   Məhsul YALNIZ satıcı qəbul etdikdə geri qaytarılır. Satıcı rədd etsə və ya
+   cavab verməsə, alıcı onun haqqında şikayət yaza bilər (reytinqə təsir). */
 
 type Side = "buying" | "selling";
 
@@ -22,7 +24,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   RETURN_RECEIVED: { label: "Satıcı qəbul etdi", cls: "bg-teal-500/10 text-teal-600 border-teal-500/20" },
   REFUNDED: { label: "Pul qaytarıldı", cls: "bg-green-500/10 text-green-600 border-green-500/20" },
   CANCELLED: { label: "Ləğv edildi", cls: "bg-gray-500/10 text-gray-500 border-gray-500/20" },
-  DISPUTED: { label: "Mübahisə — sistem baxır", cls: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
+  DISPUTED: { label: "Admin yoxlayır", cls: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
 };
 // Satıcı tərəfində bəzi statuslar başqa cür oxunur.
 const SELLER_LABEL: Record<string, string> = {
@@ -39,26 +41,15 @@ const REASON: Record<string, string> = {
 };
 const METHOD: Record<string, string> = { COURIER: "Kuryer", IN_PERSON: "Şəxsən təhvil", POST: "Poçt", YANGO: "Yango" };
 const ACTOR: Record<string, string> = { BUYER: "Alıcı", SELLER: "Satıcı", SYSTEM: "Sistem", ADMIN: "Admin" };
-const DISPUTE_STATUS: Record<string, { label: string; cls: string }> = {
-  AWAITING_SELLER: { label: "Qarşı tərəfin cavabı gözlənilir", cls: "bg-amber-500/10 text-amber-600" },
-  REVIEWING: { label: "Sistem baxır", cls: "bg-blue-500/10 text-blue-600" },
-  EVIDENCE_REQUESTED: { label: "Əlavə sübut istənilir", cls: "bg-red-500/10 text-red-500" },
-  RESOLVED: { label: "Qərar verildi", cls: "bg-green-500/10 text-green-600" },
-  REJECTED: { label: "Rədd edildi", cls: "bg-gray-500/10 text-gray-500" },
-  OPEN: { label: "Açıq", cls: "bg-blue-500/10 text-blue-600" },
-};
-const DECIDED_BY: Record<string, string> = { SYSTEM: "Sistem", AI: "Sistem (AI)", ADMIN: "Admin", SELLER: "Qarşı tərəfin razılığı" };
-const DISPUTE_CATS: [string, string][] = [
-  ["DEFECTIVE", "Qüsurlu / işləmir"],
-  ["DAMAGED", "Zədəli gəldi"],
-  ["NOT_AS_DESCRIBED", "Təsvirə uyğun deyil"],
-  ["WRONG_ITEM", "Yanlış məhsul"],
-  ["CHANGED_MIND", "Bəyənmədim"],
-];
-
 const STEPS = ["Sorğu", "Təsdiq", "Göndərildi", "Qəbul", "Pul qaytarıldı"];
 const STEP_OF: Record<string, number> = { REQUESTED: 0, APPROVED: 1, RETURN_SHIPPED: 2, RETURN_RECEIVED: 3, REFUNDED: 4 };
-const DISPUTE_DAYS = 7;
+// Tarixçədə status → oxunaqlı etiket (iadə statuslarından əlavə hadisələr).
+const EVENT_LABEL: Record<string, string> = {
+  SELLER_NO_RESPONSE: "Satıcı vaxtında cavab vermədi",
+  COMPLAINT: "Alıcı şikayət yazdı",
+  DISPUTED: "Qaytarılan məhsulda problem — admin yoxlayır",
+};
+const sellerSilent = (ret: any) => (ret.events || []).some((e: any) => e.status === "SELLER_NO_RESPONSE");
 
 const fmtDate = (d?: string | null) =>
   d ? new Date(d).toLocaleString("az-AZ", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
@@ -79,14 +70,14 @@ function countdown(target: string | number | null | undefined, now: number): { t
 }
 
 // Aktiv son müddət: kim hərəkət etməlidir və etməsə nə olur.
-function activeDeadline(ret: any, side: Side, dispute: any): { at: string | number; who: string; then: string } | null {
+function activeDeadline(ret: any, side: Side): { at: string | number; who: string; then: string } | null {
   const mine = (s: Side) => side === s;
   switch (ret.status) {
     case "REQUESTED":
       return ret.sellerRespondBy ? {
         at: ret.sellerRespondBy,
         who: mine("selling") ? "Siz cavab verməlisiniz" : "Satıcı cavab verməlidir",
-        then: "cavab olmasa iadə avtomatik təsdiqlənir",
+        then: mine("selling") ? "cavabsız iadə etibarlılıq reytinqinizə təsir edir" : "cavab olmasa satıcı haqqında şikayət yaza bilərsiniz",
       } : null;
     case "APPROVED":
       return ret.shipBy ? {
@@ -98,7 +89,7 @@ function activeDeadline(ret: any, side: Side, dispute: any): { at: string | numb
       return ret.receiveBy ? {
         at: ret.receiveBy,
         who: mine("selling") ? "Qəbulu təsdiqləməlisiniz" : "Satıcı qəbulu təsdiqləməlidir",
-        then: "təsdiq olmasa sistem mübahisə açır",
+        then: "təsdiq olmasa admin baxır",
       } : null;
     case "RETURN_RECEIVED":
       return ret.refundBy ? {
@@ -106,29 +97,8 @@ function activeDeadline(ret: any, side: Side, dispute: any): { at: string | numb
         who: mine("selling") ? "Pulu qaytarmalısınız" : "Satıcı pulu qaytarmalıdır",
         then: "qaytarılmasa sistem özü qaytarır",
       } : null;
-    case "REJECTED": {
-      if (ret.disputeId) return null;
-      const base = rejectedAt(ret);
-      if (!base) return null;
-      return {
-        at: base + DISPUTE_DAYS * 24 * 3600 * 1000,
-        who: mine("buying") ? "Razı deyilsinizsə etiraz edə bilərsiniz" : "Alıcı etiraz edə bilər",
-        then: "müddət bitəndən sonra etiraz qəbul olunmur",
-      };
-    }
-    case "DISPUTED":
-      if (dispute?.respondBy && dispute.status === "AWAITING_SELLER") {
-        return { at: dispute.respondBy, who: "Qarşı tərəf cavab verməlidir", then: "cavab olmasa sistem sübutlara görə qərar verir" };
-      }
-      return null;
   }
   return null;
-}
-
-function rejectedAt(ret: any): number | null {
-  const ev = [...(ret.events || [])].reverse().find((e: any) => e.status === "REJECTED");
-  const d = ev?.createdAt || ret.updatedAt;
-  return d ? new Date(d).getTime() : null;
 }
 
 // Proqres çubuğunda neçənci addıma çatılıb (tarixçədən).
@@ -220,12 +190,12 @@ function StepBar({ ret }: { ret: any }) {
   );
 }
 
-type FormKind = null | "ship" | "approve" | "reject" | "dispute" | "problem" | "appeal" | "respond";
+type FormKind = null | "ship" | "approve" | "reject" | "complain" | "problem";
 
 function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
   ret: any; side: Side; expanded: boolean; onToggle: () => void; detail: any; reload: () => Promise<void>; now: number;
 }) {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const { toast } = useToast();
   const [form, setForm] = useState<FormKind>(null);
   const [text, setText] = useState("");
@@ -233,25 +203,23 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
   const [method, setMethod] = useState("COURIER");
   const [tracking, setTracking] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState("");
   const [busy, setBusy] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
 
   const dispute = detail?.dispute || null;
   const st = STATUS[ret.status] || { label: ret.status, cls: "bg-gray-500/10 text-gray-500 border-gray-500/20" };
   const label = side === "selling" && SELLER_LABEL[ret.status] ? SELLER_LABEL[ret.status] : st.label;
-  const dl = activeDeadline(ret, side, dispute);
+  const dl = activeDeadline(ret, side);
   const cd = dl ? countdown(dl.at, now) : null;
   const other = side === "buying" ? ret.seller : ret.buyer;
   const items: any[] = ret.orderItem ? [ret.orderItem] : ret.order?.items || [];
   const amountShown = ret.refundAmount ?? ret.order?.total;
-  const rejAt = rejectedAt(ret);
-  const canDispute = side === "buying" && ret.status === "REJECTED" && !ret.disputeId
-    && (!rejAt || now - rejAt < DISPUTE_DAYS * 24 * 3600 * 1000);
+  const silent = ret.status === "REQUESTED" && sellerSilent(ret);
+  const canComplain = side === "buying" && !ret.disputeId && (ret.status === "REJECTED" || silent);
 
   const open = (k: FormKind) => {
     setForm(form === k ? null : k);
-    setText(""); setFiles([]); setTracking(""); setCategory("");
+    setText(""); setFiles([]); setTracking("");
     setAmount(k === "approve" && ret.refundAmount != null ? money(ret.refundAmount) : "");
   };
 
@@ -308,22 +276,8 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
     if (!confirm(`${money(ret.refundAmount)} AZN alıcıya qaytarılsın?`)) return;
     done(await call(`/returns/${ret.id}/refund`, "PUT"), "Pul qaytarıldı ✓");
   };
-  const doDispute = async () => done(await call(`/returns/${ret.id}/dispute`, "POST", fd({ description: text.trim(), category }, files), true), "Etirazınız qəbul edildi — sistem baxacaq");
-  const doProblem = async () => done(await call(`/returns/${ret.id}/receive-problem`, "POST", fd({ description: text.trim() }, files), true), "Problem bildirildi — mübahisə açıldı");
-  const doAppeal = async () => dispute && done(await call(`/complaints/${dispute.id}/appeal`, "POST", { note: text.trim() }), "Müraciətiniz adminə göndərildi");
-  const doRespond = async (accept: boolean) => {
-    if (!dispute) return;
-    if (accept && !confirm("İddianı qəbul edirsiniz? Qərar qarşı tərəfin xeyrinə veriləcək.")) return;
-    done(await call(`/complaints/${dispute.id}/respond`, "POST", fd({ accept: String(accept), response: text.trim() }, accept ? [] : files), true),
-      accept ? "İddia qəbul edildi" : "Cavabınız göndərildi");
-  };
-
-  const uid = user?.id;
-  const canAppeal = !!dispute && (dispute.decision === "COMPLAINANT" || dispute.decision === "RESPONDENT")
-    && dispute.decisionBy !== "ADMIN" && !dispute.appealed
-    && ((dispute.decision === "COMPLAINANT" && uid === dispute.targetUserId) || (dispute.decision === "RESPONDENT" && uid === dispute.complainantId));
-  const canRespond = !!dispute && dispute.status === "AWAITING_SELLER" && uid === dispute.targetUserId && !dispute.sellerResponse;
-  const partyName = (id: number) => (id === ret.buyerId ? "Alıcı" : id === ret.sellerId ? "Satıcı" : "Tərəf");
+  const doComplain = async () => done(await call(`/returns/${ret.id}/dispute`, "POST", fd({ description: text.trim() }, files), true), "Şikayətiniz göndərildi — satıcının reytinqinə təsir edəcək");
+  const doProblem = async () => done(await call(`/returns/${ret.id}/receive-problem`, "POST", fd({ description: text.trim() }, files), true), "Problem bildirildi — admin yoxlayacaq");
 
   const btn = "px-3 py-2 rounded-lg text-xs font-semibold disabled:opacity-50 transition-colors";
   const inputCls = "w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 text-sm";
@@ -348,6 +302,17 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
           <span className="font-bold text-orange-500">{money(amountShown)} AZN</span>
           {other?.name && <span>{side === "buying" ? "Satıcı" : "Alıcı"}: {other.name}</span>}
         </div>
+        {ret.reasonText && (
+          <p className="text-xs line-clamp-2"><span className="text-muted">Alıcının səbəbi:</span> {ret.reasonText}</p>
+        )}
+        {ret.status === "REJECTED" && ret.sellerNote && (
+          <p className="text-xs text-red-500 line-clamp-2"><span className="font-semibold">Satıcının rədd səbəbi:</span> {ret.sellerNote}</p>
+        )}
+        {silent && (
+          <p className="text-xs rounded-lg px-2.5 py-1.5 bg-red-500/10 text-red-500">
+            ⚠ {side === "buying" ? "Satıcı vaxtında cavab vermədi — gözləyə və ya onun haqqında şikayət yaza bilərsiniz." : "Vaxtında cavab vermədiniz — qəbul edin və ya səbəb yazaraq rədd edin. Cavabsız iadə reytinqinizə təsir edir."}
+          </p>
+        )}
         {cd && dl && (
           <div className={`text-xs rounded-lg px-2.5 py-1.5 ${cd.urgent ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-700 dark:text-amber-400"}`}>
             ⏱ <b>{dl.who}</b> — {cd.text}
@@ -366,9 +331,9 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
           </div>
 
           {/* Səbəb */}
-          <div className="space-y-1">
-            <p className="text-xs text-muted">Səbəb</p>
-            <p className="text-sm"><span className="font-semibold">{REASON[ret.reason] || ret.reason}</span>{ret.reasonText ? ` — ${ret.reasonText}` : ""}</p>
+          <div className="space-y-1 rounded-xl border border-card-border bg-input-bg/40 p-3">
+            <p className="text-xs font-semibold text-muted">Alıcının səbəbi{side === "buying" ? " (siz)" : ""} · {REASON[ret.reason] || ret.reason}</p>
+            {ret.reasonText ? <p className="text-sm whitespace-pre-wrap">{ret.reasonText}</p> : <p className="text-xs text-muted italic">İzah yazılmayıb</p>}
             {items.length > 0 && (
               <ul className="text-xs text-muted">
                 {items.map((it) => <li key={it.id}>• {it.title} — {money(it.price)} AZN × {it.quantity}</li>)}
@@ -379,11 +344,19 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
 
           {ret.status === "REJECTED" && ret.sellerNote && (
             <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3">
-              <p className="text-xs font-semibold text-red-500 mb-1">Satıcının rədd səbəbi</p>
-              <p className="text-sm">{ret.sellerNote}</p>
+              <p className="text-xs font-semibold text-red-500 mb-1">Satıcının rədd səbəbi{side === "selling" ? " (siz)" : ""}</p>
+              <p className="text-sm whitespace-pre-wrap">{ret.sellerNote}</p>
+              {side === "buying" && <p className="text-[11px] text-muted mt-1.5">Satıcı rədd etdiyi üçün məhsul geri qaytarılmır. Razı deyilsinizsə, satıcı haqqında şikayət yaza bilərsiniz — bu, onun etibarlılıq reytinqinə təsir edir.</p>}
             </div>
           )}
-          {ret.status !== "REJECTED" && ret.sellerNote && (
+          {ret.status === "DISPUTED" && (
+            <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-3">
+              <p className="text-xs font-semibold text-orange-600 mb-1">Satıcı qaytarılan məhsulda problem bildirdi — admin yoxlayır</p>
+              {ret.sellerNote && <p className="text-sm whitespace-pre-wrap">{ret.sellerNote}</p>}
+              <p className="text-[11px] text-muted mt-1.5">Pulun qaytarılması admin qərarına qədər dayandırılıb.</p>
+            </div>
+          )}
+          {ret.status !== "REJECTED" && ret.status !== "DISPUTED" && ret.sellerNote && (
             <p className="text-xs"><span className="text-muted">Satıcının qeydi:</span> {ret.sellerNote}</p>
           )}
           <Thumbs images={ret.sellerImages} label="Satıcının fotoları" />
@@ -408,80 +381,17 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
             )
           )}
 
-          {/* Mübahisə */}
+          {/* Satıcı haqqında şikayət (reputasiya) */}
           {ret.disputeId && (
-            !detail ? (
-              <div className="flex justify-center py-4"><div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
-            ) : dispute && (
-              <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-3 space-y-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <p className="text-sm font-semibold">⚖️ Mübahisə #{dispute.id}</p>
-                  <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${(DISPUTE_STATUS[dispute.status] || DISPUTE_STATUS.OPEN).cls}`}>
-                    {(DISPUTE_STATUS[dispute.status] || { label: dispute.status }).label}
-                  </span>
-                </div>
-                {dispute.status === "AWAITING_SELLER" && dispute.respondBy && (() => {
-                  const c = countdown(dispute.respondBy, now);
-                  return c && <p className="text-xs text-amber-700 dark:text-amber-400">⏱ {partyName(dispute.targetUserId)} cavab verməlidir — {c.text}. Cavab olmasa sistem sübutlara (fotolara) görə qərar verəcək.</p>;
-                })()}
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold">{partyName(dispute.complainantId)}nın iddiası{uid === dispute.complainantId ? " (siz)" : ""}</p>
-                  <p className="text-sm whitespace-pre-wrap">{dispute.description}</p>
-                  <Thumbs images={dispute.images} />
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-xs font-semibold">{partyName(dispute.targetUserId)}nın cavabı{uid === dispute.targetUserId ? " (siz)" : ""}</p>
-                  {dispute.sellerResponse ? (
-                    <>
-                      <p className="text-sm whitespace-pre-wrap">{dispute.sellerResponse}</p>
-                      <Thumbs images={dispute.sellerImages} />
-                    </>
-                  ) : <p className="text-xs text-muted italic">Hələ cavab yoxdur</p>}
-                </div>
-                {dispute.decision && (
-                  <div className="rounded-lg bg-input-bg/60 border border-card-border p-2.5 space-y-1">
-                    <p className="text-sm font-semibold">
-                      {dispute.decision === "ESCALATED"
-                        ? "Adminə ötürüldü — admin baxacaq"
-                        : `Qərar: ${partyName(dispute.decision === "COMPLAINANT" ? dispute.complainantId : dispute.targetUserId)}nın xeyrinə`}
-                    </p>
-                    <p className="text-xs text-muted">
-                      Qərar verən: {DECIDED_BY[dispute.decisionBy] || dispute.decisionBy || "—"}
-                      {dispute.decidedAt ? ` · ${fmtDate(dispute.decidedAt)}` : ""}
-                    </p>
-                    {dispute.decisionReason && <p className="text-xs whitespace-pre-wrap">{dispute.decisionReason}</p>}
-                    {dispute.appealed && <p className="text-xs text-blue-600">Adminə müraciət edilib — baxılır.</p>}
-                  </div>
-                )}
-                <div className="flex gap-2 flex-wrap">
-                  {canRespond && <button onClick={() => open("respond")} className={brand}>Cavab ver</button>}
-                  {canAppeal && <button onClick={() => open("appeal")} className={ghost}>Adminə müraciət et</button>}
-                </div>
-                {form === "respond" && canRespond && (
-                  <div className="space-y-2">
-                    <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} className={inputCls + " resize-none"}
-                      placeholder="Mövqeyinizi izah edin (ən azı 10 simvol)..." />
-                    <PhotoPicker files={files} setFiles={setFiles} max={6} />
-                    <div className="flex gap-2 flex-wrap">
-                      <button disabled={busy || !minLen(10)} onClick={() => doRespond(false)} className={brand}>{busy ? "..." : "Etiraz et"}</button>
-                      <button disabled={busy} onClick={() => doRespond(true)} className={`${btn} bg-green-500/10 text-green-600`}>İddianı qəbul edirəm</button>
-                      <button onClick={() => setForm(null)} className={ghost}>Bağla</button>
-                    </div>
-                  </div>
-                )}
-                {form === "appeal" && canAppeal && (
-                  <div className="space-y-2">
-                    <p className="text-[11px] text-muted">Qərarla razı deyilsinizsə bir dəfə adminə müraciət edə bilərsiniz. Admin qərarı yekundur.</p>
-                    <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} className={inputCls + " resize-none"}
-                      placeholder="Niyə razı deyilsiniz? (ən azı 10 simvol)" />
-                    <div className="flex gap-2">
-                      <button disabled={busy || !minLen(10)} onClick={doAppeal} className={brand}>{busy ? "..." : "Göndər"}</button>
-                      <button onClick={() => setForm(null)} className={ghost}>Bağla</button>
-                    </div>
-                  </div>
-                )}
+            <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-3 flex items-center justify-between gap-2 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold">{side === "buying" ? "Satıcı haqqında şikayət yazılıb" : "Alıcı sizin haqqınızda şikayət yazıb"}</p>
+                {dispute && <p className="text-xs text-muted">Şikayət #{dispute.id} · {complaintStatusLabel(dispute, side === "selling").label}</p>}
               </div>
-            )
+              <Link href={side === "buying" ? "/complaints" : "/complaints?tab=against"} className="text-xs font-semibold text-orange-500 hover:underline whitespace-nowrap">
+                {side === "buying" ? "Şikayətə bax →" : "Cavab ver →"}
+              </Link>
+            </div>
           )}
 
           {/* ── Əməliyyatlar ── */}
@@ -492,7 +402,7 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
             {side === "buying" && ret.status === "APPROVED" && (
               <button onClick={() => open("ship")} className={brand}>Göndərdim</button>
             )}
-            {canDispute && <button onClick={() => open("dispute")} className={brand}>Etiraz et (mübahisə aç)</button>}
+            {canComplain && <button onClick={() => open("complain")} className={`${btn} bg-red-500/10 text-red-500 hover:bg-red-500/20`}>⚠ Satıcı haqqında şikayət yaz</button>}
 
             {side === "selling" && ret.status === "REQUESTED" && (
               <>
@@ -518,7 +428,7 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
                 {Object.entries(METHOD).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
               <input value={tracking} onChange={(e) => setTracking(e.target.value)} className={inputCls} placeholder="İzləmə kodu (varsa)" maxLength={80} />
-              <p className="text-[11px] text-muted">Satıcı 10 gün ərzində qəbulu təsdiqləməlidir, əks halda sistem mübahisə açır.</p>
+              <p className="text-[11px] text-muted">Satıcı 10 gün ərzində qəbulu təsdiqləməlidir, əks halda admin baxır.</p>
               <div className="flex gap-2">
                 <button disabled={busy} onClick={doShip} className={brand}>{busy ? "..." : "Təsdiqlə"}</button>
                 <button onClick={() => setForm(null)} className={ghost}>Bağla</button>
@@ -531,7 +441,7 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
               <label className="text-[11px] text-muted">Qaytarılacaq məbləğ (AZN)</label>
               <input type="number" step="0.01" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} className={inputCls} />
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2} className={inputCls + " resize-none"} placeholder="Alıcıya qeyd (istəyə görə)" />
-              <p className="text-[11px] text-muted">Təsdiqdən sonra alıcı 7 gün ərzində məhsulu göndərməlidir.</p>
+              <p className="text-[11px] text-muted">Təsdiqdən sonra alıcı 7 gün ərzində məhsulu göndərməlidir. Məhsulu aldıqdan sonra qəbulu təsdiqləyin — pul 48 saat ərzində qaytarılmalıdır.</p>
               <div className="flex gap-2">
                 <button disabled={busy} onClick={doApprove} className={brand}>{busy ? "..." : "Təsdiqlə"}</button>
                 <button onClick={() => setForm(null)} className={ghost}>Bağla</button>
@@ -542,8 +452,8 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
             <div className="rounded-xl bg-input-bg/50 p-3 space-y-2">
               <p className="text-sm font-semibold">Rədd səbəbi <span className="text-red-500">*</span></p>
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} className={inputCls + " resize-none"}
-                placeholder="Niyə rədd edirsiniz? (ən azı 10 simvol) — alıcı və sistem bunu görəcək" />
-              <p className="text-[11px] text-muted">Sübut fotoları (istəyə görə, maks. 4). Alıcı 7 gün ərzində etiraz edə bilər — sistem hər iki tərəfin sübutlarına baxır.</p>
+                placeholder="Niyə rədd edirsiniz? (ən azı 10 simvol) — alıcı bunu görəcək" />
+              <p className="text-[11px] text-muted">Sübut fotoları (istəyə görə, maks. 4). Rədd etsəniz məhsul geri qaytarılmır, amma alıcı sizin haqqınızda şikayət yaza bilər — əsassız rədd etibarlılıq reytinqinizə təsir edir.</p>
               <PhotoPicker files={files} setFiles={setFiles} max={4} />
               <div className="flex gap-2">
                 <button disabled={busy || !minLen(10)} onClick={doReject} className={`${btn} bg-red-500 text-white`}>{busy ? "..." : "Rədd et"}</button>
@@ -551,19 +461,20 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
               </div>
             </div>
           )}
-          {form === "dispute" && (
+          {form === "complain" && canComplain && (
             <div className="rounded-xl bg-input-bg/50 p-3 space-y-2">
-              <p className="text-sm font-semibold">Rədd qərarına etiraz</p>
-              <select value={category} onChange={(e) => setCategory(e.target.value)} className={inputCls}>
-                <option value="">Kateqoriya seçin (istəyə görə)</option>
-                {DISPUTE_CATS.map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-              <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} className={inputCls + " resize-none"}
-                placeholder="Niyə razı deyilsiniz? (ən azı 10 simvol)" />
-              <p className="text-[11px] text-muted">Aydın fotolar əlavə edin (maks. 6). Satıcının cavab vermək üçün 48 saatı var, sonra sistem sübutlara görə qərar verir; əmin olmadıqda admin baxır.</p>
+              <p className="text-sm font-semibold">⚠ Satıcı haqqında şikayət</p>
+              <p className="text-[11px] text-amber-700 dark:text-amber-400 bg-amber-500/10 rounded-lg px-2.5 py-1.5">
+                Bu şikayət məhsulun geri qaytarılmasına səbəb olmur — qaytarma yalnız satıcının qəbulu ilə olur. Şikayət satıcının etibarlılıq reytinqinə təsir edir.
+                {ret.status === "REQUESTED" && " Satıcı sonradan yenə də iadənizə cavab verə bilər."}
+              </p>
+              <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={2000} className={inputCls + " resize-none"}
+                placeholder={ret.status === "REJECTED" ? "Niyə rədd qərarı ilə razı deyilsiniz? (ən azı 10 simvol)" : "Nə baş verdi? (ən azı 10 simvol)"} />
+              <p className={`text-[11px] ${minLen(10) ? "text-green-600" : "text-muted"}`}>{text.trim().length}/10 simvol minimum</p>
+              <p className="text-[11px] text-muted">Fotolar (istəyə görə, maks. 6). İadə sorğusundakı fotolarınız avtomatik əlavə olunur.</p>
               <PhotoPicker files={files} setFiles={setFiles} max={6} />
               <div className="flex gap-2">
-                <button disabled={busy || !minLen(10)} onClick={doDispute} className={brand}>{busy ? "..." : "Göndər"}</button>
+                <button disabled={busy || !minLen(10)} onClick={doComplain} className={`${btn} bg-red-500 text-white`}>{busy ? "..." : "Şikayəti göndər"}</button>
                 <button onClick={() => setForm(null)} className={ghost}>Bağla</button>
               </div>
             </div>
@@ -571,7 +482,7 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
           {form === "problem" && (
             <div className="rounded-xl bg-input-bg/50 p-3 space-y-2">
               <p className="text-sm font-semibold">Qaytarılan məhsulda problem</p>
-              <p className="text-[11px] text-muted">Məhsul zədəli, fərqli və ya əskik gəlibsə yazın və ən azı 1 foto əlavə edin. Mübahisə açılacaq, alıcının cavab üçün 48 saatı olacaq.</p>
+              <p className="text-[11px] text-muted">Məhsul zədəli, fərqli və ya əskik gəlibsə yazın və ən azı 1 foto əlavə edin. Pulun qaytarılması dayanacaq və admin yoxlayıb qərar verəcək.</p>
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} className={inputCls + " resize-none"}
                 placeholder="Problemi ətraflı yazın (ən azı 10 simvol)" />
               <PhotoPicker files={files} setFiles={setFiles} max={6} />
@@ -594,7 +505,7 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
                     <span className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-orange-500" />
                     <p className="text-xs">
                       <b>{ACTOR[e.actor] || e.actor}</b>
-                      {e.status && <span className="text-muted"> · {STATUS[e.status]?.label || e.status}</span>}
+                      {e.status && <span className="text-muted"> · {EVENT_LABEL[e.status] || STATUS[e.status]?.label || e.status}</span>}
                     </p>
                     <p className="text-[11px] text-muted">{fmtDate(e.createdAt)}</p>
                     {e.note && <p className="text-xs mt-0.5 whitespace-pre-wrap">{e.note}</p>}
@@ -697,7 +608,7 @@ function IadelerInner() {
   };
 
   const needAction = (side: Side) => lists[side].filter((r) =>
-    side === "buying" ? r.status === "APPROVED" : ["REQUESTED", "RETURN_SHIPPED", "RETURN_RECEIVED"].includes(r.status)).length;
+    side === "buying" ? r.status === "APPROVED" || (r.status === "REQUESTED" && !r.disputeId && sellerSilent(r)) : ["REQUESTED", "RETURN_SHIPPED", "RETURN_RECEIVED"].includes(r.status)).length;
 
   if (authLoading || (!isLoggedIn && !token)) {
     return <div className="flex justify-center py-20"><div className="w-7 h-7 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;
@@ -728,12 +639,13 @@ function IadelerInner() {
       <details className="surface p-3 mb-4 text-xs text-muted">
         <summary className="cursor-pointer font-semibold text-foreground">Müddətlər necə işləyir?</summary>
         <ul className="mt-2 space-y-1 list-disc pl-4">
-          <li>Satıcı sorğuya <b>72 saat</b> ərzində cavab verməlidir, əks halda iadə avtomatik təsdiqlənir.</li>
+          <li>Satıcı sorğuya <b>72 saat</b> ərzində cavab verməlidir. <b>Avtomatik təsdiq yoxdur</b> — məhsul yalnız satıcı iadəni qəbul etdikdə geri qaytarılır.</li>
+          <li>Satıcı vaxtında cavab verməsə, ona xatırlatma gedir; siz gözləyə və ya satıcı haqqında şikayət yaza bilərsiniz (iadə açıq qalır).</li>
+          <li>Satıcı rədd etsə, səbəbini yazmalıdır. Razı deyilsinizsə, satıcı haqqında şikayət yaza bilərsiniz — bu, onun etibarlılıq reytinqinə təsir edir.</li>
           <li>Təsdiqdən sonra alıcı məhsulu <b>7 gün</b> ərzində göndərməlidir, əks halda iadə ləğv olunur.</li>
-          <li>Satıcı məhsulu aldığını <b>10 gün</b> ərzində təsdiqləməlidir, əks halda sistem mübahisə açır.</li>
+          <li>Satıcı məhsulu aldığını <b>10 gün</b> ərzində təsdiqləməlidir, əks halda admin baxır.</li>
           <li>Qəbuldan sonra satıcı pulu <b>48 saat</b> ərzində qaytarmalıdır, əks halda sistem özü qaytarır.</li>
-          <li>Rədd edilmiş iadəyə alıcı <b>7 gün</b> ərzində etiraz edə bilər.</li>
-          <li>Mübahisədə qarşı tərəfin cavab üçün <b>48 saatı</b> var; sonra sistem sübutlara (fotolara) baxıb qərar verir, əmin olmadıqda admin baxır.</li>
+          <li>Satıcı qaytarılan məhsulda problem bildirsə, pulun qaytarılması dayanır və admin yoxlayıb qərar verir.</li>
         </ul>
       </details>
 

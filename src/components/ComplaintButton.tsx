@@ -3,26 +3,10 @@ import { useRef, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
-
-// Şəxs/seans şikayət növləri.
-const PERSON_CATEGORIES: { value: string; label: string }[] = [
-  { value: "TIME_WASTED", label: "Vaxtı boşa xərclədi / rəy vermədi" },
-  { value: "FRAUD", label: "Fırıldaq / aldatma" },
-  { value: "RUDE", label: "Kobud davranış" },
-  { value: "FAKE_INFO", label: "Saxta / yanlış məlumat" },
-  { value: "OTHER", label: "Başqa" },
-];
-// Məhsul/sifariş şikayət növləri (eBay üslubu — foto sübutlu).
-const PRODUCT_CATEGORIES: { value: string; label: string }[] = [
-  { value: "DEFECTIVE", label: "Qüsurlu / işləmir" },
-  { value: "DAMAGED", label: "Zədəli gəldi" },
-  { value: "NOT_AS_DESCRIBED", label: "Təsvirə uyğun deyil" },
-  { value: "WRONG_ITEM", label: "Yanlış məhsul göndərildi" },
-  { value: "FRAUD", label: "Fırıldaq / aldatma" },
-  { value: "OTHER", label: "Başqa" },
-];
+import { COMPLAINT_CATEGORIES, PERSON_COMPLAINT_CATEGORIES, CONSULTATION_COMPLAINT_CATEGORIES } from "@/lib/complaints";
 
 // Şikayət düyməsi + modal.
+// Şikayət = satıcının davranışı haqqında rəy → yalnız etibarlılıq reytinqinə təsir edir (pul qaytarılmır).
 // - consultationId → seans şikayəti
 // - listingId / orderId → məhsul/sifariş şikayəti (foto yükləmə açılır)
 // - əks halda profil şikayəti (targetUserId)
@@ -32,9 +16,9 @@ export default function ComplaintButton({
   const { token, isLoggedIn } = useAuth();
   const { toast } = useToast();
   const isProduct = !!(listingId || orderId);
-  const cats = isProduct ? PRODUCT_CATEGORIES : PERSON_CATEGORIES;
+  const cats = isProduct ? COMPLAINT_CATEGORIES : consultationId ? CONSULTATION_COMPLAINT_CATEGORIES : PERSON_COMPLAINT_CATEGORIES;
   const [open, setOpen] = useState(false);
-  const [category, setCategory] = useState(isProduct ? "DEFECTIVE" : consultationId ? "TIME_WASTED" : "FAKE_INFO");
+  const [category, setCategory] = useState(isProduct ? "NOT_AS_DESCRIBED" : consultationId ? "TIME_WASTED" : "RUDE");
   const [description, setDescription] = useState("");
   const [images, setImages] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
@@ -49,7 +33,7 @@ export default function ComplaintButton({
 
   const submit = async () => {
     if (!isLoggedIn) { toast("Əvvəlcə daxil olun", "error"); return; }
-    if (description.trim().length < 5) { toast("Şikayətin təsvirini yazın", "error"); return; }
+    if (description.trim().length < 5) { toast("Şikayətin təsvirini yazın (min 5 simvol)", "error"); return; }
     setBusy(true);
     try {
       const fd = new FormData();
@@ -65,7 +49,14 @@ export default function ComplaintButton({
         headers: { Authorization: `Bearer ${token}` },
         body: fd,
       }).then((x) => x.json());
-      if (r.success) { setSent(true); setOpen(false); toast("Şikayət göndərildi — admin yoxlayacaq", "success"); }
+      if (r.success) {
+        setSent(true); setOpen(false);
+        if (listingId && !orderId && r.affectsRating === false) {
+          toast("Bildiriş adminə göndərildi (alış etmədiyiniz üçün reytinqə təsir etmir)", "success");
+        } else {
+          toast("Şikayət göndərildi — satıcıya bildiriş getdi", "success");
+        }
+      }
       else toast(r.message || "Xəta", "error");
     } catch { toast("Xəta", "error"); } finally { setBusy(false); }
   };
@@ -78,14 +69,16 @@ export default function ComplaintButton({
       {open && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => setOpen(false)}>
           <div className="bg-card border border-card-border rounded-2xl p-5 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold mb-1">{isProduct ? "Məhsul haqqında şikayət" : "Şikayət et"}</h3>
-            <p className="text-xs text-muted mb-3">{isProduct ? "Qüsuru izah edin və şəkil əlavə edin — admin araşdırıb qərar verəcək." : "Şikayətiniz admin tərəfindən araşdırılacaq."}</p>
+            <h3 className="text-lg font-semibold mb-1">{orderId ? "Satıcıdan şikayət" : isProduct ? "Məhsul haqqında şikayət" : "Şikayət et"}</h3>
+            <p className="text-xs text-muted bg-input-bg border border-input-border rounded-lg px-2.5 py-2 mb-3">
+              Şikayət satıcının etibarlılıq reytinqinə təsir edir. Pulun qaytarılması üçün sifarişdən «İadə sorğusu» göndərin.
+            </p>
             <label className="block text-xs font-medium text-muted mb-1">Səbəb</label>
             <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-3.5 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm mb-3">
               {cats.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
             <label className="block text-xs font-medium text-muted mb-1">Təsvir</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder={isProduct ? "Qüsur nədir? Nə vaxt fərq etdiniz?" : "Nə baş verdi?"} className="w-full px-3.5 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-3" />
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} placeholder={isProduct ? "Nə baş verdi? Satıcının davranışını təsvir edin." : "Nə baş verdi?"} className="w-full px-3.5 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-3" />
 
             {isProduct && (
               <div className="mb-3">
@@ -103,13 +96,13 @@ export default function ComplaintButton({
                     <button onClick={() => fileRef.current?.click()} className="w-16 h-16 rounded-lg border-2 border-dashed border-input-border text-muted flex items-center justify-center text-2xl hover:border-orange-500">+</button>
                   )}
                 </div>
-                <p className="text-[11px] text-muted mt-1">Qüsurun aydın göründüyü şəkillər əlavə edin (məs. cızıq, sınıq, yanlış model).</p>
+                <p className="text-[11px] text-muted mt-1">Problemi göstərən şəkillər əlavə edin (məs. qüsur, yazışma, yanlış model).</p>
               </div>
             )}
 
             <div className="flex gap-2 justify-end">
               <button onClick={() => setOpen(false)} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv</button>
-              <button onClick={submit} disabled={busy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : "Göndər"}</button>
+              <button onClick={submit} disabled={busy || description.trim().length < 5} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : "Göndər"}</button>
             </div>
           </div>
         </div>

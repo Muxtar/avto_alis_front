@@ -6,8 +6,10 @@ import { useAuth } from "@/lib/AuthContext";
 import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import { formatPostedAt } from "@/lib/format";
 import Link from "next/link";
 import OrderMap from "@/components/OrderMapWrapper";
+import ComplaintButton from "@/components/ComplaintButton";
 import { yangoDead, yangoReturning, yangoLabel as yangoStatusAz, YANGO_STATUS_AZ } from "@/lib/yangoStatus";
 
 // ── Sifariş kartlarının rəng qrupları ──
@@ -423,7 +425,7 @@ export default function OrdersPage() {
   const submitReturn = async (orderId: number) => {
     setReturnLoading(true);
     try {
-      if (returnReasonText.trim().length < 5) { toast("Səbəbi ətraflı yazın (ən azı 5 simvol)", "error"); return; }
+      if (returnReasonText.trim().length < 10) { toast("Məhsulu niyə qaytardığınızı yazın (ən azı 10 simvol)", "error"); return; }
       // Multipart — fotolarla birlikdə. Content-Type-ı brauzer özü qoyur.
       const fd = new FormData();
       fd.append("orderId", String(orderId));
@@ -604,7 +606,7 @@ export default function OrdersPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm truncate">{order.items[0]?.title || "Sifariş"}{order.items.length > 1 ? <span className="text-muted font-normal"> +{order.items.length - 1} məhsul</span> : null}</p>
                     <p className="text-[11px] text-muted truncate">
-                      #{order.id} · {new Date(order.createdAt).toLocaleDateString("az-AZ", { day: "numeric", month: "short" })}
+                      #{order.id} · {formatPostedAt(order.createdAt)}
                       {counterparty?.name ? ` · ${activeTab === "buying" ? "Satıcı" : "Alıcı"}: ${counterparty.name}` : ""}
                       {` · ${order.deliveryType === "PICKUP" ? "🏪 Götürmə" : order.deliveryMethod === "COURIER" ? "🚕 Yango" : "🚚 Çatdırılma"}`}
                     </p>
@@ -624,7 +626,7 @@ export default function OrdersPage() {
 
                 {isOpen && (<>
                 <div className="pl-5 pr-4 py-2 border-t border-card-border flex items-center justify-between flex-wrap gap-2 bg-[var(--brand-soft)]">
-                  <p className="text-muted text-xs">{new Date(order.createdAt).toLocaleString("az-AZ")}</p>
+                  <p className="text-muted text-xs">{formatPostedAt(order.createdAt)}</p>
                   <div className="flex items-center gap-3">
                     {order.installmentMonths ? (
                       <span className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-amber-400/15 text-amber-600" title={order.installmentFee ? `Taksit komissiyası ${Number(order.installmentFee).toFixed(2)} AZN (${order.installmentFeePayer === "BUYER" ? "alıcı ödəyib" : "satıcının payından"})` : "Komissiyasız"}>
@@ -799,7 +801,7 @@ export default function OrdersPage() {
                                 </button>
                                 {rejectFor === ret.id ? (
                                   <div className="w-full space-y-1.5">
-                                    <label className="text-[10px] text-muted">Rədd səbəbi (məcburi, ən azı 10 simvol) — alıcı bununla mübahisə aça bilər</label>
+                                    <label className="text-[10px] text-muted">Rədd səbəbi (məcburi, ən azı 10 simvol) — alıcı görəcək; əsassız rədd etibarlılıq reytinqinizə təsir edə bilər</label>
                                     <textarea value={sellerNoteInput[ret.id] ?? ""} rows={2}
                                       onChange={(e) => setSellerNoteInput({ ...sellerNoteInput, [ret.id]: e.target.value })}
                                       className={inputCls + " !py-1.5 resize-none"} placeholder="Məs: məhsul işlək vəziyyətdə göndərilib, zədə alıcıda yaranıb..." />
@@ -884,18 +886,19 @@ export default function OrdersPage() {
                           </div>
                         </div>
                         <div>
-                          <label className="text-xs text-muted">{t("returnReasonText")} <span className="text-red-500">*</span></label>
-                          <textarea value={returnReasonText} onChange={(e) => setReturnReasonText(e.target.value)} rows={3}
-                            className={inputCls + " resize-none"} placeholder="Problemi ətraflı yazın (ən azı 5 simvol)..." />
-                          {returnReasonText.trim().length > 0 && returnReasonText.trim().length < 5 && (
-                            <p className="text-[11px] text-red-500 mt-0.5">Ən azı 5 simvol yazın</p>
-                          )}
+                          <label className="text-xs text-muted">Məhsulu niyə qaytarırsınız? (satıcı bunu görəcək) <span className="text-red-500">*</span></label>
+                          <textarea value={returnReasonText} onChange={(e) => setReturnReasonText(e.target.value)} rows={3} maxLength={2000}
+                            className={inputCls + " resize-none"} placeholder="Problemi ətraflı yazın (ən azı 10 simvol)..." />
+                          <p className={`text-[11px] mt-0.5 ${returnReasonText.trim().length >= 10 ? "text-green-600" : returnReasonText.trim().length > 0 ? "text-red-500" : "text-muted"}`}>
+                            {returnReasonText.trim().length}/10 simvol minimum
+                          </p>
+                          <p className="text-[11px] text-muted mt-0.5">Məhsul yalnız satıcı iadəni qəbul etdikdə geri qaytarılır. Satıcı rədd etsə və ya cavab verməsə, onun haqqında şikayət yaza bilərsiniz.</p>
                         </div>
                         <div>
                           <label className="text-xs text-muted">Fotolar ({returnFiles.length}/6)</label>
                           {["DEFECTIVE", "WRONG_ITEM", "NOT_AS_DESCRIBED"].includes(returnReason) && (
                             <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-2.5 py-1.5 my-1">
-                              📷 Qüsurun / fərqin aydın fotolarını əlavə edin — mübahisə olarsa, sistem qərarı əsasən fotolara görə verir.
+                              📷 Qüsurun / fərqin aydın fotolarını əlavə edin — satıcı qərar verərkən bunları görəcək.
                             </p>
                           )}
                           <div className="flex flex-wrap gap-2 mt-1">
@@ -917,7 +920,7 @@ export default function OrdersPage() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <button onClick={() => submitReturn(order.id)} disabled={returnLoading || returnReasonText.trim().length < 5}
+                          <button onClick={() => submitReturn(order.id)} disabled={returnLoading || returnReasonText.trim().length < 10}
                             className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-xs font-medium disabled:opacity-50">
                             {returnLoading ? "..." : t("submitReturn")}
                           </button>
@@ -932,6 +935,14 @@ export default function OrdersPage() {
                         {t("requestReturn")}
                       </button>
                     )}
+                  </div>
+                )}
+
+                {/* Buyer: satıcıdan şikayət (yalnız reytinqə təsir edir, pul qaytarılmır) */}
+                {activeTab === "buying" && order.status !== "PENDING" && (
+                  <div className="px-4 py-2.5 border-t border-card-border flex items-center justify-between gap-2 flex-wrap">
+                    <p className="text-[11px] text-muted">Satıcı ilə problem? Şikayət onun etibarlılıq reytinqinə təsir edir.</p>
+                    <ComplaintButton orderId={order.id} label="⚠ Satıcıdan şikayət et" className="text-xs font-medium text-red-500 hover:underline" />
                   </div>
                 )}
 

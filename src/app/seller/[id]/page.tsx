@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ListingCard from "@/components/ListingCard";
 import ComplaintButton from "@/components/ComplaintButton";
+import SellerReputation from "@/components/SellerReputation";
 import ReviewsSection from "@/components/ReviewsSection";
 import ShareButton from "@/components/ShareButton";
 import QRShare from "@/components/QRShare";
@@ -124,6 +125,7 @@ export default function SellerProfilePage() {
               {user.idVerifyStatus === "APPROVED" && (
                 <span className="px-2.5 py-1 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium">✓ Təsdiqlənmiş</span>
               )}
+              {!ixtisasMode && data.reputation && <SellerReputation reputation={data.reputation} />}
               {/* İxtisas profilində paylaşım İxtisas kontekstini saxlayır (?from=ixtisas) —
                   qarşı tərəf də eyni rəy yönümlü profili görsün (telefon/məhsullar gizli). */}
               {/* Mesaj yaz — sayt daxili chat. Telefon göstərilmədiyi üçün əlaqənin

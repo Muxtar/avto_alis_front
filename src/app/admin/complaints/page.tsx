@@ -3,19 +3,15 @@ import { useState, useEffect, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import { useAdminLive } from "@/lib/live";
+import { COMPLAINT_CAT_LABEL, complaintStatusLabel } from "@/lib/complaints";
 
-const CAT_LABEL: Record<string, string> = {
-  TIME_WASTED: "Vaxtı boşa xərclədi", FRAUD: "Fırıldaq", RUDE: "Kobud davranış", FAKE_INFO: "Saxta məlumat", OTHER: "Başqa",
-  DEFECTIVE: "Qüsurlu / işləmir", DAMAGED: "Zədəli gəldi", NOT_AS_DESCRIBED: "Təsvirə uyğun deyil", WRONG_ITEM: "Yanlış məhsul",
-  CHANGED_MIND: "Bəyənmədim", RETURN_REJECTED: "İadə əsassız rədd edildi", RETURN_NOT_RECEIVED: "Satıcı qaytarılan məhsulu təsdiqləmir",
-  RETURN_DAMAGED: "Qaytarılan məhsul zədəli/fərqlidir",
-};
-const STATUS_LABEL: Record<string, string> = { OPEN: "Açıq", AWAITING_SELLER: "Qarşı tərəfin cavabı gözlənilir", REVIEWING: "Baxılır", EVIDENCE_REQUESTED: "Sübut gözlənir", RESOLVED: "Həll olundu", REJECTED: "Rədd edildi" };
+const CAT_LABEL = COMPLAINT_CAT_LABEL;
+const STATUS_LABEL: Record<string, string> = { OPEN: "Açıq", AWAITING_SELLER: "Satıcının cavabı gözlənilir", REVIEWING: "Satıcı cavab verdi", EVIDENCE_REQUESTED: "Sübut gözlənir", RESOLVED: "Həll olundu", REJECTED: "Rədd edildi" };
 const DECIDED_BY: Record<string, string> = { SYSTEM: "Sistem", AI: "Sistem (AI)", ADMIN: "Admin", SELLER: "Qarşı tərəfin razılığı ilə" };
 const DECISION_LABEL: Record<string, string> = { COMPLAINANT: "Şikayətçinin xeyrinə", RESPONDENT: "Qarşı tərəfin xeyrinə", ESCALATED: "Adminə ötürüldü" };
 const RET_STATUS: Record<string, string> = {
   REQUESTED: "Tələb edildi", APPROVED: "Təsdiqləndi", REJECTED: "Rədd edildi", RETURN_SHIPPED: "Geri göndərildi", RETURN_RECEIVED: "Satıcı qəbul etdi",
-  REFUNDED: "Pul qaytarıldı", CANCELLED: "Ləğv edildi", DISPUTED: "Mübahisə", DISPUTE_RESPONSE: "Mübahisəyə cavab", ESCALATED: "Adminə ötürüldü", APPEALED: "Müraciət edildi",
+  REFUNDED: "Pul qaytarıldı", CANCELLED: "Ləğv edildi", DISPUTED: "Qaytarılan məhsulda problem", SELLER_NO_RESPONSE: "Satıcı vaxtında cavab vermədi", COMPLAINT: "Alıcı şikayət yazdı", DISPUTE_RESPONSE: "Mübahisəyə cavab", ESCALATED: "Adminə ötürüldü", APPEALED: "Müraciət edildi",
 };
 const ACTOR: Record<string, string> = { BUYER: "Alıcı", SELLER: "Satıcı", SYSTEM: "Sistem", ADMIN: "Admin" };
 const RET_METHOD: Record<string, string> = { COURIER: "Kuryer", IN_PERSON: "Şəxsən", POST: "Poçt", YANGO: "Yango" };
@@ -46,7 +42,6 @@ export default function AdminComplaintsPage() {
   const [suspend, setSuspend] = useState(false);
   const [busy, setBusy] = useState(false);
   const [ret, setRet] = useState<any>(null);
-  const [refundPct, setRefundPct] = useState("100");
 
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
 
@@ -64,7 +59,7 @@ export default function AdminComplaintsPage() {
   useEffect(() => { load(); }, [load]);
 
   const openDetail = async (id: number) => {
-    setSel(null); setEvidence(null); setListing(null); setOrder(null); setRet(null); setNote(""); setRefund(false); setSuspend(false); setRefundPct("100");
+    setSel(null); setEvidence(null); setListing(null); setOrder(null); setRet(null); setNote(""); setRefund(false); setSuspend(false);
     try {
       const r = await fetch(`${API}/admin/complaints/${id}`, { headers }).then((x) => x.json());
       if (r.success) { setSel(r.complaint); setEvidence(r.evidence); setListing(r.listing); setOrder(r.order); setRet(r.returnRequest || null); }
@@ -79,20 +74,15 @@ export default function AdminComplaintsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // MÜBAHİSƏ qərarı: şikayətçinin / qarşı tərəfin xeyrinə və ya sistem qərarını yenidən işlət.
-  const decide = async (decision: "COMPLAINANT" | "RESPONDENT" | "RERUN") => {
+  // SİFARİŞ/ELAN şikayəti: admin yalnız əsaslı/əsassız olduğunu qərarlaşdırır (reytinqə təsir). Pul qaytarılmır.
+  const verdict = async (v: "UPHELD" | "UNFOUNDED") => {
     if (!sel) return;
-    if (decision !== "RERUN" && note.trim().length < 5) { toast("Qərarın səbəbini yazın (min 5 simvol) — hər iki tərəf görəcək", "error"); return; }
-    const pct = Number(refundPct);
-    if (decision === "COMPLAINANT" && (refundPct === "" || isNaN(pct) || pct < 0 || pct > 100)) { toast("Geri ödəmə faizi 0–100 arası olmalıdır", "error"); return; }
+    if (note.trim().length < 5) { toast("Qərarın səbəbini yazın (min 5 simvol) — hər iki tərəf görəcək", "error"); return; }
     setBusy(true);
     try {
-      const body: any = { decision };
-      if (decision !== "RERUN") body.adminNote = note.trim();
-      if (decision === "COMPLAINANT") body.refundPercent = pct;
-      const r = await fetch(`${API}/admin/complaints/${sel.id}/resolve`, { method: "POST", headers, body: JSON.stringify(body) }).then((x) => x.json());
+      const r = await fetch(`${API}/admin/complaints/${sel.id}/resolve`, { method: "POST", headers, body: JSON.stringify({ verdict: v, adminNote: note.trim() }) }).then((x) => x.json());
       if (r.success) {
-        toast(decision === "RERUN" ? "Sistem qərarı yenidən işlədildi ✓" : "Qərar tətbiq olundu ✓", "success");
+        toast(v === "UPHELD" ? "Şikayət əsaslı sayıldı ✓" : "Şikayət əsassız sayıldı ✓", "success");
         await load();
         await openDetail(sel.id);
       } else toast(r.message || "Xəta", "error");
@@ -150,10 +140,11 @@ export default function AdminComplaintsPage() {
                 <span className="px-2 py-0.5 rounded text-[11px] bg-red-500/10 text-red-500">{CAT_LABEL[c.category] || c.category}</span>
                 {c.consultationId && <span className="text-[11px] text-blue-500">seans #{c.consultationId}</span>}
                 {c.orderId && <span className="text-[11px] text-blue-500">sifariş #{c.orderId}</span>}
+                {!c.consultationId && !c.orderId && c.listingId && <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-500/10 text-gray-500">elan bildirişi</span>}
                 {c.returnId && <span className="text-[11px] text-purple-500">iadə #{c.returnId}</span>}
                 {c.appealed && <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/10 text-blue-600">MÜRACİƏT</span>}
                 {c.decision === "ESCALATED" && <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-600">AI → admin</span>}
-                <span className="ml-auto text-[11px] text-muted">{STATUS_LABEL[c.status] || c.status}</span>
+                <span className="ml-auto text-[11px] text-muted">{isDispute(c) ? complaintStatusLabel(c).label : STATUS_LABEL[c.status] || c.status}</span>
               </div>
               {c.status === "AWAITING_SELLER" && c.respondBy && <p className="text-[11px] text-purple-500 mt-1">⏳ Cavab müddəti: {leftText(c.respondBy)}</p>}
               <p className="text-xs text-muted mt-1 line-clamp-2">{c.description}</p>
@@ -167,7 +158,12 @@ export default function AdminComplaintsPage() {
           <div className="surface p-4 lg:sticky lg:top-4 h-fit">
             <h2 className="font-semibold mb-1"><span className="text-xs text-muted">#{sel.id}</span> {sel.target?.name} <span className="text-xs text-muted">({CAT_LABEL[sel.category] || sel.category})</span></h2>
             <p className="text-xs text-muted mb-2">Şikayətçi: {sel.complainant?.name}{sel.target?.consultationSuspended && <span className="text-red-500"> · peşəkar dayandırılıb</span>}</p>
-            <p className="text-sm bg-input-bg rounded-xl p-3 mb-3">{sel.description}</p>
+            {isDispute(sel) && (
+              sel.orderId
+                ? <p className="text-xs font-semibold text-red-500 bg-red-500/10 rounded-lg px-2.5 py-1.5 mb-2">🛡 Alıcının şikayəti — satıcının etibarlılıq reytinqinə təsir edir</p>
+                : <p className="text-xs font-semibold text-gray-500 bg-gray-500/10 rounded-lg px-2.5 py-1.5 mb-2">📢 Elan haqqında bildiriş — alış yoxdur, reytinqə təsir etmir</p>
+            )}
+            <p className="text-sm bg-input-bg rounded-xl p-3 mb-3 whitespace-pre-wrap">{sel.description}</p>
 
             {/* Şikayət olunan MƏHSUL / SİFARİŞ (eBay üslubu) */}
             {listing && (
@@ -207,13 +203,13 @@ export default function AdminComplaintsPage() {
             {/* MÜBAHİSƏ — qarşı tərəfin cavabı, sistem/AI qərarı, müraciət */}
             {sel.status === "AWAITING_SELLER" && (
               <p className="text-xs text-purple-600 bg-purple-500/10 rounded-lg px-2.5 py-1.5 mb-3">
-                ⏳ Qarşı tərəfin cavabı gözlənilir{sel.respondBy ? ` — ${leftText(sel.respondBy)} (${new Date(sel.respondBy).toLocaleString("az-AZ")})` : ""}. Cavab verilməsə, qərar avtomatik şikayətçinin xeyrinə olacaq.
+                ⏳ Qarşı tərəfin cavabı gözlənilir{sel.respondBy ? ` — ${leftText(sel.respondBy)} (${new Date(sel.respondBy).toLocaleString("az-AZ")})` : ""}. Cavabsız şikayət satıcının reytinqinə təsir edir (avtomatik qərar yoxdur).
               </p>
             )}
             {(sel.sellerResponse || sel.sellerImages?.length > 0 || sel.sellerRespondedAt) && (
               <div className="mb-3 p-3 rounded-xl bg-input-bg/50 border border-input-border">
                 <p className="text-xs font-semibold text-muted mb-1">
-                  💬 Qarşı tərəfin cavabı
+                  💬 Satıcının cavabı
                   {sel.sellerAccepted ? " · iddianı qəbul etdi" : sel.sellerAccepted === false ? " · etiraz etdi" : ""}
                   {sel.sellerRespondedAt ? ` · ${new Date(sel.sellerRespondedAt).toLocaleString("az-AZ")}` : ""}
                 </p>
@@ -325,20 +321,17 @@ export default function AdminComplaintsPage() {
             {sel.status !== "RESOLVED" && sel.status !== "REJECTED" && isDispute(sel) ? (
               <>
                 {sel.status === "EVIDENCE_REQUESTED" && <p className="text-xs text-amber-600 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mb-2">Şikayətçidən əlavə sübut istənilib — cavab gözlənir.</p>}
+                <p className="text-[11px] text-muted mb-2">Şikayət pul/mal qaytarılmasına səbəb olmur — yalnız satıcının etibarlılıq reytinqinə təsir edir. İadələr ayrıca bölmədədir.</p>
                 <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3}
                   placeholder="Qərarın səbəbi (məcburi, min 5 simvol) — hər iki tərəf görəcək. Sübut istəyəndə şikayətçiyə mesaj kimi gedir."
                   className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-2" />
-                <label className="flex items-center gap-2 text-sm mb-3">
-                  Geri ödəmə (şikayətçinin xeyrinə olduqda):
-                  <input type="number" min={0} max={100} value={refundPct} onChange={(e) => setRefundPct(e.target.value)}
-                    className="w-20 px-2 py-1 bg-input-bg border border-input-border rounded-lg text-sm" /> %
-                </label>
                 <button onClick={requestEvidence} disabled={busy} className="w-full mb-2 px-4 py-2 bg-blue-500/10 text-blue-600 rounded-xl text-sm font-semibold disabled:opacity-50">📷 Şikayətçidən əlavə foto/sübut istə</button>
-                <div className="flex gap-2 mb-2">
-                  <button onClick={() => decide("COMPLAINANT")} disabled={busy || note.trim().length < 5} className="flex-1 px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Şikayətçinin xeyrinə</button>
-                  <button onClick={() => decide("RESPONDENT")} disabled={busy || note.trim().length < 5} className="flex-1 px-4 py-2 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold disabled:opacity-50">Qarşı tərəfin xeyrinə</button>
+                <div className="flex gap-2">
+                  <button onClick={() => verdict("UPHELD")} disabled={busy || note.trim().length < 5} className="flex-1 px-4 py-2 bg-red-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">
+                    {sel.orderId ? "Əsaslıdır (reytinqə təsir)" : "Əsaslıdır"}
+                  </button>
+                  <button onClick={() => verdict("UNFOUNDED")} disabled={busy || note.trim().length < 5} className="flex-1 px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold disabled:opacity-50">Əsassızdır</button>
                 </div>
-                <button onClick={() => decide("RERUN")} disabled={busy} className="w-full px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-medium disabled:opacity-50">🔁 Sistem qərarını yenidən işlət</button>
               </>
             ) : sel.status !== "RESOLVED" && sel.status !== "REJECTED" ? (
               <>
@@ -359,7 +352,7 @@ export default function AdminComplaintsPage() {
               </>
             ) : (
               <div className="text-sm">
-                <p className="font-medium">Nəticə: {STATUS_LABEL[sel.status]} {sel.resolution && `· ${sel.resolution}`}</p>
+                <p className="font-medium">Nəticə: {isDispute(sel) ? complaintStatusLabel(sel).label : <>{STATUS_LABEL[sel.status]} {sel.resolution && `· ${sel.resolution}`}</>}</p>
                 {sel.adminNote && <p className="text-muted text-xs mt-1">{sel.adminNote}</p>}
               </div>
             )}
