@@ -298,7 +298,19 @@ export default function MessagesPage() {
       if (i >= 0) { const cp = [...prev]; cp[i] = { ...cp[i], ...m }; return cp; }
       return [...prev, m];
     });
-    const onMessage = (m: any) => { if (belongs(m)) { upsert(m); scrollToEnd(); } fetchAll(); };
+    const onMessage = (m: any) => {
+      if (belongs(m)) {
+        upsert(m); scrollToEnd();
+        // Söhbət AÇIQDIR və istifadəçi baxır — mesaj dərhal oxunmuş sayılsın.
+        // Əvvəl göstərilirdi, amma serverə «oxundu» getmirdi: menyudakı və
+        // zəngdəki «1» səhifə yenilənənə qədər qalırdı.
+        const a = activeRef.current;
+        if (a?.type === "direct" && m.senderId === a.id && document.visibilityState === "visible") {
+          fetch(threadUrl(a).replace("limit=50", "limit=1"), { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+        }
+      }
+      fetchAll();
+    };
     const onUpdated = (m: any) => { if (belongs(m)) upsert(m); };
     const onDeleted = (p: { id: number }) => setMessages((prev) => prev.map((x) => x.id === p.id ? { ...x, deletedAt: new Date().toISOString(), content: "", reactions: [], type: "TEXT" } : x));
     const onReaction = (p: { id: number; reactions: any[] }) => setMessages((prev) => prev.map((x) => x.id === p.id ? { ...x, reactions: p.reactions } : x));

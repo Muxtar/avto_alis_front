@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/AuthContext';
 import { useLanguage } from '@/lib/LanguageContext';
 import { API } from '@/lib/api';
@@ -52,8 +53,30 @@ export default function NotificationBell() {
     return () => { clearInterval(i); document.removeEventListener('mousedown', handler); };
   }, [fetchNotifs]);
 
-  // Server nəyisə dəyişdi (təsdiq, cavab, sifariş…) — sayğac 30 saniyə gözləməsin.
+  // Server nəyisə dəyişdi (təsdiq, cavab, sifariş, bildiriş oxundu…) — sayğac gözləməsin.
   useLive('*', fetchNotifs);
+
+  // BİLDİRİŞİN AİD OLDUĞU SƏHİFƏ AÇILANDA — o bildiriş(lər) dərhal oxunmuş sayılır.
+  // Əvvəl istifadəçi mesajı oxuyub / sifarişə baxıb qayıdanda zəngdə «1» qalırdı,
+  // yalnız səhifəni yeniləyəndə gedirdi. URL-in sorğu hissəsi (məs. ?id=, ?chat=)
+  // də nəzərə alınır — ona görə pathname dəyişməsə belə kiçik gecikmə ilə yoxlanır.
+  const pathname = usePathname();
+  useEffect(() => {
+    if (!token || !isLoggedIn) return;
+    let last = '';
+    const check = () => {
+      const page = window.location.pathname + window.location.search;
+      if (page === last) return;
+      last = page;
+      fetch(`${API}/notifications/read-by-path`, {
+        method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ path: page }),
+      }).then((r) => r.json()).then((d) => { if (d?.count > 0) fetchNotifs(); }).catch(() => {});
+    };
+    const t0 = setTimeout(check, 300);
+    // Səhifə daxilində ?id= / ?chat= dəyişəndə (router.replace) pathname dəyişmir.
+    const iv = setInterval(check, 1500);
+    return () => { clearTimeout(t0); clearInterval(iv); };
+  }, [pathname, token, isLoggedIn, fetchNotifs]);
 
   const markAll = async () => {
     setNotifs((prev) => prev.map((n) => ({ ...n, read: true })));
