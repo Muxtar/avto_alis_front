@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import ReferralPayouts from "./ReferralPayouts";
 
 interface SellerRow {
   sellerId: number; name: string; phone: string;
@@ -142,6 +143,9 @@ export default function AdminPayoutsPage() {
           </div>
         </div>
       )}
+
+      {/* Referal ödənişləri — link ilə satanlara komissiya */}
+      <ReferralPayouts />
 
       {/* Payout modal */}
       {payTo && (

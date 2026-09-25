@@ -46,6 +46,11 @@ export default function EarningsPage() {
         <div className="surface p-3"><p className="text-[11px] text-muted">Ödənilmiş</p><p className="text-lg font-bold">{az(b.paidOut)} ₼</p></div>
         <div className="surface p-3"><p className="text-[11px] text-muted">Nağd komissiya borcu</p><p className="text-lg font-bold text-amber-600">{az(b.commissionDueCash)} ₼</p></div>
       </div>
+      {b.referralDueCash > 0 && (
+        <div className="mb-5 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-xl px-3 py-2">
+          Nağd referal satışlarından platformaya borc: <b>{az(b.referralDueCash)} ₼</b>
+        </div>
+      )}
 
       <h2 className="font-semibold mb-2 text-sm">Ödənişlər</h2>
       <div className="surface divide-y divide-card-border mb-5">
@@ -65,7 +70,7 @@ export default function EarningsPage() {
             <div key={l.id} className="p-3 flex items-center justify-between text-sm">
               <div>
                 <p className="font-medium">Sifariş #{l.orderId}</p>
-                <p className="text-[11px] text-muted">Satış {az(l.grossAmount)} ₼ − komissiya {az(l.commission)} ₼ ({l.commissionRate}%) {l.heldByPlatform ? "" : "· nağd"}</p>
+                <p className="text-[11px] text-muted">Satış {az(l.grossAmount)} ₼ − komissiya {az(l.commission)} ₼ ({l.commissionRate}%){l.referralAmount > 0 ? ` − referal ${az(l.referralAmount)} ₼` : ""} {l.heldByPlatform ? "" : "· nağd"}</p>
               </div>
               <div className="text-right">
                 <p className="font-bold">{az(l.netAmount)} ₼</p>

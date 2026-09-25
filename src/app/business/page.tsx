@@ -8,7 +8,6 @@ import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import SellerContract from "@/components/SellerContract";
-import ProfessionPicker from "@/components/ProfessionPicker";
 import QRShare from "@/components/QRShare";
 import VerifyCard from "@/components/VerifyCard";
 
@@ -710,7 +709,7 @@ export default function BusinessPage() {
                             <a href={`/object/${o.id}`} className="px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-[11px] font-medium hover:border-orange-500/50 hover:text-orange-500 transition-colors">📦 Məhsullar{typeof o._count?.listings === "number" ? ` (${o._count.listings})` : ""}</a>
                             <a href={`/business/sales?objectId=${o.id}`} className="px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-[11px] font-medium hover:border-orange-500/50 hover:text-orange-500 transition-colors">🛒 Sifarişlər</a>
                           </div>
-                          <ObjectReferral objectId={o.id} inputCls={inputCls} />
+                          <ObjectReferral objectId={o.id} />
                         </div>
                       </div>
                     )}
@@ -846,65 +845,38 @@ function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t, saveLabel, on
   );
 }
 
-// Obyekt üçün referal (komissiyalı) satış qaydaları redaktoru.
-function ObjectReferral({ objectId, inputCls }: { objectId: number; inputCls: string }) {
-  const { token } = useAuth();
-  const { toast } = useToast();
-  const [open, setOpen] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const [enabled, setEnabled] = useState(false);
-  const [rules, setRules] = useState<{ profession: string; commissionPercent: string; requiredDoc: string }[]>([]);
-  const [busy, setBusy] = useState(false);
-  const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+// Obyektin referal satış proqramının qısa xülasəsi — tam idarəetmə /referral/manage səhifəsindədir.
+// Bütün obyektlər üçün tək sorğu (hər kart ayrıca çəkməsin).
+let referralProgramsReq: { token: string; at: number; p: Promise<any[]> } | null = null;
+function fetchReferralPrograms(token: string): Promise<any[]> {
+  const now = Date.now();
+  if (referralProgramsReq && referralProgramsReq.token === token && now - referralProgramsReq.at < 5000) return referralProgramsReq.p;
+  const p = fetch(`${API}/me/referral/programs`, { headers: { Authorization: `Bearer ${token}` } })
+    .then((x) => x.json()).then((r) => (r?.programs || []) as any[]).catch(() => [] as any[]);
+  referralProgramsReq = { token, at: now, p };
+  return p;
+}
 
-  const load = async () => {
-    try {
-      const r = await fetch(`${API}/me/objects/${objectId}/referral`, { headers }).then((x) => x.json());
-      if (r.success) {
-        setEnabled(!!r.referralEnabled);
-        setRules((r.rules || []).map((x: any) => ({ profession: x.profession, commissionPercent: String(x.commissionPercent), requiredDoc: x.requiredDoc || "NONE" })));
-      }
-    } catch { /* keç */ } finally { setLoaded(true); }
-  };
-  const toggleOpen = () => { const n = !open; setOpen(n); if (n && !loaded) load(); };
-  const addRule = () => { if (rules.length < 4) setRules([...rules, { profession: "", commissionPercent: "", requiredDoc: "NONE" }]); };
-  const save = async () => {
-    setBusy(true);
-    try {
-      const body = JSON.stringify({ enabled, rules: rules.map((r) => ({ profession: r.profession, commissionPercent: parseFloat(r.commissionPercent) || 0, requiredDoc: r.requiredDoc })) });
-      const r = await fetch(`${API}/me/objects/${objectId}/referral`, { method: "PUT", headers, body }).then((x) => x.json());
-      if (r.success) toast("Referal qaydaları yadda saxlandı ✓", "success");
-      else toast(r.message || "Xəta", "error");
-    } catch { toast("Xəta", "error"); } finally { setBusy(false); }
-  };
+function ObjectReferral({ objectId }: { objectId: number }) {
+  const { token } = useAuth();
+  const [row, setRow] = useState<any>(null);
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    fetchReferralPrograms(token).then((list) => { if (alive) setRow(list.find((x) => x.objectId === objectId) || null); });
+    return () => { alive = false; };
+  }, [token, objectId]);
+  const AUD: Record<string, string> = { ALL: "hamı", PROFESSION: "ixtisasa görə", INVITED: "yalnız dəvətlilər" };
 
   return (
-    <div className="mt-2 border-t border-card-border/50 pt-2">
-      <button onClick={toggleOpen} className="text-xs text-orange-500 font-medium">🤝 Referal satış {open ? "▲" : "▼"}</button>
-      {open && (
-        <div className="mt-2 space-y-2">
-          <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="w-4 h-4 accent-orange-500" /> Bu mağazada referal (komissiyalı) satışa icazə ver</label>
-          {enabled && (
-            <>
-              {rules.map((r, i) => (
-                <div key={i} className="grid grid-cols-1 sm:grid-cols-[1fr_70px_110px_auto] gap-1.5 items-center">
-                  <ProfessionPicker value={r.profession} onChange={(v) => setRules(rules.map((x, j) => j === i ? { ...x, profession: v } : x))} className={inputCls + " text-xs"} />
-                  <input type="number" min={0} max={100} placeholder="%" value={r.commissionPercent} onChange={(e) => setRules(rules.map((x, j) => j === i ? { ...x, commissionPercent: e.target.value } : x))} className={inputCls + " text-xs"} />
-                  <select value={r.requiredDoc} onChange={(e) => setRules(rules.map((x, j) => j === i ? { ...x, requiredDoc: e.target.value } : x))} className={inputCls + " text-xs"}>
-                    <option value="NONE">Sənəd yox</option>
-                    <option value="DIPLOMA">Diplom</option>
-                    <option value="CV">CV</option>
-                    <option value="ANY">Diplom və ya CV</option>
-                  </select>
-                  <button onClick={() => setRules(rules.filter((_, j) => j !== i))} className="text-red-500 text-xs px-1">✕</button>
-                </div>
-              ))}
-              {rules.length < 4 && <button onClick={addRule} className="text-xs text-orange-500">+ İxtisas əlavə et (max 4)</button>}
-            </>
-          )}
-          <button onClick={save} disabled={busy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-lg text-xs font-semibold disabled:opacity-50">{busy ? "..." : "Yadda saxla"}</button>
-        </div>
-      )}
+    <div className="mt-2 border-t border-card-border/50 pt-2 flex flex-wrap items-center justify-between gap-2">
+      <p className="text-[11px] text-muted">
+        🤝 Referal satış:{" "}
+        {row?.enabled
+          ? <b className="text-emerald-600">aktiv{row.audience ? ` · ${AUD[row.audience] || row.audience}` : ""}{row.defaultPercent != null ? ` · ${row.defaultPercent}%` : ""}</b>
+          : <b>söndürülüb</b>}
+      </p>
+      <a href={`/referral/manage?objectId=${objectId}`} className="text-xs text-orange-500 font-medium hover:underline">Referal proqramını idarə et →</a>
     </div>
   );
 }

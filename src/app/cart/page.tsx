@@ -622,6 +622,10 @@ export default function CartPage() {
                         </Link>
                         <div className="flex-1 min-w-0">
                           <Link href={`/marketplace/${item.listing.id}`} aria-disabled={out} tabIndex={out ? -1 : undefined} className={`font-medium text-sm block truncate ${out ? "pointer-events-none text-muted" : "hover:text-orange-500"}`}>{item.listing.title}</Link>
+                          {/* Referal linkindən gələn məhsul — tövsiyə edənə komissiya gedir. */}
+                          {item.referralCartId && (
+                            <span className="inline-block mt-1 px-2 py-0.5 rounded-lg bg-orange-500/10 text-orange-600 text-[11px] font-semibold" title="Bu məhsul referal linki ilə əlavə olunub">🤝 Referal ilə</span>
+                          )}
                           {/* BİRGƏ ALIŞ — elanda açıqdırsa alış avtomatik pəncərəyə qoşulur. */}
                           {item.groupRefundLater && (
                             <div className="mt-1.5 flex items-center gap-2 flex-wrap">

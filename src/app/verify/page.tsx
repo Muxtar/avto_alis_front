@@ -42,8 +42,12 @@ function VerifyContent() {
       const data = await res.json();
       if (res.ok && data.success) {
         login(data.token, data.user);
+        // Referal linkindən daxil olmağa gələn alıcı — həmin linkə qaytar.
+        let after: string | null = null;
+        try { after = localStorage.getItem("afterLogin"); } catch { /* storage bağlı */ }
         if (data.user?.profileComplete ?? data.profileComplete) {
-          router.push("/elanlar");
+          try { localStorage.removeItem("afterLogin"); } catch { /* */ }
+          router.push(after && /^\/r\/[A-Za-z0-9]+$/.test(after) ? after : "/elanlar");
         } else {
           router.push("/complete-profile");
         }

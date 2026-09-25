@@ -18,6 +18,7 @@ import ComplaintButton from "@/components/ComplaintButton";
 import SellerReply from "@/components/SellerReply";
 import { recordView } from "@/lib/recentlyViewed";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
+import ReferralSellCard from "@/components/ReferralSellCard";
 import { listingInstallmentAllowed, monthsForListing } from "@/lib/installment";
 
 
@@ -1128,6 +1129,9 @@ export default function ListingDetailPage() {
               </>
             )}
           </div>
+
+          {/* Referal satış — sahib olmayan daxil olmuş istifadəçiyə yığcam kart (proqram yoxdursa görünmür). */}
+          {isLoggedIn && !isOwner && <ReferralSellCard listingId={listing.id} maxQty={listing.stock > 0 ? listing.stock : undefined} />}
 
           {/* Satıcı / Obyekt kartı — VÖEN (obyektə bağlı) elanda OBYEKT məlumatı,
               fərdi (VÖEN-siz) elanda isə şəxsin məlumatı göstərilir. */}
