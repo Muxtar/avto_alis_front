@@ -175,6 +175,22 @@ export default function ListingDetailPage() {
     } catch { toast(t("error"), "error"); setDeleting(false); }
   };
 
+  // Sahib müddəti bitmiş (və ya bitməyə 1 gün qalmış) elanını yeniləyir —
+  // «müddət bitdi» bildirişindən bura gəlir. Elan yenidən 20 gün aktiv olur.
+  const [renewing, setRenewing] = useState(false);
+  const handleRenewListing = async () => {
+    if (!listing) return;
+    setRenewing(true);
+    try {
+      const r = await fetch(`${API}/me/listings/${listing.id}/reactivate`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }).then((x) => x.json());
+      if (r.success) {
+        setListing((p: any) => ({ ...p, expiresAt: r.listing?.expiresAt }));
+        toast("Elan yeniləndi — 20 gün aktivdir ✓", "success");
+        router.replace(`/marketplace/${listing.id}`);
+      } else toast(r.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setRenewing(false); }
+  };
+
   // İndi al — səbətə əlavə edib birbaşa səbətə (ödəniş/sifariş) keçir.
   const handleBuyNow = async () => {
     if (!listing) return;
@@ -316,6 +332,10 @@ export default function ListingDetailPage() {
   }
 
   const isService = listing.type === "SERVICE";
+  const isOwner = isLoggedIn && user?.id === listing.user?.id;
+  const expiresMs = listing.expiresAt ? new Date(listing.expiresAt).getTime() : null;
+  const isExpired = expiresMs != null && expiresMs <= Date.now();
+  const expiringSoon = expiresMs != null && !isExpired && expiresMs - Date.now() <= 24 * 60 * 60 * 1000;
 
   return (
     <div className="page-wrap py-4 sm:py-6">
@@ -334,6 +354,29 @@ export default function ListingDetailPage() {
           </nav>
         );
       })()}
+
+      {/* Müddət bitib / bitmək üzrədir — yalnız sahib görür, buradan yeniləyir. */}
+      {isOwner && (isExpired || expiringSoon) && (
+        <div className={`mb-4 flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border ${isExpired ? "bg-red-500/10 border-red-500/30" : "bg-amber-500/10 border-amber-500/30"}`}>
+          <div className="flex-1 min-w-0">
+            <p className={`font-semibold ${isExpired ? "text-red-500" : "text-amber-600"}`}>
+              {isExpired ? "Elanınızın müddəti bitib" : "Elanınızın müddəti bitmək üzrədir"}
+            </p>
+            <p className="text-sm text-muted">
+              {isExpired
+                ? `${new Date(expiresMs!).toLocaleDateString("az-AZ")} tarixindən saytda görünmür. Yeniləsəniz elan yenidən 20 gün aktiv olacaq.`
+                : `${new Date(expiresMs!).toLocaleString("az-AZ")} tarixində bitir. İndi yeniləyib 20 gün uzada bilərsiniz.`}
+            </p>
+          </div>
+          <button
+            onClick={handleRenewListing}
+            disabled={renewing}
+            className="shrink-0 px-5 py-2.5 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] rounded-xl font-semibold text-white hover:brightness-110 transition-all disabled:opacity-50"
+          >
+            {renewing ? "Yenilənir..." : "🔄 Elanı yenilə"}
+          </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-6 lg:items-start">
         {/* SOL SÜTUN: şəkillər + məhsul məlumatları TƏK sütunda təbii axınla.
