@@ -288,7 +288,7 @@ export default function OrderDetailPage() {
           </div>
           {order.installmentMonths ? (
             <div className="mt-1 px-3 py-2 rounded-xl bg-amber-400/10 text-amber-700 text-xs">
-              💳 Hissəli ödəniş: <b>{order.installmentMonths} ay</b> × {(Number(order.total) / order.installmentMonths).toFixed(2)} AZN — bölgünü bank (BirKart / taksit kartı) edir.
+              💳 Hissəli ödəniş: <b>{order.installmentMonths} ay</b> × {(Number(order.total) / order.installmentMonths).toFixed(2)} AZN — {order.gatewayProvider === "yigim" ? "alıcının seçdiyi plan (dəqiq ay sayı ödəniş səhifəsində seçilir)" : "bölgünü bank (BirKart / taksit kartı) edir"}.
             </div>
           ) : null}
           {order.pointsEarned > 0 && (

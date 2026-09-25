@@ -22,6 +22,9 @@ export interface InstallmentConfig {
   plans: { months: number; feePercent: number }[];
   minAmount: number;
   buyerPaysFee: boolean;
+  provider?: string;
+  // YIĞIM: ay sayını alıcı bankın ödəniş səhifəsində seçir — saytdakı seçim təxminidir.
+  monthsChosenOnBankPage?: boolean;
 }
 
 // Bir dəfə yüklənir, bütün komponentlər paylaşır (hər kartda ayrıca sorğu olmasın).

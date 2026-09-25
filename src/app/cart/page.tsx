@@ -968,6 +968,7 @@ export default function CartPage() {
                               <p className="text-[11px] text-amber-600 mt-1.5">Taksit komissiyası: +{instFeePct}% ({(selTotal * instFeePct / 100).toFixed(2)} AZN) ödəniləcək məbləğə əlavə olunur.</p>
                             )}
                             {savedCards.length > 0 && <p className="text-[11px] text-muted mt-1">Taksitlə ödənişdə kart bankın səhifəsində seçilir.</p>}
+                            {instCfg?.monthsChosenOnBankPage && <p className="text-[11px] text-muted mt-1">«Sifarişi tamamla»dan sonra açılan ödəniş səhifəsində «Taksitlə ödəniş» bölməsini seçin.</p>}
                           </>
                         )}
                       </div>

@@ -63,10 +63,17 @@ export default function InstallmentCalculator({
 
       <p className="text-[11px] text-muted mt-3 flex items-start gap-1.5">
         <span aria-hidden>ℹ️</span>
-        <span>
-          Seçdiyiniz plan banka ötürülür və ödəniş <b>BirKart və ya digər taksit kartı</b> ilə aylara bölünür.
-          Adi (debet) kartla ödəsəniz məbləğ bir dəfəyə çıxılır.
-        </span>
+        {cfg?.monthsChosenOnBankPage ? (
+          <span>
+            Hesablama təxminidir. Ay sayını <b>ödəniş səhifəsinin «Taksitlə ödəniş» bölməsində</b> özünüz seçəcək və şərtlərlə tanış olacaqsınız.
+            Hazırda <b>ABB, Bank of Baku və Kapital Bank</b> kartları ilə mümkündür.
+          </span>
+        ) : (
+          <span>
+            Seçdiyiniz plan banka ötürülür və ödəniş <b>BirKart və ya digər taksit kartı</b> ilə aylara bölünür.
+            Adi (debet) kartla ödəsəniz məbləğ bir dəfəyə çıxılır.
+          </span>
+        )}
       </p>
     </div>
   );
