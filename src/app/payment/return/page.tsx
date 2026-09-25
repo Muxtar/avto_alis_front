@@ -24,6 +24,13 @@ export default function PaymentReturnPage() {
         window.location.replace(`/business?fee=${status}`);
         return;
       }
+      // VIP elan ödənişi — elanın səhifəsinə qayıt.
+      const vipListing = sessionStorage.getItem("vipPay");
+      if (vipListing) {
+        sessionStorage.removeItem("vipPay");
+        window.location.replace(`/marketplace/${encodeURIComponent(vipListing)}?vip=${status}`);
+        return;
+      }
       // Veriff kimlik doğrulaması haqqı — istifadəçi profilə qayıdır və
       // ödəniş təsdiqlənən kimi doğrulama özü başlayır.
       if (sessionStorage.getItem("veriffFeePay")) {

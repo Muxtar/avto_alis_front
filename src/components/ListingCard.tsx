@@ -5,7 +5,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { API, imgUrl } from "@/lib/api";
-import { formatPrice, formatPriceShort } from "@/lib/format";
+import { formatPrice, formatPriceShort, formatPostedAt } from "@/lib/format";
 import { COUNTRY_BY_CODE } from "@/lib/countries";
 import { useCardGroupBuy } from "@/lib/groupBuyCard";
 
@@ -35,6 +35,9 @@ interface Listing {
   forRent?: boolean;
   user: { id?: number; name: string; avgRating?: number | null; ratingCount?: number };
   businessObject?: { id: number; name: string } | null;
+  // VIP — ödənişli önə çıxarma (siyahıda həmişə əvvəldə, kartda nişan).
+  isVip?: boolean;
+  vipUntil?: string | null;
   _count?: { comments: number; favorites?: number };
 }
 
@@ -51,6 +54,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const [isFavorited, setIsFavorited] = useState(false);
 
   const isService = listing.type === "SERVICE";
+  // Müddəti bitmiş VIP-i backend işi (services/vip.ts → expireVips) söndürür.
+  const isVip = !!listing.isVip;
   const isOwner = isLoggedIn && user?.id === listing.user.id;
   const outOfStock = listing.stock !== undefined && listing.stock <= 0;
   // Yalnız VÖEN-li (biznes obyektinə bağlı) elanlarda kartla alış (səbət/indi al).
@@ -126,7 +131,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
   return (
     <Link href={`/marketplace/${listing.id}`} className="block group">
-      <div className="surface card-hover overflow-hidden h-full flex flex-col">
+      {/* VIP çərçivəsi inline — «surface» sinfi border/kölgəni üstələyir. */}
+      <div className="surface card-hover overflow-hidden h-full flex flex-col"
+        style={isVip ? { borderColor: "#fbbf24", borderWidth: 2, boxShadow: "0 10px 28px -12px rgba(245, 158, 11, 0.55)" } : undefined}>
         {/* Image */}
         <div className="aspect-square sm:aspect-[4/3] tile-soft overflow-hidden relative">
           {/* Favori butonu */}
@@ -162,6 +169,11 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
           {/* Top Badges — ürək düyməsi üçün sağda yer saxla + daşarsa alt sətrə keç */}
           <div className="absolute top-2 left-2 right-12 flex flex-wrap gap-1.5">
+            {isVip && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wide bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 shadow-md shadow-amber-500/30">
+                👑 VIP
+              </span>
+            )}
             <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold shadow-md ${isService ? "bg-emerald-500 text-white shadow-emerald-500/25" : "cta-gradient shadow-[var(--cta-from)]/25"}`}>
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12A1.125 1.125 0 0119.75 21.75H4.25a1.125 1.125 0 01-1.119-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" /></svg>
               {isService ? t("service") : t("product")}
@@ -211,16 +223,10 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </div>
           )}
           {/* City + Fuel + Payment */}
-          {(listing.city || listing.fuelType || listing.paymentType) && (
+          {(listing.fuelType || listing.paymentType) && (
             <div className="flex items-center gap-2 mb-1 text-[10px] text-muted-foreground flex-wrap">
-              {listing.city && (
-                <span className="inline-flex items-center gap-0.5">
-                  <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-                  {listing.city}
-                </span>
-              )}
-              {listing.fuelType && <span>· {t(`fuel${listing.fuelType.charAt(0) + listing.fuelType.slice(1).toLowerCase()}` as any)}</span>}
-              {listing.paymentType && <span>· {t(`payment${listing.paymentType.charAt(0) + listing.paymentType.slice(1).toLowerCase()}` as any)}</span>}
+              {listing.fuelType && <span>{t(`fuel${listing.fuelType.charAt(0) + listing.fuelType.slice(1).toLowerCase()}` as any)}</span>}
+              {listing.paymentType && <span>{listing.fuelType ? "· " : ""}{t(`payment${listing.paymentType.charAt(0) + listing.paymentType.slice(1).toLowerCase()}` as any)}</span>}
             </div>
           )}
 
@@ -272,6 +278,14 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               </span>
             )}
           </div>
+
+          {/* Yer + yerləşdirilmə vaxtı: «Bakı, Bu gün, 11:10» */}
+          {(listing.city || listing.createdAt) && (
+            <div className="flex items-center gap-1 mb-2 text-[11px] text-muted-foreground min-w-0">
+              <svg className="w-3 h-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
+              <span className="truncate">{[listing.city, formatPostedAt(listing.createdAt)].filter(Boolean).join(", ")}</span>
+            </div>
+          )}
 
           {/* Seller + statistika (referans dizayn: üst ayırıcı + avatar dairəsi) */}
           <div className="flex items-center justify-between gap-2 pt-2.5 border-t border-card-border">

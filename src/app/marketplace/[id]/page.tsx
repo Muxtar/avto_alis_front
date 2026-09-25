@@ -8,7 +8,7 @@ import { useLive } from "@/lib/live";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
-import { formatPrice, formatPriceShort } from "@/lib/format";
+import { formatPrice, formatPriceShort, formatPostedAt } from "@/lib/format";
 import { countryLabel } from "@/lib/countries";
 import { getCategoryAttrs, parseCat, getListingFields, catToSlugs } from "@/lib/categories";
 import OrderMap from "@/components/OrderMapWrapper";
@@ -192,6 +192,47 @@ export default function ListingDetailPage() {
     } catch { toast(t("error"), "error"); } finally { setRenewing(false); }
   };
 
+  // VIP — sahib elanını ödənişli önə çıxarır (siyahıda həmişə əvvəldə).
+  const [vipOpen, setVipOpen] = useState(false);
+  const [vipPackages, setVipPackages] = useState<{ days: number; price: number }[]>([]);
+  const [vipBusy, setVipBusy] = useState<number | null>(null);
+  const openVip = async () => {
+    setVipOpen(true);
+    if (!vipPackages.length) {
+      const r = await fetch(`${API}/vip/packages`).then((x) => x.json()).catch(() => null);
+      if (r?.packages) setVipPackages(r.packages);
+    }
+  };
+  const buyVip = async (days: number) => {
+    if (!listing) return;
+    setVipBusy(days);
+    try {
+      const r = await fetch(`${API}/me/listings/${listing.id}/vip`, {
+        method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ days }),
+      }).then((x) => x.json());
+      if (!r?.success) { toast(r?.message || t("error"), "error"); return; }
+      if (r.free) {
+        setListing((p: any) => ({ ...p, isVip: r.listing?.isVip, vipUntil: r.listing?.vipUntil, expiresAt: r.listing?.expiresAt }));
+        setVipOpen(false);
+        toast("Elan VIP oldu 👑", "success");
+        return;
+      }
+      // Bank səhifəsinə — qayıdanda /payment/return bura yönləndirir.
+      try { sessionStorage.setItem("vipPay", String(listing.id)); } catch { /* bloklanıb */ }
+      window.location.href = r.redirectUrl;
+    } catch { toast(t("error"), "error"); } finally { setVipBusy(null); }
+  };
+  // Ödənişdən qayıdış (?vip=success|failed) və «VIP bitdi» bildirişi (?vip=renew).
+  useEffect(() => {
+    const v = new URLSearchParams(window.location.search).get("vip");
+    if (!v) return;
+    if (v === "success") toast("Ödəniş qəbul edildi — elan bir neçə saniyəyə VIP olacaq 👑", "success");
+    else if (v === "renew") openVip();
+    else toast("VIP ödənişi tamamlanmadı", "error");
+    router.replace(`/marketplace/${params.id}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // İndi al — səbətə əlavə edib birbaşa səbətə (ödəniş/sifariş) keçir.
   const handleBuyNow = async () => {
     if (!listing) return;
@@ -337,6 +378,7 @@ export default function ListingDetailPage() {
   const expiresMs = listing.expiresAt ? new Date(listing.expiresAt).getTime() : null;
   const isExpired = expiresMs != null && expiresMs <= Date.now();
   const expiringSoon = expiresMs != null && !isExpired && expiresMs - Date.now() <= 24 * 60 * 60 * 1000;
+  const isVip = !!listing.isVip && (!listing.vipUntil || new Date(listing.vipUntil).getTime() > Date.now());
 
   return (
     <div className="page-wrap py-4 sm:py-6">
@@ -376,6 +418,48 @@ export default function ListingDetailPage() {
           >
             {renewing ? "Yenilənir..." : "🔄 Elanı yenilə"}
           </button>
+        </div>
+      )}
+
+      {/* VIP — yalnız sahib görür: önə çıxar / uzat. */}
+      {isOwner && !isExpired && listing.status === "APPROVED" && (
+        <div className={`mb-4 flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border ${isVip ? "bg-amber-400/10 border-amber-400/40" : "bg-input-bg border-card-border"}`}>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold">{isVip ? "👑 Elanınız VIP-dir" : "👑 Elanı VIP et"}</p>
+            <p className="text-sm text-muted">
+              {isVip
+                ? `${new Date(listing.vipUntil).toLocaleString("az-AZ", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })} tarixinədək siyahılarda ən öndə göstərilir.`
+                : "VIP elanlar bütün siyahılarda həmişə ən öndə göstərilir və kartda VIP nişanı olur."}
+            </p>
+          </div>
+          <button onClick={openVip} className="shrink-0 px-5 py-2.5 bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 rounded-xl font-bold hover:brightness-105 transition-all">
+            {isVip ? "Müddəti uzat" : "VIP et"}
+          </button>
+        </div>
+      )}
+
+      {vipOpen && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={() => setVipOpen(false)}>
+          <div className="surface w-full max-w-sm p-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="text-lg font-bold">👑 VIP paket seçin</h3>
+              <button onClick={() => setVipOpen(false)} className="text-muted hover:text-foreground text-xl leading-none">×</button>
+            </div>
+            <p className="text-sm text-muted mb-4">{isVip ? "Yeni müddət qalan VIP vaxtının üstünə gəlir." : "Elan seçdiyiniz müddətdə siyahılarda ən öndə olacaq."}</p>
+            {vipPackages.length === 0 ? (
+              <div className="py-6 flex justify-center"><div className="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" /></div>
+            ) : (
+              <div className="space-y-2">
+                {vipPackages.map((p) => (
+                  <button key={p.days} onClick={() => buyVip(p.days)} disabled={vipBusy != null}
+                    className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-card-border hover:border-amber-400 hover:bg-amber-400/5 transition-all disabled:opacity-50">
+                    <span className="font-semibold">{p.days} gün</span>
+                    <span className="font-bold text-amber-600">{vipBusy === p.days ? "..." : p.price > 0 ? `${formatPrice(p.price)} AZN` : "Pulsuz"}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -731,9 +815,15 @@ export default function ListingDetailPage() {
               {isService ? t("service") : t("product")}
             </div>
             <div className="flex items-start justify-between gap-2 mb-2">
-              <h1 className="text-xl sm:text-2xl font-bold">{listing.title}</h1>
+              <h1 className="text-xl sm:text-2xl font-bold">
+                {isVip && <span className="inline-flex align-middle mr-2 px-2 py-0.5 rounded-full text-xs font-extrabold bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950">👑 VIP</span>}
+                {listing.title}
+              </h1>
               <ShareButton title={listing.title} text={`${listing.title} — tradixai`} path={`/marketplace/${listing.id}`} listingId={listing.id} compact className="shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-xl bg-input-bg border border-input-border text-muted hover:text-[var(--brand-to)] hover:border-[var(--brand-to)]/50 transition-all" />
             </div>
+            {(listing.city || listing.createdAt) && (
+              <p className="text-xs text-muted mb-2">📍 {[listing.city, formatPostedAt(listing.createdAt)].filter(Boolean).join(", ")}</p>
+            )}
             {/* Reytinq + məhsulun kodu (birmarket üslubu) */}
             <div className="flex items-center gap-3 mb-3 flex-wrap">
               {(() => {
