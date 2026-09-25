@@ -532,6 +532,11 @@ export default function OrdersPage() {
                       {statusLabel(order.status)}
                     </span>
                     <span className="text-orange-500 font-bold text-sm">{order.total.toFixed(2)} AZN</span>
+                    {order.installmentMonths ? (
+                      <span className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-amber-400/15 text-amber-600" title={order.installmentFee ? `Taksit komissiyası ${Number(order.installmentFee).toFixed(2)} AZN (${order.installmentFeePayer === "BUYER" ? "alıcı ödəyib" : "satıcının payından"})` : "Komissiyasız"}>
+                        💳 {order.installmentMonths} ay × {(order.total / order.installmentMonths).toFixed(2)}
+                      </span>
+                    ) : null}
                     {(order.status === 'SHIPPED' || order.status === 'CONFIRMED') && (
                       <Link href={`/orders/${order.id}`} className="text-xs text-orange-500 hover:text-orange-400 flex items-center gap-1">
                         📍 {t("liveTracking")}

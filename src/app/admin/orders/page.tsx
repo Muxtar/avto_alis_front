@@ -193,6 +193,11 @@ export default function AdminOrdersPage() {
                     {order.paymentMethod === "CARD" ? "💳" : order.paymentMethod === "WALLET" ? "👝" : "💵"} {order.paymentStatus}
                   </span>
                   <span className="text-orange-500 font-bold text-sm">{order.total.toFixed(2)} AZN</span>
+                  {order.installmentMonths ? (
+                      <span className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-amber-400/15 text-amber-600" title={order.installmentFee ? `Taksit komissiyası ${Number(order.installmentFee).toFixed(2)} AZN (${order.installmentFeePayer === "BUYER" ? "alıcı ödəyib" : "satıcının payından"})` : "Komissiyasız"}>
+                        💳 {order.installmentMonths} ay × {(order.total / order.installmentMonths).toFixed(2)}
+                      </span>
+                    ) : null}
                   {/* İadə et — yalnız kartla ödənilmiş sifarişlər üçün */}
                   {order.gatewayOrderId && order.paymentStatus === "PAID" && (
                     <button onClick={() => refundOrder(order.id, order.total)}

@@ -13,7 +13,7 @@ import ChatPeopleSearch from "@/components/ChatPeopleSearch";
 import Avatar from "@/components/Avatar";
 import { useCall } from "@/lib/CallContext";
 import { Ico } from "@/components/ChatIcons";
-import { listingInstallmentAllowed } from "@/lib/installment";
+import { listingInstallmentAllowed, useInstallmentConfig } from "@/lib/installment";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 const CHAT_EMOJIS = ["😀","😁","😂","🤣","😊","😍","😘","😎","🤩","🥳","😉","🙂","😇","🤗","🤔","😴","😭","😡","😱","😳","🥰","😜","🤪","😏","🙄","😤","😢","😅","😬","🤯","🤒","🤕","👍","👎","👌","🙏","👏","🙌","💪","🤝","👋","✌️","🤟","🫶","❤️","🧡","💛","💚","💙","💜","🖤","🔥","✨","🎉","🎊","💯","⭐","🌟","💥","💐","🌹","☀️","🌙","⚡","☕","🍰","🍕","🎁","💰","✅","❌","❗","❓","💬","📍","🚗","⚽"];
@@ -79,6 +79,7 @@ export default function MessagesPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
   const { user, token, isLoggedIn, authLoading } = useAuth();
+  const instCfg = useInstallmentConfig();
   const router = useRouter();
   const [directConvs, setDirectConvs] = useState<any[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
@@ -1393,7 +1394,7 @@ export default function MessagesPage() {
                 <p className="text-xl font-extrabold mt-1">{activeListing.price.toLocaleString("az-AZ")} <span className="text-sm">AZN</span></p>
               )}
               {/* Taksit nişanı — biznes məhsulu və məbləğ uyğundursa. */}
-              {listingInstallmentAllowed(activeListing, activeListing.price || 0) && (
+              {listingInstallmentAllowed(activeListing, activeListing.price || 0, instCfg) && (
                 <p className="mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-400/15 text-amber-600 text-[11px] font-bold">
                   <span className="w-4 h-4 rounded-full bg-amber-400/30 flex items-center justify-center text-[9px]">%</span>
                   Hissəli alış

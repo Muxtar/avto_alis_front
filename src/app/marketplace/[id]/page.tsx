@@ -19,7 +19,7 @@ import SellerReply from "@/components/SellerReply";
 import { recordView } from "@/lib/recentlyViewed";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
 import ReferralSellCard from "@/components/ReferralSellCard";
-import { listingInstallmentAllowed, monthsForListing } from "@/lib/installment";
+import { listingInstallmentAllowed, monthsForListing, useInstallmentConfig } from "@/lib/installment";
 
 
 /** «2 gün 04:12:33» — birgə alış pəncərəsinin geri sayımı. */
@@ -38,6 +38,7 @@ export default function ListingDetailPage() {
   const { t, locale } = useLanguage();
   const { toast } = useToast();
   const { user, token, isLoggedIn } = useAuth();
+  const instCfg = useInstallmentConfig();
   const { addToCart } = useCart();
   const params = useParams();
   const router = useRouter();
@@ -928,13 +929,13 @@ export default function ListingDetailPage() {
 
             {/* Hissəli alış — BİZNES məhsulu + SATICI icazə veribsə.
                 Satıcı elanda taksiti bağlaya və ya ay limiti qoya bilər. */}
-            {listingInstallmentAllowed(listing, listing.price * cartQty) && (
+            {listingInstallmentAllowed(listing, listing.price * cartQty, instCfg) && (
               <div className="mb-4">
                 <InstallmentCalculator
                   amount={listing.price * cartQty}
                   value={installMonths}
                   onChange={setInstallMonths}
-                  months={monthsForListing(listing)}
+                  months={monthsForListing(listing, instCfg?.months)}
                 />
               </div>
             )}

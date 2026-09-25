@@ -8,6 +8,7 @@ import { API, imgUrl } from "@/lib/api";
 import { formatPrice, formatPriceShort, formatPostedAt } from "@/lib/format";
 import { COUNTRY_BY_CODE } from "@/lib/countries";
 import { useCardGroupBuy } from "@/lib/groupBuyCard";
+import { useInstallmentConfig, listingInstallmentAllowed, monthsForListing } from "@/lib/installment";
 
 interface Listing {
   id: number;
@@ -56,6 +57,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const isService = listing.type === "SERVICE";
   // Müddəti bitmiş VIP-i backend işi (services/vip.ts → expireVips) söndürür.
   const isVip = !!listing.isVip;
+  // Taksit nişanı: «💳 18 ay» — ən uzun mümkün plan (admin planları ∩ satıcı limiti).
+  const instCfg = useInstallmentConfig();
+  const instMax = listingInstallmentAllowed(listing, listing.price, instCfg) ? Math.max(...monthsForListing(listing, instCfg!.months)) : 0;
   const isOwner = isLoggedIn && user?.id === listing.user.id;
   const outOfStock = listing.stock !== undefined && listing.stock <= 0;
   // Yalnız VÖEN-li (biznes obyektinə bağlı) elanlarda kartla alış (səbət/indi al).
@@ -180,6 +184,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             </span>
             {listing.createdAt && isNew(listing.createdAt) && (
               <span className="px-2 py-0.5 bg-sky-500 text-white rounded-full text-[10px] font-semibold shadow-sm">{t("newBadge")}</span>
+            )}
+            {instMax > 0 && (
+              <span className="px-2 py-0.5 bg-amber-400 text-amber-950 rounded-full text-[10px] font-bold shadow-sm" title={`${instMax} aya qədər hissəli ödəniş`}>💳 {instMax} ay</span>
             )}
             {listing.forRent && (
               <span className="px-2 py-0.5 bg-indigo-500 text-white rounded-full text-[10px] font-semibold shadow-sm">🔑 İcarə</span>

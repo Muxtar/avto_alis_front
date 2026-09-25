@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
 import ConsentBox from "@/components/ConsentBox";
-import { installmentAllowed, monthsForListings } from "@/lib/installment";
+import { installmentAllowed, monthsForListings, useInstallmentConfig, feePercentFor } from "@/lib/installment";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import ShareButton from "@/components/ShareButton";
 
@@ -124,7 +124,10 @@ export default function CartPage() {
   const checkoutItems = selItems.length ? selItems : inStockItems;
   const cardAllowed = checkoutItems.length > 0 && checkoutItems.every((i) => !!(i.listing?.businessId || i.listing?.businessObjectId));
   // Satıcıların icazə verdiyi taksit ayları (ən dar məhdudiyyət qalır).
-  const installMonthOptions = monthsForListings(checkoutItems.map((i) => i.listing));
+  // Planlar admin paneldən gəlir; şlüz taksiti dəstəkləmirsə (available=false) seçim göstərilmir.
+  const instCfg = useInstallmentConfig();
+  const installMonthOptions = instCfg?.available ? monthsForListings(checkoutItems.map((i) => i.listing), instCfg.months) : [];
+  const instFeePct = installMonths != null && instCfg?.buyerPaysFee ? feePercentFor(instCfg, installMonths) : 0;
   useEffect(() => {
     if (!cardAllowed) { setPaymentMethod((m) => (m === "CARD" ? "CASH" : m)); return; }
     if (!paymentTouched) setPaymentMethod("CARD"); // VÖEN → default kart
@@ -425,7 +428,8 @@ export default function CartPage() {
           // Hissəli alış — yalnız kartla və biznes məhsullarında qəbul olunur
           // (server də eyni şərti yenidən yoxlayır).
           installmentMonths: paymentMethod === "CARD" ? installMonths : null,
-          savedCardId: paymentMethod === "CARD" ? savedCardId : null,
+          // Taksitdə kart bankın səhifəsində seçilir — saxlanmış kartla taksit mümkün deyil.
+          savedCardId: paymentMethod === "CARD" && installMonths == null ? savedCardId : null,
           itemIds: [...selected], // yalnız seçilmiş məhsullar alınır
         }),
       });
@@ -949,7 +953,7 @@ export default function CartPage() {
                     {/* Taksit — səbətdəki BÜTÜN məhsullar icazə verirsə.
                         Ay variantları ən dar məhdudiyyətə görə kəsilir: bir
                         məhsulda satıcı «ən çox 6 ay» qoyubsa 9/12/18 çıxmır. */}
-                    {paymentMethod === "CARD" && installmentAllowed(selTotal, cardAllowed) && installMonthOptions.length > 0 && (
+                    {paymentMethod === "CARD" && installmentAllowed(selTotal, cardAllowed, instCfg?.minAmount) && installMonthOptions.length > 0 && (
                       <div className="mt-3">
                         <label className="flex items-center gap-2 mb-2 cursor-pointer">
                           <input type="checkbox" checked={installMonths != null}
@@ -958,7 +962,13 @@ export default function CartPage() {
                           <span className="text-xs font-semibold">Hissəli (taksitlə) almaq istəyirəm</span>
                         </label>
                         {installMonths != null && (
-                          <InstallmentCalculator amount={selTotal} value={installMonths} onChange={setInstallMonths} months={installMonthOptions} compact />
+                          <>
+                            <InstallmentCalculator amount={selTotal} value={installMonths} onChange={setInstallMonths} months={installMonthOptions} compact />
+                            {instFeePct > 0 && (
+                              <p className="text-[11px] text-amber-600 mt-1.5">Taksit komissiyası: +{instFeePct}% ({(selTotal * instFeePct / 100).toFixed(2)} AZN) ödəniləcək məbləğə əlavə olunur.</p>
+                            )}
+                            {savedCards.length > 0 && <p className="text-[11px] text-muted mt-1">Taksitlə ödənişdə kart bankın səhifəsində seçilir.</p>}
+                          </>
                         )}
                       </div>
                     )}

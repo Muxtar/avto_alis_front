@@ -276,10 +276,21 @@ export default function OrderDetailPage() {
               <span>−{Number(order.discountAmount).toFixed(2)} AZN</span>
             </div>
           )}
+          {order.installmentFee > 0 && order.installmentFeePayer === "BUYER" && (
+            <div className="flex justify-between text-amber-600">
+              <span>Taksit komissiyası</span>
+              <span>+{Number(order.installmentFee).toFixed(2)} AZN</span>
+            </div>
+          )}
           <div className="flex justify-between font-bold pt-1">
             <span>{t('cartTotal')}</span>
             <span className="text-orange-500">{Number(order.total).toFixed(2)} AZN</span>
           </div>
+          {order.installmentMonths ? (
+            <div className="mt-1 px-3 py-2 rounded-xl bg-amber-400/10 text-amber-700 text-xs">
+              💳 Hissəli ödəniş: <b>{order.installmentMonths} ay</b> × {(Number(order.total) / order.installmentMonths).toFixed(2)} AZN — bölgünü bank (BirKart / taksit kartı) edir.
+            </div>
+          ) : null}
           {order.pointsEarned > 0 && (
             <div className="text-xs text-blue-500 text-right">+{order.pointsEarned} {t('points')}</div>
           )}
