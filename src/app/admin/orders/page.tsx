@@ -198,7 +198,13 @@ export default function AdminOrdersPage() {
                         💳 {order.installmentMonths} ay × {(order.total / order.installmentMonths).toFixed(2)}
                       </span>
                     ) : null}
-                  {/* İadə et — yalnız kartla ödənilmiş sifarişlər üçün */}
+                  {order.gatewayDetails && (order.gatewayDetails.issuer || (order.gatewayDetails.extra && order.gatewayDetails.extra !== "[]")) ? (
+                    <span className="text-[11px] text-muted" title={JSON.stringify(order.gatewayDetails)}>
+                      🏦 {order.gatewayDetails.issuer || "—"}{order.gatewayDetails.method ? ` · ${order.gatewayDetails.method}` : ""}
+                      {order.gatewayDetails.extra && order.gatewayDetails.extra !== "[]" ? ` · extra: ${typeof order.gatewayDetails.extra === "string" ? order.gatewayDetails.extra : JSON.stringify(order.gatewayDetails.extra)}` : ""}
+                    </span>
+                  ) : null}
+                                    {/* İadə et — yalnız kartla ödənilmiş sifarişlər üçün */}
                   {order.gatewayOrderId && order.paymentStatus === "PAID" && (
                     <button onClick={() => refundOrder(order.id, order.total)}
                       className="px-2.5 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-xs font-medium hover:bg-red-500/20">
