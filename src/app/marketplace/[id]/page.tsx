@@ -194,6 +194,15 @@ export default function ListingDetailPage() {
     } catch { toast(t("error"), "error"); } finally { setRenewing(false); }
   };
 
+  // Sahib üçün: elan saytda görünürmü (görünmürsə səbəbi) — «profilimdə var,
+  // ana səhifədə yoxdur» sualının cavabı.
+  const [visInfo, setVisInfo] = useState<{ visible: boolean; reasons: string[]; note: string | null } | null>(null);
+  useEffect(() => {
+    if (!listing?.id || !token || !isLoggedIn || user?.id !== listing?.user?.id) return;
+    fetch(`${API}/me/listings/${listing.id}/visibility`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json()).then((d) => { if (d?.success) setVisInfo({ visible: d.visible, reasons: d.reasons || [], note: d.note }); }).catch(() => {});
+  }, [listing?.id, listing?.user?.id, listing?.status, token, isLoggedIn, user?.id]);
+
   // VIP — sahib elanını ödənişli önə çıxarır (siyahıda həmişə əvvəldə).
   const [vipOpen, setVipOpen] = useState(false);
   const [vipPackages, setVipPackages] = useState<{ days: number; price: number }[]>([]);
@@ -423,8 +432,20 @@ export default function ListingDetailPage() {
         </div>
       )}
 
-      {/* VIP — yalnız sahib görür: önə çıxar / uzat. */}
-      {isOwner && !isExpired && listing.status === "APPROVED" && (
+      {/* Görünməmə səbəbi — yalnız sahib görür. */}
+      {isOwner && visInfo && !visInfo.visible && !isExpired && (
+        <div className="mb-4 p-4 rounded-xl border bg-red-500/10 border-red-500/30">
+          <p className="font-semibold text-red-500">⚠️ Elanınız hazırda ana səhifədə və axtarışda görünmür</p>
+          <ul className="text-sm text-muted mt-1 list-disc pl-5">{visInfo.reasons.map((r) => <li key={r}>{r}</li>)}</ul>
+          {listing.isVip && <p className="text-xs text-muted mt-1">VIP müddəti davam edir, amma elan görünənə qədər siyahıda çıxmayacaq.</p>}
+        </div>
+      )}
+      {isOwner && visInfo?.visible && visInfo.note && (
+        <div className="mb-4 p-3 rounded-xl border bg-input-bg border-card-border text-sm text-muted">ℹ️ {visInfo.note}</div>
+      )}
+
+      {/* VIP — yalnız sahib görür: önə çıxar / uzat. Görünməyən elana VIP təklif edilmir. */}
+      {isOwner && !isExpired && listing.status === "APPROVED" && visInfo?.visible !== false && (
         <div className={`mb-4 flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-xl border ${isVip ? "bg-amber-400/10 border-amber-400/40" : "bg-input-bg border-card-border"}`}>
           <div className="flex-1 min-w-0">
             <p className="font-semibold">{isVip ? "👑 Elanınız VIP-dir" : "👑 Elanı VIP et"}</p>

@@ -1356,15 +1356,28 @@ function AccountPageInner() {
       ) : (
         <div className="space-y-3">
           {listings.map((listing) => (
-            <div key={listing.id} className="surface p-4 flex flex-col sm:flex-row sm:items-center gap-3 relative">
+            <div key={listing.id} className="surface p-4 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 relative">
+              {/* Təsdiqlənib, amma saytda görünmür (obyekt/biznes deaktiv, müddət bitib…) — səbəbi ilə. */}
+              {listing.status === "APPROVED" && listing.visibility && !listing.visibility.visible && (
+                <div className="w-full order-last text-[11px] px-2.5 py-1.5 rounded-lg bg-red-500/10 text-red-600 border border-red-500/20">
+                  ⚠️ Ana səhifədə və axtarışda görünmür: {listing.visibility.reasons.join("; ")}
+                </div>
+              )}
+              {listing.visibility?.visible && listing.visibility.note && (
+                <div className="w-full order-last text-[11px] text-muted">ℹ️ {listing.visibility.note}</div>
+              )}
               {/* Moderasiya statusu — sağ yuxarı küncdə: gözləmədə / təsdiqləndi / rədd edildi */}
               {listing.status === "PENDING" ? (
                 <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/20 text-amber-600 border border-amber-500/30 shadow-sm">
                   ⏳ Gözləmədə
                 </span>
+              ) : listing.status === "APPROVED" && listing.visibility && !listing.visibility.visible ? (
+                <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-600 border border-red-500/30 shadow-sm">
+                  ⚠️ Saytda görünmür
+                </span>
               ) : listing.status === "APPROVED" ? (
                 <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-500/20 text-green-600 border border-green-500/30 shadow-sm">
-                  ✓ Təsdiqləndi
+                  ✓ Təsdiqləndi{listing.isVip ? " · 👑 VIP" : ""}
                 </span>
               ) : listing.status === "REJECTED" ? (
                 <span className="absolute top-2.5 right-2.5 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-500/20 text-red-600 border border-red-500/30 shadow-sm">
