@@ -5,10 +5,37 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useAuth } from "@/lib/AuthContext";
 import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
-import { API } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import Link from "next/link";
 import OrderMap from "@/components/OrderMapWrapper";
 import { yangoDead, yangoReturning, yangoLabel as yangoStatusAz, YANGO_STATUS_AZ } from "@/lib/yangoStatus";
+
+// ── Sifariş kartlarının rəng qrupları ──
+type OrderCat = "PENDING" | "ACTIVE" | "DONE" | "RETURN" | "CANCELLED";
+const ORDER_CATS: Record<OrderCat, { label: string; bar: string; pill: string; chip: string; chipOn: string }> = {
+  PENDING:   { label: "⏳ Gözləyir",   bar: "border-l-amber-400",  pill: "bg-amber-500/10 text-amber-600 border-amber-500/30",   chip: "border-amber-500/30 text-amber-600",  chipOn: "bg-amber-500 text-white border-amber-500" },
+  ACTIVE:    { label: "🔵 Davam edir", bar: "border-l-blue-500",   pill: "bg-blue-500/10 text-blue-600 border-blue-500/30",      chip: "border-blue-500/30 text-blue-600",    chipOn: "bg-blue-500 text-white border-blue-500" },
+  DONE:      { label: "✅ Tamamlandı", bar: "border-l-green-500",  pill: "bg-green-500/10 text-green-600 border-green-500/30",   chip: "border-green-500/30 text-green-600",  chipOn: "bg-green-500 text-white border-green-500" },
+  RETURN:    { label: "↩️ İadə",       bar: "border-l-purple-500", pill: "bg-purple-500/10 text-purple-600 border-purple-500/30", chip: "border-purple-500/30 text-purple-600", chipOn: "bg-purple-500 text-white border-purple-500" },
+  CANCELLED: { label: "✕ Ləğv / rədd", bar: "border-l-red-500",    pill: "bg-red-500/10 text-red-600 border-red-500/30",         chip: "border-red-500/30 text-red-600",      chipOn: "bg-red-500 text-white border-red-500" },
+};
+function orderCat(o: any): OrderCat {
+  if (o.status === "CANCELLED") return "CANCELLED";
+  const activeReturn = o.returnRequests?.some((r: any) => !["CANCELLED", "REJECTED", "REFUNDED"].includes(r.status));
+  if (o.status === "DELIVERED") return activeReturn ? "RETURN" : "DONE";
+  if (o.status === "PENDING") return "PENDING";
+  return "ACTIVE";
+}
+/** Bu sifarişdə hazırda MƏNDƏN addım gözlənilirmi? */
+function needsMyAction(o: any, tab: "buying" | "selling"): boolean {
+  if (tab === "selling") {
+    if (o.status === "PENDING") return true;                       // qəbul et / rədd et
+    if (o.status === "CONFIRMED" && !(o.deliveryMethod === "COURIER" && o.deliveryType !== "PICKUP")) return true; // göndər / təhvil ver
+    return (o.returnRequests || []).some((r: any) => r.status === "REQUESTED" || r.status === "RETURN_SHIPPED");
+  }
+  if (o.status === "SHIPPED" && o.deliveryType === "PICKUP") return true; // götürdüm təsdiqi
+  return (o.returnRequests || []).some((r: any) => r.status === "APPROVED"); // iadəni göndər
+}
 
 export default function OrdersPage() {
   const { t } = useLanguage();
@@ -16,6 +43,15 @@ export default function OrdersPage() {
   const { token, isLoggedIn, authLoading } = useAuth();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"buying" | "selling">("buying");
+  // Kart görünüşü: açıq (detalları göstərilən) sifarişlər və rəngli filtr.
+  const [openIds, setOpenIds] = useState<Set<number>>(new Set());
+  const toggleOpen = (id: number) => setOpenIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const [catFilter, setCatFilter] = useState<"ALL" | "ACTION" | OrderCat>("ALL");
+  // Bildirişdən / linkdən ?id=… ilə gəlinəndə həmin sifariş açıq gəlsin.
+  useEffect(() => {
+    const id = parseInt(new URLSearchParams(window.location.search).get("id") || "");
+    if (id) setOpenIds(new Set([id]));
+  }, []);
   const [buyingOrders, setBuyingOrders] = useState<any[]>([]);
   // Alıcının yazdığı məhsul rəyləri (listingId üzrə) — «Rəy yaz» / «Rəyi dəyiş».
   const [myReviews, setMyReviews] = useState<any[]>([]);
@@ -430,16 +466,6 @@ export default function OrdersPage() {
     fetchOrders();
   };
 
-  const statusColor = (status: string) => {
-    switch (status) {
-      case "PENDING": return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
-      case "CONFIRMED": return "bg-blue-500/10 text-blue-500 border-blue-500/20";
-      case "SHIPPED": return "bg-purple-500/10 text-purple-500 border-purple-500/20";
-      case "DELIVERED": return "bg-green-500/10 text-green-500 border-green-500/20";
-      case "CANCELLED": return "bg-red-500/10 text-red-500 border-red-500/20";
-      default: return "bg-gray-500/10 text-gray-500";
-    }
-  };
 
   const returnStatusColor = (status: string) => {
     switch (status) {
@@ -497,7 +523,10 @@ export default function OrdersPage() {
     return <div className="min-h-[calc(100vh-64px)] flex items-center justify-center"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  const orders = activeTab === "buying" ? buyingOrders : sellingOrders;
+  const allOrders = activeTab === "buying" ? buyingOrders : sellingOrders;
+  const catCounts = allOrders.reduce((m: Record<string, number>, o: any) => { const c = orderCat(o); m[c] = (m[c] || 0) + 1; return m; }, {});
+  const actionCount = allOrders.filter((o: any) => needsMyAction(o, activeTab)).length;
+  const orders = allOrders.filter((o: any) => catFilter === "ALL" ? true : catFilter === "ACTION" ? needsMyAction(o, activeTab) : orderCat(o) === catFilter);
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
@@ -515,6 +544,21 @@ export default function OrdersPage() {
         </button>
       </div>
 
+      {/* Rəngli filtr — statusu bir baxışda ayırmaq üçün (kartın sol zolağı eyni rəngdədir). */}
+      {allOrders.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap mb-4">
+          {actionCount > 0 && (
+            <button onClick={() => setCatFilter("ACTION")} className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${catFilter === "ACTION" ? "bg-orange-500 text-white border-orange-500" : "border-orange-500/40 text-orange-600 bg-orange-500/5"}`}>⚡ Addım gözləyir ({actionCount})</button>
+          )}
+          <button onClick={() => setCatFilter("ALL")} className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${catFilter === "ALL" ? "bg-foreground text-background border-foreground" : "border-card-border text-muted"}`}>Hamısı ({allOrders.length})</button>
+          {(Object.keys(ORDER_CATS) as OrderCat[]).filter((k) => catCounts[k]).map((k) => (
+            <button key={k} onClick={() => setCatFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${catFilter === k ? ORDER_CATS[k].chipOn : ORDER_CATS[k].chip}`}>
+              {ORDER_CATS[k].label} ({catCounts[k]})
+            </button>
+          ))}
+        </div>
+      )}
+
       {orders.length === 0 ? (
         <div className="text-center py-16 surface text-muted">
           <svg className="w-16 h-16 text-muted-foreground/20 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
@@ -527,34 +571,55 @@ export default function OrdersPage() {
             const hasActiveReturn = order.returnRequests?.some((r: any) => !['CANCELLED', 'REJECTED', 'REFUNDED'].includes(r.status));
             // Yango sifarişi: kod YOXDUR (kod xüsusiyyəti ləğv edilib).
             const isYangoOrder = order.deliveryType !== "PICKUP" && order.deliveryMethod === "COURIER" && !order.courierId;
+            const cat = ORDER_CATS[orderCat(order)];
+            const isOpen = openIds.has(order.id);
+            const firstImg: string | undefined = order.items?.[0]?.listing?.images?.[0];
+            const needsAction = needsMyAction(order, activeTab);
             return (
-              <div key={order.id} className="surface overflow-hidden">
-                {/* Header */}
-                <div className="p-4 border-b border-card-border flex items-center justify-between flex-wrap gap-2">
-                  <div>
-                    <Link href={`/orders/${order.id}`} className="font-semibold text-sm hover:text-orange-500">
-                      {t("orderNumber")} {order.id}
-                    </Link>
-                    <p className="text-muted text-xs">{new Date(order.createdAt).toLocaleString()}</p>
+              <div key={order.id} className={`surface overflow-hidden border-l-4 ${cat.bar} ${isOpen ? "ring-1 ring-orange-500/30" : ""}`}>
+                {/* KART — qısa xülasə; klikləyəndə bütün detallar açılır. */}
+                <button type="button" onClick={() => toggleOpen(order.id)} aria-expanded={isOpen}
+                  className="w-full text-left p-3 sm:p-4 flex items-center gap-3 hover:bg-input-bg/40 transition-colors">
+                  <div className="w-14 h-14 rounded-xl bg-input-bg border border-input-border overflow-hidden shrink-0 flex items-center justify-center">
+                    {firstImg ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={firstImg.startsWith("http") ? firstImg : imgUrl(firstImg)} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    ) : <span className="text-xl">📦</span>}
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-lg text-xs font-medium border ${statusColor(order.status)}`}>
-                      {order.deliveryType === "PICKUP" && order.status === "SHIPPED" ? (activeTab === "buying" ? "Təhvil verildi — təsdiqləyin" : "Təhvil verildi") : order.deliveryType === "PICKUP" && order.status === "CONFIRMED" ? "Hazırdır — götürülə bilər" : statusLabel(order.status)}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm truncate">{order.items[0]?.title || "Sifariş"}{order.items.length > 1 ? <span className="text-muted font-normal"> +{order.items.length - 1} məhsul</span> : null}</p>
+                    <p className="text-[11px] text-muted truncate">
+                      #{order.id} · {new Date(order.createdAt).toLocaleDateString("az-AZ", { day: "numeric", month: "short" })}
+                      {counterparty?.name ? ` · ${activeTab === "buying" ? "Satıcı" : "Alıcı"}: ${counterparty.name}` : ""}
+                      {` · ${order.deliveryType === "PICKUP" ? "🏪 Götürmə" : order.deliveryMethod === "COURIER" ? "🚕 Yango" : "🚚 Çatdırılma"}`}
+                    </p>
+                    {needsAction && <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-500 text-white animate-pulse">⚡ Sizdən addım gözlənilir</span>}
+                  </div>
+                  <div className="text-right shrink-0 flex flex-col items-end gap-1">
+                    <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cat.pill}`}>
+                      {order.deliveryType === "PICKUP" && order.status === "SHIPPED" ? (activeTab === "buying" ? "Təhvil verildi — təsdiqləyin" : "Təhvil verildi") : order.deliveryType === "PICKUP" && order.status === "CONFIRMED" ? "Hazırdır — götürülə bilər" : hasActiveReturn && order.status === "DELIVERED" ? "İadə gedir" : statusLabel(order.status)}
                     </span>
-                    <span className="text-orange-500 font-bold text-sm">{order.total.toFixed(2)} AZN</span>
+                    <span className="font-bold text-sm">{order.total.toFixed(2)} AZN</span>
+                    {order.installmentMonths ? <span className="text-[10px] text-amber-600">💳 {order.installmentMonths} ay</span> : null}
+                  </div>
+                  <svg className={`w-4 h-4 text-muted shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+
+                {isOpen && (<>
+                <div className="px-4 py-2 border-t border-card-border flex items-center justify-between flex-wrap gap-2 bg-input-bg/30">
+                  <p className="text-muted text-xs">{new Date(order.createdAt).toLocaleString("az-AZ")}</p>
+                  <div className="flex items-center gap-3">
                     {order.installmentMonths ? (
                       <span className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-amber-400/15 text-amber-600" title={order.installmentFee ? `Taksit komissiyası ${Number(order.installmentFee).toFixed(2)} AZN (${order.installmentFeePayer === "BUYER" ? "alıcı ödəyib" : "satıcının payından"})` : "Komissiyasız"}>
                         💳 {order.installmentMonths} ay × {(order.total / order.installmentMonths).toFixed(2)}
                       </span>
                     ) : null}
                     {(order.status === 'SHIPPED' || order.status === 'CONFIRMED') && (
-                      <Link href={`/orders/${order.id}`} className="text-xs text-orange-500 hover:text-orange-400 flex items-center gap-1">
-                        📍 {t("liveTracking")}
-                      </Link>
+                      <Link href={`/orders/${order.id}`} className="text-xs text-orange-500 hover:text-orange-400">📍 {t("liveTracking")}</Link>
                     )}
+                    <Link href={`/orders/${order.id}`} className="text-xs text-orange-500 hover:text-orange-400">Ayrıca səhifədə aç →</Link>
                   </div>
                 </div>
-
                 {/* Items */}
                 <div className="p-4 space-y-2">
                   {order.items.map((item: any) => (
@@ -1083,6 +1148,7 @@ export default function OrdersPage() {
                     )}
                   </div>
                 )}
+                </>)}
               </div>
             );
           })}
