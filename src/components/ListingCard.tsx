@@ -365,7 +365,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           {/* Telefon ölçüsündə dar kartda (≈170px) sətirlər sığmırdı: indi hər
               məlumat öz sətrindədir, geri sayım ayrıca «pill»də, sözlər qırılmır. */}
           {isGroupBuy && (
-            <div className="mt-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/[.06] px-2 py-1.5 min-w-0"
+            <div className="mt-2.5 rounded-none border border-emerald-500/30 bg-emerald-500/[.06] px-2 py-1.5 min-w-0"
               title={gb ? `Birgə alış — ${gb.windowDays} günlük pəncərə · indiyə qədər ${gb.totalQty} ədəd alınıb` : `Birgə alış — ilk alan ${listing.groupBuyDays} günlük pəncərəni açır`}>
               {gb ? (
                 <>
