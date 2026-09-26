@@ -38,7 +38,8 @@ function timeAgo(iso: string): string {
 }
 
 // Bağlı cihazlar — profilə daxil olan cihazlar (WhatsApp "linked devices" kimi).
-export default function ConnectedDevices() {
+/** embedded — profildəki kimlik kartının içində: öz çərçivəsi və başlığı olmur. */
+export default function ConnectedDevices({ embedded = false }: { embedded?: boolean } = {}) {
   const { token } = useAuth();
   const { toast } = useToast();
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -79,9 +80,9 @@ export default function ConnectedDevices() {
   const others = sessions.filter((s) => !s.current);
 
   return (
-    <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-6">
+    <div className={embedded ? "" : "bg-card border border-card-border rounded-2xl p-5 sm:p-6"}>
       <div className="flex items-center justify-between gap-2 mb-1">
-        <h2 className="font-semibold flex items-center gap-2">🔗 Bağlı cihazlar</h2>
+        {!embedded ? <h2 className="font-semibold flex items-center gap-2">🔗 Bağlı cihazlar</h2> : <span />}
         {others.length > 0 && (
           <button onClick={revokeOthers} disabled={busy === "others"} className="text-xs text-red-500 hover:text-red-600 font-medium disabled:opacity-50">
             Digərlərini çıxart

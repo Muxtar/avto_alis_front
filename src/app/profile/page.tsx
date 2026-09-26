@@ -14,7 +14,7 @@ import SocialIcon from "@/components/SocialIcon";
 import { openVeriff, checkVeriff, identityStatus, payVeriffFee, type IdentityStatus } from "@/lib/veriff";
 import IdentityManualModal from "@/components/IdentityManualModal";
 import IdentityChoiceModal from "@/components/IdentityChoiceModal";
-import VerifyCard, { type VerifyState } from "@/components/VerifyCard";
+import { type VerifyState } from "@/components/VerifyCard";
 import ProfessionMultiPicker from "@/components/ProfessionMultiPicker";
 import EmploymentSection, { type EmploymentStatus } from "@/components/EmploymentSection";
 import ConnectedDevices from "@/components/ConnectedDevices";
@@ -280,7 +280,18 @@ export default function ProfilePage() {
   // ---- Telefon nömrələri (çoxlu, biri əsas) ----
   const [phones, setPhones] = useState<any[]>([]);
   // Doğrulama kartları — hansı kartın paneli açıqdır (bir anda biri).
-  const [openCard, setOpenCard] = useState<"id" | "phone" | "work" | null>(null);
+  // Profil bölmələri — bağlı kartlar; başlığa klik edəndə biri açılır (accordion).
+  const [openCard, setOpenCard] = useState<string | null>(null);
+  const toggleCard = (k: string) => setOpenCard((cur) => (cur === k ? null : k));
+  // Bildirişdən /profile#social və ya ?social=... ilə gələndə həmin kart açıq gəlsin.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const h = window.location.hash.replace("#", "");
+    if (h === "social" || new URLSearchParams(window.location.search).has("social")) {
+      setOpenCard("social");
+      setTimeout(() => document.getElementById("social")?.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
+    }
+  }, []);
   // İş yeri statusu — EmploymentSection öz məlumatını yükləyəndə kartı doldurur.
   const [workStatus, setWorkStatus] = useState<EmploymentStatus>({ state: "none", label: "İş yeri əlavə edilməyib", hint: "Çalışdığınız şirkəti (VÖEN) qeyd edin" });
   const [newPhone, setNewPhone] = useState("");
@@ -1074,44 +1085,6 @@ export default function ProfilePage() {
         </div>
       </section>
 
-      {/* ── Doğrulama kartları (kimlik / telefon / iş yeri) ──
-          Uzun bölmələr əvəzinə orta ölçülü kartlar: təsdiqlənibsə yaşıl ✓,
-          gözləyirsə narıncı ⏳, yoxdursa qırmızı ✕ nişanı. Karta klikləyəndə
-          həmin bölmənin ətraflı paneli aşağıda açılır. */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 mb-5">
-        <VerifyCard
-          variant="id" title="Kimlik təsdiqi"
-          state={idState}
-          value={idState === "ok" ? "Təsdiqlənmiş profil" : "Təsdiqlənməmiş profil"}
-          hint={idState === "ok"
-            ? `${profile.name || ""}${profile.idNumber ? ` · FIN: ${String(profile.idNumber).slice(0, 2)}•••••` : ""}`
-            : profile.idVerifyStatus === "PENDING" && idSubmitted
-              ? "⏳ Admin yoxlamasındadır"
-              : profile.idVerifyStatus === "REJECTED"
-                ? "Rədd edildi — yenidən göndərin"
-                : veriffBusy ? "Açılır…"
-                  : "Təsdiqləmək üçün toxunun — Veriff və ya admin yoxlaması"}
-          cta="Təsdiqlə"
-          open={openCard === "id"}
-          /* Təsdiqlənməyibsə panel açılmır — birbaşa Veriff pəncərəsinə keçir. */
-          onClick={() => (idState === "ok" ? setOpenCard(openCard === "id" ? null : "id") : startIdVerify())}
-        />
-        <VerifyCard
-          variant="phone" title="Telefon nömrəsi" cta="Nömrə əlavə et"
-          state={phoneState}
-          value={primaryPhone || "Nömrə yoxdur"}
-          hint={phoneState === "ok"
-            ? (extraPhones ? `Əsas nömrə · +${extraPhones} əlavə nömrə` : "Əsas nömrə — elanlarınızda göstərilir")
-            : "Nömrənizi kod ilə təsdiqləyin"}
-          open={openCard === "phone"} onClick={() => setOpenCard(openCard === "phone" ? null : "phone")}
-        />
-        <VerifyCard
-          variant="work" title="İş yerim" cta="Əlavə et"
-          state={workStatus.state} value={workStatus.label} hint={workStatus.hint}
-          open={openCard === "work"} onClick={() => setOpenCard(openCard === "work" ? null : "work")}
-        />
-      </div>
-
       {choiceOpen && (
         <IdentityChoiceModal
           status={idStatus}
@@ -1133,34 +1106,52 @@ export default function ProfilePage() {
         />
       )}
 
-      {/* Kimlik təsdiqi paneli — YALNIZ təsdiqlənmiş profil üçün açılır.
-          Təsdiqlənməyibsə kartın özü birbaşa Veriff pəncərəsini açır, ona görə
-          burada nə izahat mətni, nə də «Nəticəni yoxla» düyməsi var. */}
-      {openCard === "id" && idState === "ok" && (
-        <IdCard icon="🪪" title="Kimlik təsdiqi" tone="green" stamp="ok" stampText={{ ok: "Təsdiqlənmiş" }} className="animate-fade-in">
-          {/* Veriff-dən gələn doğrulanmış məlumatlar */}
-          {(profile.birthDate || profile.gender || profile.idNumber) && (
-            <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 p-4 rounded-2xl bg-input-bg border border-input-border">
-              <IdField label="Ad soyad" value={profile.name} />
-              <IdField label="FIN" value={profile.idNumber} mono />
-              <IdField label="Doğum tarixi" value={profile.birthDate ? new Date(profile.birthDate).toLocaleDateString("az-AZ") : null} />
-              <IdField label="Yaş" value={computeAge(profile.birthDate)} />
-              <IdField label="Cins" value={profile.gender} />
-            </div>
-          )}
-          {/* Təsdiqlənmiş kimlik SİLİNMİR: Veriff doğrulaması bitibsə profil
-              həmişəlik doğrulanmış profildir (Facebook/Instagram təsdiqi kimi).
-              Ona görə burada nə «Təsdiqi sil», nə də «Yenidən doğrula» var. */}
-          <p className="text-[12px] text-muted flex items-start gap-1.5">
-            <span className="text-emerald-500 shrink-0">✓</span>
-            Kimliyiniz Veriff ilə doğrulanıb və profiliniz həmişəlik «doğrulanmış profil»dir — bu təsdiq geri qaytarılmır.
-          </p>
-        </IdCard>
-      )}
+      {/* Kimlik təsdiqi */}
+      <IdCard icon="🪪" title="Kimlik təsdiqi" tone={idState === "ok" ? "green" : "brand"}
+        collapsible open={openCard === "id"} onToggle={() => toggleCard("id")}
+        stamp={idState} stampText={{ ok: "Təsdiqlənmiş", pending: "Yoxlanılır", none: "Təsdiqlənməyib" }}
+        summary={idState === "ok"
+          ? `${profile.name || ""}${profile.idNumber ? ` · FIN: ${String(profile.idNumber).slice(0, 2)}•••••` : ""}`
+          : profile.idVerifyStatus === "PENDING" && idSubmitted ? "Admin yoxlamasındadır" : profile.idVerifyStatus === "REJECTED" ? "Rədd edildi — yenidən göndərin" : "Veriff və ya admin yoxlaması ilə təsdiqləyin"}>
+        {idState === "ok" ? (
+          <>
+            {(profile.birthDate || profile.gender || profile.idNumber) && (
+              <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 p-4 rounded-2xl bg-input-bg border border-input-border">
+                <IdField label="Ad soyad" value={profile.name} />
+                <IdField label="FIN" value={profile.idNumber} mono />
+                <IdField label="Doğum tarixi" value={profile.birthDate ? new Date(profile.birthDate).toLocaleDateString("az-AZ") : null} />
+                <IdField label="Yaş" value={computeAge(profile.birthDate)} />
+                <IdField label="Cins" value={profile.gender} />
+              </div>
+            )}
+            <p className="text-[12px] text-muted flex items-start gap-1.5">
+              <span className="text-emerald-500 shrink-0">✓</span>
+              Kimliyiniz Veriff ilə doğrulanıb və profiliniz həmişəlik «doğrulanmış profil»dir — bu təsdiq geri qaytarılmır.
+            </p>
+          </>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-muted">
+              {profile.idVerifyStatus === "PENDING" && idSubmitted
+                ? "⏳ Müraciətiniz admin yoxlamasındadır — nəticə bildiriş kimi gələcək."
+                : profile.idVerifyStatus === "REJECTED"
+                  ? "Əvvəlki müraciət rədd edildi — yenidən göndərə bilərsiniz."
+                  : "Kimliyinizi təsdiqləyin — profilinizdə «doğrulanmış» nişanı görünəcək və alıcılar sizə daha çox etibar edəcək."}
+            </p>
+            {!(profile.idVerifyStatus === "PENDING" && idSubmitted) && (
+              <button onClick={startIdVerify} disabled={veriffBusy}
+                className="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] disabled:opacity-50">
+                {veriffBusy ? "Açılır…" : "🪪 Kimliyi təsdiqlə"}
+              </button>
+            )}
+          </div>
+        )}
+      </IdCard>
 
       {/* Telefon nömrələri paneli */}
-      {openCard === "phone" && (
-        <IdCard icon="📱" title="Telefon nömrələri" tone="blue" stamp={phoneState === "ok" ? "ok" : "none"} stampText={{ none: "Nömrə yoxdur" }} className="animate-fade-in"
+        <IdCard icon="📱" title="Telefon nömrələri" tone="blue" stamp={phoneState === "ok" ? "ok" : "none"} stampText={{ none: "Nömrə yoxdur" }}
+          collapsible open={openCard === "phone"} onToggle={() => toggleCard("phone")}
+          summary={primaryPhone ? `${primaryPhone}${extraPhones ? ` · +${extraPhones} əlavə nömrə` : ""}` : "Nömrənizi kod ilə təsdiqləyin"}
           subtitle="Əsas nömrə elanlarınızda göstərilir. Hər nömrə doğrulama kodu ilə təsdiqlənir.">
 
         {/* Əsas nömrə */}
@@ -1225,231 +1216,129 @@ export default function ProfilePage() {
           </button>
         )}
         </IdCard>
-      )}
 
       {/* İş yeri paneli — komponent HƏMİŞƏ mount olunur (kartdakı statusu o verir),
           bağlı olanda yalnız gizlədilir. */}
-      <div className={openCard === "work" ? "animate-fade-in" : "hidden"}>
-        <IdCard icon="🏢" title="İş yerim" tone="teal" stamp={workStatus.state === "ok" ? "ok" : workStatus.state === "pending" ? "pending" : null}>
-          <EmploymentSection embedded onStatus={setWorkStatus} />
-        </IdCard>
-      </div>
-      {/* Bağlı cihazlar — profilə daxil olan cihazlar, uzaqdan çıxarma */}
-      <div className="mb-5">
-        <ConnectedDevices />
-      </div>
-
-      {/* Rəy konsultasiyası təklifi */}
-      <IdCard icon="🗣️" title="Rəy konsultasiyası" tone="purple" stamp={offers.some((o) => o.active) ? "ok" : null} stampText={{ ok: "Aktiv" }}
-        subtitle="İxtisasınız üzrə ödənişli konsultasiya təklif edin. İstifadəçi sizi İxtisas bölməsindən tapıb sorğu göndərə bilər; siz vaxtı Başlat/Dayandır ilə idarə edirsiniz.">
-
-        {!offerHasVoen && (
-          <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-600">
-            ⚠ Təkliflər yarada bilərsiniz və sorğular sizə gələcək, amma <b>ödənişlərin aktivləşməsi üçün VÖEN (biznes) əlavə etməlisiniz</b>. VÖEN yoxdursa sorğular gəlir, lakin işləmir.
-          </div>
-        )}
-
-        {/* Mövcud təkliflər */}
-        {offers.length > 0 && (
-          <div className="space-y-2 mb-4">
-            {offers.map((o) => (
-              <IdMini key={o.id} icon="🗣️" tone="purple" title={o.title || "Rəy konsultasiyası"}
-                stamp={o.active ? "ok" : "none"} stampText={{ ok: "Aktiv", none: "Deaktiv" }}
-                sub={o.description || undefined}
-                actions={<>
-                  <button onClick={() => editOffer(o)} className="text-[12px] text-orange-500 font-semibold">Redaktə</button>
-                  <button onClick={() => deleteOffer(o.id)} className="text-muted hover:text-red-500 text-sm">✕</button>
-                </>}>
-                <div className="grid grid-cols-2 gap-3">
-                  <IdField label="Müddət" value={`${o.durationMinutes} dəq`} />
-                  <IdField label="Qiymət" value={`${o.price} AZN`} />
-                </div>
-              </IdMini>
-            ))}
-          </div>
-        )}
-
-        {/* Əlavə et / redaktə formu */}
-        <div className="p-3 bg-input-bg/40 border border-input-border rounded-xl">
-          <p className="text-xs font-semibold text-muted mb-2">{editingOfferId ? "Təklifi redaktə et" : "Yeni təklif əlavə et"}</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
-            <div className="sm:col-span-3">
-              <label className="block text-xs font-medium text-muted mb-1">Başlıq</label>
-              <input value={offerForm.title} onChange={(e) => setOfferForm((f) => ({ ...f, title: e.target.value }))} placeholder="məs. İlk konsultasiya" className={inputCls} />
-            </div>
-            <div className="sm:col-span-3">
-              <label className="block text-xs font-medium text-muted mb-1">Qeyd / təsvir <span className="text-muted font-normal">(nə daxildir, necə keçir)</span></label>
-              <textarea value={offerForm.description} onChange={(e) => setOfferForm((f) => ({ ...f, description: e.target.value }))} rows={3} maxLength={1000} placeholder="məs. Backend memarlığı, kod baxışı və suallarınıza cavab. Zoom/çat ilə." className={`${inputCls} resize-none`} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted mb-1">Müddət (dəq)</label>
-              <input type="number" min={1} value={offerForm.durationMinutes} onChange={(e) => setOfferForm((f) => ({ ...f, durationMinutes: e.target.value }))} className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted mb-1">Qiymət (AZN)</label>
-              <input type="number" min={0} value={offerForm.price} onChange={(e) => setOfferForm((f) => ({ ...f, price: e.target.value }))} placeholder="30" className={inputCls} />
-            </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 text-sm py-2.5">
-                <input type="checkbox" checked={offerForm.active} onChange={(e) => setOfferForm((f) => ({ ...f, active: e.target.checked }))} className="w-4 h-4 accent-orange-500" />
-                Aktiv
-              </label>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={saveOffer} disabled={offerBusy} className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{offerBusy ? "..." : editingOfferId ? "Yenilə" : "Əlavə et"}</button>
-            {editingOfferId && <button onClick={resetOfferForm} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv et</button>}
-            <Link href="/consultations" className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold self-center ml-auto">Sorğularıma bax →</Link>
-          </div>
-        </div>
+      <IdCard icon="🏢" title="İş yerim" tone="teal" stamp={workStatus.state === "ok" ? "ok" : workStatus.state === "pending" ? "pending" : null}
+        collapsible open={openCard === "work"} onToggle={() => toggleCard("work")} summary={workStatus.label}>
+        <EmploymentSection embedded onStatus={setWorkStatus} />
       </IdCard>
 
-      {/* CV (tərcümeyi-hal) */}
-      <IdCard icon="📄" title="CV (Tərcümeyi-hal)" tone="slate" stamp={profile.cvFile ? "ok" : "none"} stampText={{ ok: profile.cvPublic ? "Public" : "Yüklənib", none: "Yoxdur" }}
-        subtitle="CV-nizi PDF və ya şəkil kimi əlavə edin. İstədiyiniz vaxt dəyişə və ya silə bilərsiniz.">
-        {profile.cvFile ? (
-          <div className="flex items-center gap-3 flex-wrap">
-            <a href={`${imgUrl(profile.cvFile)}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:bg-orange-500/10">
-              📎 CV-yə bax
-            </a>
-            <label className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold cursor-pointer hover:bg-orange-500/20">
-              {cvBusy ? "..." : "Dəyiş"}
-              <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
-            </label>
-            <button onClick={handleCvDelete} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500/20">Sil</button>
-            <button onClick={() => toggleCvPublic(!profile.cvPublic)} className={`px-4 py-2.5 rounded-xl text-sm font-semibold ${profile.cvPublic ? "bg-green-500/10 text-green-500" : "bg-input-bg text-muted border border-input-border"}`}>
-              {profile.cvPublic ? "✓ Public (görünür)" : "Gizli — public et"}
-            </button>
-          </div>
-        ) : (
-          <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50">
-            {cvBusy ? "Yüklənir…" : "📤 CV yüklə (PDF/şəkil)"}
-            <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
-          </label>
-        )}
-      </IdCard>
-
-      {/* Peşə sənədləri (diplom / sertifikat / lisenziya) — AI ad-soyad uyğunluğunu yoxlayır */}
-      <IdCard icon="🎓" title="Peşə sənədləri" tone="amber"
-        stamp={profile.professionDocuments?.some((d: any) => d.status === "APPROVED") ? "ok" : profile.professionDocuments?.length ? "pending" : null}
-        subtitle={<>Diplom, sertifikat və ya lisenziyanızı yükləyin. <b>AI sənəddəki ad-soyadın sizin ad-soyadınızla ({profile.name || "—"}) uyğun olduğunu yoxlayır.</b> Bir neçə sənəd əlavə edə bilərsiniz.</>}>
-
-        {/* Mövcud sənədlər */}
-        {profile.professionDocuments?.length > 0 && (
-          <div className="space-y-2.5 mb-4">
-            {profile.professionDocuments.map((d: any) => {
-              const score = typeof d.nameMatchScore === "number" ? Math.round(d.nameMatchScore * 100) : null;
-              const matchCls = d.nameMatch ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500";
-              const matchLabel = d.nameMatch ? `✓ Ad-soyad uyğundur${score !== null ? ` (${score}%)` : ""}` : `⚠ Ad-soyad uyğun deyil${score !== null ? ` (${score}%)` : ""}`;
-              const stCls = d.status === "APPROVED" ? "bg-green-500/10 text-green-500" : d.status === "REJECTED" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500";
-              const stLabel = d.status === "APPROVED" ? "Təsdiqlənib" : d.status === "REJECTED" ? "Rədd edildi" : "Yoxlanılır";
-              return (
-                <div key={d.id} className="flex gap-3 items-start bg-input-bg border border-input-border rounded-xl p-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`${imgUrl(d.image)}`} alt={d.title} className="w-16 h-16 object-cover rounded-lg border border-input-border shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-semibold truncate">{d.title}</p>
-                      {d.documentType && <span className="text-[11px] text-muted">· {d.documentType}</span>}
-                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${stCls}`}>{stLabel}</span>
-                    </div>
-                    {d.holderName && <p className="text-[11px] text-muted mt-0.5">Sənəddə: {d.holderName}</p>}
-                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${matchCls}`}>{matchLabel}</span>
-                    {d.aiReason && <p className="text-[11px] text-muted mt-1 leading-snug">{d.aiReason}</p>}
-                    <button onClick={() => toggleDocPublic(d.id, !d.isPublic)} className={`inline-block mt-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold ${d.isPublic ? "bg-green-500/10 text-green-500" : "bg-input-bg text-muted border border-input-border"}`}>
-                      {d.isPublic ? "✓ Public (YES)" : "Gizli — public et"}
-                    </button>
+      {/* Sosial media hesabları — hər hesab ayrıca «kimlik kartı».
+          Təsdiq: kod → bio → sistem oxuyur (açarsız); OAuth açarları varsa hesabla daxil olmaq. */}
+      <IdCard collapsible open={openCard === "social"} onToggle={() => toggleCard("social")} summary={`${profile.socialLinks?.length || 0} hesab · ${profile.socialLinks?.filter((x: any) => x.verified).length || 0} təsdiqli${profile.emailVerified ? " · email ✓" : ""}`} id="social" icon="🌐" title="Sosial media və email" tone="brand"
+        stamp={profile.socialLinks?.some((x: any) => x.verified) ? "ok" : null} stampText={{ ok: `${profile.socialLinks?.filter((x: any) => x.verified).length || 0} təsdiqli` }}
+        subtitle="Təsdiqlənmiş hesablar public profilinizdə «✓» ilə görünür. Başqaları sizi Instagram, TikTok və s. adınızla axtaranda birbaşa bu profilə çatır — hesabın sizə məxsus olduğu sistem tərəfindən sübut olunub.">
+        {/* Email doğrulaması */}
+        <IdMini icon="📧" tone="slate" title="Email" className="mb-3"
+          stamp={profile.emailVerified && profile.email ? "ok" : "none"} stampText={{ none: "Təsdiqlənməyib" }}>
+          {profile.emailVerified && profile.email ? (
+            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
+              <span className="text-sm text-green-500 font-medium truncate">{profile.email}</span>
+              <span className="text-[11px] text-muted ml-auto">təsdiqlənib</span>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-[11px] text-muted">Email ünvanınızı yazın — sizə doğrulama kodu göndəriləcək.</p>
+              <div className="flex gap-2">
+                <input type="email" value={emailInput} onChange={(e) => { setEmailInput(e.target.value); setEmailCodeSent(false); setEmailError(""); }} placeholder="ornek@gmail.com" className={`${inputCls} flex-1`} />
+                <button onClick={handleSendEmailCode} disabled={emailLoading || !emailInput} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{emailLoading ? "..." : "Kod göndər"}</button>
+              </div>
+              {emailError && <p className="text-[11px] text-red-500">{emailError}</p>}
+              {emailCodeSent && (
+                <>
+                  {verificationCode && <div className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-500 text-xs text-center">Test kodu: <b>{verificationCode}</b></div>}
+                  <div className="flex gap-2">
+                    <input value={emailCode} onChange={(e) => setEmailCode(e.target.value)} placeholder="6 rəqəmli kod" maxLength={6} className={`${inputCls} flex-1`} />
+                    <button onClick={handleVerifyEmail} disabled={emailLoading || !emailCode} className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{emailLoading ? "..." : "Təsdiqlə"}</button>
                   </div>
-                  <button onClick={() => deleteCredential(d.id)} className="text-muted hover:text-red-500 text-xs shrink-0" title="Sil">✕</button>
-                </div>
+                </>
+              )}
+              {emailVerified && <p className="text-[11px] text-green-500">✓ Email təsdiqləndi!</p>}
+            </div>
+          )}
+        </IdMini>
+
+
+        {(profile.socialLinks?.length > 0) && (
+          <div className="grid grid-cols-1 gap-3 mb-4">
+            {profile.socialLinks.map((s: any) => {
+              const meta = SOCIAL_META[s.platform] || { label: s.platform, icon: "🔗" };
+              const auto = ["telegram", "youtube", "linkedin", "twitter", "website"].includes(s.platform);
+              const busy = socialCheckBusy === s.id;
+              const pending = !s.verified && !!s.reviewRequestedAt;
+              const methodLabel = s.verifyMethod === "OAUTH" ? "hesabla daxil olub" : s.verifyMethod === "BIO_CODE" ? "bio kodu ilə" : s.verifyMethod === "POST_CODE" ? "paylaşım kodu ilə" : s.verifyMethod === "ADMIN" ? "admin yoxlaması ilə" : "";
+              return (
+                <IdMini key={s.id} tone={s.verified ? "green" : pending ? "amber" : "slate"}
+                  icon={<SocialIcon platform={s.platform} className="w-5 h-5" />}
+                  title={meta.label}
+                  stamp={s.verified ? "ok" : pending ? "pending" : "none"} stampText={{ ok: "Təsdiqli", pending: "Admin yoxlayır", none: "Təsdiqlənməyib" }}
+                  sub={<a href={s.url} target="_blank" rel="noreferrer" className="hover:text-orange-500">{s.url.replace(/^https?:\/\/(www\.)?/, "")}</a>}
+                  actions={<button onClick={() => { if (confirm(`${meta.label} hesabı silinsin?`)) deleteSocial(s.id); }} className="text-muted hover:text-red-500 text-xs">Sil</button>}>
+                  {s.verified ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <IdField label="Təsdiq üsulu" value={methodLabel || "təsdiqli"} />
+                      <IdField label="Tarix" value={s.verifiedAt ? new Date(s.verifiedAt).toLocaleDateString("az-AZ") : null} />
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {/* 1 — kod */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-muted">1. Bu kodu hesabınızın <b>biosuna</b> (təsvir / about) yazıb yadda saxlayın:</span>
+                        {s.verifyCode && <span className="id-code text-sm">{s.verifyCode}</span>}
+                        {s.verifyCode && <button onClick={() => copyText(s.verifyCode)} className="text-xs font-semibold text-[var(--brand-to)] hover:underline">Kopyala</button>}
+                      </div>
+                      {/* 2 — platformaya görə yol */}
+                      {auto ? (
+                        <p className="text-xs text-muted">2. «Yoxla» basın — sistem profilinizi oxuyub kodu tapan kimi hesab təsdiqlənir. Sonra kodu biodan silə bilərsiniz.</p>
+                      ) : (
+                        <div className="text-xs text-muted space-y-1.5">
+                          <p>2. {meta.label} bionu kənar sistemlərə göstərmir. İki yol var:</p>
+                          <p>• <b>Avtomatik:</b> kodu bir <b>ictimai paylaşımın</b> mətninə yazın və həmin paylaşımın linkini aşağıya qoyun, sonra «Yoxla».</p>
+                          <p>• <b>Admin yoxlaması:</b> kodu bioda saxlayın və «Adminə göndər» basın — admin profilinizi açıb kodu yoxlayacaq.</p>
+                          <input value={proofDraft[s.id] ?? s.proofUrl ?? ""} onChange={(e) => setProofDraft((d) => ({ ...d, [s.id]: e.target.value }))}
+                            placeholder={`Paylaşım linki (məs. https://www.${s.platform}.com/...)`} className={`${inputCls} text-xs`} />
+                        </div>
+                      )}
+                      {s.lastCheckNote && <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-2.5 py-1.5">{s.lastCheckNote}</p>}
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => checkSocial(s.id)} disabled={busy}
+                          className="px-4 py-2 rounded-xl text-white text-xs font-semibold bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] disabled:opacity-50">
+                          {busy ? "Yoxlanılır…" : "🔍 Yoxla"}
+                        </button>
+                        {!auto && !pending && (
+                          <button onClick={() => requestSocialReview(s.id)} className="px-4 py-2 rounded-xl text-xs font-semibold bg-input-bg border border-input-border hover:border-orange-500/50">Adminə göndər</button>
+                        )}
+                        {pending && <span className="text-[11px] text-amber-600 self-center">⏳ Admin yoxlayır — kodu biodan silməyin</span>}
+                        {oauthProviders.includes(s.platform) && (
+                          <button onClick={() => connectOauth(s.platform)} className="px-4 py-2 rounded-xl text-xs font-semibold bg-input-bg border border-input-border hover:border-orange-500/50">{meta.label} ilə daxil ol</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </IdMini>
               );
             })}
           </div>
         )}
 
-        {/* Yeni sənəd əlavə et */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <input
-            value={credTitle}
-            onChange={(e) => setCredTitle(e.target.value)}
-            placeholder="Başlıq (məs. Diplom, Həkimlik lisenziyası)"
-            className={`${inputCls} sm:flex-1`}
-          />
-          <label className="px-4 py-3 bg-input-bg border border-input-border rounded-xl text-sm cursor-pointer text-center hover:bg-orange-500/5 transition-colors">
-            <span className="text-muted">{credFile ? `📎 ${credFile.name.slice(0, 22)}` : "📷 Şəkil seç"}</span>
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => setCredFile(e.target.files?.[0] || null)} />
-          </label>
-          <button
-            onClick={uploadCredential}
-            disabled={credBusy}
-            className="px-5 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 whitespace-nowrap"
-          >
-            {credBusy ? "AI yoxlayır…" : "Yüklə və yoxla"}
-          </button>
+        {/* Yeni hesab əlavə et */}
+        <div className="p-3.5 rounded-2xl border border-dashed border-input-border">
+          <p className="text-xs font-semibold text-muted mb-2">＋ Hesab əlavə et</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select value={socialPlatform} onChange={(e) => setSocialPlatform(e.target.value)} className="px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground sm:w-40">
+              {Object.entries(SOCIAL_META).map(([k, m]) => <option key={k} value={k}>{m.icon} {m.label}</option>)}
+            </select>
+            <input value={socialUrl} onChange={(e) => setSocialUrl(e.target.value)} placeholder={socialPlatform === "website" ? "https://saytiniz.az" : socialPlatform === "telegram" ? "https://t.me/istifadeci" : `https://${socialPlatform === "twitter" ? "x" : socialPlatform}.com/istifadeci`} className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground" />
+            <button onClick={addSocial} disabled={socialBusy || !socialUrl.trim()} className="px-4 py-2.5 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] text-white rounded-xl text-sm font-semibold disabled:opacity-50">{socialBusy ? "..." : "Əlavə et"}</button>
+          </div>
+          <p className="text-[11px] text-muted mt-1.5">Əlavə etdikdən sonra sizə təsdiq kodu veriləcək. Kod yalnız sahiblik sübutu üçündür — şifrə və ya giriş tələb olunmur.</p>
         </div>
-      </IdCard>
-
-      {/* My location — default seller location, auto-fills new listings */}
-      <IdCard icon="📍" title={t('myLocation')} tone="pink" stamp={profile.city || profile.latitude ? "ok" : "none"} stampText={{ ok: "Qeyd olunub", none: "Yoxdur" }}
-        actions={!editingLocation && (
-          <button onClick={() => setEditingLocation(true)} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold transition-colors">
-            {profile.city || profile.latitude ? t('changeLocation') : t('addLocation')}
-          </button>
-        )}>
-
-        {editingLocation ? (
-          <div className="space-y-3">
-            <p className="text-xs text-muted">
-              {t('myLocationDesc')}
-            </p>
-            <LocationPicker
-              city={locationDraft.city}
-              address={locationDraft.address}
-              latitude={locationDraft.latitude}
-              longitude={locationDraft.longitude}
-              onChange={setLocationDraft}
-              height="320px"
-            />
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={saveLocation}
-                disabled={locationSaving}
-                className="px-5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium disabled:opacity-50"
-              >
-                {locationSaving ? "..." : t('save')}
-              </button>
-              <button
-                onClick={() => {
-                  setEditingLocation(false);
-                  setLocationDraft({
-                    city: profile.city || "",
-                    address: profile.address || "",
-                    latitude: profile.latitude ?? null,
-                    longitude: profile.longitude ?? null,
-                  });
-                }}
-                className="px-5 py-2 bg-input-bg border border-input-border rounded-xl text-sm"
-              >
-                {t('cancel')}
-              </button>
-            </div>
-          </div>
-        ) : profile.city || profile.address || profile.latitude ? (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3">
-            <IdField label="Şəhər" value={profile.city} />
-            <IdField label="Ünvan" value={profile.address} />
-            <IdField label="Koordinat" value={profile.latitude && profile.longitude ? `${profile.latitude.toFixed(4)}, ${profile.longitude.toFixed(4)}` : null} mono />
-          </div>
-        ) : (
-          <p className="text-muted text-sm text-center py-4">
-            {t('locationNotSetYet')}
-          </p>
-        )}
       </IdCard>
 
       {/* Vehicles section - only for CAR_OWNER */}
       {profile.type === "CAR_OWNER" && (
-        <IdCard icon="🚗" title={`Avtomobillərim (${profile.vehicles?.length || 0})`} tone="blue"
+        <IdCard collapsible open={openCard === "vehicles"} onToggle={() => toggleCard("vehicles")} summary={profile.vehicles?.length ? profile.vehicles.map((v: any) => `${v.brand} ${v.model}`).slice(0, 2).join(", ") : "Avtomobil əlavə edilməyib"} icon="🚗" title={`Avtomobillərim (${profile.vehicles?.length || 0})`} tone="blue"
           actions={!showVehicleForm && (
             <button onClick={startAddVehicle} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold transition-colors">＋ Əlavə et</button>
           )}>
@@ -1660,7 +1549,7 @@ export default function ProfilePage() {
 
       {/* Workplaces section - for MECHANIC and PARTS_SELLER */}
       {(profile.type === "MECHANIC" || profile.type === "PARTS_SELLER") && (
-        <IdCard icon="🔧" title={`${t("workplaces")} (${profile.workplaces?.length || 0})`} tone="teal"
+        <IdCard collapsible open={openCard === "workplaces"} onToggle={() => toggleCard("workplaces")} summary={profile.workplaces?.length ? profile.workplaces.map((w: any) => w.name).slice(0, 2).join(", ") : "Obyekt əlavə edilməyib"} icon="🔧" title={`${t("workplaces")} (${profile.workplaces?.length || 0})`} tone="teal"
           actions={!showWorkplaceForm && (
             <button onClick={startAddWorkplace} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold transition-colors">＋ {t("addWorkplace")}</button>
           )}>
@@ -1698,117 +1587,216 @@ export default function ProfilePage() {
         </IdCard>
       )}
 
-      {/* Sosial media hesabları — hər hesab ayrıca «kimlik kartı».
-          Təsdiq: kod → bio → sistem oxuyur (açarsız); OAuth açarları varsa hesabla daxil olmaq. */}
-      <IdCard id="social" icon="🌐" title="Sosial media və email" tone="brand"
-        stamp={profile.socialLinks?.some((x: any) => x.verified) ? "ok" : null} stampText={{ ok: `${profile.socialLinks?.filter((x: any) => x.verified).length || 0} təsdiqli` }}
-        subtitle="Təsdiqlənmiş hesablar public profilinizdə «✓» ilə görünür. Başqaları sizi Instagram, TikTok və s. adınızla axtaranda birbaşa bu profilə çatır — hesabın sizə məxsus olduğu sistem tərəfindən sübut olunub.">
-        {/* Email doğrulaması */}
-        <IdMini icon="📧" tone="slate" title="Email" className="mb-3"
-          stamp={profile.emailVerified && profile.email ? "ok" : "none"} stampText={{ none: "Təsdiqlənməyib" }}>
-          {profile.emailVerified && profile.email ? (
-            <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
-              <span className="text-sm text-green-500 font-medium truncate">{profile.email}</span>
-              <span className="text-[11px] text-muted ml-auto">təsdiqlənib</span>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-[11px] text-muted">Email ünvanınızı yazın — sizə doğrulama kodu göndəriləcək.</p>
-              <div className="flex gap-2">
-                <input type="email" value={emailInput} onChange={(e) => { setEmailInput(e.target.value); setEmailCodeSent(false); setEmailError(""); }} placeholder="ornek@gmail.com" className={`${inputCls} flex-1`} />
-                <button onClick={handleSendEmailCode} disabled={emailLoading || !emailInput} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{emailLoading ? "..." : "Kod göndər"}</button>
-              </div>
-              {emailError && <p className="text-[11px] text-red-500">{emailError}</p>}
-              {emailCodeSent && (
-                <>
-                  {verificationCode && <div className="px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-lg text-blue-500 text-xs text-center">Test kodu: <b>{verificationCode}</b></div>}
-                  <div className="flex gap-2">
-                    <input value={emailCode} onChange={(e) => setEmailCode(e.target.value)} placeholder="6 rəqəmli kod" maxLength={6} className={`${inputCls} flex-1`} />
-                    <button onClick={handleVerifyEmail} disabled={emailLoading || !emailCode} className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl text-sm font-semibold whitespace-nowrap disabled:opacity-50">{emailLoading ? "..." : "Təsdiqlə"}</button>
-                  </div>
-                </>
-              )}
-              {emailVerified && <p className="text-[11px] text-green-500">✓ Email təsdiqləndi!</p>}
-            </div>
-          )}
-        </IdMini>
+      {/* My location — default seller location, auto-fills new listings */}
+      <IdCard collapsible open={openCard === "location"} onToggle={() => toggleCard("location")} summary={profile.city ? `${profile.city}${profile.address ? ` · ${profile.address}` : ""}` : "Yer qeyd olunmayıb"} icon="📍" title={t('myLocation')} tone="pink" stamp={profile.city || profile.latitude ? "ok" : "none"} stampText={{ ok: "Qeyd olunub", none: "Yoxdur" }}
+        actions={!editingLocation && (
+          <button onClick={() => setEditingLocation(true)} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold transition-colors">
+            {profile.city || profile.latitude ? t('changeLocation') : t('addLocation')}
+          </button>
+        )}>
 
+        {editingLocation ? (
+          <div className="space-y-3">
+            <p className="text-xs text-muted">
+              {t('myLocationDesc')}
+            </p>
+            <LocationPicker
+              city={locationDraft.city}
+              address={locationDraft.address}
+              latitude={locationDraft.latitude}
+              longitude={locationDraft.longitude}
+              onChange={setLocationDraft}
+              height="320px"
+            />
+            <div className="flex gap-2 pt-2">
+              <button
+                onClick={saveLocation}
+                disabled={locationSaving}
+                className="px-5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium disabled:opacity-50"
+              >
+                {locationSaving ? "..." : t('save')}
+              </button>
+              <button
+                onClick={() => {
+                  setEditingLocation(false);
+                  setLocationDraft({
+                    city: profile.city || "",
+                    address: profile.address || "",
+                    latitude: profile.latitude ?? null,
+                    longitude: profile.longitude ?? null,
+                  });
+                }}
+                className="px-5 py-2 bg-input-bg border border-input-border rounded-xl text-sm"
+              >
+                {t('cancel')}
+              </button>
+            </div>
+          </div>
+        ) : profile.city || profile.address || profile.latitude ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3">
+            <IdField label="Şəhər" value={profile.city} />
+            <IdField label="Ünvan" value={profile.address} />
+            <IdField label="Koordinat" value={profile.latitude && profile.longitude ? `${profile.latitude.toFixed(4)}, ${profile.longitude.toFixed(4)}` : null} mono />
+          </div>
+        ) : (
+          <p className="text-muted text-sm text-center py-4">
+            {t('locationNotSetYet')}
+          </p>
+        )}
+      </IdCard>
 
-        {(profile.socialLinks?.length > 0) && (
-          <div className="grid grid-cols-1 gap-3 mb-4">
-            {profile.socialLinks.map((s: any) => {
-              const meta = SOCIAL_META[s.platform] || { label: s.platform, icon: "🔗" };
-              const auto = ["telegram", "youtube", "linkedin", "twitter", "website"].includes(s.platform);
-              const busy = socialCheckBusy === s.id;
-              const pending = !s.verified && !!s.reviewRequestedAt;
-              const methodLabel = s.verifyMethod === "OAUTH" ? "hesabla daxil olub" : s.verifyMethod === "BIO_CODE" ? "bio kodu ilə" : s.verifyMethod === "POST_CODE" ? "paylaşım kodu ilə" : s.verifyMethod === "ADMIN" ? "admin yoxlaması ilə" : "";
+      {/* Rəy konsultasiyası təklifi */}
+      <IdCard collapsible open={openCard === "consult"} onToggle={() => toggleCard("consult")} summary={offers.length ? `${offers.length} təklif · ${offers.filter((o) => o.active).length} aktiv` : "Konsultasiya təklifi yoxdur"} icon="🗣️" title="Rəy konsultasiyası" tone="purple" stamp={offers.some((o) => o.active) ? "ok" : null} stampText={{ ok: "Aktiv" }}
+        subtitle="İxtisasınız üzrə ödənişli konsultasiya təklif edin. İstifadəçi sizi İxtisas bölməsindən tapıb sorğu göndərə bilər; siz vaxtı Başlat/Dayandır ilə idarə edirsiniz.">
+
+        {!offerHasVoen && (
+          <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-600">
+            ⚠ Təkliflər yarada bilərsiniz və sorğular sizə gələcək, amma <b>ödənişlərin aktivləşməsi üçün VÖEN (biznes) əlavə etməlisiniz</b>. VÖEN yoxdursa sorğular gəlir, lakin işləmir.
+          </div>
+        )}
+
+        {/* Mövcud təkliflər */}
+        {offers.length > 0 && (
+          <div className="space-y-2 mb-4">
+            {offers.map((o) => (
+              <IdMini key={o.id} icon="🗣️" tone="purple" title={o.title || "Rəy konsultasiyası"}
+                stamp={o.active ? "ok" : "none"} stampText={{ ok: "Aktiv", none: "Deaktiv" }}
+                sub={o.description || undefined}
+                actions={<>
+                  <button onClick={() => editOffer(o)} className="text-[12px] text-orange-500 font-semibold">Redaktə</button>
+                  <button onClick={() => deleteOffer(o.id)} className="text-muted hover:text-red-500 text-sm">✕</button>
+                </>}>
+                <div className="grid grid-cols-2 gap-3">
+                  <IdField label="Müddət" value={`${o.durationMinutes} dəq`} />
+                  <IdField label="Qiymət" value={`${o.price} AZN`} />
+                </div>
+              </IdMini>
+            ))}
+          </div>
+        )}
+
+        {/* Əlavə et / redaktə formu */}
+        <div className="p-3 bg-input-bg/40 border border-input-border rounded-xl">
+          <p className="text-xs font-semibold text-muted mb-2">{editingOfferId ? "Təklifi redaktə et" : "Yeni təklif əlavə et"}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-2">
+            <div className="sm:col-span-3">
+              <label className="block text-xs font-medium text-muted mb-1">Başlıq</label>
+              <input value={offerForm.title} onChange={(e) => setOfferForm((f) => ({ ...f, title: e.target.value }))} placeholder="məs. İlk konsultasiya" className={inputCls} />
+            </div>
+            <div className="sm:col-span-3">
+              <label className="block text-xs font-medium text-muted mb-1">Qeyd / təsvir <span className="text-muted font-normal">(nə daxildir, necə keçir)</span></label>
+              <textarea value={offerForm.description} onChange={(e) => setOfferForm((f) => ({ ...f, description: e.target.value }))} rows={3} maxLength={1000} placeholder="məs. Backend memarlığı, kod baxışı və suallarınıza cavab. Zoom/çat ilə." className={`${inputCls} resize-none`} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1">Müddət (dəq)</label>
+              <input type="number" min={1} value={offerForm.durationMinutes} onChange={(e) => setOfferForm((f) => ({ ...f, durationMinutes: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted mb-1">Qiymət (AZN)</label>
+              <input type="number" min={0} value={offerForm.price} onChange={(e) => setOfferForm((f) => ({ ...f, price: e.target.value }))} placeholder="30" className={inputCls} />
+            </div>
+            <div className="flex items-end">
+              <label className="flex items-center gap-2 text-sm py-2.5">
+                <input type="checkbox" checked={offerForm.active} onChange={(e) => setOfferForm((f) => ({ ...f, active: e.target.checked }))} className="w-4 h-4 accent-orange-500" />
+                Aktiv
+              </label>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={saveOffer} disabled={offerBusy} className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{offerBusy ? "..." : editingOfferId ? "Yenilə" : "Əlavə et"}</button>
+            {editingOfferId && <button onClick={resetOfferForm} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv et</button>}
+            <Link href="/consultations" className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold self-center ml-auto">Sorğularıma bax →</Link>
+          </div>
+        </div>
+      </IdCard>
+
+      {/* CV (tərcümeyi-hal) */}
+      <IdCard collapsible open={openCard === "cv"} onToggle={() => toggleCard("cv")} summary={profile.cvFile ? (profile.cvPublic ? "Yüklənib · profildə görünür" : "Yüklənib · gizli") : "CV yüklənməyib"} icon="📄" title="CV (Tərcümeyi-hal)" tone="slate" stamp={profile.cvFile ? "ok" : "none"} stampText={{ ok: profile.cvPublic ? "Public" : "Yüklənib", none: "Yoxdur" }}
+        subtitle="CV-nizi PDF və ya şəkil kimi əlavə edin. İstədiyiniz vaxt dəyişə və ya silə bilərsiniz.">
+        {profile.cvFile ? (
+          <div className="flex items-center gap-3 flex-wrap">
+            <a href={`${imgUrl(profile.cvFile)}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:bg-orange-500/10">
+              📎 CV-yə bax
+            </a>
+            <label className="px-4 py-2.5 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-semibold cursor-pointer hover:bg-orange-500/20">
+              {cvBusy ? "..." : "Dəyiş"}
+              <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
+            </label>
+            <button onClick={handleCvDelete} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500/20">Sil</button>
+            <button onClick={() => toggleCvPublic(!profile.cvPublic)} className={`px-4 py-2.5 rounded-xl text-sm font-semibold ${profile.cvPublic ? "bg-green-500/10 text-green-500" : "bg-input-bg text-muted border border-input-border"}`}>
+              {profile.cvPublic ? "✓ Public (görünür)" : "Gizli — public et"}
+            </button>
+          </div>
+        ) : (
+          <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50">
+            {cvBusy ? "Yüklənir…" : "📤 CV yüklə (PDF/şəkil)"}
+            <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
+          </label>
+        )}
+      </IdCard>
+
+      {/* Peşə sənədləri (diplom / sertifikat / lisenziya) — AI ad-soyad uyğunluğunu yoxlayır */}
+      <IdCard collapsible open={openCard === "docs"} onToggle={() => toggleCard("docs")} summary={profile.professionDocuments?.length ? `${profile.professionDocuments.length} sənəd` : "Sənəd yüklənməyib"} icon="🎓" title="Peşə sənədləri" tone="amber"
+        stamp={profile.professionDocuments?.some((d: any) => d.status === "APPROVED") ? "ok" : profile.professionDocuments?.length ? "pending" : null}
+        subtitle={<>Diplom, sertifikat və ya lisenziyanızı yükləyin. <b>AI sənəddəki ad-soyadın sizin ad-soyadınızla ({profile.name || "—"}) uyğun olduğunu yoxlayır.</b> Bir neçə sənəd əlavə edə bilərsiniz.</>}>
+
+        {/* Mövcud sənədlər */}
+        {profile.professionDocuments?.length > 0 && (
+          <div className="space-y-2.5 mb-4">
+            {profile.professionDocuments.map((d: any) => {
+              const score = typeof d.nameMatchScore === "number" ? Math.round(d.nameMatchScore * 100) : null;
+              const matchCls = d.nameMatch ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500";
+              const matchLabel = d.nameMatch ? `✓ Ad-soyad uyğundur${score !== null ? ` (${score}%)` : ""}` : `⚠ Ad-soyad uyğun deyil${score !== null ? ` (${score}%)` : ""}`;
+              const stCls = d.status === "APPROVED" ? "bg-green-500/10 text-green-500" : d.status === "REJECTED" ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500";
+              const stLabel = d.status === "APPROVED" ? "Təsdiqlənib" : d.status === "REJECTED" ? "Rədd edildi" : "Yoxlanılır";
               return (
-                <IdMini key={s.id} tone={s.verified ? "green" : pending ? "amber" : "slate"}
-                  icon={<SocialIcon platform={s.platform} className="w-5 h-5" />}
-                  title={meta.label}
-                  stamp={s.verified ? "ok" : pending ? "pending" : "none"} stampText={{ ok: "Təsdiqli", pending: "Admin yoxlayır", none: "Təsdiqlənməyib" }}
-                  sub={<a href={s.url} target="_blank" rel="noreferrer" className="hover:text-orange-500">{s.url.replace(/^https?:\/\/(www\.)?/, "")}</a>}
-                  actions={<button onClick={() => { if (confirm(`${meta.label} hesabı silinsin?`)) deleteSocial(s.id); }} className="text-muted hover:text-red-500 text-xs">Sil</button>}>
-                  {s.verified ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <IdField label="Təsdiq üsulu" value={methodLabel || "təsdiqli"} />
-                      <IdField label="Tarix" value={s.verifiedAt ? new Date(s.verifiedAt).toLocaleDateString("az-AZ") : null} />
+                <div key={d.id} className="flex gap-3 items-start bg-input-bg border border-input-border rounded-xl p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`${imgUrl(d.image)}`} alt={d.title} className="w-16 h-16 object-cover rounded-lg border border-input-border shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold truncate">{d.title}</p>
+                      {d.documentType && <span className="text-[11px] text-muted">· {d.documentType}</span>}
+                      <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${stCls}`}>{stLabel}</span>
                     </div>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {/* 1 — kod */}
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs text-muted">1. Bu kodu hesabınızın <b>biosuna</b> (təsvir / about) yazıb yadda saxlayın:</span>
-                        {s.verifyCode && <span className="id-code text-sm">{s.verifyCode}</span>}
-                        {s.verifyCode && <button onClick={() => copyText(s.verifyCode)} className="text-xs font-semibold text-[var(--brand-to)] hover:underline">Kopyala</button>}
-                      </div>
-                      {/* 2 — platformaya görə yol */}
-                      {auto ? (
-                        <p className="text-xs text-muted">2. «Yoxla» basın — sistem profilinizi oxuyub kodu tapan kimi hesab təsdiqlənir. Sonra kodu biodan silə bilərsiniz.</p>
-                      ) : (
-                        <div className="text-xs text-muted space-y-1.5">
-                          <p>2. {meta.label} bionu kənar sistemlərə göstərmir. İki yol var:</p>
-                          <p>• <b>Avtomatik:</b> kodu bir <b>ictimai paylaşımın</b> mətninə yazın və həmin paylaşımın linkini aşağıya qoyun, sonra «Yoxla».</p>
-                          <p>• <b>Admin yoxlaması:</b> kodu bioda saxlayın və «Adminə göndər» basın — admin profilinizi açıb kodu yoxlayacaq.</p>
-                          <input value={proofDraft[s.id] ?? s.proofUrl ?? ""} onChange={(e) => setProofDraft((d) => ({ ...d, [s.id]: e.target.value }))}
-                            placeholder={`Paylaşım linki (məs. https://www.${s.platform}.com/...)`} className={`${inputCls} text-xs`} />
-                        </div>
-                      )}
-                      {s.lastCheckNote && <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-2.5 py-1.5">{s.lastCheckNote}</p>}
-                      <div className="flex gap-2 flex-wrap">
-                        <button onClick={() => checkSocial(s.id)} disabled={busy}
-                          className="px-4 py-2 rounded-xl text-white text-xs font-semibold bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] disabled:opacity-50">
-                          {busy ? "Yoxlanılır…" : "🔍 Yoxla"}
-                        </button>
-                        {!auto && !pending && (
-                          <button onClick={() => requestSocialReview(s.id)} className="px-4 py-2 rounded-xl text-xs font-semibold bg-input-bg border border-input-border hover:border-orange-500/50">Adminə göndər</button>
-                        )}
-                        {pending && <span className="text-[11px] text-amber-600 self-center">⏳ Admin yoxlayır — kodu biodan silməyin</span>}
-                        {oauthProviders.includes(s.platform) && (
-                          <button onClick={() => connectOauth(s.platform)} className="px-4 py-2 rounded-xl text-xs font-semibold bg-input-bg border border-input-border hover:border-orange-500/50">{meta.label} ilə daxil ol</button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </IdMini>
+                    {d.holderName && <p className="text-[11px] text-muted mt-0.5">Sənəddə: {d.holderName}</p>}
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${matchCls}`}>{matchLabel}</span>
+                    {d.aiReason && <p className="text-[11px] text-muted mt-1 leading-snug">{d.aiReason}</p>}
+                    <button onClick={() => toggleDocPublic(d.id, !d.isPublic)} className={`inline-block mt-1.5 px-2 py-0.5 rounded-md text-[11px] font-semibold ${d.isPublic ? "bg-green-500/10 text-green-500" : "bg-input-bg text-muted border border-input-border"}`}>
+                      {d.isPublic ? "✓ Public (YES)" : "Gizli — public et"}
+                    </button>
+                  </div>
+                  <button onClick={() => deleteCredential(d.id)} className="text-muted hover:text-red-500 text-xs shrink-0" title="Sil">✕</button>
+                </div>
               );
             })}
           </div>
         )}
 
-        {/* Yeni hesab əlavə et */}
-        <div className="p-3.5 rounded-2xl border border-dashed border-input-border">
-          <p className="text-xs font-semibold text-muted mb-2">＋ Hesab əlavə et</p>
-          <div className="flex flex-col sm:flex-row gap-2">
-            <select value={socialPlatform} onChange={(e) => setSocialPlatform(e.target.value)} className="px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground sm:w-40">
-              {Object.entries(SOCIAL_META).map(([k, m]) => <option key={k} value={k}>{m.icon} {m.label}</option>)}
-            </select>
-            <input value={socialUrl} onChange={(e) => setSocialUrl(e.target.value)} placeholder={socialPlatform === "website" ? "https://saytiniz.az" : socialPlatform === "telegram" ? "https://t.me/istifadeci" : `https://${socialPlatform === "twitter" ? "x" : socialPlatform}.com/istifadeci`} className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground" />
-            <button onClick={addSocial} disabled={socialBusy || !socialUrl.trim()} className="px-4 py-2.5 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] text-white rounded-xl text-sm font-semibold disabled:opacity-50">{socialBusy ? "..." : "Əlavə et"}</button>
-          </div>
-          <p className="text-[11px] text-muted mt-1.5">Əlavə etdikdən sonra sizə təsdiq kodu veriləcək. Kod yalnız sahiblik sübutu üçündür — şifrə və ya giriş tələb olunmur.</p>
+        {/* Yeni sənəd əlavə et */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input
+            value={credTitle}
+            onChange={(e) => setCredTitle(e.target.value)}
+            placeholder="Başlıq (məs. Diplom, Həkimlik lisenziyası)"
+            className={`${inputCls} sm:flex-1`}
+          />
+          <label className="px-4 py-3 bg-input-bg border border-input-border rounded-xl text-sm cursor-pointer text-center hover:bg-orange-500/5 transition-colors">
+            <span className="text-muted">{credFile ? `📎 ${credFile.name.slice(0, 22)}` : "📷 Şəkil seç"}</span>
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => setCredFile(e.target.files?.[0] || null)} />
+          </label>
+          <button
+            onClick={uploadCredential}
+            disabled={credBusy}
+            className="px-5 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50 whitespace-nowrap"
+          >
+            {credBusy ? "AI yoxlayır…" : "Yüklə və yoxla"}
+          </button>
         </div>
       </IdCard>
+
+      {/* ── Aşağıda: elanlarım, ən sonda bağlı cihazlar ── */}
+      <div className="h-3" />
 
       {/* My Listings */}
       <div className="flex items-center justify-between mb-4">
@@ -1957,6 +1945,14 @@ export default function ProfilePage() {
           })}
         </div>
       )}
+
+      {/* Bağlı cihazlar — ən sonda */}
+      <div className="mt-6">
+        <IdCard icon="🔗" title="Bağlı cihazlar" tone="slate" collapsible open={openCard === "devices"} onToggle={() => toggleCard("devices")}
+          summary="Profilinizə daxil olan cihazlar — tanımadığınızı çıxarın">
+          <ConnectedDevices embedded />
+        </IdCard>
+      </div>
     </div>
   );
 }

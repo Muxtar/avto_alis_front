@@ -1082,3 +1082,22 @@ a[class*="btn-"]:not([class*="rounded-full"]),
   background: var(--brand-soft); color: var(--brand-to);
   border: 1.5px dashed color-mix(in srgb, var(--brand-to) 55%, transparent);
 }
+/* Bağlı/açıq kimlik kartı (accordion) */
+.id-card-summary { font-size: 11.5px; opacity: .88; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.id-card-chevron {
+  width: 28px; height: 28px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 9999px; background: rgba(255, 255, 255, .2);
+  transition: transform .25s ease, background-color .2s ease;
+}
+.id-card-collapsible .id-card-band:hover .id-card-chevron { background: rgba(255, 255, 255, .32); }
+.id-card-collapsible.is-open .id-card-chevron { transform: rotate(180deg); }
+.id-card-collapsible .id-card-band { transition: filter .2s ease; }
+.id-card-collapsible .id-card-band:hover { filter: brightness(1.05); }
+.id-card-collapsible .id-card-band:focus-visible { outline: 2px solid var(--brand-from); outline-offset: -2px; }
+.id-card-body { animation: idCardOpen .22s ease-out; }
+@keyframes idCardOpen { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (max-width: 480px) {
+  .id-card-band .id-stamp { display: none; }
+  .id-card-collapsible:not(.is-open) .id-card-band .id-stamp { display: inline-flex; }
+}
