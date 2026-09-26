@@ -118,6 +118,8 @@ export default function ProfilePage() {
   const [proofDraft, setProofDraft] = useState<Record<number, string>>({});
   // ---- Peşə sənədləri ----
   const [credTitle, setCredTitle] = useState("");
+  // Sənəd HANSI ixtisası sübut edir — endirim/referal şərti yalnız həmin ixtisasa keçərlidir.
+  const [credProfession, setCredProfession] = useState("");
   const [credFile, setCredFile] = useState<File | null>(null);
   const [credBusy, setCredBusy] = useState(false);
 
@@ -864,11 +866,16 @@ export default function ProfilePage() {
   // ---- Peşə sənədləri (AI ad-soyad uyğunluğu) ----
   const uploadCredential = async () => {
     if (!credTitle.trim()) { toast("Sənədin başlığını yazın (məs. Diplom)", "error"); return; }
+    const myProfs: string[] = profile?.professions?.length ? profile.professions : (profile?.profession ? [profile.profession] : []);
+    const prof = credProfession || (myProfs.length === 1 ? myProfs[0] : "");
+    if (!myProfs.length) { toast("Əvvəlcə profildə ixtisasınızı qeyd edin (Profili redaktə et)", "error"); return; }
+    if (!prof) { toast("Sənədin hansı ixtisasa aid olduğunu seçin", "error"); return; }
     if (!credFile) { toast("Sənəd şəkli seçin", "error"); return; }
     setCredBusy(true);
     try {
       const fd = new FormData();
       fd.append("title", credTitle.trim());
+      fd.append("profession", prof);
       fd.append("document", credFile);
       const res = await fetch(`${API}/me/credentials`, {
         method: "POST",
@@ -882,6 +889,15 @@ export default function ProfilePage() {
         setCredTitle(""); setCredFile(null); await refreshProfile();
       } else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); } finally { setCredBusy(false); }
+  };
+  // Köhnə (ixtisası qeyd olunmamış) sənədi ixtisasa bağla — admin yenidən yoxlayır.
+  const bindDocProfession = async (docId: number, prof: string) => {
+    if (!prof) return;
+    try {
+      const r = await fetch(`${API}/me/credentials/${docId}/profession`, { method: "PUT", headers, body: JSON.stringify({ profession: prof }) }).then((x) => x.json());
+      if (r?.success) { toast("Sənəd ixtisasa bağlandı — admin yenidən yoxlayacaq", "success"); await refreshProfile(); }
+      else toast(r?.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
   };
   const deleteCredential = async (id: number) => {
     try {
@@ -1738,7 +1754,7 @@ export default function ProfilePage() {
       {/* Peşə sənədləri (diplom / sertifikat / lisenziya) — AI ad-soyad uyğunluğunu yoxlayır */}
       <IdCard collapsible open={openCard === "docs"} onToggle={() => toggleCard("docs")} summary={profile.professionDocuments?.length ? `${profile.professionDocuments.length} sənəd` : "Sənəd yüklənməyib"} icon="🎓" title="Peşə sənədləri" tone="amber"
         stamp={profile.professionDocuments?.some((d: any) => d.status === "APPROVED") ? "ok" : profile.professionDocuments?.length ? "pending" : null}
-        subtitle={<>Diplom, sertifikat və ya lisenziyanızı yükləyin. <b>AI sənəddəki ad-soyadın sizin ad-soyadınızla ({profile.name || "—"}) uyğun olduğunu yoxlayır.</b> Bir neçə sənəd əlavə edə bilərsiniz.</>}>
+        subtitle={<>Diplom, sertifikat və ya lisenziyanızı yükləyin və <b>hansı ixtisası sübut etdiyini</b> seçin. AI sənəddəki ad-soyadı ({profile.name || "—"}) yoxlayır, son qərarı admin verir. Təsdiqlənən ixtisas üçün mağazaların <b>🎓 ixtisas endirimləri</b> avtomatik tətbiq olunur və referal satışda «diplom» şərti ödənir.</>}>
 
         {/* Mövcud sənədlər */}
         {profile.professionDocuments?.length > 0 && (
@@ -1759,6 +1775,17 @@ export default function ProfilePage() {
                       {d.documentType && <span className="text-[11px] text-muted">· {d.documentType}</span>}
                       <span className={`px-2 py-0.5 rounded-md text-[11px] font-medium ${stCls}`}>{stLabel}</span>
                     </div>
+                    {d.profession
+                      ? <p className="text-[11px] mt-0.5"><span className="text-muted">Sübut etdiyi ixtisas:</span> <b>{d.profession}</b>{d.validUntil ? <span className="text-muted"> · {new Date(d.validUntil).toLocaleDateString("az-AZ")} tarixinədək</span> : null}</p>
+                      : (
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[11px] text-amber-600">⚠ İxtisasa bağlanmayıb — endirim/referal üçün seçin:</span>
+                          <select defaultValue="" onChange={(e) => bindDocProfession(d.id, e.target.value)} className="text-[11px] px-2 py-1 bg-input-bg border border-input-border rounded-lg">
+                            <option value="" disabled>İxtisas seçin</option>
+                            {(profile.professions?.length ? profile.professions : (profile.profession ? [profile.profession] : [])).map((p: string) => <option key={p} value={p}>{p}</option>)}
+                          </select>
+                        </div>
+                      )}
                     {d.holderName && <p className="text-[11px] text-muted mt-0.5">Sənəddə: {d.holderName}</p>}
                     <span className={`inline-block mt-1 px-2 py-0.5 rounded-md text-[11px] font-medium ${matchCls}`}>{matchLabel}</span>
                     {d.aiReason && <p className="text-[11px] text-muted mt-1 leading-snug">{d.aiReason}</p>}
@@ -1775,6 +1802,19 @@ export default function ProfilePage() {
 
         {/* Yeni sənəd əlavə et */}
         <div className="flex flex-col sm:flex-row gap-2">
+          {(() => {
+            const myProfs: string[] = profile.professions?.length ? profile.professions : (profile.profession ? [profile.profession] : []);
+            return myProfs.length > 1 ? (
+              <select value={credProfession} onChange={(e) => setCredProfession(e.target.value)} className={`${inputCls} sm:w-44`}>
+                <option value="">İxtisas seçin…</option>
+                {myProfs.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            ) : myProfs.length === 1 ? (
+              <span className="px-3 py-3 rounded-xl bg-[var(--brand-soft)] text-[var(--brand-to)] text-sm font-semibold whitespace-nowrap">🎓 {myProfs[0]}</span>
+            ) : (
+              <span className="px-3 py-3 rounded-xl bg-amber-500/10 text-amber-700 text-xs">Əvvəlcə profildə ixtisas qeyd edin</span>
+            );
+          })()}
           <input
             value={credTitle}
             onChange={(e) => setCredTitle(e.target.value)}

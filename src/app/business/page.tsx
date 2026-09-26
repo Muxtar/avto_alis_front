@@ -710,6 +710,7 @@ export default function BusinessPage() {
                             <a href={`/business/sales?objectId=${o.id}`} className="px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-[11px] font-medium hover:border-orange-500/50 hover:text-orange-500 transition-colors">🛒 Sifarişlər</a>
                           </div>
                           <ObjectReferral objectId={o.id} />
+                          <ObjectProDiscount objectId={o.id} />
                         </div>
                       </div>
                     )}
@@ -877,6 +878,27 @@ function ObjectReferral({ objectId }: { objectId: number }) {
           : <b>söndürülüb</b>}
       </p>
       <a href={`/referral/manage?objectId=${objectId}`} className="text-xs text-orange-500 font-medium hover:underline">Referal proqramını idarə et →</a>
+    </div>
+  );
+}
+
+// İxtisas endirimləri — «hansı peşə sahibinə neçə faiz» (sənədlə təsdiqli alıcılara).
+function ObjectProDiscount({ objectId }: { objectId: number }) {
+  const [rules, setRules] = useState<{ profession: string; percent: number }[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API}/objects/${objectId}/pro-discounts`).then((r) => r.json()).then((d) => { if (alive) setRules(d?.rules || []); }).catch(() => {});
+    return () => { alive = false; };
+  }, [objectId]);
+  return (
+    <div className="mt-2 border-t border-card-border/50 pt-2 flex flex-wrap items-center justify-between gap-2">
+      <p className="text-[11px] text-muted">
+        🎓 İxtisas endirimi:{" "}
+        {rules?.length
+          ? <b className="text-emerald-600">{rules.slice(0, 3).map((r) => `${r.profession} −${r.percent}%`).join(", ")}{rules.length > 3 ? ` +${rules.length - 3}` : ""}</b>
+          : <b>yoxdur</b>}
+      </p>
+      <a href={`/business/pro-discounts?objectId=${objectId}`} className="text-xs text-orange-500 font-medium hover:underline">İxtisas endirimlərini idarə et →</a>
     </div>
   );
 }

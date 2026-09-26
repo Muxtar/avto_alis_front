@@ -139,7 +139,8 @@ export default function CartPage() {
   const selItems = items.filter((i) => selected.has(i.id) && !isOut(i));
   // Razılaşdırılmış qiymət (qiymət təklifi) olan sətirdə server hesabladığı
   // lineTotal götürülür — yoxsa yekunda siyahı qiyməti görünərdi.
-  const selTotal = selItems.reduce((s, i) => s + (i.offer?.valid && i.lineTotal != null ? Number(i.lineTotal) : (i.listing?.price || 0) * i.quantity), 0);
+  // Server sətir cəmini (pillə, təklif, ixtisas endirimi daxil) hesablayır — onu götürürük.
+  const selTotal = selItems.reduce((s, i) => s + (i.lineTotal != null ? Number(i.lineTotal) : (i.listing?.price || 0) * i.quantity), 0);
 
   // Ödəniləcək məhsullar (seçim varsa onlar, yoxsa hamısı) biznesə (VÖEN) bağlıdırsa
   // kartla ödəniş mümkündür. VÖEN məhsulunda ödəniş üsulu avtomatik KART seçilir.
@@ -354,10 +355,12 @@ export default function CartPage() {
     const max = it0?.listing?.stock;
     if (typeof max === "number" && qty > max) { toast(`Bu məhsuldan maksimum ${max} ədəd var`, "error"); return; }
     // Optimistik yeniləmə — səhifə yenilənmədən (spinner göstərmədən) dərhal dəyişir.
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, quantity: qty } : it)));
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, quantity: qty, lineTotal: it.unitPrice != null ? Math.round(it.unitPrice * qty * 100) / 100 : it.lineTotal } : it)));
     try {
       await fetch(`${API}/cart/item/${id}`, { method: "PUT", headers, body: JSON.stringify({ quantity: qty }) });
       refreshCart();
+      // Dəqiq rəqəmlər (pillə, ixtisas endiriminin ədəd limiti) serverdən — spinnersiz.
+      fetch(`${API}/cart`, { headers }).then((r) => r.json()).then((d) => { if (d?.cart) { setItems(d.cart.items || []); setTotal(d.total || 0); } }).catch(() => {});
     } catch { toast(t('error'), 'error'); fetchCart(); }
   };
 
@@ -819,6 +822,13 @@ export default function CartPage() {
                           {!item.groupRefundLater && item.pricing?.discountPercent > 0 && (
                             <div className="mt-1.5 text-[11px] text-green-600 font-semibold">
                               📉 Çox alanda ucuz: −{item.pricing.discountPercent}%
+                            </div>
+                          )}
+                          {/* İXTİSAS ENDİRİMİ — alıcının sənədlə təsdiqli ixtisasına görə mağazanın endirimi. */}
+                          {item.proDiscount && (
+                            <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-700 border border-emerald-500/25 text-[11px] font-bold">🎓 İxtisas endirimi −{item.proDiscount.percent}%</span>
+                              <span className="text-[11px] text-muted">{item.proDiscount.profession} · −{formatPrice(item.proDiscount.amount)} ₼</span>
                             </div>
                           )}
                           {/* QİYMƏT TƏKLİFİ — satıcı ilə razılaşdırılmış qiymət, say sabitdir. */}

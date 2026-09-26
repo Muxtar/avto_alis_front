@@ -21,6 +21,7 @@ import { recordView } from "@/lib/recentlyViewed";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
 import ReferralSellCard from "@/components/ReferralSellCard";
 import CheaperOfferModal from "@/components/CheaperOfferModal";
+import ProDiscountInfo from "@/components/ProDiscountInfo";
 import { listingInstallmentAllowed, monthsForListing, useInstallmentConfig } from "@/lib/installment";
 
 
@@ -1042,6 +1043,8 @@ export default function ListingDetailPage() {
                   ))}
                 </div>
 
+                {/* ── İXTİSAS ENDİRİMİ (mağazanın, sənədlə təsdiqli alıcıya) ── */}
+                {listing.businessObjectId && !isOwner && <ProDiscountInfo listingId={listing.id} price={listing.price} />}
                 {/* ── ÇOX ALANDA UCUZ ── */}
                 {(listing.priceTiers?.length > 0) && (
                   <div className="mb-3 rounded-2xl border border-orange-500/30 bg-orange-500/5 p-3">

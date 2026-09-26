@@ -19,7 +19,9 @@ interface CredDoc {
   aiReason: string | null;
   status: string;
   createdAt: string;
-  user: { id: number; name: string | null; phone: string; profession: string | null };
+  profession?: string | null;
+  validUntil?: string | null;
+  user: { id: number; name: string | null; phone: string; profession: string | null; professions?: string[] };
 }
 
 export default function AdminCredentialsPage() {
@@ -45,9 +47,20 @@ export default function AdminCredentialsPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Təsdiq konkret İXTİSAS üçündür — admin sənədin nəyi sübut etdiyini seçir, istəsə bitmə tarixini qeyd edir.
+  const [profPick, setProfPick] = useState<Record<number, string>>({});
+  const [untilPick, setUntilPick] = useState<Record<number, string>>({});
   const act = async (id: number, action: "approve" | "reject") => {
+    const d = items.find((x) => x.id === id);
+    const profession = profPick[id] ?? d?.profession ?? d?.user.profession ?? "";
+    if (action === "approve" && !profession) { toast("Sənədin hansı ixtisası sübut etdiyini seçin", "error"); return; }
+    const reason = action === "reject" ? prompt("Rədd səbəbi (istifadəçiyə göndəriləcək):", "Sənəd ixtisası sübut etmir və ya oxunmur") : null;
+    if (action === "reject" && reason === null) return;
     try {
-      const res = await fetch(`${API}/admin/credentials/${id}/${action}`, { method: "POST", headers });
+      const res = await fetch(`${API}/admin/credentials/${id}/${action}`, {
+        method: "POST", headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ profession, validUntil: untilPick[id] || null, reason }),
+      });
       if (res.ok) { toast(action === "approve" ? "Təsdiqləndi" : "Rədd edildi", "success"); load(); }
       else toast("Xəta", "error");
     } catch { toast("Xəta", "error"); }
@@ -112,6 +125,22 @@ export default function AdminCredentialsPage() {
                     {d.aiReason && <p className="text-[11px] text-muted mt-1 leading-snug">{d.aiReason}</p>}
                   </div>
 
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label className="text-[11px] text-muted">
+                      Sübut etdiyi ixtisas
+                      <select value={profPick[d.id] ?? d.profession ?? d.user.profession ?? ""} onChange={(e) => setProfPick((m) => ({ ...m, [d.id]: e.target.value }))}
+                        className="mt-0.5 w-full px-2 py-2 bg-input-bg border border-input-border rounded-lg text-sm text-foreground">
+                        <option value="">— seçin —</option>
+                        {Array.from(new Set([d.profession, d.user.profession, ...(d.user.professions || [])].filter(Boolean) as string[])).map((p) => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-[11px] text-muted">
+                      Sənədin bitmə tarixi (varsa)
+                      <input type="date" value={untilPick[d.id] ?? (d.validUntil ? String(d.validUntil).slice(0, 10) : "")} onChange={(e) => setUntilPick((m) => ({ ...m, [d.id]: e.target.value }))}
+                        className="mt-0.5 w-full px-2 py-2 bg-input-bg border border-input-border rounded-lg text-sm text-foreground" />
+                    </label>
+                  </div>
+                  <p className="text-[11px] text-muted mt-1.5">Təsdiq bu ixtisas üçün mağazaların ixtisas endirimini və referal «diplom» şərtini açır — sənəd həmin ixtisası həqiqətən sübut edirsə təsdiqləyin.</p>
                   <div className="flex gap-2 mt-3">
                     <button onClick={() => act(d.id, "approve")} className="flex-1 py-2.5 bg-green-500/90 hover:bg-green-500 text-white rounded-xl text-sm font-semibold">✓ Təsdiqlə</button>
                     <button onClick={() => act(d.id, "reject")} className="flex-1 py-2.5 bg-red-500/90 hover:bg-red-500 text-white rounded-xl text-sm font-semibold">✕ Rədd et</button>

@@ -196,6 +196,9 @@ export default function ObjectPage() {
         </div>
       </div>
 
+      {/* İxtisas endirimləri — sənədlə təsdiqli peşə sahiblərinə */}
+      <ObjectProDiscounts objectId={Number(params.id)} />
+
       {/* Referal satış — daxil olmuş istifadəçi üçün (proqram varsa) */}
       {object.referralEnabled && elig && (() => {
         const refIds: number[] = Array.isArray(elig.listingIds) ? elig.listingIds : [];
@@ -287,6 +290,31 @@ export default function ObjectPage() {
 
       {/* Obyekt rəyləri — yalnız bu obyektdən alış edən yaza bilər */}
       <ReviewsSection base={`/objects/${object.id}`} title="Obyekt rəyləri" />
+    </div>
+  );
+}
+
+function ObjectProDiscounts({ objectId }: { objectId: number }) {
+  const { token } = useAuth();
+  const [rules, setRules] = useState<{ profession: string; percent: number; productCount: number | null; mine: boolean }[]>([]);
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API}/objects/${objectId}/pro-discounts`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+      .then((r) => r.json()).then((d) => { if (alive) setRules(d?.rules || []); }).catch(() => {});
+    return () => { alive = false; };
+  }, [objectId, token]);
+  if (!rules.length) return null;
+  return (
+    <div className="surface rounded-2xl p-4 sm:p-5 mb-5">
+      <h2 className="font-semibold mb-1 flex items-center gap-2">🎓 İxtisas endirimləri</h2>
+      <p className="text-xs text-muted mb-3">İxtisasını sənədlə təsdiqləmiş alıcılara bu mağazanın məhsullarında endirim — səbətdə avtomatik tətbiq olunur.</p>
+      <div className="flex flex-wrap gap-2">
+        {rules.map((r) => (
+          <span key={r.profession} className={`px-3 py-1.5 rounded-xl text-xs font-semibold border ${r.mine ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" : "bg-input-bg border-input-border"}`}>
+            {r.mine ? "✓ " : ""}{r.profession} −{r.percent}%{r.productCount ? ` · ${r.productCount} məhsul` : ""}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
