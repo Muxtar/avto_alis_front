@@ -866,6 +866,10 @@ export default function Navbar() {
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
                             İadələr
                           </Link>
+                          <Link href="/offers" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                            <span className="w-4 text-center text-xs">💬</span>
+                            Qiymət təkliflərim
+                          </Link>
                           <Link href="/inquiries" onClick={() => setUserOpen(false)} className="flex items-center justify-between pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
                             <span className="flex items-center gap-2">
                               <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
@@ -905,6 +909,10 @@ export default function Navbar() {
                           <Link href="/iadeler?tab=selling" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
                             İadələr
+                          </Link>
+                          <Link href="/offers?tab=selling" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                            <span className="w-4 text-center text-xs">💬</span>
+                            Gələn qiymət təklifləri
                           </Link>
                           <Link href="/account" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>

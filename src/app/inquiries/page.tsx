@@ -5,6 +5,7 @@ import { useLanguage } from '@/lib/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/Toast';
 import { API } from '@/lib/api';
+import Link from 'next/link';
 
 interface Offer {
   id: number;
@@ -49,6 +50,8 @@ export default function InquiriesPage() {
   const [loading, setLoading] = useState(true);
   const [offerForms, setOfferForms] = useState<Record<number, { price: string; message: string }>>({});
   const [competitorStats, setCompetitorStats] = useState<Record<number, CompetitorStats | null>>({});
+  // Qəbul ediləndə yaranan qiymət təklifi (48 saatlıq alış pəncərəsi).
+  const [agreedOfferId, setAgreedOfferId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!token) { router.push('/'); return; }
@@ -77,7 +80,15 @@ export default function InquiriesPage() {
         method: 'PUT', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });
       const data = await res.json();
-      if (data.success) fetchData();
+      if (data.success) {
+        // Satıcının təklifi konkret elana bağlıdırsa backend 48 saatlıq alış
+        // pəncərəsi olan qəbul edilmiş qiymət təklifi yaradır.
+        if (data.priceOfferId) {
+          setAgreedOfferId(data.priceOfferId);
+          toast('Qiymət razılaşdırıldı — 48 saat ərzində bu qiymətlə ala bilərsiniz', 'success');
+        }
+        fetchData();
+      }
       else toast(data.message, 'error');
     } catch { toast(t('error'), 'error'); }
   };
@@ -168,6 +179,18 @@ export default function InquiriesPage() {
         </button>
       </div>
 
+      {agreedOfferId && tab === 'buying' && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl border border-green-500/30 bg-green-500/10">
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-green-600">🤝 Qiymət razılaşdırıldı</p>
+            <p className="text-xs text-muted mt-0.5">48 saat ərzində bu qiymətlə ala bilərsiniz — «Qiymət təklifləri» bölməsindən səbətə əlavə edin.</p>
+          </div>
+          <Link href={`/offers?id=${agreedOfferId}`} className="shrink-0 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] hover:brightness-110 text-center">
+            🛒 Bu qiymətlə al →
+          </Link>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
@@ -212,6 +235,9 @@ export default function InquiriesPage() {
                           <p className="text-lg font-bold text-orange-500">{offer.price} AZN</p>
                           {offer.message && <p className="text-xs text-muted mt-0.5">{offer.message}</p>}
                           {offer.listing && <p className="text-xs text-blue-400 mt-0.5">{offer.listing.title}</p>}
+                          {offer.listing && offer.status === 'ACCEPTED' && (
+                            <Link href="/offers" className="inline-block text-xs font-semibold text-orange-500 hover:underline mt-1">🤝 Qiymət təkliflərimə bax →</Link>
+                          )}
                         </div>
                         <div className="flex items-center gap-2">
                           {statusBadge(offer.status)}

@@ -20,6 +20,7 @@ import SellerReply from "@/components/SellerReply";
 import { recordView } from "@/lib/recentlyViewed";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
 import ReferralSellCard from "@/components/ReferralSellCard";
+import PriceOfferForm from "@/components/PriceOfferForm";
 import { listingInstallmentAllowed, monthsForListing, useInstallmentConfig } from "@/lib/installment";
 
 
@@ -244,6 +245,13 @@ export default function ListingDetailPage() {
     router.replace(`/marketplace/${params.id}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Qiymət təklifi pəncərəsi — daxil olmayana giriş təklif olunur.
+  const [offerOpen, setOfferOpen] = useState(false);
+  const openOffer = () => {
+    if (!isLoggedIn) { toast(t("loginRequired"), "error"); router.push("/"); return; }
+    setOfferOpen(true);
+  };
 
   // İndi al — səbətə əlavə edib birbaşa səbətə (ödəniş/sifariş) keçir.
   const handleBuyNow = async () => {
@@ -1150,6 +1158,13 @@ export default function ListingDetailPage() {
                     </button>
                   </>
                 )}
+                {/* ── QİYMƏT TƏKLİFİ — alıcı öz qiymətini təklif edir, satıcı qəbul/rədd/əks-təklif ── */}
+                {listing.businessId && !isOwner && listing.status === "APPROVED" && !isExpired && listing.stock > 0 && (
+                  <button type="button" onClick={openOffer}
+                    className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-dashed border-[var(--brand-to)]/45 text-[var(--brand-to)] bg-transparent hover:bg-[var(--brand-soft)] transition-all">
+                    💬 Qiymət təklif et
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -1346,6 +1361,26 @@ export default function ListingDetailPage() {
             {related.map((l) => <ListingCard key={l.id} listing={l} />)}
           </div>
         </section>
+      )}
+
+      {/* ── Qiymət təklifi modalı ── */}
+      {offerOpen && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setOfferOpen(false)}>
+          <div className="bg-card border border-card-border w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="min-w-0">
+                <h3 className="font-bold text-lg">💬 Qiymət təklif et</h3>
+                <p className="text-xs text-muted truncate">{listing.title}</p>
+              </div>
+              <button onClick={() => setOfferOpen(false)} className="text-muted hover:text-foreground text-2xl leading-none">×</button>
+            </div>
+            <PriceOfferForm
+              listing={{ id: listing.id, title: listing.title, price: listing.price, stock: listing.stock, images: listing.images, type: listing.type }}
+              initialQty={cartQty}
+              onCancel={() => setOfferOpen(false)}
+            />
+          </div>
+        </div>
       )}
 
       {/* ── Bron modalı ── */}

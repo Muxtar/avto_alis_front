@@ -7,11 +7,19 @@ import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
 import ConsentBox from "@/components/ConsentBox";
 import { installmentAllowed, monthsForListings, useInstallmentConfig, feePercentFor } from "@/lib/installment";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import ShareButton from "@/components/ShareButton";
+
+/** Razılaşdırılmış qiymətin son tarixi: «28.09, 14:30». */
+function fmtUntil(d: string | Date): string {
+  const x = new Date(d);
+  if (Number.isNaN(x.getTime())) return "";
+  return x.toLocaleString("az-AZ", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
 
 export default function CartPage() {
   const { t, locale } = useLanguage();
@@ -129,7 +137,9 @@ export default function CartPage() {
   const allSelected = inStockItems.length > 0 && inStockItems.every((i) => selected.has(i.id));
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(inStockItems.map((i) => i.id)));
   const selItems = items.filter((i) => selected.has(i.id) && !isOut(i));
-  const selTotal = selItems.reduce((s, i) => s + (i.listing?.price || 0) * i.quantity, 0);
+  // Razılaşdırılmış qiymət (qiymət təklifi) olan sətirdə server hesabladığı
+  // lineTotal götürülür — yoxsa yekunda siyahı qiyməti görünərdi.
+  const selTotal = selItems.reduce((s, i) => s + (i.offer?.valid && i.lineTotal != null ? Number(i.lineTotal) : (i.listing?.price || 0) * i.quantity), 0);
 
   // Ödəniləcək məhsullar (seçim varsa onlar, yoxsa hamısı) biznesə (VÖEN) bağlıdırsa
   // kartla ödəniş mümkündür. VÖEN məhsulunda ödəniş üsulu avtomatik KART seçilir.
@@ -340,6 +350,7 @@ export default function CartPage() {
     if (qty < 1) return;
     // Stokdan çox seçməyə icazə vermə (satıcının qoyduğu say maksimumdur).
     const it0 = items.find((it) => it.id === id);
+    if (it0?.offer) { toast("Sayı dəyişmək üçün yeni təklif göndərin", "error"); return; }
     const max = it0?.listing?.stock;
     if (typeof max === "number" && qty > max) { toast(`Bu məhsuldan maksimum ${max} ədəd var`, "error"); return; }
     // Optimistik yeniləmə — səhifə yenilənmədən (spinner göstərmədən) dərhal dəyişir.
@@ -810,6 +821,22 @@ export default function CartPage() {
                               📉 Çox alanda ucuz: −{item.pricing.discountPercent}%
                             </div>
                           )}
+                          {/* QİYMƏT TƏKLİFİ — satıcı ilə razılaşdırılmış qiymət, say sabitdir. */}
+                          {item.offer && (
+                            <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-lg bg-green-500/10 text-green-600 border border-green-500/25 text-[11px] font-bold">🤝 Razılaşdırılmış qiymət</span>
+                              <span className="text-[11px] text-muted">
+                                <s>{formatPrice(item.offer.listPrice)} ₼</s> → <b className="text-green-600">{formatPrice(item.offer.finalPrice)} ₼</b>/əd
+                                {item.offer.acceptedUntil && item.offer.valid && <> · {fmtUntil(item.offer.acceptedUntil)} tarixinədək</>}
+                              </span>
+                            </div>
+                          )}
+                          {item.offer && !item.offer.valid && (
+                            <div className="mt-1.5 inline-flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-500/10 text-red-600 border border-red-500/20 text-[11px] font-semibold leading-snug">
+                              <span>⏰</span>
+                              <span>Razılaşdırılmış qiymətin müddəti bitib</span>
+                            </div>
+                          )}
                           {out ? (
                             /* Stokda yoxdur — kimsə əvvəl alıb. Klik yoxdur, seçilə bilməz; stok gələndə yenidən alınar. */
                             <div className="mt-1.5 inline-flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-500/10 text-red-600 border border-red-500/20 text-[11px] font-semibold leading-snug">
@@ -817,18 +844,27 @@ export default function CartPage() {
                               <span>Stokda yoxdur — biri sizdən əvvəl aldı. Stok bərpa olunanda yenidən ala biləcəksiniz.</span>
                             </div>
                           ) : (
+                            item.offer ? (
+                            <div className="flex items-center gap-2 mt-2" title="Sayı dəyişmək üçün yeni təklif göndərin">
+                              <button disabled className="w-7 h-7 bg-input-bg border border-input-border rounded-lg text-sm opacity-40 cursor-not-allowed">−</button>
+                              <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
+                              <button disabled className="w-7 h-7 bg-input-bg border border-input-border rounded-lg text-sm opacity-40 cursor-not-allowed">+</button>
+                              <span className="text-[11px] text-muted ml-1">🔒 say sabitdir</span>
+                            </div>
+                            ) : (
                             <div className="flex items-center gap-2 mt-2">
                               <button onClick={() => updateQty(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">−</button>
                               <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
                               <button onClick={() => updateQty(item.id, item.quantity + 1)} disabled={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock} title={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock ? `Maksimum ${item.listing.stock} ədəd` : ""} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">+</button>
                               {typeof item.listing?.stock === "number" && <span className="text-[11px] text-muted ml-1">stok: {item.listing.stock}</span>}
                             </div>
+                            )
                           )}
                         </div>
                         <div className="text-right flex flex-col justify-between items-end">
                           <div className="text-right">
                             <p className={`font-bold text-sm ${out ? "text-muted line-through" : "text-orange-500"}`}>{Number(item.lineTotal ?? item.listing.price * item.quantity).toFixed(2)} AZN</p>
-                            {!item.groupRefundLater && item.unitPrice != null && item.unitPrice < item.listing.price && (
+                            {!item.offer && !item.groupRefundLater && item.unitPrice != null && item.unitPrice < item.listing.price && (
                               <p className="text-[11px] text-muted"><s>{item.listing.price} AZN</s> → <b>{item.unitPrice} AZN</b>/əd</p>
                             )}
                           </div>
