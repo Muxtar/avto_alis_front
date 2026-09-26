@@ -1835,7 +1835,14 @@ export default function ProfilePage() {
         </div>
       </IdCard>
 
-      {/* ── Aşağıda: elanlarım, ən sonda bağlı cihazlar ── */}
+      {/* Bağlı cihazlar — kartların sonunda, elanlardan əvvəl */}
+      <div>
+        <IdCard icon="🔗" title="Bağlı cihazlar" tone="slate" collapsible open={openCard === "devices"} onToggle={() => toggleCard("devices")}
+          summary="Profilinizə daxil olan cihazlar — tanımadığınızı çıxarın">
+          <ConnectedDevices embedded />
+        </IdCard>
+      </div>
+      {/* ── Aşağıda: elanlarım ── */}
       <div className="h-3" />
 
       {/* My Listings */}
@@ -1986,13 +1993,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Bağlı cihazlar — ən sonda */}
-      <div className="mt-6">
-        <IdCard icon="🔗" title="Bağlı cihazlar" tone="slate" collapsible open={openCard === "devices"} onToggle={() => toggleCard("devices")}
-          summary="Profilinizə daxil olan cihazlar — tanımadığınızı çıxarın">
-          <ConnectedDevices embedded />
-        </IdCard>
-      </div>
     </div>
   );
 }

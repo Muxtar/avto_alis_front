@@ -21,7 +21,7 @@ import { FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { CATEGORIES, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
 import { IXTISAS_SECTORS } from "@/lib/ixtisas";
 
-type TypeFilter = "all" | "PRODUCT" | "SERVICE" | "PROFESSION";
+type TypeFilter = "all" | "PRODUCT" | "SERVICE" | "PROFESSION" | "GROUP_BUY";
 
 export default function MarketplacePageWrapper() {
   return (
@@ -48,11 +48,16 @@ function MarketplacePage() {
   // «Məhsullar → Xidmətlər» sekməsinə keçəndə (goCat(null)) URL-dən `?search=`
   // düşürdü və axtarış İTİRDİ — istifadəçi «xidmət axtarışında saytdakı
   // nəticələr çıxmır» vəziyyəti ilə qarşılaşırdı.
-  const goCat = (cat: string | null) => {
+  // gbMode — «Birgə alış» bölməsi URL-də saxlanır (?type=GROUP_BUY): kateqoriya
+  // dəyişəndə və səhifə yenilənəndə bölmə itmir.
+  const goCat = (cat: string | null, gbMode?: boolean) => {
     const slugs = cat ? catToSlugs(cat) : [];
     const base = slugs.length ? `/elanlar/${slugs.join("/")}` : "/elanlar";
-    const q = searchQuery.trim();
-    router.push(q ? `${base}?search=${encodeURIComponent(q)}` : base);
+    const q = new URLSearchParams();
+    if (searchQuery.trim()) q.set("search", searchQuery.trim());
+    if (gbMode ?? activeType === "GROUP_BUY") q.set("type", "GROUP_BUY");
+    const qs = q.toString();
+    router.push(qs ? `${base}?${qs}` : base);
   };
 
   const [listings, setListings] = useState<any[]>([]);
@@ -85,7 +90,9 @@ function MarketplacePage() {
   const COLLAPSED_CATS = 11;
   const SHOW_TAPAZ_GRID: boolean = false; // tap.az grid söndürülüb — kateqoriyalar sol paneldədir
   // Ana səhifə = kateqoriya seçilməyib və axtarış yoxdur.
-  const isHome = !selectedCategory && !searchQuery.trim();
+  const isHome = !selectedCategory && !searchQuery.trim() && activeType !== "GROUP_BUY";
+  const isGroupBuy = activeType === "GROUP_BUY";
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   // Filterler
   const [conditionFilter, setConditionFilter] = useState<string>("");
   const [brandFilter, setBrandFilter] = useState<string>("");
@@ -119,6 +126,14 @@ function MarketplacePage() {
       .then(setCategories)
       .catch(() => { toast(t('error'), 'error'); });
   }, []);
+
+  // «Birgə alış» bölməsi URL ilə sinxron: ?type=GROUP_BUY varsa açılır; başqa
+  // linklə (məs. header kataloqu) gəlinəndə bölmədən çıxılır.
+  useEffect(() => {
+    const ty = searchParams.get("type");
+    if (ty === "GROUP_BUY") setActiveType("GROUP_BUY");
+    else setActiveType((cur) => (cur === "GROUP_BUY" ? "PRODUCT" : cur));
+  }, [searchParams]);
 
   // Header axtarışı (?search=) reaktiv sinxronlaşır — istifadəçi /elanlar-da olsa belə yenilənir.
   useEffect(() => {
@@ -179,7 +194,8 @@ function MarketplacePage() {
     if (searchQuery) params.set("search", searchQuery);
     if (selectedCategory) params.set("category", selectedCategory);
     // Axtarış var və növ əl ilə seçilməyibsə — məhsul + xidmət birlikdə.
-    if (activeType !== "all" && !(searchQuery.trim() && !typeTouched)) params.set("type", activeType);
+    if (activeType === "GROUP_BUY") { params.set("type", "PRODUCT"); params.set("groupBuy", "1"); }
+    else if (activeType !== "all" && !(searchQuery.trim() && !typeTouched)) params.set("type", activeType);
     if (conditionFilter) params.set("condition", conditionFilter);
     if (brandFilter) params.set("brand", brandFilter);
     if (modelFilter) params.set("model", modelFilter);
@@ -347,6 +363,7 @@ function MarketplacePage() {
     { id: "PRODUCT", label: t("productsFilter"), icon: segIco("M21 8 12 3 3 8m18 0v8l-9 5m9-13-9 5m0 8-9-5V8m9 13v-8M3 8l9 5") },
     { id: "SERVICE", label: t("servicesFilter"), icon: segIco("M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4 2.6-2.6Z") },
     { id: "PROFESSION", label: "İxtisas", icon: segIco("M20 7h-4V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1ZM10 5h4v2h-4V5Zm-7 7h18") },
+    { id: "GROUP_BUY", label: "Birgə alış", icon: segIco("M17 20v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M10 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM21 20v-1a4 4 0 0 0-3-3.9M15 4.1a3.5 3.5 0 0 1 0 6.8") },
   ];
 
   const compactInput = "w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/30 placeholder-muted-foreground";
@@ -367,14 +384,14 @@ function MarketplacePage() {
           {/* Tək sətirli yığcam alət paneli — başlıq legv edildi ki, karusel
               headerə mümkün qədər yaxın olsun. */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-            <div className="seg-tabs shrink-0" role="tablist" aria-label="Bölmələr">
+            <div className="seg-tabs shrink-0 w-full sm:w-auto [&_svg]:hidden sm:[&_svg]:block" role="tablist" aria-label="Bölmələr">
               {typeButtons.map((btn) => (
                 <button
                   key={btn.id}
                   role="tab"
                   aria-selected={activeType === btn.id}
-                  onClick={() => { setActiveType(btn.id); setTypeTouched(true); goCat(null); }}
-                  className={`seg-tab px-3 sm:px-3.5 ${activeType === btn.id ? "is-active" : ""}`}
+                  onClick={() => { setActiveType(btn.id); setTypeTouched(true); goCat(btn.id === "GROUP_BUY" ? selectedCategory : null, btn.id === "GROUP_BUY"); }}
+                  className={`seg-tab px-1.5 sm:px-3.5 ${activeType === btn.id ? "is-active" : ""}`}
                 >
                   {btn.icon}{btn.label}
                 </button>
@@ -396,7 +413,7 @@ function MarketplacePage() {
             </Link>
             <AddListingMenu />
 
-            {(selectedCategory || searchQuery.trim()) ? (
+            {(selectedCategory || searchQuery.trim() || isGroupBuy) ? (
               <div className="relative shrink-0">
                 <button type="button" onClick={() => setSortOpen((v) => !v)}
                   className="inline-flex items-center gap-2 px-4 py-2 input-base text-sm font-medium hover:border-primary transition-colors">
@@ -480,7 +497,7 @@ function MarketplacePage() {
                 );
               }
               // Məhsullar → xidmət kateqoriyası xaric; Hamısı → hamısı.
-              const mains = activeType === "PRODUCT" ? CATEGORIES.filter((c) => !c.service) : CATEGORIES;
+              const mains = activeType === "PRODUCT" || activeType === "GROUP_BUY" ? CATEGORIES.filter((c) => !c.service) : CATEGORIES;
               const visible = showAllCats ? mains : mains.slice(0, COLLAPSED_CATS);
               return (
                 <>
@@ -604,10 +621,12 @@ function MarketplacePage() {
         <div className={isHome ? "" : "lg:grid lg:grid-cols-[280px_1fr] lg:gap-4"}>
           {!isHome && (
             <aside className="hidden lg:block">
-              {selectedCategory ? (
+              {selectedCategory || isGroupBuy ? (
                 <CategoryFilterPanel
-                  category={selectedCategory}
-                  type={activeType}
+                  category={selectedCategory || ""}
+                  type={isGroupBuy ? "PRODUCT" : activeType}
+                  linkQuery={isGroupBuy ? "?type=GROUP_BUY" : ""}
+                  title={isGroupBuy ? "👥 Birgə alış" : undefined}
                   minPrice={minPrice} setMinPrice={setMinPrice}
                   maxPrice={maxPrice} setMaxPrice={setMaxPrice}
                   city={cityFilter} setCity={setCityFilter}
@@ -624,6 +643,23 @@ function MarketplacePage() {
 
           {/* Center column - listings */}
           <div className="min-w-0">
+            {isGroupBuy && (
+              <div className="brand-band rounded-2xl px-4 py-3.5 mb-3 flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl bg-white/20 ring-1 ring-white/30 flex items-center justify-center text-lg shrink-0">👥</span>
+                <div className="min-w-0 flex-1">
+                  <p className="brand-band-kicker">tradixai · birgə alış</p>
+                  <p className="font-bold text-[15px] leading-tight">Nə qədər çox adam alsa, qiymət o qədər düşür</p>
+                  <p className="text-[11.5px] opacity-85 mt-0.5">İndi tam qiymətlə alırsınız — pəncərə bağlananda qrupun son qiymətinə görə fərq kartınıza qaytarılır.</p>
+                </div>
+              </div>
+            )}
+            {!isHome && activeType !== "PROFESSION" && (
+              <button type="button" onClick={() => setMobileFiltersOpen(true)}
+                className="lg:hidden mb-3 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl border border-card-border bg-card text-sm font-semibold">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5h18M6 12h12M10 19h4" /></svg>
+                Filtrlər{activeFilterCount ? ` (${activeFilterCount})` : ""}
+              </button>
+            )}
             {/* Hero promo banner ("Hər şey bir platformada") legv edildi —
                 kateqoriya/axtarış görünüşündə lazımsızdır (istifadəçi tələbi). */}
 
@@ -817,6 +853,32 @@ function MarketplacePage() {
         </div>
       </div>
 
+      {/* Telefonda filtrlər — aşağıdan açılan panel (masaüstündəki ilə eyni) */}
+      {mobileFiltersOpen && (
+        <div className="lg:hidden fixed inset-0 z-[70] bg-black/50 flex items-end" onClick={() => setMobileFiltersOpen(false)}>
+          <div className="w-full max-h-[85vh] overflow-y-auto bg-card rounded-t-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="sticky top-0 z-10 bg-card flex items-center justify-between px-4 py-3 border-b border-card-border">
+              <p className="font-bold">Filtrlər{activeFilterCount ? ` (${activeFilterCount})` : ""}</p>
+              <button onClick={() => setMobileFiltersOpen(false)} className="px-4 py-1.5 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)]">Göstər</button>
+            </div>
+            <CategoryFilterPanel
+              embedded
+              category={selectedCategory || ""}
+              type={isGroupBuy ? "PRODUCT" : activeType}
+              linkQuery={isGroupBuy ? "?type=GROUP_BUY" : ""}
+              title={isGroupBuy ? "👥 Birgə alış" : undefined}
+              minPrice={minPrice} setMinPrice={setMinPrice}
+              maxPrice={maxPrice} setMaxPrice={setMaxPrice}
+              city={cityFilter} setCity={setCityFilter}
+              brand={brandFilter} setBrand={setBrandFilter}
+              condition={conditionFilter} setCondition={setConditionFilter}
+              onReset={resetFilters}
+              activeCount={activeFilterCount}
+              onNavigate={() => setMobileFiltersOpen(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

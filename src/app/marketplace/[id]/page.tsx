@@ -1076,15 +1076,32 @@ export default function ListingDetailPage() {
                       <div className="mt-3 rounded-xl bg-card border border-card-border p-3">
                         {gb.group ? (
                           <>
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <p className="text-sm font-bold">
-                                👥 Birgə alış davam edir
-                                <span className="ml-1 font-normal text-muted">· {gb.group.windowDays} günlük</span>
-                              </p>
-                              <span className="px-2 py-1 rounded-lg bg-orange-500/10 text-orange-600 text-xs font-extrabold tabular-nums">
-                                ⏳ {countdown(gb.group.expiresAt, nowTs)}
-                              </span>
-                            </div>
+                            <p className="text-sm font-bold">
+                              👥 Birgə alış davam edir
+                              <span className="ml-1 font-normal text-muted">· {gb.group.windowDays} günlük</span>
+                            </p>
+                            {/* Geri sayım — 4 plitə, telefonda da bir sətrə sığır (əvvəl başlığın
+                                yanında idi, dar ekranda sürüşüb sətri pozurdu). */}
+                            {(() => {
+                              const ms = Math.max(0, new Date(gb.group.expiresAt).getTime() - nowTs);
+                              const sec = Math.floor(ms / 1000);
+                              const parts = [
+                                { v: Math.floor(sec / 86400), l: "gün" },
+                                { v: Math.floor((sec % 86400) / 3600), l: "saat" },
+                                { v: Math.floor((sec % 3600) / 60), l: "dəq" },
+                                { v: sec % 60, l: "san" },
+                              ];
+                              return (
+                                <div className="mt-2 grid grid-cols-4 gap-1.5" aria-label={`Qalan vaxt: ${countdown(gb.group.expiresAt, nowTs)}`}>
+                                  {parts.map((p) => (
+                                    <div key={p.l} className="rounded-lg bg-gradient-to-b from-emerald-500 to-teal-600 text-white text-center py-1.5 min-w-0">
+                                      <p className="text-base sm:text-lg font-extrabold tabular-nums leading-none">{String(p.v).padStart(2, "0")}</p>
+                                      <p className="text-[9.5px] uppercase tracking-wider opacity-85 mt-0.5">{p.l}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                             <p className="mt-0.5 text-[11px] text-muted">
                               Endirimi bu <b>{gb.group.windowDays} günlük</b> geri sayım müəyyən edir — vaxt bitəndə
                               qiymət yekunlaşır.

@@ -3,12 +3,19 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChevronLeft, ChevronUp, ChevronDown } from "lucide-react";
 import { API } from "@/lib/api";
-import { parseCat, catToSlugs, buildCat, getSubs, getLeaves } from "@/lib/categories";
+import { parseCat, catToSlugs, buildCat, getSubs, getLeaves, CATEGORIES } from "@/lib/categories";
 import { cn } from "@/lib/utils";
 
 type Props = {
   category: string;                 // "Elektronika" və ya "Elektronika>Telefonlar"
   type?: string;
+  /** Kateqoriya linklərinə əlavə olunan sorğu (məs. «?type=GROUP_BUY» — bölmə itməsin). */
+  linkQuery?: string;
+  /** Kateqoriya seçilməyəndə başlıq (məs. «Birgə alış»). */
+  title?: string;
+  /** Telefonda aşağı paneldə — öz çərçivəsi/sticky yoxdur. */
+  embedded?: boolean;
+  onNavigate?: () => void;
   minPrice: string; setMinPrice: (v: string) => void;
   maxPrice: string; setMaxPrice: (v: string) => void;
   city: string; setCity: (v: string) => void;
@@ -47,37 +54,43 @@ export default function CategoryFilterPanel(p: Props) {
   }, [main, p.type]);
 
   const shownBrands = brands.filter((b) => b.toLowerCase().includes(brandQuery.toLowerCase()));
+  const lq = p.linkQuery || "";
   const mainSlug = catToSlugs(main).join("/");
   const subSlug = sub ? catToSlugs(buildCat(main, sub)).join("/") : "";
   // Cari səviyyənin uşaqları — ana səhifədəysə alt kateqoriyalar, alt kateqoriyadaysa
   // alt-alt kateqoriyalar. Alt-alt seçilibsə qardaşları göstərilir (tez dəyişmək üçün).
-  const children: { name: string; href: string; active: boolean }[] = sub
+  const children: { name: string; href: string; active: boolean }[] = !main
+    // Kateqoriya seçilməyib (məs. Birgə alış bölməsi) — ana məhsul kateqoriyaları.
+    ? CATEGORIES.filter((c) => !c.service).map((c) => ({ name: c.name, href: `/elanlar/${catToSlugs(c.name).join("/")}${lq}`, active: false }))
+    : sub
     ? getLeaves(main, sub).map((l) => ({
         name: l,
-        href: `/elanlar/${catToSlugs(buildCat(main, sub, l)).join("/")}`,
+        href: `/elanlar/${catToSlugs(buildCat(main, sub, l)).join("/")}${lq}`,
         active: leaf === l,
       }))
     : getSubs(main).map((s2) => ({
         name: s2,
-        href: `/elanlar/${catToSlugs(buildCat(main, s2)).join("/")}`,
+        href: `/elanlar/${catToSlugs(buildCat(main, s2)).join("/")}${lq}`,
         active: false,
       }));
 
   return (
-    <div className="surface p-4 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
+    <div className={p.embedded ? "p-4" : "surface p-4 sticky top-20 max-h-[calc(100vh-6rem)] overflow-y-auto"} onClickCapture={(e) => { if ((e.target as HTMLElement).closest("a")) p.onNavigate?.(); }}>
       {/* Kateqoriya yolu */}
       <nav className="space-y-2 mb-4 text-[15px]">
-        <Link href="/elanlar" className="flex items-center gap-1.5 text-foreground hover:text-primary transition-colors">
-          <ChevronLeft className="w-4 h-4 shrink-0" /> Bütün kateqoriyalar
+        <Link href={main && lq ? `/elanlar${lq}` : "/elanlar"} className="flex items-center gap-1.5 text-foreground hover:text-primary transition-colors">
+          <ChevronLeft className="w-4 h-4 shrink-0" /> {main && lq ? `${p.title || ""} — bütün kateqoriyalar` : "Bütün kateqoriyalar"}
         </Link>
-        {sub ? (
+        {!main ? (
+          <p className="font-bold pl-5">{p.title || "Hamısı"}</p>
+        ) : sub ? (
           <>
-            <Link href={`/elanlar/${mainSlug}`} className="flex items-center gap-1.5 text-foreground hover:text-primary transition-colors">
+            <Link href={`/elanlar/${mainSlug}${lq}`} className="flex items-center gap-1.5 text-foreground hover:text-primary transition-colors">
               <ChevronLeft className="w-4 h-4 shrink-0" /> {main}
             </Link>
             {leaf ? (
               <>
-                <Link href={`/elanlar/${subSlug}`} className="flex items-center gap-1.5 pl-5 text-foreground hover:text-primary transition-colors">
+                <Link href={`/elanlar/${subSlug}${lq}`} className="flex items-center gap-1.5 pl-5 text-foreground hover:text-primary transition-colors">
                   <ChevronLeft className="w-4 h-4 shrink-0" /> {sub}
                 </Link>
                 <p className="font-bold pl-10">{leaf}</p>

@@ -38,6 +38,9 @@ interface Listing {
   user: { id?: number; name: string; avgRating?: number | null; ratingCount?: number };
   businessObject?: { id: number; name: string } | null;
   businessId?: number | null;
+  // Birgə alış (groupBuyEnabled ilə eyni şərt): pəncərə günü + stok > 1 + say-qiymət pillələri.
+  groupBuyDays?: number | null;
+  priceTiers?: { minQty: number; price: number }[];
   // VIP — ödənişli önə çıxarma (siyahıda həmişə əvvəldə, kartda nişan).
   isVip?: boolean;
   vipUntil?: string | null;
@@ -71,7 +74,12 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const canBuy = !isService && isLoggedIn && !isOwner && !outOfStock && !!listing.businessObject;
   // BİRGƏ ALIŞ — elanda pəncərə açıqdırsa kartda geri sayım göstərilir.
   // Yalnız biznes məhsullarında ola bilər, ona görə boş yerə soruşmuruq.
-  const { group: gb, left: gbLeft } = useCardGroupBuy(listing.id, !isService && !!listing.businessObject);
+  const isGroupBuy = !isService && !!listing.businessObject && (listing.groupBuyDays || 0) > 0 && (listing.stock || 0) > 1 && (listing.priceTiers?.length || 0) > 0;
+  const { group: gb, left: gbLeft } = useCardGroupBuy(listing.id, isGroupBuy);
+  // Qrup nə qədər böyüsə ən çox neçə faiz ucuzlaşa bilər (ən aşağı pillə).
+  const gbMaxPct = isGroupBuy && listing.price > 0
+    ? Math.round((1 - Math.min(...listing.priceTiers!.map((t) => t.price)) / listing.price) * 100)
+    : 0;
 
   // Favori durumunu kontrol et
   useEffect(() => {
@@ -141,7 +149,11 @@ export default function ListingCard({ listing }: { listing: Listing }) {
     <Link href={`/marketplace/${listing.id}`} className="block group">
       {/* VIP çərçivəsi inline — «surface» sinfi border/kölgəni üstələyir. */}
       <div className="surface card-hover overflow-hidden h-full flex flex-col"
-        style={isVip ? { borderColor: "#fbbf24", borderWidth: 2, boxShadow: "0 10px 28px -12px rgba(245, 158, 11, 0.55)" } : undefined}>
+        style={isVip
+          ? { borderColor: "#fbbf24", borderWidth: 2, boxShadow: "0 10px 28px -12px rgba(245, 158, 11, 0.55)" }
+          : isGroupBuy
+            ? { borderColor: "#10b981", borderWidth: 2, boxShadow: "0 10px 28px -14px rgba(16, 185, 129, 0.6)" }
+            : undefined}>
         {/* Image */}
         <div className="aspect-square sm:aspect-[4/3] tile-soft overflow-hidden relative">
           {/* Favori butonu */}
@@ -177,6 +189,11 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
           {/* Top Badges — ürək düyməsi üçün sağda yer saxla + daşarsa alt sətrə keç */}
           <div className="absolute top-2 left-2 right-12 flex flex-wrap gap-1.5">
+            {isGroupBuy && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wide bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-md shadow-emerald-500/30">
+                👥 Birgə alış
+              </span>
+            )}
             {isVip && (
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wide bg-gradient-to-r from-amber-400 to-yellow-500 text-amber-950 shadow-md shadow-amber-500/30">
                 👑 VIP
@@ -207,6 +224,14 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               </span>
             )}
           </div>
+
+          {/* Birgə alış lenti — şəklin altında: endirim potensialı və ya geri sayım */}
+          {isGroupBuy && !outOfStock && (
+            <div className="absolute inset-x-0 bottom-0 px-2.5 py-1.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-white flex items-center justify-between gap-2 text-[11px] font-bold">
+              <span className="truncate">{gb && gb.discountPercent > 0 ? `Qrupda −${gb.discountPercent}%` : gbMaxPct > 0 ? `Qrupla −${gbMaxPct}%-ə qədər` : "Qrupla ucuz"}</span>
+              {gb && <span className="shrink-0 tabular-nums">⏳ {gbLeft}</span>}
+            </div>
+          )}
 
           {/* Out of stock overlay */}
           {outOfStock && (
@@ -337,20 +362,28 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           </div>
 
           {/* ── BİRGƏ ALIŞ zolağı — geri sayım + qrupun hazırkı qiyməti ── */}
-          {gb && (
-            <div className="mt-2.5 rounded-xl border border-orange-500/30 bg-orange-500/5 px-2 py-1.5"
-              title={`Birgə alış — ${gb.windowDays} günlük pəncərə · indiyə qədər ${gb.totalQty} ədəd alınıb`}>
-              <div className="flex items-center justify-between gap-1.5">
-                <span className="text-[11px] font-bold text-orange-600 whitespace-nowrap">👥 Birgə alış</span>
-                <span className="shrink-0 text-[11px] font-extrabold text-orange-600 tabular-nums whitespace-nowrap">⏳ {gbLeft}</span>
-              </div>
-              <div className="mt-0.5 flex items-center justify-between gap-1.5 text-[10px] text-muted">
-                <span className="whitespace-nowrap"><b className="text-foreground">{gb.totalQty}</b> ədəd alınıb</span>
-                <span className="shrink-0 whitespace-nowrap">
-                  <b className="text-foreground">{formatPrice(gb.unitPrice)} {t("azn")}</b>
-                  {gb.discountPercent > 0 && <span className="ml-1 font-bold text-green-600">−{gb.discountPercent}%</span>}
-                </span>
-              </div>
+          {/* Telefon ölçüsündə dar kartda (≈170px) sətirlər sığmırdı: indi hər
+              məlumat öz sətrindədir, geri sayım ayrıca «pill»də, sözlər qırılmır. */}
+          {isGroupBuy && (
+            <div className="mt-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/[.06] px-2 py-1.5 min-w-0"
+              title={gb ? `Birgə alış — ${gb.windowDays} günlük pəncərə · indiyə qədər ${gb.totalQty} ədəd alınıb` : `Birgə alış — ilk alan ${listing.groupBuyDays} günlük pəncərəni açır`}>
+              {gb ? (
+                <>
+                  <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1">
+                    <span className="text-[11px] font-bold text-emerald-700">👥 {gb.totalQty} ədəd alınıb</span>
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[10.5px] font-extrabold tabular-nums leading-none">⏳ {gbLeft}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-[10.5px] text-muted">
+                    <span>Qrup qiyməti:</span>
+                    <b className="text-foreground">{formatPrice(gb.unitPrice)} {t("azn")}</b>
+                    {gb.discountPercent > 0 && <span className="font-bold text-emerald-600">−{gb.discountPercent}%</span>}
+                  </div>
+                </>
+              ) : (
+                <p className="text-[10.5px] leading-snug text-emerald-700">
+                  <b>👥 Birgə alış</b> · ilk alan {listing.groupBuyDays} günlük pəncərəni açır{gbMaxPct > 0 ? `, qrupla −${gbMaxPct}%-ə qədər` : ""}
+                </p>
+              )}
             </div>
           )}
 
