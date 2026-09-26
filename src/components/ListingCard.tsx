@@ -75,7 +75,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   // BİRGƏ ALIŞ — elanda pəncərə açıqdırsa kartda geri sayım göstərilir.
   // Yalnız biznes məhsullarında ola bilər, ona görə boş yerə soruşmuruq.
   const isGroupBuy = !isService && !!listing.businessObject && (listing.groupBuyDays || 0) > 0 && (listing.stock || 0) > 1 && (listing.priceTiers?.length || 0) > 0;
-  const { group: gb, left: gbLeft } = useCardGroupBuy(listing.id, isGroupBuy);
+  const { group: gb, left: gbLeft, parts: gbParts } = useCardGroupBuy(listing.id, isGroupBuy);
   // Qrup nə qədər böyüsə ən çox neçə faiz ucuzlaşa bilər (ən aşağı pillə).
   const gbMaxPct = isGroupBuy && listing.price > 0
     ? Math.round((1 - Math.min(...listing.priceTiers!.map((t) => t.price)) / listing.price) * 100)
@@ -229,7 +229,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           {isGroupBuy && !outOfStock && (
             <div className="absolute inset-x-0 bottom-0 px-2.5 py-1.5 bg-gradient-to-r from-emerald-600/95 to-teal-600/95 text-white flex items-center justify-between gap-2 text-[11px] font-bold">
               <span className="truncate">{gb && gb.discountPercent > 0 ? `Qrupda −${gb.discountPercent}%` : gbMaxPct > 0 ? `Qrupla −${gbMaxPct}%-ə qədər` : "Qrupla ucuz"}</span>
-              {gb && <span className="shrink-0 tabular-nums">⏳ {gbLeft}</span>}
+              {gb && <span className="shrink-0 text-[10px] opacity-90">⏳ davam edir</span>}
             </div>
           )}
 
@@ -369,14 +369,22 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               title={gb ? `Birgə alış — ${gb.windowDays} günlük pəncərə · indiyə qədər ${gb.totalQty} ədəd alınıb` : `Birgə alış — ilk alan ${listing.groupBuyDays} günlük pəncərəni açır`}>
               {gb ? (
                 <>
-                  <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-1">
+                  <div className="flex flex-wrap items-center justify-between gap-x-1.5 gap-y-0.5">
                     <span className="text-[11px] font-bold text-emerald-700">👥 {gb.totalQty} ədəd alınıb</span>
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-600 text-white text-[10.5px] font-extrabold tabular-nums leading-none">⏳ {gbLeft}</span>
+                    <span className="text-[10.5px] text-muted">
+                      <b className="text-foreground">{formatPrice(gb.unitPrice)} {t("azn")}</b>
+                      {gb.discountPercent > 0 && <span className="ml-1 font-bold text-emerald-600">−{gb.discountPercent}%</span>}
+                    </span>
                   </div>
-                  <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5 text-[10.5px] text-muted">
-                    <span>Qrup qiyməti:</span>
-                    <b className="text-foreground">{formatPrice(gb.unitPrice)} {t("azn")}</b>
-                    {gb.discountPercent > 0 && <span className="font-bold text-emerald-600">−{gb.discountPercent}%</span>}
+                  {/* GERİ SAYIM — böyük, yan-yana, aralarında xətt: gün | saat | dəq | san */}
+                  <div className="mt-1.5 grid grid-cols-4 divide-x divide-white/25 rounded-lg overflow-hidden bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm"
+                    role="timer" aria-label={`Birgə alışın bitməsinə ${gbLeft}`}>
+                    {([["gün", gbParts.d], ["saat", gbParts.h], ["dəq", gbParts.m], ["san", gbParts.s]] as const).map(([l, v]) => (
+                      <div key={l} className="flex flex-col items-center justify-center py-1.5 min-w-0">
+                        <span className="text-[17px] sm:text-lg font-extrabold tabular-nums leading-none">{String(v).padStart(2, "0")}</span>
+                        <span className="text-[8.5px] sm:text-[9px] uppercase tracking-wider opacity-85 mt-0.5">{l}</span>
+                      </div>
+                    ))}
                   </div>
                 </>
               ) : (

@@ -76,7 +76,10 @@ export function useCardGroupBuy(listingId: number, enabled = true) {
   }, [group?.code]);
 
   const msLeft = group ? new Date(group.expiresAt).getTime() - nowTs : 0;
-  return { group: msLeft > 0 ? group : null, left: countdown(msLeft, true) };
+  // parts — kartdakı «gün | saat | dəq | san» saatı üçün.
+  const sec = Math.max(0, Math.floor(msLeft / 1000));
+  const parts = { d: Math.floor(sec / 86400), h: Math.floor((sec % 86400) / 3600), m: Math.floor((sec % 3600) / 60), s: sec % 60 };
+  return { group: msLeft > 0 ? group : null, left: countdown(msLeft, true), parts };
 }
 
 /**
