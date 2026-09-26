@@ -90,7 +90,17 @@ export default function MessagesPage() {
   const [sending, setSending] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [sideTab, setSideTab] = useState<"chats" | "contacts">("chats");
+  const [sideTab, setSideTab] = useState<"chats" | "contacts" | "calls">("chats");
+  // ── ZƏNGLƏR sekməsi (WhatsApp üslubu): 1:1 zəng tarixçəsi.
+  const [calls, setCalls] = useState<any[]>([]);
+  const [missedCalls, setMissedCalls] = useState(0);
+  const [callFilter, setCallFilter] = useState<"all" | "missed">("all");
+  const [callsLoading, setCallsLoading] = useState(false);
+  const fetchCallsRef = useRef<() => void>(() => {});
+  // ── ÇOXLU SEÇİM: bir, bir neçə və ya bütün mesajları silmək üçün.
+  const [selMode, setSelMode] = useState(false);
+  const [selIds, setSelIds] = useState<Set<number>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
   // Axtarış üçün kontakt siyahısı (id + ad + avatar).
   const [contactPeople, setContactPeople] = useState<{ id: number; name: string; avatar?: string | null; sub?: string }[]>([]);
   // Söhbət siyahısının seqmenti: hamısı / şəxsi / iş.
@@ -310,6 +320,7 @@ export default function MessagesPage() {
         }
       }
       fetchAll();
+      if (m.type === "CALL") fetchCallsRef.current();
     };
     const onUpdated = (m: any) => { if (belongs(m)) upsert(m); };
     const onDeleted = (p: { id: number }) => setMessages((prev) => prev.map((x) => x.id === p.id ? { ...x, deletedAt: new Date().toISOString(), content: "", reactions: [], type: "TEXT" } : x));
@@ -751,6 +762,80 @@ export default function MessagesPage() {
     } finally { setWipeBusy(false); }
   };
 
+  // ── Çoxlu seçim ──
+  const exitSelect = () => { setSelMode(false); setSelIds(new Set()); };
+  const startSelect = (msg?: any) => {
+    setSelectedMsg(null); setSelMode(true);
+    setSelIds(new Set(msg && !msg.deletedAt ? [msg.id] : []));
+  };
+  const toggleSel = (id: number) => setSelIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const selectable = messages.filter((m) => m.id > 0);
+  const allSelected = selectable.length > 0 && selectable.every((m) => selIds.has(m.id));
+  const selectAll = () => setSelIds(allSelected ? new Set() : new Set(selectable.map((m) => m.id)));
+  const selMsgs = messages.filter((m) => selIds.has(m.id));
+  // «Hamı üçün» yalnız hamısı MƏNİM və silinməmiş mesajlar olduqda.
+  const canDeleteForAll = selMsgs.length > 0 && selMsgs.every((m) => m.senderId === user?.id && !m.deletedAt);
+  // Seçilmiş mesajları sil: mode 'me' — yalnız məndə; 'everyone' — hamı üçün.
+  const bulkDelete = async (mode: "me" | "everyone") => {
+    const ids = [...selIds];
+    if (!ids.length) return;
+    const q = mode === "everyone"
+      ? `${ids.length} mesaj HAMI ÜÇÜN silinsin? Qarşı tərəf də görməyəcək.`
+      : `${ids.length} mesaj sizdə silinsin? (Qarşı tərəfdə qalacaq)`;
+    if (!confirm(q)) return;
+    setBulkBusy(true);
+    try {
+      for (let i = 0; i < ids.length; i += 500) {
+        const r = await fetch(`${API}/messages/bulk-delete`, { method: "POST", headers, body: JSON.stringify({ ids: ids.slice(i, i + 500), mode }) })
+          .then((x) => x.json()).catch(() => null);
+        if (!r?.success) { toast(r?.message || t('error'), 'error'); return; }
+      }
+      const set = new Set(ids);
+      if (mode === "me") setMessages((prev) => prev.filter((x) => !set.has(x.id)));
+      else setMessages((prev) => prev.map((x) => set.has(x.id) ? { ...x, deletedAt: new Date().toISOString(), content: "", reactions: [], type: "TEXT" } : x));
+      toast(`${ids.length} mesaj silindi ✓`, "success");
+      exitSelect(); fetchAll();
+    } finally { setBulkBusy(false); }
+  };
+  // Açıq söhbət dəyişəndə seçim sıfırlansın.
+  useEffect(() => { setSelMode(false); setSelIds(new Set()); }, [active?.type, active?.id, active?.segment]);
+
+  // ── Zənglər ──
+  const fetchCalls = async () => {
+    if (!token) return;
+    setCallsLoading((v) => v || calls.length === 0);
+    try {
+      const r = await fetch(`${API}/me/calls`, { headers }).then((x) => x.json()).catch(() => null);
+      if (r?.success) { setCalls(r.calls || []); setMissedCalls(r.missedCount || 0); }
+    } finally { setCallsLoading(false); }
+  };
+  fetchCallsRef.current = fetchCalls;
+  useEffect(() => { if (token) fetchCalls(); }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+  const clearCalls = async (ids?: number[]) => {
+    if (!ids && !confirm("Bütün zəng tarixçəsi sizdə silinsin?")) return;
+    const r = await fetch(`${API}/me/calls/clear`, { method: "POST", headers, body: JSON.stringify(ids ? { ids } : {}) })
+      .then((x) => x.json()).catch(() => null);
+    if (!r?.success) { toast(r?.message || t('error'), 'error'); return; }
+    if (ids) setCalls((prev) => prev.filter((c) => !ids.includes(c.id)));
+    else setCalls([]);
+    fetchCalls();
+  };
+  // Yeni buraxılmış zənglər nişanı — «Zənglər» açılanda sıfırlanır (WhatsApp kimi).
+  const [callsSeenAt, setCallsSeenAt] = useState<number>(() => {
+    try { return Number(localStorage.getItem("callsSeenAt") || 0); } catch { return 0; }
+  });
+  const markCallsSeen = () => { const n = Date.now(); setCallsSeenAt(n); try { localStorage.setItem("callsSeenAt", String(n)); } catch {} };
+  const newMissed = calls.filter((c) => c.missed && !c.outgoing && new Date(c.createdAt).getTime() > callsSeenAt).length;
+  const visibleCalls = callFilter === "missed" ? calls.filter((c) => c.missed) : calls;
+  const callDay = (iso: string) => {
+    const d = new Date(iso); const now = new Date();
+    const y = new Date(now); y.setDate(now.getDate() - 1);
+    const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (d.toDateString() === now.toDateString()) return `Bu gün, ${time}`;
+    if (d.toDateString() === y.toDateString()) return `Dünən, ${time}`;
+    return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}, ${time}`;
+  };
+
   // Söhbətdəki şəxsi kontaktlarıma əlavə et (userId ilə — telefon bilinməsə də işləyir, WhatsApp üslubu).
   const saveContact = async () => {
     if (!active || active.type !== "direct") return;
@@ -1012,7 +1097,7 @@ export default function MessagesPage() {
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M15 18 9 12l6-6" /></svg>
                 </button>
               )}
-              <p className="font-bold text-base flex-1 truncate">{sideTab === "contacts" ? "Kontaktlar" : t("messages")}</p>
+              <p className="font-bold text-base flex-1 truncate">{sideTab === "contacts" ? "Kontaktlar" : sideTab === "calls" ? "Zənglər" : t("messages")}</p>
               <div className="relative">
                 <button onClick={() => setNewMenuOpen((v) => !v)} title="Yeni"
                   aria-expanded={newMenuOpen}
@@ -1043,6 +1128,37 @@ export default function MessagesPage() {
                 )}
               </div>
             </div>
+            {/* ── ƏSAS BÖLMƏLƏR: Söhbətlər / Zənglər (WhatsApp üslubu) ── */}
+            {sideTab !== "contacts" && (
+              <div className="seg-tabs mt-1" role="tablist" aria-label="Chat bölmələri">
+                <button onClick={() => { if (sideTab === "calls") markCallsSeen(); setSideTab("chats"); }} role="tab" aria-selected={sideTab === "chats"}
+                  className={`seg-tab ${sideTab === "chats" ? "is-active" : ""}`}>
+                  <Ico.Chat className="w-3.5 h-3.5" />Söhbətlər
+                  {segUnread("PERSONAL") + segUnread("BUSINESS") > 0 && sideTab !== "chats" && <span className="seg-badge">{Math.min(99, segUnread("PERSONAL") + segUnread("BUSINESS"))}</span>}
+                </button>
+                <button onClick={() => { setSideTab("calls"); markCallsSeen(); fetchCalls(); }} role="tab" aria-selected={sideTab === "calls"}
+                  className={`seg-tab ${sideTab === "calls" ? "is-active" : ""}`}>
+                  <Ico.Phone className="w-3.5 h-3.5" />Zənglər
+                  {newMissed > 0 && sideTab !== "calls" && <span className="seg-badge">{newMissed > 99 ? "99+" : newMissed}</span>}
+                </button>
+              </div>
+            )}
+            {sideTab === "calls" && (
+              <div className="flex items-center gap-2 mt-2.5 px-1">
+                {([["all", "Hamısı"], ["missed", "Buraxılmış"]] as const).map(([k, label]) => (
+                  <button key={k} onClick={() => setCallFilter(k)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${callFilter === k ? "bg-[var(--brand-soft)] text-[var(--brand-to)] border-transparent" : "border-card-border text-muted hover:text-foreground"}`}>
+                    {label}{k === "missed" && missedCalls > 0 ? ` · ${missedCalls}` : ""}
+                  </button>
+                ))}
+                <span className="flex-1" />
+                {calls.length > 0 && (
+                  <button onClick={() => clearCalls()} className="text-xs text-red-500 hover:underline flex items-center gap-1">
+                    <Ico.Trash className="w-3.5 h-3.5" />Tarixçəni təmizlə
+                  </button>
+                )}
+              </div>
+            )}
             {sideTab === "chats" && (
               <>
                 {/* Şəxs axtarışı — əvvəl söhbətlərdə, sonra sosial mediada.
@@ -1100,6 +1216,46 @@ export default function MessagesPage() {
                 className="absolute bottom-4 right-4 w-12 h-12 rounded-full text-white cta-gradient shadow-lg shadow-black/20 flex items-center justify-center hover:brightness-110 active:scale-95 transition">
                 <Ico.Plus className="w-6 h-6" />
               </button>
+            </div>
+          ) : sideTab === "calls" ? (
+            <div className="flex-1 overflow-y-auto">
+              {callsLoading ? (
+                <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
+              ) : visibleCalls.length === 0 ? (
+                <div className="text-center py-12 px-4">
+                  <div className="w-14 h-14 mx-auto rounded-full bg-input-bg flex items-center justify-center text-muted mb-3"><Ico.Phone className="w-6 h-6" /></div>
+                  <p className="text-muted text-sm">{callFilter === "missed" ? "Buraxılmış zəng yoxdur" : "Zəng tarixçəsi boşdur — söhbətdən səsli və ya görüntülü zəng edə bilərsiniz."}</p>
+                </div>
+              ) : (
+                visibleCalls.map((c) => {
+                  const peer = { id: c.partner.id, name: c.partner.name, avatar: c.partner.avatar };
+                  const status = c.missed ? (c.outgoing ? "Cavab verilmədi" : "Buraxılmış") : (c.duration ? callDurationText(c.duration) : "");
+                  return (
+                    <div key={c.id} className="group flex items-center gap-3 px-3 py-2.5 border-b border-card-border/30 hover:bg-input-bg/50 transition-colors">
+                      <button onClick={() => openChat({ type: "direct", id: peer.id, name: peer.name, avatar: peer.avatar, partnerType: c.partner.type, segment: "PERSONAL", key: `${peer.id}:PERSONAL` })}
+                        className="flex items-center gap-3 flex-1 min-w-0 text-left" title="Söhbəti aç">
+                        <Avatar name={peer.name} src={peer.avatar} className="w-11 h-11" gradient={typeColor(c.partner.type)} />
+                        <div className="min-w-0">
+                          <p className={`font-medium text-sm truncate ${c.missed && !c.outgoing ? "text-red-500" : ""}`}>{peer.name}</p>
+                          <p className="text-xs text-muted flex items-center gap-1 truncate">
+                            <span className={`font-bold ${c.missed ? "text-red-500" : "text-green-500"}`}>{c.outgoing ? "↗" : "↙"}</span>
+                            {c.kind === "video" ? <Ico.Video className="w-3 h-3" /> : <Ico.Phone className="w-3 h-3" />}
+                            <span className="truncate">{callDay(c.createdAt)}{status ? ` · ${status}` : ""}</span>
+                          </p>
+                        </div>
+                      </button>
+                      <button onClick={() => clearCalls([c.id])} title="Tarixçədən sil"
+                        className="w-8 h-8 rounded-full text-muted hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <Ico.Trash className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => startCall(peer, c.kind === "video" ? "video" : "audio")} title={c.kind === "video" ? "Görüntülü zəng et" : "Səsli zəng et"}
+                        className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${c.kind === "video" ? "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20" : "bg-green-500/10 text-green-500 hover:bg-green-500/20"}`}>
+                        {c.kind === "video" ? <Ico.Video className="w-4.5 h-4.5" /> : <Ico.Phone className="w-4.5 h-4.5" />}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           ) : (
           <div className="flex-1 overflow-y-auto">
@@ -1179,7 +1335,29 @@ export default function MessagesPage() {
         <div className={`${active ? 'flex' : 'hidden sm:flex'} flex-col flex-1 min-w-0 min-h-0`}>
           {active ? (
             <>
-              <div className="flex items-center gap-3 p-3 border-b border-card-border">
+              {/* Seçim rejimi — başlığın yerinə «N seçildi» paneli (WhatsApp kimi). */}
+              {selMode && (
+                <div className="flex items-center gap-2 px-3 py-2.5 border-b border-card-border bg-[var(--brand-soft)]">
+                  <button onClick={exitSelect} title="Bağla" className="w-9 h-9 rounded-full text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center"><Ico.Close className="w-5 h-5" /></button>
+                  <p className="font-semibold text-sm flex-1 truncate">{selIds.size} seçildi</p>
+                  <button onClick={selectAll} className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-[var(--brand-to)] hover:bg-input-bg">
+                    {allSelected ? "Seçimi ləğv et" : "Hamısını seç"}
+                  </button>
+                  <button onClick={() => bulkDelete("me")} disabled={!selIds.size || bulkBusy}
+                    className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-500/10 text-red-500 hover:bg-red-500/20 disabled:opacity-40 flex items-center gap-1">
+                    <Ico.Trash className="w-3.5 h-3.5" />Məndə sil
+                  </button>
+                  <button onClick={() => { exitSelect(); deleteThread(active); }} title="Bütün söhbəti (köhnə mesajlar daxil) məndə sil"
+                    className="hidden sm:inline-flex px-2.5 py-1.5 rounded-lg text-xs font-medium text-red-500 hover:bg-red-500/10">Söhbəti təmizlə</button>
+                  {canDeleteForAll && (
+                    <button onClick={() => bulkDelete("everyone")} disabled={bulkBusy}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-red-500 text-white hover:bg-red-600 disabled:opacity-40 flex items-center gap-1">
+                      <Ico.Trash className="w-3.5 h-3.5" />Hamı üçün
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className={`${selMode ? "hidden" : "flex"} items-center gap-3 p-3 border-b border-card-border`}>
                 <button onClick={() => setActive(null)} className="sm:hidden p-1 text-muted hover:text-foreground">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
                 </button>
@@ -1214,6 +1392,7 @@ export default function MessagesPage() {
                   <div className="flex items-center gap-1.5 shrink-0">
                     <button onClick={() => startCall({ id: active.id, name: active.name, avatar: active.avatar }, "audio")} title="Səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></button>
                     <button onClick={() => startCall({ id: active.id, name: active.name, avatar: active.avatar }, "video")} title="Görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg></button>
+                    <button onClick={() => startSelect()} title="Mesajları seç / sil" className="w-9 h-9 rounded-xl bg-input-bg text-muted hover:text-foreground flex items-center justify-center transition-colors"><svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4" /><path d="m8 12 3 3 5-6" /></svg></button>
                     <button onClick={toggleBlock} title={blockedIds.has(active.id) ? "Blokdan çıxar" : "Blokla"} className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${blockedIds.has(active.id) ? "bg-red-500/20 text-red-500" : "bg-input-bg text-muted hover:text-red-500"}`}><Ico.Block className="w-4.5 h-4.5" /></button>
                     {/* Sağ "Təsvir" panelini aç/bağla — yalnız göstəriləcək məhsul varsa */}
                     {activeListing && (
@@ -1226,6 +1405,7 @@ export default function MessagesPage() {
                 )}
                 {active.type === "group" && (
                   <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => startSelect()} title="Mesajları seç / sil" className="w-9 h-9 rounded-xl bg-input-bg text-muted hover:text-foreground flex items-center justify-center transition-colors"><svg className="w-4.5 h-4.5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4" /><path d="m8 12 3 3 5-6" /></svg></button>
                     <button onClick={() => startGroupCall(active.id, active.name, "audio")} title="Qrup səsli zəng" className="w-9 h-9 rounded-xl bg-green-500/10 text-green-500 flex items-center justify-center hover:bg-green-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></button>
                     <button onClick={() => startGroupCall(active.id, active.name, "video")} title="Qrup görüntülü zəng" className="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-500 flex items-center justify-center hover:bg-blue-500/20 transition-colors"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 002.25-2.25v-9a2.25 2.25 0 00-2.25-2.25h-9A2.25 2.25 0 002.25 7.5v9a2.25 2.25 0 002.25 2.25z" /></svg></button>
                   </div>
@@ -1250,10 +1430,16 @@ export default function MessagesPage() {
                 {messages.map((msg) => {
                   const isMine = msg.senderId === user?.id;
                   const deleted = !!msg.deletedAt;
+                  const picked = selIds.has(msg.id);
                   return (
-                    <div key={msg.id} className={`group flex items-center gap-1 ${isMine ? "justify-end" : "justify-start"}`}>
+                    <div key={msg.id}
+                      onClick={selMode ? () => toggleSel(msg.id) : undefined}
+                      className={`group flex items-center gap-1 ${isMine ? "justify-end" : "justify-start"} ${selMode ? "cursor-pointer -mx-2 px-2 py-0.5 rounded-xl transition-colors " + (picked ? "bg-[var(--brand-soft)]" : "hover:bg-input-bg/50") : ""}`}>
+                      {selMode && (
+                        <span className={`order-first mr-auto shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center text-[11px] text-white ${picked ? "bg-[var(--brand-to)] border-[var(--brand-to)]" : "border-muted/60"}`} aria-hidden="true">{picked ? "✓" : ""}</span>
+                      )}
                       {/* Əməliyyat menyusu düyməsi — media mesajlarında da əlçatan olsun (sil/redaktə/cavab) */}
-                      {isMine && !deleted && (
+                      {isMine && !deleted && !selMode && (
                         <button onClick={(e) => { e.stopPropagation(); setSelectedMsg(msg); }} title="Seçimlər" className="order-1 shrink-0 w-7 h-7 rounded-full text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">⋮</button>
                       )}
                       <div className={`max-w-[75%] min-w-0 ${isMine ? "order-2" : ""}`}>
@@ -1264,7 +1450,7 @@ export default function MessagesPage() {
                             title="Şəxsi mesaj yaz"
                           >{msg.sender?.name?.split(" ")[0]} 💬</button>
                         )}
-                        <div onClick={() => !deleted && setSelectedMsg(selectedMsg?.id === msg.id ? null : msg)}
+                        <div onClick={() => !selMode && !deleted && setSelectedMsg(selectedMsg?.id === msg.id ? null : msg)}
                           className={`px-3.5 py-2.5 rounded-2xl text-sm break-words cursor-pointer ${deleted ? "bg-input-bg/50 border border-input-border text-muted italic" : isMine ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-br-md" : "bg-input-bg border border-input-border text-foreground rounded-bl-md"}`}>
                           {msg.replyTo && !deleted && (
                             <div className={`text-[11px] mb-1 px-2 py-1 rounded-lg border-l-2 ${isMine ? "bg-white/15 border-white/50" : "bg-orange-500/10 border-orange-500/50"}`}>{previewText(msg.replyTo)}</div>
@@ -1287,7 +1473,7 @@ export default function MessagesPage() {
                         </div>
                         {reactionChips(msg)}
                       </div>
-                      {!isMine && !deleted && (
+                      {!isMine && !deleted && !selMode && (
                         <button onClick={(e) => { e.stopPropagation(); setSelectedMsg(msg); }} title="Seçimlər" className="shrink-0 w-7 h-7 rounded-full text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">⋮</button>
                       )}
                     </div>
@@ -1445,6 +1631,7 @@ export default function MessagesPage() {
             <div className="border-t border-card-border pt-2 space-y-1">
               <button onClick={() => startReply(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg text-sm">↩︎ Cavabla</button>
               {canEdit(selectedMsg) && <button onClick={() => startEdit(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg text-sm">✏️ Redaktə et</button>}
+              <button onClick={() => startSelect(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg text-sm">☑️ Seç (bir neçə mesaj)</button>
               <button onClick={() => hideMessage(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-red-500 text-sm">🗑 Məndə sil</button>
               {selectedMsg.senderId === user?.id && !selectedMsg.deletedAt && <button onClick={() => deleteMessage(selectedMsg)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-red-500/10 text-red-500 text-sm">🗑 Hamı üçün sil</button>}
               <button onClick={() => setSelectedMsg(null)} className="w-full text-left px-3 py-2 rounded-lg hover:bg-input-bg text-sm text-muted">✕ Bağla</button>
