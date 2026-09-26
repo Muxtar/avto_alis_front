@@ -417,7 +417,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
 
           {/* «Daha ucuz təklif et» — saytdakı İSTƏNİLƏN elana: satıcıya öz qiymətini
               təklif et və ya başqa satıcılardan daha ucuzunu istə. */}
-          {!isOwner && (
+          {/* Birgə alış məhsulunda yoxdur — qiyməti qrup müəyyən edir. */}
+          {!isOwner && !isGroupBuy && (
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCheapOpen(true); }}

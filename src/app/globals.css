@@ -812,6 +812,9 @@ a[class*="btn-"]:not([class*="rounded-full"]),
    breakpoint (`wide:`) generasiya olunmadı — ölçülüb yoxlanılıb. */
 @media (min-width: 1400px) {
   .product-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  /* Solda filtr paneli olan görünüşlər (birgə alış, kateqoriya, axtarış) — sütun
+     280px dar olduğu üçün 5 kart çox ensiz qalırdı; 4 sütun. */
+  .product-grid.with-aside { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
 /* ── ORTAQ UI DƏSTİ (giriş səhifəsinin görünüşü) ──────────────────────────

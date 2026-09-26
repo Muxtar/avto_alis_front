@@ -699,7 +699,7 @@ function MarketplacePage() {
             )}
 
             {loading ? (
-              <div className="product-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className={`product-grid ${isHome ? "" : "with-aside"} grid grid-cols-2 sm:grid-cols-3 ${isHome ? "lg:grid-cols-4" : ""} gap-3 sm:gap-4`}>
                 {Array.from({ length: 8 }).map((_, i) => (
                   <div key={i} className="surface overflow-hidden">
                     <div className="aspect-[4/3] skeleton" />
@@ -790,7 +790,8 @@ function MarketplacePage() {
               </div>
             ) : (
               <>
-                <div className="product-grid grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 animate-fade-in">
+                {/* Solda filtr paneli olanda (birgə alış, kateqoriya, axtarış) kartlar ensiz qalmasın: 3 sütun, ≥1400px-də 4. */}
+                <div className={`product-grid ${isHome ? "" : "with-aside"} grid grid-cols-2 sm:grid-cols-3 ${isHome ? "lg:grid-cols-4" : ""} gap-3 sm:gap-4 animate-fade-in`}>
                   {listings.map((listing) => (
                     <ListingCard key={listing.id} listing={listing} />
                   ))}
