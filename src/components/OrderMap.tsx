@@ -82,7 +82,7 @@ export default function OrderMap({
       : null;
 
   return (
-    <div style={{ height, borderRadius: 12, overflow: 'hidden' }}>
+    <div className="isolate" style={{ height, borderRadius: 12, overflow: 'hidden' }}>
       <MapContainer center={center} zoom={13} style={{ height: '100%', width: '100%' }} attributionControl={false}>
         <AttributionControl prefix={false} />
         <TileLayer

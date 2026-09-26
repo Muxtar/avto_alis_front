@@ -218,7 +218,9 @@ export default function MapExplorer({ height = '70vh' }: { height?: string }) {
   const clearSelection = () => { setSelected(null); setQuery(''); };
 
   return (
-    <div className="relative" style={{ height }}>
+    // `isolate` — xəritənin daxili z-index-ləri (Leaflet ~1000) öz qatında qalır,
+    // header-in açılan menyularının (profil, bildiriş, kataloq) üstünə çıxmır.
+    <div className="relative isolate" style={{ height }}>
       {/* Axtarış qutusu — xəritənin üstündə */}
       <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[1000] w-[92%] max-w-md">
         <div className="relative">

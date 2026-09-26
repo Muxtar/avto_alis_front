@@ -825,16 +825,42 @@ export default function Navbar() {
                     )}
                   </button>
                   {userOpen && (
-                    <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-1.5rem)] bg-card text-foreground border border-card-border rounded-xl shadow-xl overflow-hidden z-50 max-h-[calc(100vh-5rem)] overflow-y-auto">
-                      <div className="px-4 py-3 border-b border-card-border">
-                        <p className="font-medium text-sm truncate">{user?.name}</p>
-                        <p className="text-muted text-xs">{user?.phone}</p>
+                    <div className="umenu absolute right-0 mt-2.5 w-[300px] max-w-[calc(100vw-1.5rem)] text-foreground z-50 max-h-[calc(100vh-5rem)] overflow-y-auto orders-scroll">
+                      {/* Başlıq — kimlik kartı zolağı: avatar, ad, telefon */}
+                      <div className="brand-band px-4 py-3.5">
+                        <div className="flex items-center gap-3">
+                          <span className="w-11 h-11 rounded-2xl bg-white/20 ring-1 ring-white/30 flex items-center justify-center font-extrabold text-[15px] shrink-0">
+                            {(user?.name || "?").split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase()}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="brand-band-kicker">tradixai · hesab</p>
+                            <p className="font-bold text-[15px] leading-tight truncate">{user?.name}</p>
+                            <p className="text-[11.5px] opacity-80 truncate">{user?.phone}</p>
+                          </div>
+                        </div>
+                        {/* Tez keçidlər */}
+                        <div className="grid grid-cols-4 gap-1.5 mt-3">
+                          {([
+                            { href: "/messages", l: "Mesajlar", i: "💬", n: unreadMessages },
+                            { href: "/orders?tab=buying", l: "Alışlar", i: "🛍️", n: 0 },
+                            { href: "/orders?tab=selling", l: "Satışlar", i: "📦", n: 0 },
+                            { href: "/cart", l: "Səbət", i: "🛒", n: cartCount },
+                          ]).map((q) => (
+                            <Link key={q.href} href={q.href} onClick={() => setUserOpen(false)}
+                              className="relative flex flex-col items-center gap-0.5 py-2 rounded-xl bg-white/12 ring-1 ring-white/15 hover:bg-white/22 transition-colors">
+                              <span className="text-base leading-none">{q.i}</span>
+                              <span className="text-[10px] font-semibold">{q.l}</span>
+                              {q.n > 0 && <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-white text-[var(--brand-to)] text-[9.5px] font-extrabold flex items-center justify-center">{q.n > 99 ? "99+" : q.n}</span>}
+                            </Link>
+                          ))}
+                        </div>
                       </div>
-                      <Link href="/profile" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <div className="py-1.5">
+                      <Link href="/profile" onClick={() => setUserOpen(false)} className="umenu-item">
                         <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         {t("navProfile")}
                       </Link>
-                      <Link href="/messages" onClick={() => setUserOpen(false)} className="flex items-center justify-between px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <Link href="/messages" onClick={() => setUserOpen(false)} className="umenu-item justify-between">
                         <span className="flex items-center gap-2">
                           <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
                           {t("messages")}
@@ -843,7 +869,7 @@ export default function Navbar() {
                       </Link>
 
                       {/* 📤 Məndən gedənlər (alışlar) */}
-                      <button onClick={() => setOutOpen((v) => !v)} className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <button onClick={() => setOutOpen((v) => !v)} className="umenu-item umenu-group w-full justify-between">
                         <span className="flex items-center gap-2">
                           <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 7.5L12 3m0 0L7.5 7.5M12 3v13.5" /></svg>
                           {t("navOutgoing")}
@@ -854,35 +880,35 @@ export default function Navbar() {
                         </span>
                       </button>
                       {outOpen && (
-                        <div className="bg-input-bg/40">
-                          <Link href="/orders?tab=buying" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                        <div className="umenu-sub">
+                          <Link href="/orders?tab=buying" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
                             Alışlarım
                           </Link>
-                          <Link href="/iadeler" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/iadeler" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
                             İadələr
                           </Link>
-                          <Link href="/offers" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/offers" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <span className="w-4 text-center text-xs">💬</span>
                             Qiymət təkliflərim
                           </Link>
-                          <Link href="/inquiries" onClick={() => setUserOpen(false)} className="flex items-center justify-between pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/inquiries" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem justify-between">
                             <span className="flex items-center gap-2">
                               <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
                               Göndərdiyim sorğular
                             </span>
                             {unreadInquiries > 0 && <span className="w-5 h-5 bg-purple-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold">{unreadInquiries}</span>}
                           </Link>
-                          <Link href="/cart" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/cart" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
                             {t("cart")}
                           </Link>
-                          <Link href="/shared-links" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/shared-links" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <span className="w-4 text-center text-xs">🔗</span>
                             Paylaşdığım linklər
                           </Link>
-                          <Link href="/favorites" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/favorites" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" /></svg>
                             {t("favorites")}
                           </Link>
@@ -890,7 +916,7 @@ export default function Navbar() {
                       )}
 
                       {/* 📥 Məndən gələnlər (satışlar) */}
-                      <button onClick={() => setInOpen((v) => !v)} className="w-full flex items-center justify-between px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <button onClick={() => setInOpen((v) => !v)} className="umenu-item umenu-group w-full justify-between">
                         <span className="flex items-center gap-2">
                           <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M7.5 12L12 16.5m0 0l4.5-4.5M12 16.5V3" /></svg>
                           {t("navIncoming")}
@@ -898,76 +924,79 @@ export default function Navbar() {
                         <svg className={`w-4 h-4 text-muted transition-transform ${inOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                       </button>
                       {inOpen && (
-                        <div className="bg-input-bg/40">
-                          <Link href="/orders?tab=selling" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                        <div className="umenu-sub">
+                          <Link href="/orders?tab=selling" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
                             Satışlarım
                           </Link>
-                          <Link href="/iadeler?tab=selling" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/iadeler?tab=selling" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" /></svg>
                             İadələr
                           </Link>
-                          <Link href="/offers?tab=selling" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/offers?tab=selling" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <span className="w-4 text-center text-xs">💬</span>
                             Gələn qiymət təklifləri
                           </Link>
-                          <Link href="/account" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/account" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" /></svg>
                             {t("myListings")}
                           </Link>
-                          <Link href="/earnings" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/earnings" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             Qazancım
                           </Link>
-                          <Link href="/support" onClick={() => setUserOpen(false)} className="flex items-center gap-2 pl-11 pr-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                          <Link href="/support" onClick={() => setUserOpen(false)} className="umenu-item umenu-subitem">
                             <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" /></svg>
                             Dəstək
                           </Link>
                         </div>
                       )}
 
+                      <div className="umenu-sep" />
                       {/* Müstəqil: Rəy konsultasiyaları + Biznes */}
-                      <Link href="/consultations" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <Link href="/consultations" onClick={() => setUserOpen(false)} className="umenu-item">
                         <span className="w-4 h-4 text-muted flex items-center justify-center">🗣️</span>
                         {t("navConsultations")}
                       </Link>
-                      <Link href="/business" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <Link href="/business" onClick={() => setUserOpen(false)} className="umenu-item">
                         <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" /></svg>
                         {t("bizMenu") || "Biznes"}
                       </Link>
-                      <Link href="/referral" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <Link href="/referral" onClick={() => setUserOpen(false)} className="umenu-item">
                         <span className="w-4 h-4 text-muted flex items-center justify-center">🤝</span>
                         {t("navReferralStores")}
                       </Link>
-                      <Link href="/referral-earnings" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <Link href="/referral-earnings" onClick={() => setUserOpen(false)} className="umenu-item">
                         <span className="w-4 h-4 text-muted flex items-center justify-center">💸</span>
                         {t("navReferralEarnings")}
                       </Link>
-                      <Link href="/bookings" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <Link href="/bookings" onClick={() => setUserOpen(false)} className="umenu-item">
                         <span className="w-4 h-4 text-muted flex items-center justify-center">📅</span>
                         {t("navBookings")}
                       </Link>
 
                       {(user?.type === "MECHANIC" || user?.type === "PARTS_SELLER") && !user?.sellerVerified && (
-                        <Link href="/seller/apply" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-amber-500 font-medium">
+                        <Link href="/seller/apply" onClick={() => setUserOpen(false)} className="umenu-item text-amber-600 font-semibold">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                           {t("becomeSeller")}
                         </Link>
                       )}
-                      <Link href="/addresses" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors text-foreground">
+                      <Link href="/addresses" onClick={() => setUserOpen(false)} className="umenu-item">
                         <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                         {t("myAddresses")}
                       </Link>
                       {user?.role === "ADMIN" && (
-                        <Link href="/admin" onClick={() => setUserOpen(false)} className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-input-bg transition-colors font-medium" style={{ color: PINK }}>
+                        <Link href="/admin" onClick={() => setUserOpen(false)} className="umenu-item font-semibold text-[var(--brand-to)]">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                           {t("adminPanel")}
                         </Link>
                       )}
-                      <button onClick={() => { logout(); setUserOpen(false); }} className="flex items-center gap-2 px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 transition-colors w-full">
+                      <div className="umenu-sep" />
+                      <button onClick={() => { logout(); setUserOpen(false); }} className="umenu-item umenu-logout w-full">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
                         {t("logout")}
                       </button>
+                      </div>
                     </div>
                   )}
                 </div>

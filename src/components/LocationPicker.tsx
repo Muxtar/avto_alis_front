@@ -195,7 +195,8 @@ export default function LocationPicker({ city, address, latitude, longitude, onC
   };
 
   return (
-    <div className="space-y-3">
+    // isolate — Leaflet qatları header menyularının üstünə çıxmasın.
+    <div className="space-y-3 isolate">
       {/* Axtarış + xəritə BİTİŞİK: yuxarıda axtarış qutusu, altında xəritə.
           Yazıb axtar → xəritədə işarələnir; xəritəyə klik → ünvan avtomatik dolur.
           Yəni konumu bir dəfə verirsən (ya yazaraq, ya xəritədən). */}

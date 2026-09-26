@@ -1216,3 +1216,59 @@ a[class*="btn-"]:not([class*="rounded-full"]),
    yumru qalırdı, uyğunsuz görünürdü. */
 button.nav-glass { border-radius: 12px; }
 .nav-search button { border-radius: 12px; }
+
+/* ── HEADER AÇILAN MENYULARI (profil + bildiriş) — kimlik kartı dili ── */
+.umenu {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 24px 60px -24px rgba(15, 23, 42, .45), 0 2px 6px rgba(15, 23, 42, .06);
+  animation: umenuIn .18s ease-out;
+  transform-origin: top right;
+}
+@keyframes umenuIn { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+.umenu .umenu-item {
+  display: flex; align-items: center; gap: 10px;
+  margin: 1px 8px; padding: 7px 10px;
+  border-radius: 12px;
+  font-size: 13.5px; font-weight: 500; color: var(--foreground);
+  transition: background-color .15s ease, color .15s ease;
+}
+.umenu .umenu-item:hover { background: var(--brand-soft); color: var(--brand-to); }
+/* İkonlar — yumşaq brend çipi (svg və emoji) */
+.umenu .umenu-item svg.text-muted,
+.umenu .umenu-item > svg:first-child,
+.umenu .umenu-item > span.w-4,
+.umenu .umenu-item > span > svg.text-muted {
+  width: 28px; height: 28px; padding: 6px; flex-shrink: 0;
+  border-radius: 9px; background: var(--brand-soft); color: var(--brand-to);
+  display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box;
+}
+.umenu .umenu-item > span.w-4 { font-size: 13px; padding: 0; }
+.umenu .umenu-item:hover svg.text-muted, .umenu .umenu-item:hover > span.w-4, .umenu .umenu-item:hover > span > svg.text-muted {
+  background-image: linear-gradient(135deg, var(--brand-from), var(--brand-to)); color: #fff;
+}
+.umenu .umenu-group { font-weight: 700; }
+.umenu .umenu-group > svg:last-child, .umenu .umenu-group > span:last-child > svg:last-child { width: 16px; height: 16px; padding: 0; background: none; color: var(--muted); }
+.umenu .umenu-sub { margin: 2px 8px 4px 22px; padding-left: 8px; border-left: 2px solid color-mix(in srgb, var(--brand-to) 25%, transparent); }
+.umenu .umenu-subitem { margin: 1px 0; padding: 6px 8px; font-size: 13px; }
+.umenu .umenu-subitem svg.text-muted, .umenu .umenu-subitem > span.w-4, .umenu .umenu-subitem > span > svg.text-muted { width: 24px; height: 24px; padding: 5px; }
+.umenu .umenu-sep { height: 1px; margin: 6px 14px; background: var(--card-border); }
+.umenu .umenu-logout { color: #ef4444; }
+.umenu .umenu-logout:hover { background: rgba(239, 68, 68, .1); color: #dc2626; }
+.umenu .umenu-logout svg { width: 28px; height: 28px; padding: 6px; border-radius: 9px; background: rgba(239, 68, 68, .1); }
+.umenu .umenu-pill { border-radius: 9999px; }
+.umenu-notif { border-radius: 14px; transition: background-color .15s ease; }
+.umenu-notif:hover { background: var(--brand-soft); }
+.umenu-notif.is-unread { background: color-mix(in srgb, var(--brand-to) 6%, transparent); }
+.umenu-notif.is-unread::before {
+  content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 3px;
+  background: linear-gradient(var(--brand-from), var(--brand-to));
+}
+.umenu-chip {
+  width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; font-size: 17px;
+  background: color-mix(in srgb, var(--c) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent);
+}
