@@ -1094,7 +1094,7 @@ export default function ListingDetailPage() {
                               return (
                                 <div className="mt-2 grid grid-cols-4 gap-1.5" aria-label={`Qalan vaxt: ${countdown(gb.group.expiresAt, nowTs)}`}>
                                   {parts.map((p) => (
-                                    <div key={p.l} className="rounded-lg bg-gradient-to-b from-emerald-500 to-teal-600 text-white text-center py-1.5 min-w-0">
+                                    <div key={p.l} className={`rounded-lg text-white text-center py-1.5 min-w-0 ${ms < 3600000 ? "bg-gradient-to-b from-red-500 to-rose-600" : "bg-gradient-to-b from-emerald-500 to-teal-600"}`}>
                                       <p className="text-base sm:text-lg font-extrabold tabular-nums leading-none">{String(p.v).padStart(2, "0")}</p>
                                       <p className="text-[9.5px] uppercase tracking-wider opacity-85 mt-0.5">{p.l}</p>
                                     </div>

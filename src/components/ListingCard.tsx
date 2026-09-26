@@ -377,7 +377,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
                     </span>
                   </div>
                   {/* GERİ SAYIM — böyük, yan-yana, aralarında xətt: gün | saat | dəq | san */}
-                  <div className="mt-1.5 grid grid-cols-4 divide-x divide-white/25 rounded-lg overflow-hidden bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm"
+                  {/* Künclər yumru deyil; son 1 saatda fon qırmızı olur (vaxt azdır). */}
+                  <div className={`mt-1.5 grid grid-cols-4 divide-x divide-white/25 rounded-none overflow-hidden text-white shadow-sm transition-colors ${gbParts.d === 0 && gbParts.h === 0 ? "bg-gradient-to-r from-red-600 to-rose-600" : "bg-gradient-to-r from-emerald-600 to-teal-600"}`}
                     role="timer" aria-label={`Birgə alışın bitməsinə ${gbLeft}`}>
                     {([["gün", gbParts.d], ["saat", gbParts.h], ["dəq", gbParts.m], ["san", gbParts.s]] as const).map(([l, v]) => (
                       <div key={l} className="flex flex-col items-center justify-center py-1.5 min-w-0">
