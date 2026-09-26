@@ -1101,3 +1101,74 @@ a[class*="btn-"]:not([class*="rounded-full"]),
   .id-card-band .id-stamp { display: none; }
   .id-card-collapsible:not(.is-open) .id-card-band .id-stamp { display: inline-flex; }
 }
+
+/* ── KATALOQ + HERO KARUSEL — profil kimlik kartlarının dili ── */
+.brand-band {
+  position: relative;
+  color: #fff;
+  background-image: linear-gradient(120deg, var(--brand-from) 0%, var(--brand-to) 100%);
+  overflow: hidden;
+}
+.brand-band::before {
+  content: "";
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    repeating-radial-gradient(circle at 92% -40%, rgba(255, 255, 255, .14) 0 1px, transparent 1px 9px),
+    linear-gradient(115deg, rgba(255, 255, 255, .16), transparent 55%);
+}
+.brand-band > * { position: relative; }
+.brand-band-kicker { font-size: 9px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; opacity: .8; line-height: 1.1; }
+
+.cat-rail {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 14px 32px -22px rgba(15, 23, 42, .3);
+}
+/* Kateqoriya ikonu — hər kateqoriyanın öz rəngi (--c), üzərinə gələndə dolur */
+.cat-chip {
+  width: 30px; height: 30px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 13%, transparent);
+  transition: background-color .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease;
+}
+.cat-row:hover .cat-chip, .cat-row.is-hot .cat-chip {
+  color: #fff;
+  background: linear-gradient(135deg, var(--c), color-mix(in srgb, var(--c) 70%, #1e1b4b));
+  box-shadow: 0 6px 14px -6px var(--c);
+  transform: scale(1.06);
+}
+.cat-row { border-radius: 12px; margin: 1px 6px; transition: background-color .18s ease, color .18s ease; }
+.cat-row:hover, .cat-row.is-hot { background: var(--brand-soft); }
+.cat-row.is-active { background: var(--brand-soft); color: var(--brand-to); }
+.cat-foot {
+  margin: 6px; border-radius: 12px;
+  border: 1.5px dashed color-mix(in srgb, var(--brand-to) 45%, transparent);
+  transition: background-color .2s ease, border-style .2s ease;
+}
+.cat-foot:hover { background: var(--brand-soft); border-style: solid; }
+.cat-rail nav { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--brand-from) 40%, transparent) transparent; }
+
+.hero-frame { border-radius: 20px; overflow: hidden; box-shadow: 0 18px 40px -26px rgba(30, 27, 75, .55); }
+.hero-glass {
+  background: rgba(255, 255, 255, .18);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .35);
+  color: #fff;
+}
+.hero-arrow { transition: transform .2s ease, background-color .2s ease, opacity .2s ease; }
+.hero-arrow:hover { background: rgba(255, 255, 255, .32); transform: translateY(-50%) scale(1.08); }
+.hero-dot { position: relative; height: 6px; border-radius: 9999px; overflow: hidden; background: rgba(255, 255, 255, .45); transition: width .3s ease; }
+.hero-dot.is-active { width: 28px; background: rgba(255, 255, 255, .3); }
+.hero-dot.is-active::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; background: #fff;
+  transform-origin: left; animation: heroDot var(--hero-delay, 4s) linear forwards;
+}
+@keyframes heroDot { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.hero-cta {
+  background-image: linear-gradient(120deg, var(--brand-from), var(--brand-to));
+  box-shadow: 0 10px 24px -10px var(--brand-to);
+}

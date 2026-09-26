@@ -25,6 +25,10 @@ const GAP = 8;        // ekran kənarından minimal boşluq
 
 type Anchor = { top: number; left: number; height: number };
 
+// Hər ana kateqoriyanın öz rəngi (profil kimlik kartlarının palitrası).
+const CAT_COLORS = ["#6366f1", "#0ea5e9", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#14b8a6", "#f97316", "#3b82f6", "#ef4444"];
+const catColor = (name: string) => CAT_COLORS[Math.max(0, CATEGORIES.findIndex((c) => c.name === name)) % CAT_COLORS.length];
+
 export default function CategoryMegaMenu({
   variant = "landing",
   fill = false,
@@ -113,23 +117,23 @@ export default function CategoryMegaMenu({
       <div
         ref={railRef}
         onMouseLeave={closeSoon}
-        style={{
-          zIndex: openMain ? 46 : undefined,
-          ...(isLanding ? { background: "var(--landing-tile)", borderColor: "var(--landing-line)" } : {}),
-        }}
+        style={{ zIndex: openMain ? 46 : undefined }}
         className={
           isLanding
-            ? (fill ? "absolute inset-0 flex flex-col border" : "sticky top-20 z-30 flex flex-col border shadow-sm")
+            ? (fill ? "cat-rail absolute inset-0 flex flex-col" : "cat-rail sticky top-20 z-30 flex flex-col")
             : "relative flex flex-col"
         }
       >
-        {/* Başlıq zolağı */}
-        <div
-          className={`shrink-0 flex items-center gap-2 text-white font-bold tracking-wide ${isLanding ? "px-3.5 py-2 text-[12.5px]" : "px-4 py-2.5 text-[13px]"}`}
-          style={{ background: "var(--nav-dark)" }}
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
-          Kateqoriyalar
+        {/* Başlıq zolağı — brend qradiyenti + vəsiqə naxışı (profil kartları kimi) */}
+        <div className={`brand-band shrink-0 flex items-center gap-2.5 ${isLanding ? "px-3.5 py-2.5" : "px-4 py-3"}`}>
+          <span className="w-8 h-8 rounded-xl bg-white/20 ring-1 ring-white/30 flex items-center justify-center shrink-0">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="brand-band-kicker block">tradixai · kataloq</span>
+            <span className="block font-bold text-[14px] leading-tight">Kateqoriyalar</span>
+          </span>
+          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/20 ring-1 ring-white/25">{CATEGORIES.length}</span>
         </div>
 
         {/* Ana kateqoriyalar */}
@@ -143,12 +147,12 @@ export default function CategoryMegaMenu({
               <div key={c.name}>
                 <div
                   onMouseEnter={() => { if (hasSubs) openAt(c); else close(); }}
-                  className={`group/c relative flex items-center gap-3 transition-colors ${isLanding ? "px-3.5 py-2 text-[13px]" : "px-4 py-2.5 text-sm"} ${active || hot ? "text-[var(--brand-to)]" : "text-foreground"} ${hot ? "bg-[var(--brand-soft)]" : "hover:bg-[var(--brand-soft)]"}`}
+                  style={{ ["--c" as any]: catColor(c.name) }}
+                  className={`cat-row group/c relative flex items-center gap-3 ${isLanding ? "px-2.5 py-[5px] text-[13px]" : "px-3 py-2 text-sm"} ${active ? "is-active" : ""} ${hot ? "is-hot text-[var(--brand-to)]" : "text-foreground"}`}
                 >
-                  {(active || hot) && <span className="absolute left-0 top-0 bottom-0 w-[3px]" style={{ background: "var(--brand-to)" }} />}
                   <Link href={`/elanlar/${catToSlugs(c.name).join("/")}`} onClick={go} className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className={`${isLanding ? "w-6 h-6" : "w-8 h-8 rounded-lg bg-input-bg group-hover/c:bg-[var(--brand-to)] group-hover/c:text-white"} flex items-center justify-center shrink-0 transition-colors ${active || hot ? "text-[var(--brand-to)]" : "text-muted"}`}>
-                      <CategoryIcon name={c.name} className="w-[18px] h-[18px]" />
+                    <span className="cat-chip">
+                      <CategoryIcon name={c.name} className="w-[17px] h-[17px]" />
                     </span>
                     <span className={`flex-1 line-clamp-2 font-medium ${active ? "font-semibold" : ""} group-hover/c:text-[var(--brand-to)]`}>{c.name}</span>
                   </Link>
@@ -218,8 +222,7 @@ export default function CategoryMegaMenu({
 
         {/* Alt zolaq */}
         <Link href="/elanlar" onClick={go}
-          style={isLanding ? { borderColor: "var(--landing-line)" } : undefined}
-          className={`shrink-0 flex items-center gap-2 border-t font-bold text-[var(--brand-to)] hover:bg-[var(--brand-soft)] transition-colors ${isLanding ? "px-3.5 py-2.5 text-[12.5px]" : "px-4 py-3 text-sm border-card-border"}`}>
+          className={`cat-foot shrink-0 flex items-center justify-center gap-2 font-bold text-[var(--brand-to)] ${isLanding ? "px-3.5 py-2 text-[12.5px]" : "px-4 py-2.5 text-sm"}`}>
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
           Bütün kateqoriyalar
         </Link>
@@ -230,13 +233,18 @@ export default function CategoryMegaMenu({
             onMouseEnter={clearTimer}
             onMouseLeave={closeSoon}
             style={{ position: "fixed", top: panelTop, left: panelLeft, width: panelW, height: panelH }}
-            className="hidden lg:flex z-[47] bg-card text-foreground border border-card-border shadow-2xl animate-fade-in"
+            className="hidden lg:flex z-[47] bg-card text-foreground border border-card-border shadow-2xl animate-fade-in rounded-2xl overflow-hidden"
           >
             {/* Sütun 1 — alt kateqoriyalar */}
             <div className="flex flex-col min-h-0" style={{ width: SUB_COL }}>
-              <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-2.5 text-white text-[13px] font-bold tracking-wide shrink-0" style={{ background: "var(--nav-dark)" }}>
-                <CategoryIcon name={openMain.name} className="w-[18px] h-[18px] shrink-0" />
-                <span className="truncate">{openMain.name}</span>
+              <div className="brand-band sticky top-0 z-10 flex items-center gap-2.5 px-4 py-2.5 shrink-0">
+                <span className="w-8 h-8 rounded-xl bg-white/20 ring-1 ring-white/30 flex items-center justify-center shrink-0">
+                  <CategoryIcon name={openMain.name} className="w-[17px] h-[17px]" />
+                </span>
+                <span className="min-w-0">
+                  <span className="brand-band-kicker block">{openMain.subs.length} alt kateqoriya</span>
+                  <span className="block truncate font-bold text-[13.5px] leading-tight">{openMain.name}</span>
+                </span>
               </div>
               <Link href={`/elanlar/${catToSlugs(openMain.name).join("/")}`} onClick={go}
                 className="shrink-0 flex items-center gap-2 px-4 py-2.5 text-sm font-bold border-b border-card-border text-[var(--brand-to)] hover:bg-[var(--brand-soft)] transition-colors">
@@ -253,9 +261,9 @@ export default function CategoryMegaMenu({
                       href={`/elanlar/${catToSlugs(buildCat(openMain.name, sub.name)).join("/")}`}
                       onClick={go}
                       onMouseEnter={() => setOpenSub(hasLeaf ? sub : null)}
-                      className={`group/sub flex items-center gap-3 px-4 py-2 text-[13.5px] transition-colors ${hot || activeSub ? "bg-[var(--brand-soft)] text-[var(--brand-to)]" : "text-foreground hover:bg-[var(--brand-soft)] hover:text-[var(--brand-to)]"}`}
+                      className={`group/sub mx-1.5 rounded-xl flex items-center gap-3 px-2.5 py-[7px] text-[13.5px] transition-colors ${hot || activeSub ? "bg-[var(--brand-soft)] text-[var(--brand-to)]" : "text-foreground hover:bg-[var(--brand-soft)] hover:text-[var(--brand-to)]"}`}
                     >
-                      <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${hot ? "bg-[var(--brand-to)] text-white" : "bg-input-bg text-muted group-hover/sub:bg-[var(--brand-to)] group-hover/sub:text-white"}`}>
+                      <span className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all ${hot ? "text-white bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)] shadow-md" : "bg-[var(--brand-soft)] text-[var(--brand-to)] group-hover/sub:text-white group-hover/sub:bg-gradient-to-br group-hover/sub:from-[var(--brand-from)] group-hover/sub:to-[var(--brand-to)]"}`}>
                         <SubCategoryIcon name={sub.name} parent={openMain.name} className="w-[17px] h-[17px]" />
                       </span>
                       <span className="flex-1 line-clamp-2 font-medium leading-tight">{sub.name}</span>

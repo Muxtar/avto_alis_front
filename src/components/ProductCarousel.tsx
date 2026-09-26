@@ -81,16 +81,18 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fil
 
   if (items.length === 0) return null;
 
-  const arrowCls =
-    "absolute top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-md " +
-    "flex items-center justify-center text-gray-800 transition-transform duration-200 " +
-    "hover:scale-110 active:scale-95";
+  const arrowCls = hero
+    // Telefonda oxlar gizlidir — sürüşdürmə ilə keçilir, kiçik slaydda mətni örtməsin.
+    ? "hero-glass hero-arrow absolute top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full hidden sm:flex items-center justify-center"
+    : "absolute top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-white shadow-md " +
+      "flex items-center justify-center text-gray-800 transition-transform duration-200 " +
+      "hover:scale-110 active:scale-95";
 
   return (
     <div className={cn(fillHeight && "lg:h-full lg:flex lg:flex-col")}>
       {/* Oxlar KARUSELƏ görə mərkəzlənsin deyə ayrıca relative sarğı —
           nöqtələr bu sarğının kənarındadır, əks halda oxlar aşağı sürüşürdü. */}
-      <div className={cn("relative", fillHeight && "lg:flex-1 lg:min-h-0")}>
+      <div className={cn("relative", hero && "hero-frame", fillHeight && "lg:flex-1 lg:min-h-0")}>
         {/* Kart rejimində kartlar arası 16px boşluq (-ml-4 / pl-4); hero-da boşluq yoxdur */}
         <div className={cn("overflow-hidden", fillHeight && "lg:h-full")} ref={emblaRef}>
           <div className={cn("flex", !hero && "-ml-4", fillHeight && "lg:h-full")}>
@@ -125,10 +127,16 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fil
                       }
                     }}
                     className={cn("absolute inset-0 w-full h-full select-none", fill ? "object-cover" : "object-contain drop-shadow-2xl")} />
+                  {/* Brend naxışı — bütün slaydlar profil kartları ilə eyni dildə görünsün */}
+                  <div aria-hidden className="absolute inset-0 pointer-events-none opacity-60"
+                    style={{ background: "repeating-radial-gradient(circle at 100% 0%, rgba(255,255,255,.10) 0 1px, transparent 1px 11px)" }} />
                   {(it.title || it.subtitle) && (
                     <>
-                      <div className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-                      <div className="absolute inset-x-0 bottom-0 p-5 sm:p-8 lg:p-10">
+                      <div className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-[#140f3a]/85 via-[#140f3a]/25 to-transparent" />
+                      <div className="absolute inset-x-0 bottom-0 p-4 sm:p-8 lg:p-10 pb-10 sm:pb-14">
+                        <span className="hero-glass hidden sm:inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 mb-3 text-[9.5px] sm:text-[10.5px] font-bold uppercase tracking-[.14em]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-300" /> tradixai · kampaniya
+                        </span>
                         {it.title && (
                           <h2 className="text-white font-black text-lg sm:text-3xl lg:text-4xl leading-[1.1] tracking-tight max-w-2xl"
                             style={{ textShadow: "0 2px 12px rgba(0,0,0,.45)" }}>
@@ -139,7 +147,7 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fil
                           <p className="text-white/85 text-xs sm:text-base mt-1.5 max-w-xl" style={{ textShadow: "0 1px 6px rgba(0,0,0,.4)" }}>{it.subtitle}</p>
                         )}
                         {it.href && (
-                          <span className="mt-3 sm:mt-5 inline-flex items-center gap-2 bg-white text-gray-900 rounded-full px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold shadow-lg">
+                          <span className="hero-cta mt-3 sm:mt-5 inline-flex items-center gap-2 text-white rounded-full px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-bold">
                             Ətraflı bax <ArrowRight className="w-4 h-4" />
                           </span>
                         )}
@@ -201,12 +209,20 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fil
 
         {/* Hero-da nöqtələr şəklin üstündə olsun ki, yer tutmasın */}
         {hero && snaps.length > 1 && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-2 rounded-full bg-black/60 ring-1 ring-white/20">
-            {snaps.map((_, i) => (
-              <button key={i} type="button" onClick={() => scrollTo(i)} aria-label={`Slayd ${i + 1}`} aria-current={i === selected}
-                className={cn("h-2 rounded-full transition-all duration-300", i === selected ? "w-6 bg-white" : "w-2 bg-white/50 hover:bg-white/80")} />
-            ))}
-          </div>
+          <>
+            {/* Sayğac — «03 / 10» */}
+            <span className="hero-glass absolute top-3 right-3 z-20 rounded-full px-2.5 py-1 text-[11px] font-bold tabular-nums tracking-wide">
+              {String(selected + 1).padStart(2, "0")} <span className="opacity-60">/ {String(snaps.length).padStart(2, "0")}</span>
+            </span>
+            {/* Nöqtələr — aktiv olan avtomatik keçidə qədər dolur (proqres) */}
+            <div className="hero-glass absolute bottom-3.5 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-2 rounded-full"
+              style={{ ["--hero-delay" as any]: `${AUTOPLAY_DELAY}ms` }}>
+              {snaps.map((_, i) => (
+                <button key={i === selected ? `a-${selected}` : i} type="button" onClick={() => scrollTo(i)} aria-label={`Slayd ${i + 1}`} aria-current={i === selected}
+                  className={cn("hero-dot", i === selected ? "is-active" : "w-1.5 hover:bg-white/80")} />
+              ))}
+            </div>
+          </>
         )}
       </div>
 

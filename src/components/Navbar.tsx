@@ -451,7 +451,7 @@ export default function Navbar() {
                    sütunları isə hover ilə SAĞA açılır (CategoryMegaMenu). */
                 <div
                   style={{ ["--cat-top" as string]: `${catTop}px` } as React.CSSProperties}
-                  className="fixed top-[var(--cat-top)] left-2 right-2 w-auto max-h-[75vh] overflow-y-auto lg:overflow-visible lg:max-h-none lg:absolute lg:top-full lg:left-0 lg:right-auto lg:mt-1 lg:w-[292px] bg-card text-foreground border border-card-border shadow-2xl z-50"
+                  className="fixed top-[var(--cat-top)] left-2 right-2 w-auto max-h-[75vh] overflow-y-auto lg:overflow-visible lg:max-h-none lg:absolute lg:top-full lg:left-0 lg:right-auto lg:mt-2 lg:w-[300px] bg-card text-foreground border border-card-border shadow-2xl z-50 rounded-2xl [&>div>.brand-band]:rounded-t-2xl"
                 >
                   <CategoryMegaMenu variant="dropdown" onNavigate={() => setCatOpen(false)} />
                 </div>

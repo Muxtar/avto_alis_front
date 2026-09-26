@@ -576,7 +576,7 @@ function MarketplacePage() {
                Bottom → güvən zolağı (onların "MPLandingIconBadges"-i)
              Ağ çərçivə (--landing-bg), içəri boşluq 16px, plitələr --landing-tile.
              `sticky` YOXDUR — scroll edəndə hamısı birlikdə yuxarı qalxır. */
-          <div className="mb-3 sm:mb-4 border" style={{ background: "var(--landing-bg)", borderColor: "var(--landing-line)" }}>
+          <div className="mb-3 sm:mb-4 border rounded-3xl" style={{ background: "var(--landing-bg)", borderColor: "var(--landing-line)" }}>
             <div className="p-3 sm:p-4">
               {/* Sətrin hündürlüyü SABİTDİR (lg+): sol kateqoriya reydi, karusel və
                   sağ promo plitələri eyni boyda olur. Kateqoriyalar bu hündürlüyü

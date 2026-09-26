@@ -30,7 +30,7 @@ export default function HomeCarousel({ fill = false }: { fill?: boolean } = {}) 
   }, []);
 
   // Yüklənənə qədər ölçü sabit qalsın ki, səhifə sıçramasın.
-  if (items === null) return <div className={`w-full bg-input-bg animate-pulse ${fill ? "aspect-[16/9] max-h-[560px] lg:aspect-auto lg:h-full lg:max-h-none" : "aspect-[16/9] max-h-[560px]"}`} />;
+  if (items === null) return <div className={`w-full bg-input-bg animate-pulse rounded-[20px] ${fill ? "aspect-[16/9] max-h-[560px] lg:aspect-auto lg:h-full lg:max-h-none" : "aspect-[16/9] max-h-[560px]"}`} />;
 
   return <ProductCarousel items={items} hero fill={fill} />;
 }
