@@ -384,10 +384,14 @@ function MarketplacePage() {
     };
   }, [token]);
 
-  const typeButtons: { id: TypeFilter; label: string }[] = [
-    { id: "PRODUCT", label: t("productsFilter") },
-    { id: "SERVICE", label: t("servicesFilter") },
-    { id: "PROFESSION", label: "İxtisas" },
+  // Chat başlığındakı seg-tabs üslubu — hər bölmənin nazik xətli ikonu var.
+  const segIco = (d: string) => (
+    <svg className="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24" aria-hidden="true"><path d={d} /></svg>
+  );
+  const typeButtons: { id: TypeFilter; label: string; icon: React.ReactNode }[] = [
+    { id: "PRODUCT", label: t("productsFilter"), icon: segIco("M21 8 12 3 3 8m18 0v8l-9 5m9-13-9 5m0 8-9-5V8m9 13v-8M3 8l9 5") },
+    { id: "SERVICE", label: t("servicesFilter"), icon: segIco("M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4l-2.6 2.6-2.4-.6-.6-2.4 2.6-2.6Z") },
+    { id: "PROFESSION", label: "İxtisas", icon: segIco("M20 7h-4V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2H4a1 1 0 0 0-1 1v11a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V8a1 1 0 0 0-1-1ZM10 5h4v2h-4V5Zm-7 7h18") },
   ];
 
   const compactInput = "w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-xs sm:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/30 placeholder-muted-foreground";
@@ -408,28 +412,31 @@ function MarketplacePage() {
           {/* Tək sətirli yığcam alət paneli — başlıq legv edildi ki, karusel
               headerə mümkün qədər yaxın olsun. */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
-            <div className="segmented shrink-0">
+            <div className="seg-tabs shrink-0" role="tablist" aria-label="Bölmələr">
               {typeButtons.map((btn) => (
                 <button
                   key={btn.id}
+                  role="tab"
+                  aria-selected={activeType === btn.id}
                   onClick={() => { setActiveType(btn.id); setTypeTouched(true); goCat(null); }}
-                  className={activeType === btn.id ? "active" : ""}
+                  className={`seg-tab px-3 sm:px-3.5 ${activeType === btn.id ? "is-active" : ""}`}
                 >
-                  {btn.label}
+                  {btn.icon}{btn.label}
                 </button>
               ))}
             </div>
-            <button
-              type="button"
-              onClick={openCheapModal}
-              className="inline-flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-orange-500/10 text-orange-500 border border-orange-500/30 rounded-xl text-xs sm:text-sm font-semibold hover:bg-orange-500/20 transition-all whitespace-nowrap"
-              title={t("cheaperSearchTitle")}
-            >
-              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-              {t("cheaperSearch")}
-            </button>
+            {/* «Daha ucuza axtar» — eyni kapsul dilində: sakit halda yumşaq brend fonu. */}
+            <div className="seg-tabs shrink-0">
+              <button
+                type="button"
+                onClick={openCheapModal}
+                className="seg-tab px-3 sm:px-3.5 !text-[var(--brand-to)] bg-[var(--brand-soft)] !rounded-full"
+                title={t("cheaperSearchTitle")}
+              >
+                {segIco("M13 7h8m0 0v8m0-8-8 8-4-4-6 6")}
+                {t("cheaperSearch")}
+              </button>
+            </div>
 
             <div className="flex-1 min-w-0 hidden sm:block" />
 
