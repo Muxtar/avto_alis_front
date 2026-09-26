@@ -399,7 +399,23 @@ export default function MessagesPage() {
   }, [isLoggedIn, token]);
 
   const fetchDirect = () => fetch(`${API}/messages/conversations`, { headers }).then((r) => r.json()).then((d) => setDirectConvs(d.conversations || [])).catch(() => {});
-  const fetchGroups = () => fetch(`${API}/groups`, { headers }).then((r) => r.json()).then((d) => setGroups(d.groups || [])).catch(() => {});
+  const fetchGroups = () => {
+    fetchProGroups();
+    return fetch(`${API}/groups`, { headers }).then((r) => r.json()).then((d) => setGroups(d.groups || [])).catch(() => {});
+  };
+  // PEŞƏ QRUPLARI — «Bakı · Həkim»: qoşulma / çıxma təklifləri (şəhər və ya ixtisas dəyişəndə).
+  const [proInfo, setProInfo] = useState<any>(null);
+  const [proBusy, setProBusy] = useState<string | null>(null);
+  const fetchProGroups = () => fetch(`${API}/me/pro-groups`, { headers }).then((r) => r.json()).then((d) => { if (d?.success) setProInfo(d); }).catch(() => {});
+  const proAction = async (key: string, url: string, body?: any, okMsg?: string) => {
+    setProBusy(key);
+    try {
+      const r = await fetch(`${API}${url}`, { method: "POST", headers, body: body ? JSON.stringify(body) : undefined }).then((x) => x.json());
+      if (!r?.success) { toast(r?.message || t("error"), "error"); return; }
+      if (okMsg) toast(okMsg, "success");
+      await Promise.all([fetchProGroups(), fetch(`${API}/groups`, { headers }).then((x) => x.json()).then((d) => setGroups(d.groups || []))]);
+    } finally { setProBusy(null); }
+  };
   const fetchAll = () => { fetchDirect(); fetchGroups(); setLoading(false); };
 
   // Birləşmiş siyahı (1:1 + qruplar), son fəaliyyətə görə sıralı.
@@ -416,7 +432,7 @@ export default function MessagesPage() {
       lastMessage: c.lastMessage, unreadCount: c.unreadCount, lastAt: c.lastMessage?.createdAt,
     })),
     // Qruplar həmişə şəxsi tərəfdədir — biznes obyektinə bağlı qrup anlayışı yoxdur.
-    ...groups.map((g) => ({ type: "group", id: g.id, key: `g${g.id}`, segment: "PERSONAL" as Seg, name: g.name, avatar: g.avatar, memberCount: g.memberCount, lastMessage: g.lastMessage, unreadCount: g.unreadCount, lastAt: g.lastAt })),
+    ...groups.map((g) => ({ type: "group", id: g.id, key: `g${g.id}`, segment: "PERSONAL" as Seg, kind: g.kind, name: g.name, avatar: g.avatar, memberCount: g.memberCount, lastMessage: g.lastMessage, unreadCount: g.unreadCount, lastAt: g.lastAt })),
   ].sort((a, b) => new Date(b.lastAt || 0).getTime() - new Date(a.lastAt || 0).getTime());
 
   // Seqment üzrə oxunmamış saylar — tab başlığındakı nişanlar.
@@ -899,7 +915,8 @@ export default function MessagesPage() {
       .then((d) => { const list = d.contacts || (Array.isArray(d) ? d : []); setGroupContacts(list.filter((c: any) => c.user)); })
       .catch(() => {});
   };
-  const amIAdmin = () => groupInfo?.members?.find((m: any) => m.userId === user?.id)?.role === "ADMIN";
+  // Peşə qrupunda admin yoxdur — idarəetmə düymələri görünmür.
+  const amIAdmin = () => groupInfo?.kind !== "PRO_CITY" && groupInfo?.members?.find((m: any) => m.userId === user?.id)?.role === "ADMIN";
   const removeMember = async (uid: number) => {
     if (!groupInfo) return;
     try {
@@ -1259,6 +1276,43 @@ export default function MessagesPage() {
             </div>
           ) : (
           <div className="flex-1 overflow-y-auto">
+            {/* ── Peşə qrupları: qoşulma / çıxma təklifləri ── */}
+            {segTab !== "BUSINESS" && proInfo && (proInfo.leaveSuggestions?.length > 0 || proInfo.joinable?.some((j: any) => !j.optedOut)) && (
+              <div className="m-2 rounded-2xl overflow-hidden border border-[var(--brand-to)]/25">
+                <div className="brand-band px-3 py-2">
+                  <p className="brand-band-kicker">tradixai · peşə qrupları</p>
+                  <p className="text-[13px] font-bold leading-tight">Şəhərinizdəki həmkarlarınız</p>
+                </div>
+                <div className="p-2 space-y-1.5 bg-card">
+                  {proInfo.leaveSuggestions.map((sg: any) => (
+                    <div key={`l${sg.conversationId}`} className="rounded-xl bg-amber-500/10 border border-amber-500/25 p-2.5">
+                      <p className="text-[12px]">
+                        {sg.reason === "CITY" ? "📍 Şəhəriniz dəyişib" : "🎓 İxtisasınız dəyişib"} — <b>«{sg.name}»</b> qrupundan çıxmaq istəyirsiniz?
+                      </p>
+                      <div className="flex gap-1.5 mt-1.5">
+                        <button disabled={!!proBusy} onClick={() => { if (confirm(`«${sg.name}» qrupundan çıxmaq istəyirsiniz?`)) proAction(`l${sg.conversationId}`, `/me/pro-groups/${sg.conversationId}/leave`, undefined, "Qrupdan çıxdınız"); }}
+                          className="px-3 py-1 rounded-lg bg-red-500 text-white text-[11.5px] font-semibold disabled:opacity-50">Çıx</button>
+                        <button disabled={!!proBusy} onClick={() => proAction(`k${sg.conversationId}`, `/me/pro-groups/${sg.conversationId}/keep`)}
+                          className="px-3 py-1 rounded-lg bg-input-bg border border-input-border text-[11.5px] font-semibold disabled:opacity-50">Qal</button>
+                      </div>
+                    </div>
+                  ))}
+                  {proInfo.joinable.filter((j: any) => !j.optedOut).map((j: any) => (
+                    <div key={`j${j.profession}`} className="flex items-center gap-2 rounded-xl bg-[var(--brand-soft)] p-2.5">
+                      <span className="w-8 h-8 rounded-lg bg-gradient-to-br from-[var(--brand-from)] to-[var(--brand-to)] text-white flex items-center justify-center shrink-0">🎓</span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12.5px] font-bold truncate">{j.city} · {j.profession}</p>
+                        <p className="text-[10.5px] text-muted">{j.memberCount ? `${j.memberCount} həmkar` : "İlk siz olun — qrup yaranacaq"}</p>
+                      </div>
+                      <button disabled={!!proBusy} onClick={() => proAction(`j${j.profession}`, "/me/pro-groups/join", { profession: j.profession }, "Qrupa qoşuldunuz ✓")}
+                        className="px-3 py-1.5 rounded-lg text-white text-[11.5px] font-semibold bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] disabled:opacity-50">
+                        {proBusy === `j${j.profession}` ? "…" : "Qoşul"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             {loading ? (
               <div className="flex justify-center py-10"><div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
             ) : visibleChats.length === 0 ? (
@@ -1304,6 +1358,7 @@ export default function MessagesPage() {
                       <span className="font-semibold text-sm truncate flex items-center gap-1 min-w-0">
                         {chat.type !== "group" && chat.lastMessage?.consultationId && <span title="Rəy konsultasiyası">🗣️</span>}
                         {chat.segment === "BUSINESS" ? (chat.listing?.title || chat.businessObject?.name || chat.name) : chat.name}
+                        {chat.kind === "PRO_CITY" && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand-to)] text-[9.5px] font-bold" title="Şəhər + ixtisas üzrə peşə qrupu">🎓 Peşə</span>}
                       </span>
                       {chat.unreadCount > 0 && <span className="min-w-[20px] h-5 px-1 bg-orange-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold shrink-0">{chat.unreadCount}</span>}
                     </div>
@@ -1701,6 +1756,11 @@ export default function MessagesPage() {
               <div className="flex-1 min-w-0"><p className="font-semibold truncate">{groupInfo.name}</p><p className="text-xs text-muted">{groupInfo.members.length} üzv</p></div>
               {amIAdmin() && <button onClick={renameGroup} className="text-xs text-orange-500">✏️ Ad</button>}
             </div>
+            {groupInfo.kind === "PRO_CITY" && (
+              <p className="mb-3 text-[11.5px] rounded-xl px-3 py-2 bg-[var(--brand-soft)] text-foreground/85">
+                🎓 <b>Peşə qrupu</b> — {groupInfo.city} şəhərindəki {groupInfo.profession} ixtisası sahibləri. Hər kəs öz şəhəri və ixtisası ilə qoşulur; üzvlərin telefonları gizlidir. «✓ təsdiqli» — ixtisası sənədlə təsdiqlənib.
+              </p>
+            )}
             {amIAdmin() && (
               <button onClick={() => setAddMemberMode((v) => !v)} className="w-full py-2 mb-2 rounded-xl bg-input-bg border border-input-border text-sm">➕ Üzv əlavə et</button>
             )}
@@ -1724,7 +1784,7 @@ export default function MessagesPage() {
               {groupInfo.members.map((m: any) => (
                 <div key={m.userId} className="flex items-center gap-2 p-2 rounded-lg hover:bg-input-bg">
                   <Avatar name={m.user?.name} src={m.user?.avatar} className="w-8 h-8" textClassName="text-[10px]" />
-                  <div className="flex-1 min-w-0"><p className="text-sm truncate">{m.user?.name || "İstifadəçi"} {m.userId === user?.id && "(siz)"}</p><p className="text-[10px] text-muted">{m.role === "ADMIN" ? "👑 Admin" : "Üzv"}</p></div>
+                  <div className="flex-1 min-w-0"><p className="text-sm truncate">{m.user?.name || "İstifadəçi"} {m.userId === user?.id && "(siz)"}</p><p className="text-[10px] text-muted">{groupInfo.kind === "PRO_CITY" ? (m.verifiedProfession ? <span className="text-emerald-600 font-semibold">✓ {groupInfo.profession} · təsdiqli</span> : groupInfo.profession) : m.role === "ADMIN" ? "👑 Admin" : "Üzv"}</p></div>
                   {/* İstənilən üzvə şəxsi mesaj (kontaktda olmasa belə) */}
                   {m.userId !== user?.id && (
                     <button onClick={() => { setInfoOpen(false); openChat({ type: "direct", id: m.userId, name: m.user?.name, partnerType: m.user?.type }); }} className="shrink-0 text-orange-500 text-sm px-1.5" title="Şəxsi mesaj yaz">💬</button>
