@@ -264,10 +264,14 @@ export default function SellerProfilePage() {
                   const meta = SOCIAL_META[s.platform] || { label: s.platform, icon: "🔗" };
                   return (
                     <a key={s.platform} href={s.url} target="_blank" rel="noreferrer"
-                       className="flex items-center gap-1.5 px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs hover:border-orange-500/50 transition-colors">
-                      <SocialIcon platform={s.platform} className="w-4 h-4" />
-                      <span className="font-medium">{meta.label}</span>
-                      <span className="text-green-500">✓</span>
+                       title={`Bu hesabın ${user.name} şəxsinə məxsus olduğu tradixai tərəfindən təsdiqlənib${s.verifiedAt ? ` (${new Date(s.verifiedAt).toLocaleDateString("az-AZ")})` : ""}`}
+                       className="flex items-center gap-2 pl-1.5 pr-3 py-1.5 bg-input-bg border border-input-border rounded-xl text-xs hover:border-green-500/50 transition-colors">
+                      <span className="w-6 h-6 rounded-lg bg-card flex items-center justify-center"><SocialIcon platform={s.platform} className="w-4 h-4" /></span>
+                      <span className="min-w-0">
+                        <span className="block font-semibold leading-tight">{meta.label}</span>
+                        <span className="block text-[10px] text-muted leading-tight truncate max-w-[140px]">{s.url.replace(/^https?:\/\/(www\.)?[^/]+\/?/, "").replace(/^@?/, "@") || s.url.replace(/^https?:\/\//, "")}</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-green-600 bg-green-500/10 rounded-full px-1.5 py-0.5">✓ təsdiqli</span>
                     </a>
                   );
                 })}

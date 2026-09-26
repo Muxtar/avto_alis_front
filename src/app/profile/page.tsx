@@ -19,6 +19,7 @@ import ProfessionMultiPicker from "@/components/ProfessionMultiPicker";
 import EmploymentSection, { type EmploymentStatus } from "@/components/EmploymentSection";
 import ConnectedDevices from "@/components/ConnectedDevices";
 import QRShare from "@/components/QRShare";
+import IdCard, { IdMini, IdField } from "@/components/IdCard";
 
 export default function ProfilePage() {
   const { t } = useLanguage();
@@ -112,6 +113,9 @@ export default function ProfilePage() {
   const [socialPlatform, setSocialPlatform] = useState("instagram");
   const [socialUrl, setSocialUrl] = useState("");
   const [socialBusy, setSocialBusy] = useState(false);
+  // Sosial hesab təsdiqi: link → yoxlanan/göndərilən vəziyyət, paylaşım linki qaralaması.
+  const [socialCheckBusy, setSocialCheckBusy] = useState<number | null>(null);
+  const [proofDraft, setProofDraft] = useState<Record<number, string>>({});
   // ---- Peşə sənədləri ----
   const [credTitle, setCredTitle] = useState("");
   const [credFile, setCredFile] = useState<File | null>(null);
@@ -800,9 +804,35 @@ export default function ProfilePage() {
     try {
       const res = await fetch(`${API}/me/social`, { method: "POST", headers, body: JSON.stringify({ platform: socialPlatform, url: socialUrl.trim() }) });
       const data = await res.json();
-      if (res.ok && data.success) { setSocialUrl(""); await refreshProfile(); }
+      if (res.ok && data.success) {
+        setSocialUrl(""); await refreshProfile();
+        if (!data.link?.verified) toast("Əlavə edildi — indi aşağıdakı kodu hesabınızın biosuna yazıb «Yoxla» basın", "success");
+      }
       else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); } finally { setSocialBusy(false); }
+  };
+  // Kodu yoxla — sistem hesabın ictimai səhifəsini oxuyur.
+  const checkSocial = async (id: number) => {
+    setSocialCheckBusy(id);
+    try {
+      const body = proofDraft[id] !== undefined ? { proofUrl: proofDraft[id] } : {};
+      const res = await fetch(`${API}/me/social/${id}/check`, { method: "POST", headers, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok || !data.success) { toast(data.message || t("error"), "error"); return; }
+      toast(data.message || (data.verified ? "Təsdiqləndi ✓" : "Kod tapılmadı"), data.verified ? "success" : "error");
+      await refreshProfile();
+    } catch { toast(t("error"), "error"); } finally { setSocialCheckBusy(null); }
+  };
+  const requestSocialReview = async (id: number) => {
+    try {
+      const res = await fetch(`${API}/me/social/${id}/request-review`, { method: "POST", headers });
+      const data = await res.json();
+      if (res.ok && data.success) { toast(data.message || "Admin yoxlamasına göndərildi", "success"); await refreshProfile(); }
+      else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+  const copyText = (txt: string) => {
+    navigator.clipboard?.writeText(txt).then(() => toast("Kopyalandı", "success")).catch(() => toast(txt, "info"));
   };
   const deleteSocial = async (id: number) => {
     try {
@@ -858,7 +888,9 @@ export default function ProfilePage() {
     return <div className="min-h-[calc(100vh-64px)] flex items-center justify-center"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;
   }
 
-  const memberDate = new Date(profile.createdAt).toLocaleDateString("az-AZ", { year: "numeric", month: "long", day: "numeric" });
+  // Brauzerlərin çoxunda az-AZ ay adları yoxdur («M04») — adları özümüz veririk.
+  const AZ_MONTHS = ["yanvar", "fevral", "mart", "aprel", "may", "iyun", "iyul", "avqust", "sentyabr", "oktyabr", "noyabr", "dekabr"];
+  const memberDate = (() => { const d = new Date(profile.createdAt); return `${d.getDate()} ${AZ_MONTHS[d.getMonth()]} ${d.getFullYear()}`; })();
 
   const inputCls = "w-full px-4 py-3 bg-input-bg border border-input-border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground text-sm";
 
@@ -879,8 +911,17 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-4xl mx-auto px-3 sm:px-6 py-4 sm:py-6">
-      {/* Profile Card */}
-      <div className="surface p-5 sm:p-7 mb-5">
+      {/* Profile Card — şəxsiyyət vəsiqəsi üslubu */}
+      <section className="id-card mb-5">
+        <header className={`id-card-band bg-gradient-to-r ${idState === "ok" ? "from-emerald-500 to-teal-600" : "from-[var(--brand-from)] to-[var(--brand-to)]"}`}>
+          <span className="id-card-icon">🪪</span>
+          <div className="min-w-0 flex-1">
+            <p className="id-card-kicker">tradixai · şəxsiyyət kartı</p>
+            <h2 className="id-card-title">Profil № {String(profile.id || "").padStart(6, "0")}</h2>
+          </div>
+          <span className={`id-stamp ${idState === "ok" ? "id-stamp-ok" : "id-stamp-none"}`}>{idState === "ok" ? "✓ Doğrulanmış" : "Doğrulanmayıb"}</span>
+        </header>
+        <div className="p-5 sm:p-7">
         {saved && (
           <div className="mb-4 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl text-green-500 text-sm text-center">
             {t("profileUpdated")}
@@ -1030,8 +1071,8 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
-
-      </div>
+        </div>
+      </section>
 
       {/* ── Doğrulama kartları (kimlik / telefon / iş yeri) ──
           Uzun bölmələr əvəzinə orta ölçülü kartlar: təsdiqlənibsə yaşıl ✓,
@@ -1096,22 +1137,15 @@ export default function ProfilePage() {
           Təsdiqlənməyibsə kartın özü birbaşa Veriff pəncərəsini açır, ona görə
           burada nə izahat mətni, nə də «Nəticəni yoxla» düyməsi var. */}
       {openCard === "id" && idState === "ok" && (
-        <div className="surface p-5 sm:p-7 mb-5 animate-fade-in">
-          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-            <h2 className="text-lg font-semibold flex items-center gap-2">🪪 Kimlik təsdiqi</h2>
-            <span className="px-2.5 py-1 rounded-lg text-xs font-medium bg-green-500/15 text-green-600">✓ Təsdiqlənmiş profil</span>
-          </div>
+        <IdCard icon="🪪" title="Kimlik təsdiqi" tone="green" stamp="ok" stampText={{ ok: "Təsdiqlənmiş" }} className="animate-fade-in">
           {/* Veriff-dən gələn doğrulanmış məlumatlar */}
           {(profile.birthDate || profile.gender || profile.idNumber) && (
-            <div className="mb-4 p-3 bg-input-bg border border-input-border rounded-xl">
-              <p className="text-[11px] font-semibold text-muted mb-1.5">Doğrulanmış məlumatlar</p>
-              <p className="text-[13px] leading-relaxed">
-                {profile.name && <>Ad: <b>{profile.name}</b></>}
-                {profile.idNumber && <> · FIN: <b>{profile.idNumber}</b></>}
-                {profile.birthDate && <> · Doğum tarixi: <b>{new Date(profile.birthDate).toLocaleDateString("az-AZ")}</b></>}
-                {computeAge(profile.birthDate) !== null && <> · Yaş: <b>{computeAge(profile.birthDate)}</b></>}
-                {profile.gender && <> · Cins: <b>{profile.gender}</b></>}
-              </p>
+            <div className="mb-4 grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-3 p-4 rounded-2xl bg-input-bg border border-input-border">
+              <IdField label="Ad soyad" value={profile.name} />
+              <IdField label="FIN" value={profile.idNumber} mono />
+              <IdField label="Doğum tarixi" value={profile.birthDate ? new Date(profile.birthDate).toLocaleDateString("az-AZ") : null} />
+              <IdField label="Yaş" value={computeAge(profile.birthDate)} />
+              <IdField label="Cins" value={profile.gender} />
             </div>
           )}
           {/* Təsdiqlənmiş kimlik SİLİNMİR: Veriff doğrulaması bitibsə profil
@@ -1121,14 +1155,13 @@ export default function ProfilePage() {
             <span className="text-emerald-500 shrink-0">✓</span>
             Kimliyiniz Veriff ilə doğrulanıb və profiliniz həmişəlik «doğrulanmış profil»dir — bu təsdiq geri qaytarılmır.
           </p>
-        </div>
+        </IdCard>
       )}
 
       {/* Telefon nömrələri paneli */}
       {openCard === "phone" && (
-        <div className="surface p-5 sm:p-7 mb-5 animate-fade-in">
-        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">📱 Telefon nömrələri</h2>
-        <p className="text-xs text-muted mb-3">Əsas nömrə elanlarınızda göstərilir. Hər nömrə doğrulama kodu ilə təsdiqlənir.</p>
+        <IdCard icon="📱" title="Telefon nömrələri" tone="blue" stamp={phoneState === "ok" ? "ok" : "none"} stampText={{ none: "Nömrə yoxdur" }} className="animate-fade-in"
+          subtitle="Əsas nömrə elanlarınızda göstərilir. Hər nömrə doğrulama kodu ilə təsdiqlənir.">
 
         {/* Əsas nömrə */}
         {(() => {
@@ -1191,14 +1224,15 @@ export default function ProfilePage() {
             <span className="text-base leading-none">＋</span> Yeni nömrə əlavə et
           </button>
         )}
-        </div>
+        </IdCard>
       )}
 
       {/* İş yeri paneli — komponent HƏMİŞƏ mount olunur (kartdakı statusu o verir),
           bağlı olanda yalnız gizlədilir. */}
-      <div className={openCard === "work" ? "surface p-5 sm:p-7 mb-5 animate-fade-in" : "hidden"}>
-        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">🏢 İş yerim</h2>
-        <EmploymentSection embedded onStatus={setWorkStatus} />
+      <div className={openCard === "work" ? "animate-fade-in" : "hidden"}>
+        <IdCard icon="🏢" title="İş yerim" tone="teal" stamp={workStatus.state === "ok" ? "ok" : workStatus.state === "pending" ? "pending" : null}>
+          <EmploymentSection embedded onStatus={setWorkStatus} />
+        </IdCard>
       </div>
       {/* Bağlı cihazlar — profilə daxil olan cihazlar, uzaqdan çıxarma */}
       <div className="mb-5">
@@ -1206,9 +1240,8 @@ export default function ProfilePage() {
       </div>
 
       {/* Rəy konsultasiyası təklifi */}
-      <div className="surface p-5 sm:p-7 mb-5">
-        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">🗣️ Rəy konsultasiyası</h2>
-        <p className="text-xs text-muted mb-3">İxtisasınız üzrə ödənişli konsultasiya təklif edin. İstifadəçi sizi İxtisas bölməsindən tapıb sorğu göndərə bilər; siz vaxtı Başlat/Dayandır ilə idarə edirsiniz.</p>
+      <IdCard icon="🗣️" title="Rəy konsultasiyası" tone="purple" stamp={offers.some((o) => o.active) ? "ok" : null} stampText={{ ok: "Aktiv" }}
+        subtitle="İxtisasınız üzrə ödənişli konsultasiya təklif edin. İstifadəçi sizi İxtisas bölməsindən tapıb sorğu göndərə bilər; siz vaxtı Başlat/Dayandır ilə idarə edirsiniz.">
 
         {!offerHasVoen && (
           <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-600">
@@ -1220,16 +1253,18 @@ export default function ProfilePage() {
         {offers.length > 0 && (
           <div className="space-y-2 mb-4">
             {offers.map((o) => (
-              <div key={o.id} className="flex items-center gap-3 bg-input-bg border border-input-border rounded-xl px-3.5 py-2.5">
-                <span className="text-lg">🗣️</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{o.title || "Rəy konsultasiyası"}</p>
-                  <p className="text-xs text-muted">{o.durationMinutes} dəq · {o.price} AZN {!o.active && <span className="text-amber-500">· deaktiv</span>}</p>
-                  {o.description && <p className="text-[11px] text-muted mt-0.5 line-clamp-1">{o.description}</p>}
+              <IdMini key={o.id} icon="🗣️" tone="purple" title={o.title || "Rəy konsultasiyası"}
+                stamp={o.active ? "ok" : "none"} stampText={{ ok: "Aktiv", none: "Deaktiv" }}
+                sub={o.description || undefined}
+                actions={<>
+                  <button onClick={() => editOffer(o)} className="text-[12px] text-orange-500 font-semibold">Redaktə</button>
+                  <button onClick={() => deleteOffer(o.id)} className="text-muted hover:text-red-500 text-sm">✕</button>
+                </>}>
+                <div className="grid grid-cols-2 gap-3">
+                  <IdField label="Müddət" value={`${o.durationMinutes} dəq`} />
+                  <IdField label="Qiymət" value={`${o.price} AZN`} />
                 </div>
-                <button onClick={() => editOffer(o)} className="text-[12px] text-orange-500 font-semibold">Redaktə</button>
-                <button onClick={() => deleteOffer(o.id)} className="text-muted hover:text-red-500 text-sm">✕</button>
-              </div>
+              </IdMini>
             ))}
           </div>
         )}
@@ -1267,12 +1302,11 @@ export default function ProfilePage() {
             <Link href="/consultations" className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold self-center ml-auto">Sorğularıma bax →</Link>
           </div>
         </div>
-      </div>
+      </IdCard>
 
       {/* CV (tərcümeyi-hal) */}
-      <div className="surface p-5 sm:p-7 mb-5">
-        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">📄 CV (Tərcümeyi-hal)</h2>
-        <p className="text-xs text-muted mb-3">CV-nizi PDF və ya şəkil kimi əlavə edin. İstədiyiniz vaxt dəyişə və ya silə bilərsiniz.</p>
+      <IdCard icon="📄" title="CV (Tərcümeyi-hal)" tone="slate" stamp={profile.cvFile ? "ok" : "none"} stampText={{ ok: profile.cvPublic ? "Public" : "Yüklənib", none: "Yoxdur" }}
+        subtitle="CV-nizi PDF və ya şəkil kimi əlavə edin. İstədiyiniz vaxt dəyişə və ya silə bilərsiniz.">
         {profile.cvFile ? (
           <div className="flex items-center gap-3 flex-wrap">
             <a href={`${imgUrl(profile.cvFile)}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-medium hover:bg-orange-500/10">
@@ -1293,15 +1327,12 @@ export default function ProfilePage() {
             <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
           </label>
         )}
-      </div>
+      </IdCard>
 
       {/* Peşə sənədləri (diplom / sertifikat / lisenziya) — AI ad-soyad uyğunluğunu yoxlayır */}
-      <div className="surface p-5 sm:p-7 mb-5">
-        <h2 className="text-lg font-semibold flex items-center gap-2 mb-1">🎓 Peşə sənədləri</h2>
-        <p className="text-xs text-muted mb-4">
-          Diplom, sertifikat və ya lisenziyanızı yükləyin. <b>AI sənəddəki ad-soyadın sizin ad-soyadınızla
-          ({profile.name || "—"}) uyğun olduğunu yoxlayır.</b> Bir neçə sənəd əlavə edə bilərsiniz.
-        </p>
+      <IdCard icon="🎓" title="Peşə sənədləri" tone="amber"
+        stamp={profile.professionDocuments?.some((d: any) => d.status === "APPROVED") ? "ok" : profile.professionDocuments?.length ? "pending" : null}
+        subtitle={<>Diplom, sertifikat və ya lisenziyanızı yükləyin. <b>AI sənəddəki ad-soyadın sizin ad-soyadınızla ({profile.name || "—"}) uyğun olduğunu yoxlayır.</b> Bir neçə sənəd əlavə edə bilərsiniz.</>}>
 
         {/* Mövcud sənədlər */}
         {profile.professionDocuments?.length > 0 && (
@@ -1356,28 +1387,15 @@ export default function ProfilePage() {
             {credBusy ? "AI yoxlayır…" : "Yüklə və yoxla"}
           </button>
         </div>
-      </div>
+      </IdCard>
 
       {/* My location — default seller location, auto-fills new listings */}
-      <div className="surface p-5 sm:p-7 mb-5">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold flex items-center gap-2">
-            <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
-            </svg>
-            {t('myLocation')}
-          </h2>
-          {!editingLocation && (
-            <button
-              onClick={() => setEditingLocation(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-medium hover:bg-orange-500/20 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-              {profile.city || profile.latitude ? t('changeLocation') : t('addLocation')}
-            </button>
-          )}
-        </div>
+      <IdCard icon="📍" title={t('myLocation')} tone="pink" stamp={profile.city || profile.latitude ? "ok" : "none"} stampText={{ ok: "Qeyd olunub", none: "Yoxdur" }}
+        actions={!editingLocation && (
+          <button onClick={() => setEditingLocation(true)} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold transition-colors">
+            {profile.city || profile.latitude ? t('changeLocation') : t('addLocation')}
+          </button>
+        )}>
 
         {editingLocation ? (
           <div className="space-y-3">
@@ -1417,37 +1435,24 @@ export default function ProfilePage() {
             </div>
           </div>
         ) : profile.city || profile.address || profile.latitude ? (
-          <div className="text-sm space-y-1">
-            {profile.city && <p className="font-medium">📍 {profile.city}</p>}
-            {profile.address && <p className="text-muted">{profile.address}</p>}
-            {profile.latitude && profile.longitude && (
-              <p className="text-[11px] text-muted">
-                {t('locationPinPlaced')} ({profile.latitude.toFixed(4)}, {profile.longitude.toFixed(4)})
-              </p>
-            )}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3">
+            <IdField label="Şəhər" value={profile.city} />
+            <IdField label="Ünvan" value={profile.address} />
+            <IdField label="Koordinat" value={profile.latitude && profile.longitude ? `${profile.latitude.toFixed(4)}, ${profile.longitude.toFixed(4)}` : null} mono />
           </div>
         ) : (
           <p className="text-muted text-sm text-center py-4">
             {t('locationNotSetYet')}
           </p>
         )}
-      </div>
+      </IdCard>
 
       {/* Vehicles section - only for CAR_OWNER */}
       {profile.type === "CAR_OWNER" && (
-        <div className="surface p-5 sm:p-7 mb-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold flex items-center gap-2">
-              <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25" /></svg>
-              Avtomobillərim ({profile.vehicles?.length || 0})
-            </h2>
-            {!showVehicleForm && (
-              <button onClick={startAddVehicle} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-medium hover:bg-orange-500/20 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                Avtomobil əlavə et
-              </button>
-            )}
-          </div>
+        <IdCard icon="🚗" title={`Avtomobillərim (${profile.vehicles?.length || 0})`} tone="blue"
+          actions={!showVehicleForm && (
+            <button onClick={startAddVehicle} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold transition-colors">＋ Əlavə et</button>
+          )}>
 
           {showVehicleForm && (
             <form onSubmit={submitVehicle} className="bg-input-bg/50 border border-input-border rounded-xl p-4 mb-4 space-y-4">
@@ -1612,25 +1617,23 @@ export default function ProfilePage() {
                   ['Kart seriyası', v.cardSerial],
                 ] as Array<[string, string | number | null | undefined]>).filter(([, val]) => val !== null && val !== undefined && val !== '');
                 return (
-                  <div key={v.id} className="p-3 bg-input-bg/40 border border-input-border/60 rounded-xl">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center shrink-0">
-                          <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25" /></svg>
-                        </div>
-                        <div className="min-w-0">
-                          <p className="font-medium text-sm truncate">{v.brand} {v.model}</p>
-                          <p className="text-muted text-xs">📅 {v.year}{v.registrationNumber ? ` · 🚗 ${v.registrationNumber}` : ''}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-1.5 shrink-0">
+                  <IdMini key={v.id} icon="🚗" tone="blue" title={`${v.brand} ${v.model}`}
+                    stamp={v.bodyNumber || v.cardSerial ? "ok" : null} stampText={{ ok: "Texpasport" }}
+                    sub={v.color || undefined}
+                    actions={<div className="flex gap-1.5 shrink-0">
                         <button onClick={() => startEditVehicle(v)} className="p-2 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-colors" title={t("adminEdit")}>
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                         </button>
                         <button onClick={() => deleteVehicle(v.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors" title={t("adminDelete")}>
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         </button>
-                      </div>
+                      </div>}>
+                    {/* Vəsiqə sahələri — əsas məlumat həmişə görünür */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2.5">
+                      <IdField label="Dövlət nişanı" value={v.registrationNumber} mono />
+                      <IdField label="İl" value={v.year} />
+                      <IdField label="VIN / Ban" value={v.bodyNumber} mono />
+                      <IdField label="Mühərrik" value={v.engineCapacity} />
                     </div>
                     {passportRows.length > 0 && (
                       <details className="mt-2">
@@ -1647,29 +1650,20 @@ export default function ProfilePage() {
                         </dl>
                       </details>
                     )}
-                  </div>
+                  </IdMini>
                 );
               })}
             </div>
           )}
-        </div>
+        </IdCard>
       )}
 
       {/* Workplaces section - for MECHANIC and PARTS_SELLER */}
       {(profile.type === "MECHANIC" || profile.type === "PARTS_SELLER") && (
-        <div className="surface p-5 sm:p-7 mb-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold flex items-center gap-2">
-              <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-              {t("workplaces")} ({profile.workplaces?.length || 0})
-            </h2>
-            {!showWorkplaceForm && (
-              <button onClick={startAddWorkplace} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-500/10 text-orange-500 rounded-lg text-xs font-medium hover:bg-orange-500/20 transition-colors">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-                {t("addWorkplace")}
-              </button>
-            )}
-          </div>
+        <IdCard icon="🔧" title={`${t("workplaces")} (${profile.workplaces?.length || 0})`} tone="teal"
+          actions={!showWorkplaceForm && (
+            <button onClick={startAddWorkplace} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-lg text-xs font-semibold transition-colors">＋ {t("addWorkplace")}</button>
+          )}>
 
           {showWorkplaceForm && (
             <form onSubmit={submitWorkplace} className="bg-input-bg/50 border border-input-border rounded-xl p-4 mb-4 space-y-3">
@@ -1689,41 +1683,29 @@ export default function ProfilePage() {
           ) : (
             <div className="space-y-2">
               {profile.workplaces?.map((w: any) => (
-                <div key={w.id} className="flex items-center justify-between gap-3 p-3 bg-input-bg/40 border border-input-border/60 rounded-xl">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-10 h-10 bg-orange-500/10 rounded-lg flex items-center justify-center shrink-0">
-                      <svg className="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-medium text-sm truncate">{w.name}</p>
-                      <p className="text-muted text-xs truncate">{w.address}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
+                <IdMini key={w.id} icon="🔧" tone="teal" title={w.name} sub={`📍 ${w.address}`}
+                  actions={<div className="flex gap-1.5 shrink-0">
                     <button onClick={() => startEditWorkplace(w)} className="p-2 bg-orange-500/10 text-orange-500 rounded-lg hover:bg-orange-500/20 transition-colors" title={t("adminEdit")}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     </button>
                     <button onClick={() => deleteWorkplace(w.id)} className="p-2 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500/20 transition-colors" title={t("adminDelete")}>
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                     </button>
-                  </div>
-                </div>
+                  </div>} />
               ))}
             </div>
           )}
-        </div>
+        </IdCard>
       )}
 
-      {/* Sosial media hesabları */}
-      <div className="surface p-5 sm:p-7 mb-5">
-        <h2 className="text-lg font-semibold mb-1">Sosial media və email</h2>
-        <p className="text-xs text-muted mb-4">Hesabınızla daxil olun — platforma təsdiqindən sonra profilinizdə “✓” ilə görünəcək.</p>
-
+      {/* Sosial media hesabları — hər hesab ayrıca «kimlik kartı».
+          Təsdiq: kod → bio → sistem oxuyur (açarsız); OAuth açarları varsa hesabla daxil olmaq. */}
+      <IdCard id="social" icon="🌐" title="Sosial media və email" tone="brand"
+        stamp={profile.socialLinks?.some((x: any) => x.verified) ? "ok" : null} stampText={{ ok: `${profile.socialLinks?.filter((x: any) => x.verified).length || 0} təsdiqli` }}
+        subtitle="Təsdiqlənmiş hesablar public profilinizdə «✓» ilə görünür. Başqaları sizi Instagram, TikTok və s. adınızla axtaranda birbaşa bu profilə çatır — hesabın sizə məxsus olduğu sistem tərəfindən sübut olunub.">
         {/* Email doğrulaması */}
-        <div className="mb-4 p-3 bg-input-bg border border-input-border rounded-xl">
-          <p className="text-sm font-medium mb-2 flex items-center gap-2">📧 Email
-            {profile.emailVerified && profile.email && <span className="text-[11px] text-green-500 font-semibold">✓ Təsdiqlənmiş</span>}
-          </p>
+        <IdMini icon="📧" tone="slate" title="Email" className="mb-3"
+          stamp={profile.emailVerified && profile.email ? "ok" : "none"} stampText={{ none: "Təsdiqlənməyib" }}>
           {profile.emailVerified && profile.email ? (
             <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2">
               <span className="text-sm text-green-500 font-medium truncate">{profile.email}</span>
@@ -1749,60 +1731,84 @@ export default function ProfilePage() {
               {emailVerified && <p className="text-[11px] text-green-500">✓ Email təsdiqləndi!</p>}
             </div>
           )}
-        </div>
+        </IdMini>
+
 
         {(profile.socialLinks?.length > 0) && (
-          <div className="space-y-2 mb-4">
+          <div className="grid grid-cols-1 gap-3 mb-4">
             {profile.socialLinks.map((s: any) => {
               const meta = SOCIAL_META[s.platform] || { label: s.platform, icon: "🔗" };
+              const auto = ["telegram", "youtube", "linkedin", "twitter", "website"].includes(s.platform);
+              const busy = socialCheckBusy === s.id;
+              const pending = !s.verified && !!s.reviewRequestedAt;
+              const methodLabel = s.verifyMethod === "OAUTH" ? "hesabla daxil olub" : s.verifyMethod === "BIO_CODE" ? "bio kodu ilə" : s.verifyMethod === "POST_CODE" ? "paylaşım kodu ilə" : s.verifyMethod === "ADMIN" ? "admin yoxlaması ilə" : "";
               return (
-                <div key={s.id} className="flex items-center gap-2 bg-input-bg border border-input-border rounded-xl px-3 py-2">
-                  <SocialIcon platform={s.platform} className="w-5 h-5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium flex items-center gap-1.5">
-                      {meta.label}
-                      {s.verified
-                        ? <span className="text-[11px] text-green-500 font-semibold">✓ təsdiqlənib</span>
-                        : <span className="text-[11px] text-amber-500">gözləyir</span>}
-                    </p>
-                    <a href={s.url} target="_blank" rel="noreferrer" className="text-xs text-muted truncate block hover:text-orange-500">{s.url}</a>
-                  </div>
-                  <button onClick={() => deleteSocial(s.id)} className="text-red-500 text-xs shrink-0">Sil</button>
-                </div>
+                <IdMini key={s.id} tone={s.verified ? "green" : pending ? "amber" : "slate"}
+                  icon={<SocialIcon platform={s.platform} className="w-5 h-5" />}
+                  title={meta.label}
+                  stamp={s.verified ? "ok" : pending ? "pending" : "none"} stampText={{ ok: "Təsdiqli", pending: "Admin yoxlayır", none: "Təsdiqlənməyib" }}
+                  sub={<a href={s.url} target="_blank" rel="noreferrer" className="hover:text-orange-500">{s.url.replace(/^https?:\/\/(www\.)?/, "")}</a>}
+                  actions={<button onClick={() => { if (confirm(`${meta.label} hesabı silinsin?`)) deleteSocial(s.id); }} className="text-muted hover:text-red-500 text-xs">Sil</button>}>
+                  {s.verified ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <IdField label="Təsdiq üsulu" value={methodLabel || "təsdiqli"} />
+                      <IdField label="Tarix" value={s.verifiedAt ? new Date(s.verifiedAt).toLocaleDateString("az-AZ") : null} />
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {/* 1 — kod */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs text-muted">1. Bu kodu hesabınızın <b>biosuna</b> (təsvir / about) yazıb yadda saxlayın:</span>
+                        {s.verifyCode && <span className="id-code text-sm">{s.verifyCode}</span>}
+                        {s.verifyCode && <button onClick={() => copyText(s.verifyCode)} className="text-xs font-semibold text-[var(--brand-to)] hover:underline">Kopyala</button>}
+                      </div>
+                      {/* 2 — platformaya görə yol */}
+                      {auto ? (
+                        <p className="text-xs text-muted">2. «Yoxla» basın — sistem profilinizi oxuyub kodu tapan kimi hesab təsdiqlənir. Sonra kodu biodan silə bilərsiniz.</p>
+                      ) : (
+                        <div className="text-xs text-muted space-y-1.5">
+                          <p>2. {meta.label} bionu kənar sistemlərə göstərmir. İki yol var:</p>
+                          <p>• <b>Avtomatik:</b> kodu bir <b>ictimai paylaşımın</b> mətninə yazın və həmin paylaşımın linkini aşağıya qoyun, sonra «Yoxla».</p>
+                          <p>• <b>Admin yoxlaması:</b> kodu bioda saxlayın və «Adminə göndər» basın — admin profilinizi açıb kodu yoxlayacaq.</p>
+                          <input value={proofDraft[s.id] ?? s.proofUrl ?? ""} onChange={(e) => setProofDraft((d) => ({ ...d, [s.id]: e.target.value }))}
+                            placeholder={`Paylaşım linki (məs. https://www.${s.platform}.com/...)`} className={`${inputCls} text-xs`} />
+                        </div>
+                      )}
+                      {s.lastCheckNote && <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-2.5 py-1.5">{s.lastCheckNote}</p>}
+                      <div className="flex gap-2 flex-wrap">
+                        <button onClick={() => checkSocial(s.id)} disabled={busy}
+                          className="px-4 py-2 rounded-xl text-white text-xs font-semibold bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] disabled:opacity-50">
+                          {busy ? "Yoxlanılır…" : "🔍 Yoxla"}
+                        </button>
+                        {!auto && !pending && (
+                          <button onClick={() => requestSocialReview(s.id)} className="px-4 py-2 rounded-xl text-xs font-semibold bg-input-bg border border-input-border hover:border-orange-500/50">Adminə göndər</button>
+                        )}
+                        {pending && <span className="text-[11px] text-amber-600 self-center">⏳ Admin yoxlayır — kodu biodan silməyin</span>}
+                        {oauthProviders.includes(s.platform) && (
+                          <button onClick={() => connectOauth(s.platform)} className="px-4 py-2 rounded-xl text-xs font-semibold bg-input-bg border border-input-border hover:border-orange-500/50">{meta.label} ilə daxil ol</button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </IdMini>
               );
             })}
           </div>
         )}
 
-        {/* Ən güclü: OAuth ilə "hesabla təsdiqlə" */}
-        <div className="mb-4">
-          <p className="text-xs font-semibold text-muted mb-2">Hesabla təsdiqlə <span className="text-green-500">(ən etibarlı)</span></p>
-          <div className="flex flex-wrap gap-2">
-            {["instagram", "facebook", "tiktok"].map((p) => {
-              const on = oauthProviders.includes(p);
-              return (
-                <button key={p} onClick={() => connectOauth(p)} disabled={!on}
-                  title={on ? "" : "Bu platforma üçün OAuth hələ konfiqurasiya olunmayıb"}
-                  className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-input-border text-sm font-medium hover:border-orange-500/50 disabled:opacity-40 disabled:cursor-not-allowed">
-                  <SocialIcon platform={p} className="w-5 h-5" />
-                  {SOCIAL_META[p].label} ilə
-                </button>
-              );
-            })}
+        {/* Yeni hesab əlavə et */}
+        <div className="p-3.5 rounded-2xl border border-dashed border-input-border">
+          <p className="text-xs font-semibold text-muted mb-2">＋ Hesab əlavə et</p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <select value={socialPlatform} onChange={(e) => setSocialPlatform(e.target.value)} className="px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground sm:w-40">
+              {Object.entries(SOCIAL_META).map(([k, m]) => <option key={k} value={k}>{m.icon} {m.label}</option>)}
+            </select>
+            <input value={socialUrl} onChange={(e) => setSocialUrl(e.target.value)} placeholder={socialPlatform === "website" ? "https://saytiniz.az" : socialPlatform === "telegram" ? "https://t.me/istifadeci" : `https://${socialPlatform === "twitter" ? "x" : socialPlatform}.com/istifadeci`} className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground" />
+            <button onClick={addSocial} disabled={socialBusy || !socialUrl.trim()} className="px-4 py-2.5 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] text-white rounded-xl text-sm font-semibold disabled:opacity-50">{socialBusy ? "..." : "Əlavə et"}</button>
           </div>
-          <p className="text-[11px] text-muted mt-1.5">{oauthProviders.length > 0 ? "Hesabla daxil olduqda link platforma tərəfindən təsdiqlənir." : "Hesabla təsdiq hələ aktiv deyil (platforma açarları qoyulmayıb). Aşağıdan əl ilə əlavə edin."}</p>
+          <p className="text-[11px] text-muted mt-1.5">Əlavə etdikdən sonra sizə təsdiq kodu veriləcək. Kod yalnız sahiblik sübutu üçündür — şifrə və ya giriş tələb olunmur.</p>
         </div>
-
-        {/* Əl ilə link əlavə et (admin təsdiqi) — açarsız işlək yol */}
-        <p className="text-xs font-semibold text-muted mb-2">Link əlavə et <span className="text-amber-500">(admin təsdiqi)</span></p>
-        <div className="flex flex-col sm:flex-row gap-2">
-          <select value={socialPlatform} onChange={(e) => setSocialPlatform(e.target.value)} className="px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground sm:w-40">
-            {Object.entries(SOCIAL_META).map(([k, m]) => <option key={k} value={k}>{m.icon} {m.label}</option>)}
-          </select>
-          <input value={socialUrl} onChange={(e) => setSocialUrl(e.target.value)} placeholder="https://instagram.com/istifadeci" className="flex-1 px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground" />
-          <button onClick={addSocial} disabled={socialBusy || !socialUrl.trim()} className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{socialBusy ? "..." : "Əlavə et"}</button>
-        </div>
-      </div>
+      </IdCard>
 
       {/* My Listings */}
       <div className="flex items-center justify-between mb-4">
