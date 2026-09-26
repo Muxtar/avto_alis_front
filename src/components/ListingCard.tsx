@@ -9,6 +9,7 @@ import { formatPrice, formatPriceShort, formatPostedAt } from "@/lib/format";
 import { COUNTRY_BY_CODE } from "@/lib/countries";
 import { useCardGroupBuy } from "@/lib/groupBuyCard";
 import { useInstallmentConfig, listingInstallmentAllowed, monthsForListing } from "@/lib/installment";
+import CheaperOfferModal from "@/components/CheaperOfferModal";
 
 interface Listing {
   id: number;
@@ -36,6 +37,7 @@ interface Listing {
   forRent?: boolean;
   user: { id?: number; name: string; avgRating?: number | null; ratingCount?: number };
   businessObject?: { id: number; name: string } | null;
+  businessId?: number | null;
   // VIP — ödənişli önə çıxarma (siyahıda həmişə əvvəldə, kartda nişan).
   isVip?: boolean;
   vipUntil?: string | null;
@@ -53,6 +55,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
+  // «Daha ucuz təklif et» pəncərəsi — hər kartdan açılır.
+  const [cheapOpen, setCheapOpen] = useState(false);
 
   const isService = listing.type === "SERVICE";
   // Müddəti bitmiş VIP-i backend işi (services/vip.ts → expireVips) söndürür.
@@ -377,8 +381,32 @@ export default function ListingCard({ listing }: { listing: Listing }) {
               </button>
             </div>
           )}
+
+          {/* «Daha ucuz təklif et» — saytdakı İSTƏNİLƏN elana: satıcıya öz qiymətini
+              təklif et və ya başqa satıcılardan daha ucuzunu istə. */}
+          {!isOwner && (
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setCheapOpen(true); }}
+              className={`w-full inline-flex items-center justify-center gap-1.5 py-2 rounded-xl border border-dashed border-[var(--brand-to)]/45 text-[var(--brand-to)] text-xs font-bold hover:bg-[var(--brand-soft)] hover:border-solid transition-all ${canBuy ? "mt-2" : "mt-3"}`}
+              title="Satıcıya öz qiymətinizi təklif edin və ya başqa satıcılardan daha ucuzunu istəyin"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 7l6 6 4-4 8 8m0 0v-6m0 6h-6" /></svg>
+              Daha ucuz təklif et
+            </button>
+          )}
         </div>
       </div>
+      {cheapOpen && (
+        <CheaperOfferModal
+          onClose={() => setCheapOpen(false)}
+          listing={{
+            id: listing.id, title: listing.title, price: listing.price, stock: listing.stock, images: listing.images, type: listing.type,
+            city: listing.city, ownerId: listing.user.id,
+            personal: !listing.businessObject && !listing.businessId,
+          }}
+        />
+      )}
     </Link>
   );
 }

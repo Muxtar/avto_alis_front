@@ -37,6 +37,8 @@ interface Offer {
   updatedAt: string;
   listing: { id: number; title: string; images: string[]; price: number; stock: number } | null;
   counterparty: { id: number; name: string; avatar: string | null } | null;
+  /** false — fərdi satıcının elanı: razılaşma chat-da tamamlanır (səbət yoxdur). */
+  online?: boolean;
 }
 
 const STATUS: Record<OfferStatus, { label: string; pill: string; accent: string }> = {
@@ -160,7 +162,7 @@ export default function OffersPage() {
       .then((x) => x.json()).catch(() => null);
     setBusyId(null);
     done(r, action === "accept_counter"
-      ? "Qiymət razılaşdırıldı — 48 saat ərzində bu qiymətlə ala bilərsiniz"
+      ? (o.online === false ? "Qiymət razılaşdırıldı — satıcı ilə mesajlaşaraq alışı tamamlayın" : "Qiymət razılaşdırıldı — 48 saat ərzində bu qiymətlə ala bilərsiniz")
       : action === "reject_counter" ? "Əks-təklif rədd edildi" : "Təklif ləğv edildi");
   };
 
@@ -284,7 +286,7 @@ export default function OffersPage() {
                 let timeText = "";
                 if (left != null) {
                   if (left <= 0) timeText = "Müddət bitdi";
-                  else if (o.status === "ACCEPTED") timeText = `Alış üçün ${leftText(left)} qalıb`;
+                  else if (o.status === "ACCEPTED") timeText = o.online === false ? `Razılaşma ${leftText(left)} etibarlıdır — alışı mesajla tamamlayın` : `Alış üçün ${leftText(left)} qalıb`;
                   else if (o.status === "PENDING") timeText = tab === "selling" ? `Cavab üçün ${leftText(left)} qalıb` : `Satıcının cavabı gözlənilir · ${leftText(left)} qalıb`;
                   else timeText = tab === "buying" ? `Cavab üçün ${leftText(left)} qalıb` : `Alıcının cavabı gözlənilir · ${leftText(left)} qalıb`;
                 }
@@ -366,7 +368,12 @@ export default function OffersPage() {
                           )}
                           {o.status === "ACCEPTED" && (
                             <>
-                              {windowOpen ? (
+                              {o.online === false ? (
+                                <Link href={`/messages?chat=${o.sellerId}&seg=BUSINESS&name=${encodeURIComponent(o.counterparty?.name || "")}`}
+                                  className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm font-bold text-white text-center bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] hover:brightness-110">
+                                  💬 Satıcıya yaz — {formatPrice(Math.round(effPrice * o.quantity * 100) / 100)} ₼
+                                </Link>
+                              ) : windowOpen ? (
                                 <button disabled={busy} onClick={() => buyAtPrice(o)}
                                   className="flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-sm font-bold cta-gradient shadow-lg shadow-[var(--cta-from)]/25 disabled:opacity-50">
                                   {busy ? "..." : `🛒 Bu qiymətlə al — ${formatPrice(Math.round(effPrice * o.quantity * 100) / 100)} ₼`}
@@ -428,6 +435,12 @@ export default function OffersPage() {
                             </div>
                           )}
                         </div>
+                      )}
+                      {tab === "selling" && o.status === "ACCEPTED" && o.online === false && (
+                        <Link href={`/messages?chat=${o.buyerId}&seg=BUSINESS&name=${encodeURIComponent(o.counterparty?.name || "")}`}
+                          className="inline-block px-4 py-2 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] hover:brightness-110">
+                          💬 Alıcıya yaz — satışı tamamlayın
+                        </Link>
                       )}
                       {tab === "selling" && o.status === "USED" && o.orderId && (
                         <Link href={`/orders?tab=selling&id=${o.orderId}`} className="inline-block text-xs font-semibold text-blue-600 hover:underline">📦 Sifariş #{o.orderId} →</Link>

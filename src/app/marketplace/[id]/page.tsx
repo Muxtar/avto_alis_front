@@ -20,7 +20,7 @@ import SellerReply from "@/components/SellerReply";
 import { recordView } from "@/lib/recentlyViewed";
 import InstallmentCalculator from "@/components/InstallmentCalculator";
 import ReferralSellCard from "@/components/ReferralSellCard";
-import PriceOfferForm from "@/components/PriceOfferForm";
+import CheaperOfferModal from "@/components/CheaperOfferModal";
 import { listingInstallmentAllowed, monthsForListing, useInstallmentConfig } from "@/lib/installment";
 
 
@@ -1158,14 +1158,16 @@ export default function ListingDetailPage() {
                     </button>
                   </>
                 )}
-                {/* ── QİYMƏT TƏKLİFİ — alıcı öz qiymətini təklif edir, satıcı qəbul/rədd/əks-təklif ── */}
-                {listing.businessId && !isOwner && listing.status === "APPROVED" && !isExpired && listing.stock > 0 && (
-                  <button type="button" onClick={openOffer}
-                    className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold border border-dashed border-[var(--brand-to)]/45 text-[var(--brand-to)] bg-transparent hover:bg-[var(--brand-soft)] transition-all">
-                    💬 Qiymət təklif et
-                  </button>
-                )}
               </>
+            )}
+            {/* ── DAHA UCUZ TƏKLİF ET — istənilən elana (biznes və fərdi, məhsul və xidmət):
+                satıcıya öz qiymətini təklif et və ya başqa satıcılardan daha ucuzunu istə ── */}
+            {!isOwner && listing.status === "APPROVED" && !isExpired && (
+              <button type="button" onClick={openOffer}
+                className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border border-dashed border-[var(--brand-to)]/45 text-[var(--brand-to)] bg-transparent hover:bg-[var(--brand-soft)] hover:border-solid transition-all">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 7l6 6 4-4 8 8m0 0v-6m0 6h-6" /></svg>
+                Daha ucuz təklif et
+              </button>
             )}
           </div>
 
@@ -1363,24 +1365,16 @@ export default function ListingDetailPage() {
         </section>
       )}
 
-      {/* ── Qiymət təklifi modalı ── */}
+      {/* ── Daha ucuz təklif et pəncərəsi (kartdakı ilə eyni) ── */}
       {offerOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4" onClick={() => setOfferOpen(false)}>
-          <div className="bg-card border border-card-border w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="min-w-0">
-                <h3 className="font-bold text-lg">💬 Qiymət təklif et</h3>
-                <p className="text-xs text-muted truncate">{listing.title}</p>
-              </div>
-              <button onClick={() => setOfferOpen(false)} className="text-muted hover:text-foreground text-2xl leading-none">×</button>
-            </div>
-            <PriceOfferForm
-              listing={{ id: listing.id, title: listing.title, price: listing.price, stock: listing.stock, images: listing.images, type: listing.type }}
-              initialQty={cartQty}
-              onCancel={() => setOfferOpen(false)}
-            />
-          </div>
-        </div>
+        <CheaperOfferModal
+          onClose={() => setOfferOpen(false)}
+          initialQty={cartQty}
+          listing={{
+            id: listing.id, title: listing.title, price: listing.price, stock: listing.stock, images: listing.images, type: listing.type,
+            city: listing.city, ownerId: listing.user?.id, personal: !listing.businessId && !listing.businessObjectId,
+          }}
+        />
       )}
 
       {/* ── Bron modalı ── */}

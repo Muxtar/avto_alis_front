@@ -19,6 +19,8 @@ export interface OfferListing {
   stock?: number | null;
   images?: string[] | null;
   type?: string | null;
+  /** Fərdi satıcının elanı (onlayn alınmır) — razılaşma chat-da davam edir. */
+  personal?: boolean;
 }
 
 /** Təklif ən azı hazırkı qiymətin bu hissəsi olmalıdır (backend ilə eyni). */
@@ -103,7 +105,9 @@ export default function PriceOfferForm({
         <p className="font-bold">Təklifiniz göndərildi</p>
         <p className="text-sm text-muted mt-1">
           {qty} ədəd × {formatPrice(price)} ₼ — satıcı cavab verəndə bildiriş alacaqsınız.
-          Qəbul etsə, 48 saat ərzində bu qiymətlə ala bilərsiniz.
+          {listing.personal
+            ? " Qəbul etsə, razılaşma söhbətinizə yazılacaq — alışı satıcı ilə mesajlaşaraq tamamlayacaqsınız."
+            : " Qəbul etsə, 48 saat ərzində bu qiymətlə ala bilərsiniz."}
         </p>
         <div className="mt-4 flex gap-2 justify-center flex-wrap">
           <Link href={sent.id ? `/offers?id=${sent.id}` : "/offers"}
@@ -180,7 +184,9 @@ export default function PriceOfferForm({
       </div>
 
       <p className="text-[11px] text-muted leading-relaxed">
-        ℹ️ Satıcı qəbul etsə, <b>48 saat</b> ərzində bu qiymətlə ala bilərsiniz. Satıcı əks-təklif də göndərə bilər.
+        {listing.personal
+          ? <>ℹ️ Fərdi satıcı — satıcı qəbul etsə razılaşdırılmış qiymət söhbətinizə yazılır, görüş və ödənişi mesajla razılaşırsınız. Satıcı əks-təklif də göndərə bilər.</>
+          : <>ℹ️ Satıcı qəbul etsə, <b>48 saat</b> ərzində bu qiymətlə ala bilərsiniz. Satıcı əks-təklif də göndərə bilər.</>}
       </p>
 
       <div className="flex gap-2 justify-end">

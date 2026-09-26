@@ -12,14 +12,12 @@ import TrustBar from "@/components/TrustBar";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import AddListingMenu from "@/components/AddListingMenu";
 import ShareButton from "@/components/ShareButton";
-import PriceOfferForm, { type OfferListing } from "@/components/PriceOfferForm";
 import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
 import CategoryFilterPanel from "@/components/CategoryFilterPanel";
 import CategoryMegaMenu from "@/components/CategoryMegaMenu";
 import { API, imgUrl } from "@/lib/api";
-import { formatPrice } from "@/lib/format";
 import { getSocket } from "@/lib/callSocket";
-import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
+import { FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { CATEGORIES, parseCat, buildCat, catToSlugs, slugsToCat } from "@/lib/categories";
 import { IXTISAS_SECTORS } from "@/lib/ixtisas";
 
@@ -56,50 +54,7 @@ function MarketplacePage() {
     const q = searchQuery.trim();
     router.push(q ? `${base}?search=${encodeURIComponent(q)}` : base);
   };
-  // Cheap-search inquiry modal
-  const [cheapModalOpen, setCheapModalOpen] = useState(false);
-  const [cheapInquiryText, setCheapInquiryText] = useState("");
-  const [cheapInquiryCities, setCheapInquiryCities] = useState<string[]>([]);
-  const [cheapInquirySending, setCheapInquirySending] = useState(false);
-  // «Daha ucuza axtar» iki rejimdədir: konkret məhsula qiymət təklifi (defolt)
-  // və ya satıcılardan təklif istəmək (köhnə sorğu forması).
-  const [cheapMode, setCheapMode] = useState<"offer" | "inquiry">("offer");
 
-  const openCheapModal = () => {
-    if (!isLoggedIn) { router.push("/"); return; }
-    setCheapInquiryText(searchQuery || "");
-    setCheapInquiryCities(cityFilter ? [cityFilter] : []);
-    setCheapMode("offer");
-    setCheapModalOpen(true);
-  };
-
-  const submitCheapInquiry = async () => {
-    if (!cheapInquiryText.trim()) return;
-    setCheapInquirySending(true);
-    try {
-      const res = await fetch(`${API}/inquiries`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ text: cheapInquiryText.trim(), cities: cheapInquiryCities }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        toast(data.message || t("error"), "error");
-        return;
-      }
-      toast(`${data.matchedSellers || 0} ${t("sellersMatched")}`, "success");
-      setCheapModalOpen(false);
-      router.push("/inquiries");
-    } catch {
-      toast(t("error"), "error");
-    } finally {
-      setCheapInquirySending(false);
-    }
-  };
-
-  const toggleCheapCity = (city: string) => {
-    setCheapInquiryCities((prev) => prev.includes(city) ? prev.filter((c) => c !== city) : [...prev, city]);
-  };
   const [listings, setListings] = useState<any[]>([]);
   const [professionals, setProfessionals] = useState<any[]>([]);
   // Üst axtarışdan ixtisas/ad üzrə tapılan mütəxəssislər (məhsul/xidmət rejimində də göstərilir)
@@ -424,18 +379,6 @@ function MarketplacePage() {
                   {btn.icon}{btn.label}
                 </button>
               ))}
-            </div>
-            {/* «Daha ucuza axtar» — eyni kapsul dilində: sakit halda yumşaq brend fonu. */}
-            <div className="seg-tabs shrink-0">
-              <button
-                type="button"
-                onClick={openCheapModal}
-                className="seg-tab px-3 sm:px-3.5 !text-[var(--brand-to)] bg-[var(--brand-soft)] !rounded-full"
-                title={t("cheaperSearchTitle")}
-              >
-                {segIco("M13 7h8m0 0v8m0-8-8 8-4-4-6 6")}
-                {t("cheaperSearch")}
-              </button>
             </div>
 
             <div className="flex-1 min-w-0 hidden sm:block" />
@@ -874,164 +817,6 @@ function MarketplacePage() {
         </div>
       </div>
 
-      {/* «Daha ucuza axtar» — qiymət təklifi / satıcılardan təklif istə */}
-      {cheapModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setCheapModalOpen(false)}>
-          <div className="bg-card border border-card-border rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            <div className="px-5 py-4 border-b border-card-border">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-bold text-lg">🔻 {t("cheaperSearch")}</h3>
-                  <p className="text-muted text-xs">Qiymət təklif edin — satıcı qəbul etsə 48 saat ərzində bu qiymətlə ala bilərsiniz</p>
-                </div>
-                <button onClick={() => setCheapModalOpen(false)} className="text-muted hover:text-foreground">✕</button>
-              </div>
-              <div className="seg-tabs mt-3" role="tablist" aria-label="Daha ucuza axtar">
-                <button type="button" role="tab" aria-selected={cheapMode === "offer"} onClick={() => setCheapMode("offer")}
-                  className={`seg-tab ${cheapMode === "offer" ? "is-active" : ""}`} style={{ whiteSpace: "normal", textAlign: "center", lineHeight: 1.25 }}>💬 Məhsula qiymət təklif et</button>
-                <button type="button" role="tab" aria-selected={cheapMode === "inquiry"} onClick={() => setCheapMode("inquiry")}
-                  className={`seg-tab ${cheapMode === "inquiry" ? "is-active" : ""}`} style={{ whiteSpace: "normal", textAlign: "center", lineHeight: 1.25 }}>📨 Satıcılardan təklif istə</button>
-              </div>
-            </div>
-            {cheapMode === "offer" ? (
-              <div className="p-5">
-                <OfferPicker initialQuery={searchQuery || ""} onClose={() => setCheapModalOpen(false)} />
-              </div>
-            ) : (
-              <>
-                <p className="px-5 pt-4 text-muted text-xs">{t("cheaperSearchDesc")}</p>
-              <div className="p-5 space-y-4">
-                <div>
-                  <label className="block text-xs font-medium text-muted mb-1.5">{t("searchPlaceholder")}</label>
-                  <textarea
-                    value={cheapInquiryText}
-                    onChange={(e) => setCheapInquiryText(e.target.value)}
-                    rows={3}
-                    className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm focus:outline-none focus:border-orange-500"
-                    placeholder={t("cheaperSearchTextPlaceholder")}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted mb-1.5">
-                    📍 {t("cheaperSearchCities")} {cheapInquiryCities.length > 0 && `(${cheapInquiryCities.length})`}
-                  </label>
-                  <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto p-2 bg-input-bg/50 border border-input-border rounded-xl">
-                    {AZ_CITIES.map((c) => {
-                      const active = cheapInquiryCities.includes(c);
-                      return (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => toggleCheapCity(c)}
-                          className={`text-[11px] px-2.5 py-1 rounded-full border transition-all ${
-                            active
-                              ? "bg-orange-500 text-white border-orange-500"
-                              : "bg-card border-input-border text-muted hover:text-foreground"
-                          }`}
-                        >
-                          {c}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <p className="text-[11px] text-muted mt-1.5">{t("cheaperSearchCitiesHint")}</p>
-                </div>
-              </div>
-              <div className="px-5 py-4 border-t border-card-border flex gap-2 justify-end">
-                <button onClick={() => setCheapModalOpen(false)} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm">
-                  {t("adminCancel")}
-                </button>
-                <button
-                  onClick={submitCheapInquiry}
-                  disabled={cheapInquirySending || !cheapInquiryText.trim()}
-                  className="px-5 py-2 brand-gradient rounded-xl text-white text-sm font-semibold hover:brightness-110 disabled:opacity-50"
-                >
-                  {cheapInquirySending ? "..." : t("cheaperSearchSubmit")}
-                </button>
-              </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── «Daha ucuza axtar» → məhsula qiymət təklifi ──
-   İstifadəçi məhsulu axtarır, siyahıdan birini seçir və həmin məhsul üçün
-   qiymət təklif formu açılır (PriceOfferForm — məhsul səhifəsindəki ilə eyni). */
-function OfferPicker({ initialQuery, onClose }: { initialQuery: string; onClose: () => void }) {
-  const { user } = useAuth();
-  const [q, setQ] = useState(initialQuery);
-  const [results, setResults] = useState<any[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [picked, setPicked] = useState<OfferListing | null>(null);
-
-  // Gecikməli axtarış — hər hərfdə sorğu getməsin.
-  useEffect(() => {
-    const term = q.trim();
-    if (term.length < 2) return;
-    let alive = true;
-    const tm = setTimeout(() => {
-      setSearching(true);
-      fetch(`${API}/listings?search=${encodeURIComponent(term)}&limit=20`)
-        .then((r) => r.json())
-        .then((d) => { if (alive) setResults((d.listings || []).filter((l: any) => l.type !== "PROFESSION")); })
-        .catch(() => { if (alive) setResults([]); })
-        .finally(() => { if (alive) setSearching(false); });
-    }, 350);
-    return () => { alive = false; clearTimeout(tm); };
-  }, [q]);
-
-  if (picked) {
-    return <PriceOfferForm listing={picked} showListing onChangeListing={() => setPicked(null)} onCancel={onClose} />;
-  }
-
-  const term = q.trim();
-  const shown = term.length >= 2 ? results : [];
-  return (
-    <div className="space-y-3">
-      <div className="relative">
-        <svg className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z" /></svg>
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Hansı məhsulu almaq istəyirsiniz?"
-          className="w-full pl-9 pr-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-to)]/40" />
-      </div>
-      <div className="max-h-[45vh] overflow-y-auto orders-scroll -mx-1 px-1 space-y-1.5">
-        {term.length < 2 ? (
-          <p className="text-xs text-muted text-center py-6">Məhsulun adını yazın — siyahıdan seçib öz qiymətinizi təklif edin.</p>
-        ) : searching && shown.length === 0 ? (
-          <div className="flex justify-center py-6"><div className="w-6 h-6 border-2 border-[var(--brand-to)] border-t-transparent rounded-full animate-spin" /></div>
-        ) : shown.length === 0 ? (
-          <p className="text-xs text-muted text-center py-6">Heç nə tapılmadı. «📨 Satıcılardan təklif istə» bölməsini yoxlayın.</p>
-        ) : shown.map((l) => {
-          const mine = user?.id != null && l.user?.id === user.id;
-          const out = typeof l.stock === "number" && l.stock <= 0 && l.type !== "SERVICE";
-          // Fərdi (VÖEN-siz) elan onlayn alınmır — qiymət satıcı ilə mesajla razılaşdırılır.
-          const personal = !l.businessId && !l.businessObjectId && !l.businessObject;
-          const disabled = mine || out || personal;
-          const seller = l.businessObject?.name || l.user?.name;
-          return (
-            <button key={l.id} type="button" disabled={disabled}
-              onClick={() => setPicked({ id: l.id, title: l.title, price: l.price, stock: l.stock, images: l.images, type: l.type })}
-              className="w-full flex items-center gap-3 p-2 rounded-xl border border-card-border bg-card text-left hover:border-[var(--brand-to)]/50 hover:bg-[var(--brand-soft)] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-card">
-              <div className="w-12 h-12 rounded-lg bg-input-bg overflow-hidden shrink-0 flex items-center justify-center ring-1 ring-card-border">
-                {l.images?.[0] ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={imgUrl(l.images[0])} alt="" className="w-full h-full object-cover" loading="lazy" />
-                ) : <span>📦</span>}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{l.title}</p>
-                <p className="text-[11px] text-muted truncate">
-                  {seller ? `🏪 ${seller}` : ""}{mine ? " · sizin elan" : out ? " · stokda yoxdur" : personal ? " · fərdi satıcı — mesajla danışın" : ""}
-                </p>
-              </div>
-              <span className="text-sm font-bold text-[var(--brand-to)] shrink-0">{formatPrice(l.price)} ₼</span>
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }
