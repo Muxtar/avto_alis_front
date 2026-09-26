@@ -133,7 +133,7 @@ export default function NotificationBell() {
       <button
         ref={btnRef}
         onClick={openBell}
-        className="relative p-1.5 rounded-md text-white/85 hover:text-white hover:ring-1 hover:ring-white/40 transition-colors"
+        className="nav-glass relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl text-white/90 hover:text-white"
         title={t('notifications')}
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

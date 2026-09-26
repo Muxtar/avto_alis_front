@@ -1175,3 +1175,44 @@ a[class*="btn-"]:not([class*="rounded-full"]),
   background-image: linear-gradient(120deg, var(--brand-from), var(--brand-to));
   box-shadow: 0 10px 24px -10px var(--brand-to);
 }
+
+/* ── HEADER — profil kimlik kartlarının dili: tünd əsas + brend parıltısı + naxış ── */
+.nav-modern {
+  background-color: var(--nav-dark);
+  background-image:
+    repeating-radial-gradient(circle at 96% -60%, rgba(255, 255, 255, .06) 0 1px, transparent 1px 11px),
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--brand-to) 55%, transparent) 0%, transparent 55%),
+    radial-gradient(90% 160% at 0% 100%, color-mix(in srgb, var(--brand-from) 35%, transparent) 0%, transparent 60%),
+    linear-gradient(120deg, var(--nav-dark) 0%, var(--nav-dark2) 100%);
+}
+/* Alt kənarda nazik brend xətti */
+.nav-modern::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--brand-from), var(--brand-to), transparent);
+  opacity: .9;
+}
+.nav-glass {
+  background: rgba(255, 255, 255, .08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
+  transition: background-color .2s ease, box-shadow .2s ease, transform .15s ease;
+}
+.nav-glass:hover { background: rgba(255, 255, 255, .16); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .26); }
+.nav-glass:active { transform: scale(.97); }
+.nav-glass.is-on {
+  background-image: linear-gradient(120deg, var(--brand-from), var(--brand-to));
+  box-shadow: 0 8px 20px -10px var(--brand-to), inset 0 0 0 1px rgba(255, 255, 255, .2);
+}
+.nav-search { box-shadow: 0 10px 28px -16px rgba(0, 0, 0, .7), inset 0 0 0 1px rgba(255, 255, 255, .2); }
+.nav-search:focus-within { box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-to) 45%, transparent), 0 10px 28px -16px rgba(0, 0, 0, .7); }
+.nav-wordmark {
+  background: linear-gradient(100deg, #ffffff 30%, #c7d2fe 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.nav-sub { background: rgba(255, 255, 255, .035); border-top: 1px solid rgba(255, 255, 255, .07); }
+.nav-pill { border-radius: 9999px; padding: 4px 11px; transition: background-color .2s ease, color .2s ease; }
+.nav-pill:hover { background: rgba(255, 255, 255, .1); color: #fff; }
+/* Header istisnası: saytın «düz künclü düymə» qaydası (button:not(.rounded-full))
+   header-in şüşə düymələrini və axtarış düymələrini kvadrat edirdi — linklər isə
+   yumru qalırdı, uyğunsuz görünürdü. */
+button.nav-glass { border-radius: 12px; }
+.nav-search button { border-radius: 12px; }
