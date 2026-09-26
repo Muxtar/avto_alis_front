@@ -1272,3 +1272,62 @@ button.nav-glass { border-radius: 12px; }
   background: color-mix(in srgb, var(--c) 14%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 22%, transparent);
 }
+
+/* ── SATICI SƏHİFƏLƏRİ (Elanlarım, Biznes kabineti) — yeni dizayn ── */
+.page-hero { border-radius: 22px; padding: 18px; box-shadow: 0 18px 40px -26px rgba(30, 27, 75, .6); }
+.page-hero .hero-btn, button.hero-btn { border-radius: 12px; }
+/* Bu səhifələrdə düymələr yumru (saytın düz-künc qaydasından istisna) */
+.modern-page button:not([class*="rounded-full"]):not([class*="rounded-none"]),
+.modern-page a[class*="ui-btn"] { border-radius: 12px; }
+.modern-page .ui-btn { border-radius: 12px; }
+
+.wiz-card {
+  background: var(--card); border: 1px solid var(--card-border); border-radius: 20px;
+  padding: 18px; margin-bottom: 20px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 14px 32px -22px rgba(15, 23, 42, .3);
+}
+.wiz-card h2 { font-size: 16px; font-weight: 800; }
+.modern-page .wiz-opt {
+  position: relative; text-align: left; padding: 16px; border-radius: 18px;
+  border: 1.5px solid var(--input-border); background: var(--card);
+  transition: border-color .2s ease, box-shadow .2s ease, transform .15s ease, background-color .2s ease;
+}
+.modern-page .wiz-opt:hover {
+  border-color: color-mix(in srgb, var(--brand-to) 55%, transparent);
+  background: var(--brand-soft);
+  box-shadow: 0 14px 30px -18px var(--brand-to);
+  transform: translateY(-1px);
+}
+.wiz-ico {
+  width: 44px; height: 44px; border-radius: 14px; margin-bottom: 10px;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+  background: var(--brand-soft);
+  transition: background-color .2s ease;
+}
+.wiz-opt:hover .wiz-ico { background-image: linear-gradient(135deg, var(--brand-from), var(--brand-to)); }
+
+.wiz-steps { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; overflow-x: auto; scrollbar-width: none; }
+.wiz-step { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font-size: 12px; font-weight: 600; color: var(--muted); }
+.wiz-step b {
+  width: 22px; height: 22px; border-radius: 9999px; display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; background: var(--input-bg); border: 1px solid var(--input-border); color: var(--muted);
+}
+.wiz-step.is-done b { background: color-mix(in srgb, #10b981 15%, transparent); border-color: transparent; color: #059669; }
+.wiz-step.is-on { color: var(--brand-to); }
+.wiz-step.is-on b { background-image: linear-gradient(135deg, var(--brand-from), var(--brand-to)); color: #fff; border-color: transparent; box-shadow: 0 6px 14px -8px var(--brand-to); }
+.wiz-line { flex: 0 0 18px; height: 2px; border-radius: 2px; background: var(--card-border); }
+
+.lst-row {
+  position: relative; background: var(--card); border: 1px solid var(--card-border); border-radius: 18px;
+  padding: 14px 14px 14px 18px; overflow: hidden;
+  transition: border-color .2s ease, box-shadow .2s ease;
+}
+.lst-row:hover { border-color: color-mix(in srgb, var(--brand-to) 35%, var(--card-border)); box-shadow: 0 14px 30px -22px var(--brand-to); }
+.lst-row::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: var(--row-c, #94a3b8); }
+.wiz-opt-sm {
+  display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 14px;
+  border: 1px solid var(--card-border); transition: background-color .15s ease, border-color .15s ease;
+}
+.wiz-opt-sm:hover { background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand-to) 40%, transparent); }
+.wiz-opt-sm:hover .wiz-ico { background-image: linear-gradient(135deg, var(--brand-from), var(--brand-to)); }
+button.add-listing-btn { border-radius: 12px; }

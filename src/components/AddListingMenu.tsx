@@ -60,25 +60,32 @@ export default function AddListingMenu() {
     <div
       ref={menuRef}
       style={{ position: "fixed", top: pos?.top ?? 0, right: pos?.right ?? 0, zIndex: 1000 }}
-      className="w-64 max-h-[calc(100vh-5rem)] overflow-y-auto bg-card border border-card-border rounded-xl shadow-2xl"
+      className="umenu w-[290px] max-h-[calc(100vh-5rem)] overflow-y-auto text-foreground"
     >
-      {/* VÖEN ilə (biznes) */}
-      <Link href={isLoggedIn ? "/account?new=1&mode=voen" : "/"} onClick={close} className="flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-orange-500/10 transition-colors text-foreground">
-        <span className="w-8 h-8 rounded-lg bg-orange-500/15 text-orange-500 flex items-center justify-center shrink-0 text-base">🏢</span>
-        <span className="flex-1">
-          <span className="font-medium block">VÖEN ilə (biznes)</span>
-          <span className="text-[11px] text-muted">Kartla ödəniş</span>
-        </span>
-      </Link>
-
-      {/* VÖEN-siz (fərdi) */}
-      <Link href={isLoggedIn ? "/account?new=1&mode=novoen" : "/"} onClick={close} className="flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-orange-500/10 transition-colors text-foreground border-t border-card-border">
-        <span className="w-8 h-8 rounded-lg bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0 text-base">👤</span>
-        <span className="flex-1">
-          <span className="font-medium block">VÖEN-siz (fərdi)</span>
-          <span className="text-[11px] text-muted">Birbaşa əlaqə</span>
-        </span>
-      </Link>
+      <div className="brand-band px-4 py-3">
+        <p className="brand-band-kicker">tradixai · yeni elan</p>
+        <p className="font-bold text-[14.5px] leading-tight">Necə satacaqsınız?</p>
+      </div>
+      <div className="p-2 space-y-1.5">
+        {/* VÖEN ilə (biznes) */}
+        <Link href={isLoggedIn ? "/account?new=1&mode=voen" : "/"} onClick={close} className="wiz-opt-sm group">
+          <span className="wiz-ico !mb-0 !w-10 !h-10 !text-lg">🏢</span>
+          <span className="flex-1 min-w-0">
+            <span className="font-bold text-sm block">VÖEN ilə (biznes)</span>
+            <span className="text-[11px] text-muted">Kartla ödəniş, sifariş saytdan</span>
+          </span>
+          <span className="text-muted group-hover:text-[var(--brand-to)]">›</span>
+        </Link>
+        {/* VÖEN-siz (fərdi) */}
+        <Link href={isLoggedIn ? "/account?new=1&mode=novoen" : "/"} onClick={close} className="wiz-opt-sm group">
+          <span className="wiz-ico !mb-0 !w-10 !h-10 !text-lg">👤</span>
+          <span className="flex-1 min-w-0">
+            <span className="font-bold text-sm block">VÖEN-siz (fərdi)</span>
+            <span className="text-[11px] text-muted">Alıcı ilə birbaşa əlaqə</span>
+          </span>
+          <span className="text-muted group-hover:text-[var(--brand-to)]">›</span>
+        </Link>
+      </div>
     </div>
   );
 
@@ -88,8 +95,8 @@ export default function AddListingMenu() {
         ref={btnRef}
         type="button"
         onClick={toggle}
-        style={{ background: "#2f6bff" }}
-        className="inline-flex shrink-0 items-center gap-2 px-4 py-2.5 rounded-xl text-white text-sm font-semibold hover:opacity-90 transition-all shadow-md whitespace-nowrap"
+        style={{ boxShadow: "0 10px 22px -12px var(--brand-to)" }}
+        className="add-listing-btn inline-flex shrink-0 items-center gap-2 px-4 py-2.5 text-white text-sm font-semibold bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] hover:brightness-110 transition-all whitespace-nowrap"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />

@@ -9,7 +9,8 @@ import { API } from "@/lib/api";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import SellerContract from "@/components/SellerContract";
 import QRShare from "@/components/QRShare";
-import VerifyCard from "@/components/VerifyCard";
+import IdCard, { IdMini } from "@/components/IdCard";
+import PageHero, { heroBtn, heroBtnPrimary } from "@/components/PageHero";
 
 // Obyektin fəaliyyət sahələri — 16 əsas kateqoriya.
 const ACTIVITY_AREAS = [
@@ -353,25 +354,31 @@ export default function BusinessPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto px-3 sm:px-6 py-6">
-      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-        <h1 className="text-xl sm:text-2xl font-bold">🏢 Biznes Kabinetim</h1>
-        <div className="flex items-center gap-2 flex-wrap">
-          {publicId && <span className="px-3 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs font-mono">ID: <b>{publicId}</b></span>}
-          <a href="/business/sales" className="ui-btn ui-btn-ghost">{t("bizSales") || "Satış pəncərəsi"}</a>
+    <div className="modern-page max-w-3xl mx-auto px-3 sm:px-6 py-6">
+      <PageHero
+        icon="🏢" kicker="tradixai · biznes kabineti" title="Biznes Kabinetim"
+        subtitle={t("bizDesc") || "Biznes təsdiqləndikdən sonra məhsullarınız kartla satıla bilər."}
+        stats={loading ? undefined : [
+          { label: "Biznes", value: businesses.length },
+          { label: "Təsdiqli", value: businesses.filter((b) => b.status === "APPROVED" && b.isActive).length, tone: "ok" },
+          { label: "Gözləyir", value: businesses.filter((b) => b.status === "PENDING").length, tone: "warn" },
+          { label: "Obyekt", value: businesses.reduce((n, b) => n + (b.objects?.length || 0), 0) },
+        ]}
+        actions={<>
+          {publicId && <span className={`${heroBtn} font-mono`}>ID: <b>{publicId}</b></span>}
+          <a href="/business/sales" className={heroBtn}>📈 {t("bizSales") || "Satış pəncərəsi"}</a>
           {idVerified === false ? (
-            <a href="/profile" className="ui-btn ui-btn-primary">🪪 Profilini təsdiqlə</a>
+            <a href="/profile" className={heroBtnPrimary}>🪪 Profilini təsdiqlə</a>
           ) : feeUnpaid ? (
             // Haqq ödənilməyib — forma açılmır, əvvəlcə ödəniş.
-            <button onClick={payFee} disabled={feeBusy} className="ui-btn ui-btn-primary">
+            <button onClick={payFee} disabled={feeBusy} className={heroBtnPrimary}>
               {feeBusy ? "…" : `💳 ${fee!.amount.toFixed(2)} AZN ödə`}
             </button>
           ) : (
-            <button onClick={openForm} className="ui-btn ui-btn-primary">{showForm ? (t("adminCancel") || "Bağla") : `+ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
+            <button onClick={openForm} className={heroBtnPrimary}>{showForm ? (t("adminCancel") || "Bağla") : `＋ ${t("bizAdd") || "Biznes əlavə et"}`}</button>
           )}
-        </div>
-      </div>
-      <p className="text-muted text-[15px] mb-5">{t("bizDesc") || "Biznes təsdiqləndikdən sonra məhsullarınız kartla satıla bilər."}</p>
+        </>}
+      />
 
       {idVerified === false && (
         <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-4 mb-5 flex items-start gap-3">
@@ -429,7 +436,8 @@ export default function BusinessPage() {
       )}
 
       {showForm && idVerified !== false && !feeUnpaid && (
-        <div className="bg-card border border-card-border rounded-xl p-4 sm:p-5 mb-5 space-y-4">
+        <IdCard icon="🏢" title="Yeni biznes (VÖEN) müraciəti" tone="brand" subtitle="VÖEN sənədini yükləyin — məlumatlar avtomatik oxunur, admin təsdiqindən sonra obyekt və məhsul əlavə edə bilərsiniz.">
+        <div className="space-y-4">
           {/* Şəxs növü — əl ilə seçilmir; VÖEN sənəddən oxunduqda son rəqəmə görə
               avtomatik təyin olunur (1 → Hüquqi şəxs, 2 → Fiziki şəxs). */}
           <div className="flex items-center gap-2 py-2 px-3 bg-input-bg border border-input-border rounded-lg text-sm">
@@ -496,52 +504,27 @@ export default function BusinessPage() {
           {/* Bank IBAN-ı burada girilmir — admin sənədə baxıb daxil edir. */}
           <button onClick={createBusiness} disabled={busy} className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{busy ? "..." : (t("bizSubmit") || "Sənədləri təsdiq üçün göndər")}</button>
         </div>
+        </IdCard>
       )}
 
       {loading ? (
         <div className="flex justify-center py-16"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
       ) : businesses.length === 0 ? (
-        <div className="bg-card border border-card-border rounded-xl p-8 text-center text-muted">{t("bizNone") || "Hələ biznesiniz yoxdur"}</div>
+        <div className="wiz-card text-center py-10"><div className="w-14 h-14 mx-auto rounded-2xl bg-[var(--brand-soft)] flex items-center justify-center text-2xl mb-2">🏢</div><p className="font-semibold">{t("bizNone") || "Hələ biznesiniz yoxdur"}</p><p className="text-xs text-muted mt-1">Yuxarıdakı «Biznes əlavə et» ilə VÖEN-inizi əlavə edin.</p></div>
       ) : (
         <>
-          {/* Biznes kartları — profil səhifəsindəki doğrulama kartları ilə eyni dil:
-              təsdiqlənib ✓, admin gözləyir ⏳, rədd/deaktiv ✕. Karta klikləyəndə
-              həmin biznesin ətraflı paneli aşağıda açılır. */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
-            {businesses.map((b) => (
-              <VerifyCard
-                key={b.id}
-                variant="business"
-                title={b.kind === "LEGAL" ? "Hüquqi şəxs" : "Fiziki şəxs"}
-                state={b.status === "APPROVED" ? (b.isActive ? "ok" : "none") : b.status === "REJECTED" ? "none" : "pending"}
-                value={b.name || "Yeni biznes müraciəti"}
-                hint={
-                  b.status === "APPROVED"
-                    ? `${b.voen ? `VÖEN: ${b.voen} · ` : ""}🏪 ${b.objects?.length || 0} obyekt${b.isActive ? "" : " · deaktiv"}`
-                    : b.status === "REJECTED"
-                      ? (b.rejectionReason ? `Rədd edildi: ${b.rejectionReason}` : "Müraciət rədd edildi")
-                      : "Admin təsdiqini gözləyir"
-                }
-                cta={b.status === "REJECTED" ? "Düzəliş et" : "Ətraflı"}
-                open={openBizId === b.id}
-                onClick={() => setOpenBizId(openBizId === b.id ? null : b.id)}
-              />
-            ))}
-          </div>
-
-          {/* Açıq biznesin paneli */}
-          {businesses.filter((b) => b.id === openBizId).map((b) => (
-            <div key={b.id} id={`biz-${b.id}`} className={`mt-4 bg-card border border-card-border rounded-xl p-4 sm:p-5 animate-fade-in ${!b.isActive ? "opacity-70" : ""}`}>
-              {/* Panel başlığı */}
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-600/10 flex items-center justify-center text-xl shrink-0">🏢</div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="font-bold text-base truncate">{b.name || "Yeni biznes müraciəti"}</h2>
-                  <p className="text-[11px] text-muted truncate">{b.voen ? `VÖEN: ${b.voen}` : (b.status === "PENDING" ? "⏳ Admin təsdiqini gözləyir" : "—")}</p>
-                </div>
-                <span className={`px-3 py-1 rounded-lg text-xs font-bold border shrink-0 ${statusBadge(b.status)}`}>{statusText(b.status)}</span>
-                <button onClick={() => setOpenBizId(null)} aria-label="Bağla" className="text-muted hover:text-foreground text-sm shrink-0">✕</button>
-              </div>
+          {/* Hər biznes — bağlı kimlik kartı; başlığa klik edəndə aşağıya açılır. */}
+          {businesses.map((b) => (
+            <IdCard key={b.id} id={`biz-${b.id}`} icon="🏢"
+              title={b.name || "Yeni biznes müraciəti"}
+              tone={b.status === "APPROVED" ? (b.isActive ? "brand" : "slate") : b.status === "REJECTED" ? "pink" : "amber"}
+              stamp={b.status === "APPROVED" ? (b.isActive ? "ok" : "none") : b.status === "REJECTED" ? "none" : "pending"}
+              stampText={{ ok: "Təsdiqli", pending: "Gözləyir", none: b.status === "REJECTED" ? "Rədd" : "Deaktiv" }}
+              summary={b.status === "APPROVED"
+                ? `${b.kind === "LEGAL" ? "Hüquqi" : "Fiziki"} şəxs${b.voen ? ` · VÖEN ${b.voen}` : ""} · 🏪 ${b.objects?.length || 0} obyekt`
+                : b.status === "REJECTED" ? (b.rejectionReason ? `Rədd edildi: ${b.rejectionReason}` : "Müraciət rədd edildi") : "Admin təsdiqini gözləyir"}
+              collapsible open={openBizId === b.id} onToggle={() => setOpenBizId(openBizId === b.id ? null : b.id)}
+              className={!b.isActive ? "opacity-80" : ""}>
               <div>
               {/* Detal məlumat + idarəetmə */}
               <div className="flex items-start justify-between gap-2 mb-3 pb-3 border-b border-card-border">
@@ -655,18 +638,14 @@ export default function BusinessPage() {
                 {b.objects.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {b.objects.map((o) => (
-                      <VerifyCard
-                        key={o.id}
-                        variant="object"
-                        compact
-                        title={`Obyekt №${o.id}`}
-                        state={o.isActive ? "ok" : "none"}
-                        value={o.name}
-                        hint={`${[o.city, o.address].filter(Boolean).join(", ") || "—"}${typeof o._count?.listings === "number" ? ` · 📦 ${o._count.listings} məhsul` : ""}${o.isActive ? "" : " · deaktiv"}`}
-                        cta="Ətraflı"
-                        open={openObjId === o.id}
-                        onClick={() => { setOpenObjId(openObjId === o.id ? null : o.id); setEditingObjId(null); }}
-                      />
+                      <button key={o.id} type="button" className={`block w-full text-left ${openObjId === o.id ? "ring-2 ring-[var(--brand-to)]/40 rounded-2xl" : ""}`}
+                        onClick={() => { setOpenObjId(openObjId === o.id ? null : o.id); setEditingObjId(null); }}>
+                        <IdMini icon="🏪" tone={o.isActive ? "teal" : "slate"}
+                          title={`${o.name} · №${o.id}`}
+                          stamp={o.isActive ? "ok" : "none"} stampText={{ ok: "Aktiv", none: "Deaktiv" }}
+                          sub={`${[o.city, o.address].filter(Boolean).join(", ") || "—"}${typeof o._count?.listings === "number" ? ` · 📦 ${o._count.listings} məhsul` : ""}`}
+                          actions={<span className="text-xs font-semibold text-[var(--brand-to)]">{openObjId === o.id ? "Bağla ▲" : "Ətraflı ▼"}</span>} />
+                      </button>
                     ))}
                   </div>
                 )}
@@ -802,7 +781,7 @@ export default function BusinessPage() {
                 </div>
               )}
               </div>
-            </div>
+            </IdCard>
           ))}
         </>
       )}
