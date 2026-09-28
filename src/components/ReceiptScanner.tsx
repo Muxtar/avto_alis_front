@@ -167,8 +167,8 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
     if (!file) return;
     setBusy(true); setStatus(pendingFiscal ? "Çek şəkildən oxunur (AI)…" : "QR axtarılır…");
     try {
-      if (pendingFiscal) {
-        const fd = new FormData(); fd.append("image", file); fd.append("fiscalId", pendingFiscal);
+      if (pendingFiscal || file.type === "application/pdf") {
+        const fd = new FormData(); fd.append("image", file); if (pendingFiscal) fd.append("fiscalId", pendingFiscal);
         const r = await fetch(`${API}/receipts/scan-photo`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd }).then((x) => x.json());
         if (!r?.success) { toast(r?.message || "Çek oxunmadı — bütün məhsullar görünən aydın şəkil çəkin", "error"); setStatus(""); return; }
         finish(r.receipt.id); return;
@@ -290,21 +290,46 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
               </>
             )
           )}
-          {tab === "photo" && portalDown && (
-            <div className="mb-3 text-[12px] rounded-xl px-3 py-2.5 bg-emerald-500/10 text-emerald-900 border border-emerald-500/25">
-              {pendingFiscal && <p className="font-bold text-emerald-700 mb-0.5">✓ QR oxundu</p>}
-              <p>İndi çekin <b>tam şəklini</b> çəkin — mağaza adından cəmə qədər bütün məhsullar görünsün. Məhsullar şəkildən oxunacaq.</p>
+          {/* QR oxundu, amma serverimiz portala çata bilmir (portal yalnız AZ IP-lərinə açıqdır).
+              Çek SİZİN telefonunuzun interneti ilə göstərilir; «Çeki yüklə» ilə düşən document.jpg seçilir. */}
+          {tab === "photo" && pendingFiscal ? (
+            <div className="space-y-3">
+              <div className="rounded-xl px-3 py-2 bg-emerald-500/10 text-emerald-800 border border-emerald-500/25 text-[12px]">
+                <b>✓ QR oxundu.</b> Çek e-kassadan yüklənib sayta verilməlidir — 3 addım:
+              </div>
+              <div className="rounded-2xl border border-card-border overflow-hidden bg-white max-h-64 overflow-y-auto">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`https://monitoring.e-kassa.gov.az/pks-monitoring/2.0.0/documents/${pendingFiscal}`} alt="e-kassa çeki" className="w-full" />
+              </div>
+              <a href={`https://monitoring.e-kassa.gov.az/#/index?doc=${pendingFiscal}`} target="_blank" rel="noreferrer"
+                className="flex items-center gap-2 p-3 rounded-2xl border border-card-border hover:bg-[var(--brand-soft)]">
+                <span className="w-7 h-7 rounded-full bg-[var(--brand-soft)] text-[var(--brand-to)] font-bold text-sm flex items-center justify-center shrink-0">1</span>
+                <span className="text-sm"><b>e-kassada çeki aç</b> <span className="text-muted text-xs">(yeni səhifə)</span></span>
+                <span className="ml-auto text-[var(--brand-to)]">↗</span>
+              </a>
+              <div className="flex items-center gap-2 p-3 rounded-2xl border border-card-border">
+                <span className="w-7 h-7 rounded-full bg-[var(--brand-soft)] text-[var(--brand-to)] font-bold text-sm flex items-center justify-center shrink-0">2</span>
+                <span className="text-sm">Orada <b>«Çeki yüklə»</b> basın — <code className="text-xs">document.jpg</code> telefonunuza düşəcək</span>
+              </div>
+              <label className="flex items-center gap-2 p-3 rounded-2xl text-white cursor-pointer bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)]">
+                <span className="w-7 h-7 rounded-full bg-white/25 font-bold text-sm flex items-center justify-center shrink-0">3</span>
+                <span className="text-sm font-semibold">Yüklənmiş çeki seçin (JPG / PDF)</span>
+                <input type="file" accept="image/*,application/pdf" className="hidden" disabled={busy} onChange={(e) => onPhoto(e.target.files?.[0] || null)} />
+              </label>
+              <label className="block text-center text-xs text-muted cursor-pointer hover:text-foreground">
+                və ya çekin kağız fotosunu çəkin
+                <input type="file" accept="image/*" capture="environment" className="hidden" disabled={busy} onChange={(e) => onPhoto(e.target.files?.[0] || null)} />
+              </label>
             </div>
-          )}
-          {tab === "photo" && (
+          ) : tab === "photo" && (
             <label className="block rounded-2xl border-2 border-dashed border-[var(--brand-to)]/40 p-6 text-center cursor-pointer hover:bg-[var(--brand-soft)]">
               <div className="text-3xl mb-1">🧾</div>
               <p className="font-semibold text-sm">Çekin şəklini seçin</p>
               <p className="text-xs text-muted mt-0.5">QR kod görünən foto — QR yoxdursa çekin özü oxunur.</p>
-              <input type="file" accept="image/*" className="hidden" disabled={busy} onChange={(e) => onPhoto(e.target.files?.[0] || null)} />
+              <input type="file" accept="image/*,application/pdf" className="hidden" disabled={busy} onChange={(e) => onPhoto(e.target.files?.[0] || null)} />
             </label>
           )}
-          {tab === "photo" && (
+          {tab === "photo" && !pendingFiscal && (
             <label className="mt-2 flex items-center justify-center gap-2 py-3 rounded-2xl text-white font-bold text-sm bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] cursor-pointer">
               📷 Kamera ilə çək
               <input type="file" accept="image/*" capture="environment" className="hidden" disabled={busy} onChange={(e) => onPhoto(e.target.files?.[0] || null)} />
