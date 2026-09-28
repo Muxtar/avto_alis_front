@@ -783,12 +783,12 @@ export default function Navbar() {
                 Telefonda ml-auto ilə sağa yaslanır (axtarış alt sətrə düşür);
                 masaüstündə şrink-0 (təbii en) — böyüyən axtarışın həmən sağında
                 durur ki, bell/ikonlarla search arasında böyük boşluq qalmasın. */}
-            <div className="order-3 ml-auto sm:ml-0 flex items-center justify-end gap-1.5 sm:gap-3 shrink-0">
+            <div className="order-3 ml-auto sm:ml-0 flex items-center justify-end gap-0.5 sm:gap-2 shrink-0">
               {/* Admin panelə qayıt — YALNIZ admin panelinə giriş edənlərdə.
                   Adi istifadəçi bu düyməni heç vaxt görmür. */}
               {isAdminSession && (
                 <Link href="/admin" title="Admin panelə qayıt"
-                  className="flex items-center gap-1.5 h-9 px-2.5 rounded-md bg-white/15 text-white text-xs font-bold ring-1 ring-white/30 hover:bg-white/25 transition-colors shrink-0">
+                  className="nav-icon flex items-center gap-1.5 h-11 px-1.5 text-xs font-bold shrink-0">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                   <span className="hidden xs:inline">Admin</span>
                 </Link>
@@ -796,7 +796,7 @@ export default function Navbar() {
 
               {isLoggedIn && <NotificationBell />}
 
-              <Link href="/favorites" className="nav-glass flex items-center gap-1.5 text-white/90 hover:text-white h-10 sm:h-11 px-2.5 rounded-xl" title={t("favorites")}>
+              <Link href="/favorites" className="nav-icon flex items-center gap-1.5 h-11 px-1.5" title={t("favorites")}>
                 {/* Sayğac ürəyin üstündə — səbətdəki ilə eyni üslub. Sıfır olanda
                     göstərilmir ki, header lüzumsuz rəqəmlə dolmasın. */}
                 <span className="relative">
@@ -811,7 +811,7 @@ export default function Navbar() {
               </Link>
 
               {isLoggedIn && (
-                <Link href="/cart" className="nav-glass relative flex items-center gap-1.5 text-white/90 hover:text-white h-10 sm:h-11 px-2.5 rounded-xl" title={t("cart")}>
+                <Link href="/cart" className="nav-icon relative flex items-center gap-1.5 h-11 px-1.5" title={t("cart")}>
                   <span className="relative">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" /></svg>
                     <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 min-w-[18px] h-[18px] px-1 text-white text-[11px] font-extrabold rounded-full flex items-center justify-center" style={{ background: PINK }}>{cartCount}</span>
@@ -824,7 +824,7 @@ export default function Navbar() {
               {isLoggedIn ? (
                 <div ref={userRef} className="relative">
                   <button onClick={() => setUserOpen(!userOpen)}
-                    className={`nav-glass ${userOpen ? "is-on" : ""} relative flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl text-white/90 hover:text-white`} title={user?.name || "Profil"}>
+                    className={`nav-icon ${userOpen ? "is-on" : ""} relative flex items-center justify-center w-11 h-11`} title={user?.name || "Profil"}>
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     {totalUnread > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse-soft">

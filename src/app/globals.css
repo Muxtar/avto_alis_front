@@ -1332,3 +1332,15 @@ button.nav-glass { border-radius: 12px; }
 .wiz-opt-sm:hover .wiz-ico { background-image: linear-gradient(135deg, var(--brand-from), var(--brand-to)); }
 button.add-listing-btn { border-radius: 12px; }
 @keyframes qrscan { 0%, 100% { top: 8%; } 50% { top: 90%; } }
+
+/* Header ikonları (bildiriş, seçilmişlər, səbət, profil, admin) — arxa fon YOX, yalnız ikon */
+.nav-icon { background: transparent; color: rgba(255, 255, 255, .88); transition: color .15s ease, transform .15s ease; }
+.nav-icon:hover, .nav-icon.is-on { color: #fff; }
+.nav-icon:hover > svg, .nav-icon:hover > span > svg { transform: scale(1.08); }
+.nav-icon svg { transition: transform .15s ease; }
+.nav-icon:active { transform: scale(.94); }
+.nav-icon.is-on > svg { filter: drop-shadow(0 0 8px color-mix(in srgb, var(--brand-from) 80%, transparent)); }
+/* Telefonda ikonlar böyük olsun — header balaca görünməsin */
+@media (max-width: 639px) {
+  header .nav-icon svg { width: 27px; height: 27px; }
+}
