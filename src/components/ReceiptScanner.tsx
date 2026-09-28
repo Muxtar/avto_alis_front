@@ -23,6 +23,7 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
   const [status, setStatus] = useState("");
   const [link, setLink] = useState("");
   const [camErr, setCamErr] = useState("");
+  const [portalDown, setPortalDown] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -45,7 +46,12 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
     setBusy(true); setStatus("Çek e-kassa portalından alınır və oxunur…");
     try {
       const r = await fetch(`${API}/receipts/scan`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ text }) }).then((x) => x.json());
-      if (!r?.success) { toast(r?.message || "Çek oxunmadı", "error"); setStatus(""); doneRef.current = false; return; }
+      if (!r?.success) {
+        toast(r?.message || "Çek oxunmadı", "error"); setStatus(""); doneRef.current = false;
+        // Portal əlçatan deyil — çekin fotosu ilə davam etmək təklif olunur.
+        if (/fotosunu|portal/i.test(r?.message || "")) { stopCam(); setTab("photo"); setStatus(""); setPortalDown(true); }
+        return;
+      }
       finish(r.receipt.id);
     } catch { toast("Şəbəkə xətası", "error"); setStatus(""); doneRef.current = false; }
     finally { setBusy(false); }
@@ -141,6 +147,11 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
                 <p className="absolute bottom-2 inset-x-0 text-center text-white text-xs font-semibold">QR kodu çərçivəyə tutun</p>
               </div>
             )
+          )}
+          {tab === "photo" && portalDown && (
+            <p className="mb-3 text-[12px] rounded-xl px-3 py-2 bg-amber-500/10 text-amber-800 border border-amber-500/25">
+              e-kassa portalı hazırda cavab vermir. Çekin <b>bütün məhsulları görünən</b> fotosunu çəkin — çek şəkildən oxunacaq.
+            </p>
           )}
           {tab === "photo" && (
             <label className="block rounded-2xl border-2 border-dashed border-[var(--brand-to)]/40 p-6 text-center cursor-pointer hover:bg-[var(--brand-soft)]">
