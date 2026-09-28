@@ -1331,3 +1331,4 @@ button.nav-glass { border-radius: 12px; }
 .wiz-opt-sm:hover { background: var(--brand-soft); border-color: color-mix(in srgb, var(--brand-to) 40%, transparent); }
 .wiz-opt-sm:hover .wiz-ico { background-image: linear-gradient(135deg, var(--brand-from), var(--brand-to)); }
 button.add-listing-btn { border-radius: 12px; }
+@keyframes qrscan { 0%, 100% { top: 8%; } 50% { top: 90%; } }
