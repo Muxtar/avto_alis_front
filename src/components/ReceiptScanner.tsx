@@ -14,6 +14,13 @@ import { API } from "@/lib/api";
 
 type Tab = "camera" | "photo" | "link";
 
+// Brauzerin öz QR oxuyucusu (varsa) — jsQR-dan dəfələrlə sürətli.
+function getDetector(): { detect: (src: any) => Promise<{ rawValue: string }[]> } | null {
+  const BD = typeof window !== "undefined" ? (window as any).BarcodeDetector : undefined;
+  if (!BD) return null;
+  try { return new BD({ formats: ["qr_code"] }); } catch { return null; }
+}
+
 // Çərçivə — videonun mərkəzindəki kvadratın 64%-i (UI-dakı nişangahla eyni: inset 18%).
 const FRAME = 0.64;
 
@@ -57,6 +64,8 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
   const [link, setLink] = useState("");
   const [camErr, setCamErr] = useState("");
   const [portalDown, setPortalDown] = useState(false);
+  // QR oxundu, portal xaricdən bağlıdır — fiskal ID yadda saxlanır, məhsullar fotodan oxunur.
+  const [pendingFiscal, setPendingFiscal] = useState<string | null>(null);
   // Çəkilmiş kadr (dondurulmuş önizləmə) və QR tapılmayanda göndəriləcək foto.
   const [shot, setShot] = useState<string | null>(null);
   const [shotBlob, setShotBlob] = useState<Blob | null>(null);
@@ -64,6 +73,7 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const rafRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const doneRef = useRef(false);
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -71,6 +81,8 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
   const stopCam = useCallback(() => {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     rafRef.current = null;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
   }, []);
@@ -83,6 +95,12 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
     setBusy(true); setStatus("Çek e-kassa portalından alınır və oxunur…");
     try {
       const r = await fetch(`${API}/receipts/scan`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ text }) }).then((x) => x.json());
+      if (!r?.success && r?.code === "PORTAL_DOWN") {
+        stopCam(); setShot(null); setShotNoQr(false); setStatus("");
+        setPendingFiscal(r.fiscalId); setPortalDown(true); setTab("photo");
+        toast("QR oxundu ✓ — indi çekin tam şəklini çəkin", "success");
+        return;
+      }
       if (!r?.success) {
         toast(r?.message || "Çek oxunmadı", "error"); setStatus(""); doneRef.current = false;
         // Portal əlçatan deyil — çekin fotosu ilə davam etmək təklif olunur.
@@ -112,31 +130,30 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
         streamRef.current = stream;
         const v = videoRef.current!;
         v.srcObject = stream; await v.play().catch(() => {});
+        // SÜRƏTLİ CANLI OXUMA:
+        //  • BarcodeDetector (Android Chrome, masaüstü Chrome) — cihazın öz, sürətli QR oxuyucusu;
+        //  • yoxdursa jsQR — çərçivənin içi 480px, tək keçid, ~8 dəfə/san.
+        // (Əvvəl hər 3-cü kadrda ağır çoxkeçidli dekoder işləyirdi — telefonu dondururdu.)
+        const detector = getDetector();
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d", { willReadFrequently: true })!;
-        let frameNo = 0;
-        const tick = () => {
+        const loop = async () => {
           if (!alive || doneRef.current) return;
-          frameNo++;
-          // Hər 3-cü kadrda yalnız çərçivənin içi yüksək keyfiyyətdə yoxlanır.
-          if (v.readyState >= 2 && v.videoWidth && frameNo % 3 === 0) {
-            const s0 = Math.min(v.videoWidth, v.videoHeight), f = s0 * FRAME;
-            const data = robustDecode(v, v.videoWidth, v.videoHeight, { x: (v.videoWidth - f) / 2, y: (v.videoHeight - f) / 2, w: f, h: f });
-            if (data) { doneRef.current = true; navigator.vibrate?.(60); sendText(data); return; }
-          } else if (v.readyState >= 2 && v.videoWidth) {
-            // Mərkəzdəki kvadrat — QR adətən orada tutulur, emal də sürətlənir.
-            const s = Math.min(v.videoWidth, v.videoHeight);
-            const sx = (v.videoWidth - s) / 2, sy = (v.videoHeight - s) / 2;
-            const size = Math.min(640, s);
-            canvas.width = size; canvas.height = size;
-            ctx.drawImage(v, sx, sy, s, s, 0, 0, size, size);
-            const img = ctx.getImageData(0, 0, size, size);
-            const code = jsQR(img.data, size, size, { inversionAttempts: "dontInvert" });
-            if (code?.data) { doneRef.current = true; navigator.vibrate?.(60); sendText(code.data); return; }
+          if (v.readyState >= 2 && v.videoWidth) {
+            let data: string | null = null;
+            if (detector) {
+              try { const r = await detector.detect(v); data = r?.[0]?.rawValue || null; } catch { /* növbəti kadr */ }
+            } else {
+              const s0 = Math.min(v.videoWidth, v.videoHeight), f = s0 * FRAME, size = Math.min(480, f);
+              canvas.width = size; canvas.height = size;
+              ctx.drawImage(v, (v.videoWidth - f) / 2, (v.videoHeight - f) / 2, f, f, 0, 0, size, size);
+              data = jsQR(ctx.getImageData(0, 0, size, size).data, size, size, { inversionAttempts: "dontInvert" })?.data || null;
+            }
+            if (data && alive && !doneRef.current) { doneRef.current = true; navigator.vibrate?.(60); sendText(data); return; }
           }
-          rafRef.current = requestAnimationFrame(tick);
+          timerRef.current = setTimeout(loop, detector ? 90 : 120);
         };
-        rafRef.current = requestAnimationFrame(tick);
+        loop();
       } catch {
         setCamErr("Kameraya icazə verilmədi və ya kamera yoxdur. «Şəkil» və ya «Link» ilə davam edin.");
       }
@@ -148,14 +165,23 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
   // ── Şəkil: QR tap, tapılmasa fotonu AI oxusun ──
   const onPhoto = async (file: File | null) => {
     if (!file) return;
-    setBusy(true); setStatus("QR axtarılır…");
+    setBusy(true); setStatus(pendingFiscal ? "Çek şəkildən oxunur (AI)…" : "QR axtarılır…");
     try {
+      if (pendingFiscal) {
+        const fd = new FormData(); fd.append("image", file); fd.append("fiscalId", pendingFiscal);
+        const r = await fetch(`${API}/receipts/scan-photo`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd }).then((x) => x.json());
+        if (!r?.success) { toast(r?.message || "Çek oxunmadı — bütün məhsullar görünən aydın şəkil çəkin", "error"); setStatus(""); return; }
+        finish(r.receipt.id); return;
+      }
       const bmp = await createImageBitmap(file);
       const scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
       const w = Math.round(bmp.width * scale), h = Math.round(bmp.height * scale);
       const c = document.createElement("canvas"); c.width = w; c.height = h;
       const ctx = c.getContext("2d")!; ctx.drawImage(bmp, 0, 0, w, h);
-      const qr = robustDecode(c, w, h);
+      let qr: string | null = null;
+      const det = getDetector();
+      if (det) { try { qr = (await det.detect(bmp))?.[0]?.rawValue || null; } catch { qr = null; } }
+      if (!qr) qr = robustDecode(c, w, h);
       if (qr) { setBusy(false); await sendText(qr); return; }
       setStatus("QR tapılmadı — çekin özü oxunur (AI)…");
       const fd = new FormData(); fd.append("image", file);
@@ -170,17 +196,32 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
   const capture = async () => {
     const v = videoRef.current;
     if (!v || !v.videoWidth) return;
-    const full = document.createElement("canvas");
-    full.width = v.videoWidth; full.height = v.videoHeight;
-    full.getContext("2d")!.drawImage(v, 0, 0);
-    setShot(full.toDataURL("image/jpeg", 0.85));
-    full.toBlob((b) => setShotBlob(b), "image/jpeg", 0.9);
-    doneRef.current = true; stopCam();
-    setStatus("QR axtarılır…"); setShotNoQr(false);
-    await new Promise((r) => setTimeout(r, 30));
-    const s0 = Math.min(full.width, full.height), f = s0 * FRAME;
-    const data = robustDecode(full, full.width, full.height, { x: (full.width - f) / 2, y: (full.height - f) / 2, w: f, h: f })
-      || robustDecode(full, full.width, full.height);
+    doneRef.current = true;
+    setStatus("Şəkil çəkilir…"); setShotNoQr(false);
+    // Kəskin şəkil: sensorun tam keyfiyyəti + avtofokus (ImageCapture), yoxsa video kadrı.
+    let blob: Blob | null = null;
+    const track = streamRef.current?.getVideoTracks()[0];
+    const IC = (window as any).ImageCapture;
+    if (IC && track) { try { blob = await new IC(track).takePhoto(); } catch { blob = null; } }
+    if (!blob) {
+      const c = document.createElement("canvas"); c.width = v.videoWidth; c.height = v.videoHeight;
+      c.getContext("2d")!.drawImage(v, 0, 0);
+      blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.92));
+    }
+    stopCam();
+    if (!blob) { setStatus(""); setShotNoQr(true); return; }
+    setShot(URL.createObjectURL(blob)); setShotBlob(blob);
+    setStatus("QR axtarılır…");
+    await new Promise((r) => setTimeout(r, 30)); // önizləmə ekrana çıxsın
+    const bmp = await createImageBitmap(blob);
+    let data: string | null = null;
+    const det = getDetector();
+    if (det) { try { data = (await det.detect(bmp))?.[0]?.rawValue || null; } catch { data = null; } }
+    if (!data) {
+      const s0 = Math.min(bmp.width, bmp.height), f = s0 * FRAME;
+      data = robustDecode(bmp, bmp.width, bmp.height, { x: (bmp.width - f) / 2, y: (bmp.height - f) / 2, w: f, h: f })
+        || robustDecode(bmp, bmp.width, bmp.height);
+    }
     if (data) { navigator.vibrate?.(60); await sendText(data); return; }
     setStatus(""); setShotNoQr(true);
   };
@@ -250,9 +291,10 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
             )
           )}
           {tab === "photo" && portalDown && (
-            <p className="mb-3 text-[12px] rounded-xl px-3 py-2 bg-amber-500/10 text-amber-800 border border-amber-500/25">
-              e-kassa portalı hazırda cavab vermir. Çekin <b>bütün məhsulları görünən</b> fotosunu çəkin — çek şəkildən oxunacaq.
-            </p>
+            <div className="mb-3 text-[12px] rounded-xl px-3 py-2.5 bg-emerald-500/10 text-emerald-900 border border-emerald-500/25">
+              {pendingFiscal && <p className="font-bold text-emerald-700 mb-0.5">✓ QR oxundu</p>}
+              <p>İndi çekin <b>tam şəklini</b> çəkin — mağaza adından cəmə qədər bütün məhsullar görünsün. Məhsullar şəkildən oxunacaq.</p>
+            </div>
           )}
           {tab === "photo" && (
             <label className="block rounded-2xl border-2 border-dashed border-[var(--brand-to)]/40 p-6 text-center cursor-pointer hover:bg-[var(--brand-soft)]">
