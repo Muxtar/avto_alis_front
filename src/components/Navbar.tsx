@@ -15,6 +15,7 @@ import { yangoLabel } from "@/lib/yangoStatus";
 import NotificationBell from "@/components/NotificationBell";
 import { CATEGORIES, slugify } from "@/lib/categories";
 import CategoryMegaMenu from "@/components/CategoryMegaMenu";
+import ReceiptScanner from "@/components/ReceiptScanner";
 
 const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "az", label: "AZ", flag: "🇦🇿" },
@@ -66,6 +67,7 @@ export default function Navbar() {
   const { toast } = useToast();
   const router = useRouter();
   const [langOpen, setLangOpen] = useState(false);
+  const [receiptOpen, setReceiptOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [outOpen, setOutOpen] = useState(false); // Məndən gedənlər (alışlar)
   const [inOpen, setInOpen] = useState(false);   // Məndən gələnlər (satışlar)
@@ -502,6 +504,12 @@ export default function Navbar() {
                 ) : (
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" /></svg>
                 )}
+              </button>
+              {/* QR — e-kassa çekini oxut: məhsullar saytda axtarılır. */}
+              <button type="button" onClick={() => { if (!isLoggedIn) { router.push("/"); return; } setReceiptOpen(true); }}
+                title="Çekin QR kodunu oxut" aria-label="Çekin QR kodunu oxut"
+                className="px-2.5 flex items-center justify-center rounded-xl bg-white text-[#64748b] hover:text-[var(--brand-to)] hover:bg-[#f1f3fb] transition-colors">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18h2M18 18h2v2M18 16v2" /></svg>
               </button>
               {/* Telefonda seçim: kamera, yoxsa qalereya. */}
               {imgMenu && imgMenuPos && (
@@ -981,6 +989,10 @@ export default function Navbar() {
                           {t("becomeSeller")}
                         </Link>
                       )}
+                      <Link href="/receipts" onClick={() => setUserOpen(false)} className="umenu-item">
+                        <span className="w-4 h-4 text-muted flex items-center justify-center">🧾</span>
+                        Çeklərim (QR)
+                      </Link>
                       <Link href="/addresses" onClick={() => setUserOpen(false)} className="umenu-item">
                         <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
                         {t("myAddresses")}
@@ -1050,6 +1062,7 @@ export default function Navbar() {
         </div>
       </div>
 
+      {receiptOpen && <ReceiptScanner onClose={() => setReceiptOpen(false)} />}
       {/* Sosial profilə mesaj — admin panelə düşür, admin əl ilə çatdırır */}
       {msgTarget && (
         <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => setMsgTarget(null)}>
