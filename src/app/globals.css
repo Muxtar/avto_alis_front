@@ -1344,3 +1344,59 @@ button.add-listing-btn { border-radius: 12px; }
 @media (max-width: 639px) {
   header .nav-icon svg { width: 27px; height: 27px; }
 }
+
+/* ── ADMIN PANEL — saytın yeni dili: tünd header + brend çipli sidebar ── */
+.adm-side {
+  position: relative;
+  background: var(--card);
+  border-right: 1px solid var(--card-border);
+  transition: width .22s cubic-bezier(.4, 0, .2, 1);
+}
+.adm-side.is-dragging { transition: none; user-select: none; }
+.adm-side nav { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--brand-from) 35%, transparent) transparent; }
+.adm-group {
+  padding: 12px 12px 4px; font-size: 9.5px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden;
+}
+.adm-side.is-collapsed .adm-group { height: 1px; padding: 0; margin: 8px 14px; background: var(--card-border); color: transparent; }
+.adm-link {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  margin: 1px 8px; padding: 6px 8px; border-radius: 12px;
+  font-size: 13.5px; font-weight: 500; color: var(--foreground); white-space: nowrap;
+  transition: background-color .15s ease, color .15s ease;
+}
+.adm-link .adm-ico {
+  width: 30px; height: 30px; flex-shrink: 0; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--brand-soft); color: var(--brand-to);
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.adm-link .adm-ico svg { width: 17px; height: 17px; }
+.adm-link:hover { background: var(--brand-soft); color: var(--brand-to); }
+.adm-link.is-active { background: color-mix(in srgb, var(--brand-to) 10%, transparent); color: var(--brand-to); font-weight: 700; }
+.adm-link.is-active .adm-ico, .adm-link:hover .adm-ico {
+  background-image: linear-gradient(135deg, var(--brand-from), var(--brand-to)); color: #fff;
+  box-shadow: 0 6px 14px -8px var(--brand-to);
+}
+.adm-link.is-active::before {
+  content: ""; position: absolute; left: -8px; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0;
+  background: linear-gradient(var(--brand-from), var(--brand-to));
+}
+.adm-side.is-collapsed .adm-link { justify-content: center; margin: 2px 10px; padding: 6px 0; }
+.adm-badge {
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 9999px;
+  background: #f43f5e; color: #fff; font-size: 10px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.adm-side.is-collapsed .adm-badge { position: absolute; top: 1px; right: 4px; min-width: 16px; height: 16px; padding: 0 4px; font-size: 9px; box-shadow: 0 0 0 2px var(--card); }
+/* Sağ kənardakı sürükləmə tutacağı — eni dəyişmək üçün */
+.adm-resize {
+  position: absolute; top: 0; right: -3px; bottom: 0; width: 6px; cursor: col-resize; z-index: 5;
+}
+.adm-resize::after {
+  content: ""; position: absolute; top: 50%; left: 2px; width: 2px; height: 40px; transform: translateY(-50%);
+  border-radius: 2px; background: var(--card-border); transition: background .15s ease, height .15s ease;
+}
+.adm-resize:hover::after, .adm-side.is-dragging .adm-resize::after { background: var(--brand-to); height: 72px; }
+.adm-main { background: color-mix(in srgb, var(--brand-to) 3%, var(--background)); }
+.adm-shell button.nav-glass, .adm-shell .nav-search button { border-radius: 12px; }

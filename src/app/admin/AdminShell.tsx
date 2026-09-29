@@ -18,6 +18,50 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // Cari adminin icazələri — sidebar yalnız icazəli bölmələri göstərsin.
   const [me, setMe] = useState<{ isSuperAdmin: boolean; permissions: string[] } | null>(null);
 
+  // ── SIDEBAR: klik ilə daralır (yalnız ikonlar), sağ kənarı sürükləyib genişlənir.
+  // Seçim yadda qalır. Telefonda həmişə dar; düymə tam menyunu üstdə açır.
+  const [collapsed, setCollapsed] = useState(false);
+  const [sideW, setSideW] = useState(248);
+  const [dragging, setDragging] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem("adminSideCollapsed") === "1");
+      const w = parseInt(localStorage.getItem("adminSideW") || "");
+      if (w >= 200 && w <= 380) setSideW(w);
+    } catch { /* keç */ }
+    const mq = window.matchMedia("(max-width: 639px)");
+    const on = () => setMobile(mq.matches);
+    on(); mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  const toggleSidebar = () => {
+    if (mobile) { setMobileOpen((v) => !v); return; }
+    setCollapsed((v) => { try { localStorage.setItem("adminSideCollapsed", v ? "0" : "1"); } catch { /* keç */ } return !v; });
+  };
+  const startResize = (e: React.PointerEvent) => {
+    if (mobile) return;
+    e.preventDefault();
+    setDragging(true);
+    const startX = e.clientX, startW = collapsed ? 72 : sideW;
+    let last = startW;
+    const move = (ev: PointerEvent) => {
+      last = Math.max(72, Math.min(380, startW + ev.clientX - startX));
+      if (last < 150) { setCollapsed(true); } else { setCollapsed(false); setSideW(Math.max(200, last)); }
+    };
+    const up = () => {
+      setDragging(false);
+      window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
+      try {
+        localStorage.setItem("adminSideCollapsed", last < 150 ? "1" : "0");
+        if (last >= 150) localStorage.setItem("adminSideW", String(Math.max(200, Math.round(last))));
+      } catch { /* keç */ }
+    };
+    window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+  };
+
   // Gözləyən elan sayının son bilinən dəyəri — dəyişəndə açıq səhifələrə
   // xəbər verilir ki, siyahılarını özləri təzələsin.
   const pendingListingsRef = useRef<number | null>(null);
@@ -244,61 +288,76 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     return k && overview?.pending ? overview.pending[k] || 0 : 0;
   };
 
+  // Bölmələr — uzun siyahı mövzulara ayrılır (dar rejimdə ayırıcı xətt olur).
+  const GROUPS: { title: string; hrefs: string[] }[] = [
+    { title: "Əsas", hrefs: ["/admin", "/admin/users", "/admin/listings", "/admin/orders", "/admin/returns"] },
+    { title: "Biznes və yoxlama", hrefs: ["/admin/businesses", "/admin/objects", "/admin/seller-applications", "/admin/identity", "/admin/credentials", "/admin/social-links", "/admin/complaints"] },
+    { title: "Maliyyə", hrefs: ["/admin/finance", "/admin/payouts", "/admin/payouts/businesses", "/admin/refunds"] },
+    { title: "Məzmun və əlaqə", hrefs: ["/admin/banners", "/admin/pages", "/admin/promo", "/admin/comments", "/admin/broadcast", "/admin/support", "/admin/outreach"] },
+    { title: "Sistem", hrefs: ["/admin/settings", "/admin/ai", "/admin/audit", "/admin/admins"] },
+  ];
+  const byHref = new Map(visibleLinks.map((l) => [l.href, l]));
+  const narrow = mobile ? !mobileOpen : collapsed;
+  const width = mobile ? (mobileOpen ? 264 : 64) : collapsed ? 72 : sideW;
+
   return (
     // Admin sahəsi tam ekran hündürlüyündədir (sayt Navbar-ı burada gizlidir):
     // pəncərə sürüşmür, sidebar və məzmun ayrı-ayrı sürüşür.
-    <div className="flex flex-col h-screen overflow-hidden">
-      <AdminHeader overview={overview} adminName={adminName} onRefresh={loadOverview} onLogout={handleLogout} />
-      <div className="flex flex-1 min-h-0">
-      {/* Sidebar */}
-      {/* Sağdakı məzmun sürüşəndə sidebar tərpənmir; sidebar-ın özü də
-          uzun olduqda daxilində sürüşür. */}
-      <aside className="h-full w-16 sm:w-56 bg-card border-r border-card-border flex flex-col shrink-0 transition-colors">
-        <div className="p-3 sm:p-4 border-b border-card-border">
-          <div className="hidden sm:flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-sm shadow-teal-500/30">A</div>
-            <span className="font-semibold text-sm">{t("adminPanel")}</span>
-          </div>
-          <div className="sm:hidden flex justify-center">
-            <div className="w-8 h-8 bg-gradient-to-br from-teal-500 to-teal-600 rounded-lg flex items-center justify-center font-bold text-xs text-white shadow-sm shadow-teal-500/30">A</div>
-          </div>
-        </div>
-
-        <nav className="flex-1 min-h-0 overflow-y-auto p-2 sm:p-3 space-y-1">
-          {visibleLinks.map((link) => {
-            const isActive = pathname === link.href;
-            const badge = pendingFor(link.href);
+    <div className="adm-shell modern-page flex flex-col h-screen overflow-hidden">
+      <AdminHeader overview={overview} adminName={adminName} onRefresh={loadOverview} onLogout={handleLogout}
+        collapsed={narrow} onToggleSidebar={toggleSidebar} />
+      <div className="relative flex flex-1 min-h-0">
+      {/* Telefonda açıq menyunun arxası */}
+      {mobile && mobileOpen && <div className="absolute inset-0 z-20 bg-black/40" onClick={() => setMobileOpen(false)} />}
+      {/* Açıq menyu üstdə durur — məzmun yerindən oynamasın deyə dar zolağın yeri saxlanır */}
+      {mobile && mobileOpen && <div className="w-16 shrink-0" />}
+      <aside style={{ width }}
+        className={`adm-side h-full flex flex-col shrink-0 ${narrow ? "is-collapsed" : ""} ${dragging ? "is-dragging" : ""} ${mobile && mobileOpen ? "absolute left-0 top-0 z-30 shadow-2xl" : ""}`}>
+        <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2">
+          {GROUPS.map((g) => {
+            const items = g.hrefs.map((h) => byHref.get(h)).filter(Boolean) as typeof visibleLinks;
+            if (!items.length) return null;
             return (
-              <Link key={link.href} href={link.href}
-                className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  isActive
-                    ? "bg-teal-500/10 text-teal-600 dark:text-teal-400 font-semibold"
-                    : "text-muted hover:text-foreground hover:bg-teal-500/[0.06]"
-                }`}>
-                {/* Titan üslubu — aktiv bölmədə sol yuvarlaq vurğu zolağı */}
-                {isActive && <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-teal-500" />}
-                <span className="relative shrink-0">
-                  {link.icon}
-                  {badge > 0 && <span className="sm:hidden absolute -top-1.5 -right-1.5 min-w-[15px] h-[15px] px-1 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">{badge}</span>}
-                </span>
-                <span className="hidden sm:inline flex-1">{link.label}</span>
-                {badge > 0 && <span className="hidden sm:flex min-w-[20px] h-5 px-1.5 bg-rose-500 text-white text-[10px] font-bold rounded-full items-center justify-center">{badge}</span>}
-              </Link>
+              <div key={g.title}>
+                <p className="adm-group">{g.title}</p>
+                {items.map((link) => {
+                  const isActive = pathname === link.href;
+                  const badge = pendingFor(link.href);
+                  return (
+                    <Link key={link.href} href={link.href} title={narrow ? `${link.label}${badge ? ` (${badge})` : ""}` : undefined}
+                      className={`adm-link ${isActive ? "is-active" : ""}`}>
+                      <span className="adm-ico">{link.icon}</span>
+                      {!narrow && <span className="flex-1 truncate">{link.label}</span>}
+                      {badge > 0 && <span className="adm-badge">{badge > 99 ? "99+" : badge}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>
 
-        <div className="p-2 sm:p-3 border-t border-card-border">
-          <button onClick={handleLogout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-all w-full">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
-            <span className="hidden sm:inline">{t("adminLogout")}</span>
+        <div className="p-2 border-t border-card-border space-y-1">
+          <button onClick={toggleSidebar} title={narrow ? "Menyunu genişlət" : "Menyunu daralt"}
+            className={`adm-link w-[calc(100%-16px)] text-muted ${narrow ? "!justify-center" : ""}`}>
+            <span className="adm-ico">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style={{ transform: narrow ? "rotate(180deg)" : undefined, transition: "transform .2s" }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M18.75 19.5l-7.5-7.5 7.5-7.5m-6 15L5.25 12l7.5-7.5" /></svg>
+            </span>
+            {!narrow && <span className="flex-1 text-left">{mobile ? "Bağla" : "Daralt"}</span>}
+          </button>
+          <button onClick={handleLogout} title={t("adminLogout")}
+            className={`adm-link w-[calc(100%-16px)] !text-red-500 hover:!bg-red-500/10 ${narrow ? "!justify-center" : ""}`}>
+            <span className="adm-ico !bg-red-500/10 !text-red-500 !bg-none !shadow-none">
+              <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
+            </span>
+            {!narrow && <span className="flex-1 text-left">{t("adminLogout")}</span>}
           </button>
         </div>
+        {!mobile && <div className="adm-resize" onPointerDown={startResize} onDoubleClick={toggleSidebar} title="Sürüşdürərək eni dəyiş · iki klik — daralt/genişlət" />}
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 min-w-0 overflow-y-auto p-3 sm:p-6">
+      <div className="adm-main flex-1 min-w-0 overflow-y-auto p-3 sm:p-6">
         {children}
       </div>
       </div>
