@@ -22,6 +22,7 @@ import InstallmentCalculator from "@/components/InstallmentCalculator";
 import ReferralSellCard from "@/components/ReferralSellCard";
 import CheaperOfferModal from "@/components/CheaperOfferModal";
 import ProDiscountInfo from "@/components/ProDiscountInfo";
+import BarcodePrices from "@/components/BarcodePrices";
 import { listingInstallmentAllowed, monthsForListing, useInstallmentConfig } from "@/lib/installment";
 
 
@@ -694,6 +695,7 @@ export default function ListingDetailPage() {
             <h3 className="font-semibold mb-3">{t("description")}</h3>
             <p className="text-foreground/80 text-sm sm:text-[15px] leading-relaxed whitespace-pre-wrap">{listing.description}</p>
           </div>
+          {listing.barcode && <BarcodePrices barcode={listing.barcode} price={listing.price} />}
 
           {/* Statistika zolağı — №, tarix, baxış, rəy (bir kartda) */}
           {(() => {

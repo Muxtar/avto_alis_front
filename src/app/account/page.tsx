@@ -10,6 +10,7 @@ import { CATEGORIES, getSubs, getLeaves, buildCat, parseCat, isServiceCat, getLi
 import { AZ_CITIES, FUEL_TYPES, PAYMENT_TYPES } from "@/lib/cities";
 import { MANUFACTURING_COUNTRIES } from "@/lib/countries";
 import LocationPicker from "@/components/LocationPickerWrapper";
+import BarcodeField from "@/components/BarcodeField";
 import PageHero, { heroBtn, heroBtnPrimary } from "@/components/PageHero";
 import QRShare from "@/components/QRShare";
 import { INSTALLMENT_MONTHS, INSTALLMENT_MIN_AMOUNT } from "@/lib/installment";
@@ -69,7 +70,7 @@ function AccountPageInner() {
   const [listingMode, setListingMode] = useState<"" | "voen" | "novoen">(""); // VÖEN ilə / VÖEN-siz
   const [listingKind, setListingKind] = useState<"" | "product" | "service" | "product-form">(""); // Məhsul / Xidmət sihirbazı
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "" });
+  const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "", barcode: "" });
   const [barter, setBarter] = useState(false);   // dəyiş-düş qəbul olunur
   const [forRent, setForRent] = useState(false); // satış yox, icarə/kirayə
   const [allowSelfDelivery, setAllowSelfDelivery] = useState(false); // satıcı özü də çatdıra bilər (Yango + götürmə həmişə var)
@@ -217,7 +218,7 @@ function AccountPageInner() {
 
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
-    setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "" });
+    setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "", barcode: "" });
     setTiers([]);
     setGroupBuyOn(false); setGroupBuyDays("3");
     setBarter(false); setForRent(false);
@@ -365,7 +366,7 @@ function AccountPageInner() {
       title: listing.title, description: listing.description,
       price: String(listing.price), category: listing.category,
       type: listing.type, location: listing.location || "", phone: listing.phone || "",
-      condition: listing.condition || "NEW", brand: listing.brand || "",
+      condition: listing.condition || "NEW", brand: listing.brand || "", barcode: listing.barcode || "",
       country: listing.country || "",
       stock: String(listing.stock || 1),
       forVehicle: listing.forVehicle || "", unit: listing.unit || "", unitValue: listing.unitValue ? String(listing.unitValue) : "",
@@ -652,6 +653,11 @@ function AccountPageInner() {
                 <input required type="number" min="0" step="0.01" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="0.00" className={inputCls} />
               </div>
             </div>
+            {form.type === "PRODUCT" && (
+              <BarcodeField value={form.barcode} inputCls={inputCls}
+                onChange={(v) => setForm((f) => ({ ...f, barcode: v }))}
+                onSuggestName={(n) => setForm((f) => ({ ...f, title: f.title || n }))} />
+            )}
             <div>
               <label className="block text-sm font-medium mb-1.5">{t("listingDesc")}</label>
               <textarea required rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder={t("listingDesc")} className={inputCls + " resize-none"} />
