@@ -16,6 +16,10 @@ const STATUS_LABEL: Record<string, string> = {
   ACTIVE: "Aktiv (sayğac işləyir)",
   PAUSED: "Dayandırılıb",
   ENDED: "Bitib",
+  OFFERED: "🔒 Təklif — cavab gözlənilir",
+  COUNTERED: "💬 Qarşı təklif",
+  EXPIRED: "Müddət bitdi — pul qaytarıldı",
+  CANCELLED: "Ləğv edildi — pul qaytarıldı",
 };
 const STATUS_CLS: Record<string, string> = {
   REQUESTED: "bg-amber-500/10 text-amber-500",
@@ -26,6 +30,10 @@ const STATUS_CLS: Record<string, string> = {
   ACTIVE: "bg-green-500/10 text-green-500",
   PAUSED: "bg-amber-500/10 text-amber-500",
   ENDED: "bg-input-bg text-muted",
+  OFFERED: "bg-amber-500/10 text-amber-600",
+  COUNTERED: "bg-blue-500/10 text-blue-500",
+  EXPIRED: "bg-input-bg text-muted",
+  CANCELLED: "bg-input-bg text-muted",
 };
 
 function fmt(sec: number) {
@@ -70,14 +78,14 @@ export default function ConsultationsPage() {
         <div className="surface p-8 text-center text-muted">Hələ konsultasiya yoxdur.</div>
       ) : (
         <div className="space-y-3">
-          {sessions.map((s) => {
+          {sessions.filter((s) => !(s.flow === "OFFER" && s.status === "CANCELLED" && s.paymentStatus !== "REFUNDED" && !s.paidAmount)).map((s) => {
             const other = s.role === "professional" ? s.buyer : s.professional;
             return (
               <Link key={s.id} href={`/consultations/${s.id}`} className="surface p-4 flex items-center gap-3 hover:border-orange-500/40 transition-colors">
                 <div className="w-11 h-11 rounded-full bg-orange-500/10 flex items-center justify-center text-lg shrink-0">{s.role === "professional" ? "👤" : "🗣️"}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-semibold text-sm truncate">{other?.name || "—"}</p>
+                    <p className="font-semibold text-sm truncate">{other?.name || s.target?.name || "—"}</p>
                     <span className="text-[11px] text-muted">{s.role === "professional" ? "(alıcı)" : "(peşəkar)"}</span>
                     <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${STATUS_CLS[s.status]}`}>{STATUS_LABEL[s.status]}</span>
                   </div>

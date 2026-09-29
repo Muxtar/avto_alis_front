@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import ComplaintButton from "@/components/ComplaintButton";
+import OfferBar from "@/components/OfferBar";
 import { API } from "@/lib/api";
 
 function fmt(sec: number) {
@@ -75,7 +76,7 @@ export default function ConsultationDetailPage() {
     setBusy(true);
     try {
       const r = await fetch(`${API}/consultations/${id}/${path}`, { method: "POST", headers, body: body ? JSON.stringify(body) : undefined }).then((x) => x.json());
-      if (r.success) { if (r.session) { setSession(r.session); setLocalRemaining(r.session.remainingSeconds); } if (r.redirectUrl) window.location.href = r.redirectUrl; }
+      if (r.success) { if (r.session) { setSession(r.session); setLocalRemaining(r.session.remainingSeconds); } if (r.redirectUrl) { try { sessionStorage.setItem("consultPay", String(id)); } catch { /* keç */ } window.location.href = r.redirectUrl; } }
       else toast(r.message || "Xəta", "error");
       return r;
     } catch { toast("Xəta", "error"); } finally { setBusy(false); }
@@ -113,6 +114,9 @@ export default function ConsultationDetailPage() {
           </div>
           <div className={`text-2xl font-bold tabular-nums ${active ? "text-green-500" : "text-muted"}`}>{fmt(localRemaining)}</div>
         </div>
+
+        {/* Əvvəlcədən ödənilən təklif: qəbul / qarşı təklif / rədd / geri götür */}
+        {session.flow === "OFFER" && <div className="mt-3"><OfferBar session={session} onChange={(x) => { setSession(x); setLocalRemaining(x.remainingSeconds); }} /></div>}
 
         {/* VÖEN xəbərdarlığı */}
         {session.status === "PENDING_VOEN" && (

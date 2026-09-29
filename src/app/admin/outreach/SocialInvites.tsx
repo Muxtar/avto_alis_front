@@ -11,6 +11,7 @@ type Row = {
   key: string; platform: string; handle: string; url: string | null; name: string | null; avatar: string | null;
   senders: { id: number; name: string; phone: string | null; count: number }[];
   messages: number; consults: number; media: number; pending: number;
+  offers: number; offerTotal: number; offerExpiresAt: string | null;
   firstAt: string; lastAt: string; previews: string[]; requested: number;
   state: "TODO" | "NOTIFIED" | "DELIVERED";
   notice: { notifiedAt: string | null; by: string | null; times: number; note: string | null } | null;
@@ -36,7 +37,7 @@ function notice(r: Row): string {
   const plat = PLAT[r.platform]?.label || r.platform;
   const names = r.senders.map((s) => s.name).filter(Boolean);
   const who = names.length === 1 ? names[0] : names.length <= 3 ? names.join(", ") : `${names.slice(0, 2).join(", ")} və daha ${names.length - 2} nəfər`;
-  const what = [r.messages && `${r.messages} mesaj`, r.consults && `${r.consults} Rəy (konsultasiya) sorğusu`].filter(Boolean).join(" və ");
+  const what = [r.offers && `${r.offers} ödənişli danışıq təklifi (${r.offerTotal} AZN, ödəniş platformada saxlanılır)`, r.messages && `${r.messages} mesaj`, r.consults && `${r.consults} Rəy (konsultasiya) sorğusu`].filter(Boolean).join(" və ");
   return `Salam${r.name ? `, ${r.name}` : ""}! 👋
 
 Bu, tradixai.io platformasının rəsmi hesabıdır. Platformada ${who} sizə ${what} göndərib.
@@ -45,7 +46,9 @@ Oxumaq və cavab vermək üçün:
 1) tradixai.io saytında qeydiyyatdan keçin;
 2) Profil → Sosial şəbəkələr bölməsində bu ${plat} hesabınızı əlavə edib təsdiqləyin.
 
-Təsdiqdən dərhal sonra bütün mesajlar sizə çatacaq.`;
+Təsdiqdən dərhal sonra bütün mesajlar sizə çatacaq.${r.offers ? `
+
+⏳ Diqqət: ödənişli təklif ${r.offerExpiresAt ? new Date(r.offerExpiresAt).toLocaleDateString("az-AZ") : "7 gün ərzində"} tarixinə qədər qüvvədədir — qəbul edilməsə pul göndərənə qaytarılır.` : ""}`;
 }
 
 export default function SocialInvites() {
@@ -128,6 +131,7 @@ export default function SocialInvites() {
                     {r.state === "TODO" && <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/15 text-amber-700">xəbər veriləcək</span>}
                     {r.state === "NOTIFIED" && <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-sky-500/15 text-sky-700">xəbər verilib{r.notice?.times && r.notice.times > 1 ? ` ×${r.notice.times}` : ""}</span>}
                     {r.state === "DELIVERED" && <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-500/15 text-emerald-700">✓ qoşuldu</span>}
+                    {r.offers > 0 && r.state !== "DELIVERED" && <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600 text-white" title="Ödəniş platformada saxlanılır; müddət bitəndə geri qaytarılır">💰 {r.offers} təklif · {r.offerTotal} AZN{r.offerExpiresAt ? ` · ${Math.max(0, Math.ceil((new Date(r.offerExpiresAt).getTime() - Date.now()) / 864e5))} gün` : ""}</span>}
                     {r.requested > 0 && <span className="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-500 text-white" title="İstifadəçi xüsusi olaraq «Adminlər xəbər versin» istəyib">📣 {r.requested} müraciət</span>}
                   </span>
                   <span className="block text-[11.5px] text-muted truncate">@{r.handle}</span>
@@ -135,7 +139,7 @@ export default function SocialInvites() {
                     <b>{r.senders.length}</b> nəfər yazıb: {r.senders.slice(0, 3).map((s) => s.name).join(", ")}{r.senders.length > 3 ? ` +${r.senders.length - 3}` : ""}
                   </span>
                   <span className="block text-[11px] text-muted mt-0.5">
-                    {r.messages} mesaj{r.consults ? ` · ${r.consults} Rəy sorğusu` : ""}{r.media ? ` · ${r.media} media` : ""} · son: {fmt(r.lastAt)}
+                    {r.offers ? `${r.offers} ödənişli təklif · ` : ""}{r.messages} mesaj{r.consults ? ` · ${r.consults} Rəy sorğusu` : ""}{r.media ? ` · ${r.media} media` : ""} · son: {fmt(r.lastAt)}
                     {r.state === "NOTIFIED" && r.notice?.notifiedAt ? ` · xəbər: ${fmt(r.notice.notifiedAt)}${r.notice.by ? ` (${r.notice.by})` : ""}` : ""}
                     {r.state === "DELIVERED" && r.deliveredTo ? ` · qoşuldu: ${r.deliveredTo.name || `#${r.deliveredTo.id}`} ${fmt(r.deliveredTo.at)}` : ""}
                   </span>

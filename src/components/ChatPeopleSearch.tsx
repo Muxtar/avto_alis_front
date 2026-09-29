@@ -252,7 +252,7 @@ export default function ChatPeopleSearch({
                         className="flex-1 py-1 rounded-lg text-[11px] font-bold text-white cta-gradient">💬 Chat</button>
                     ) : (
                       <button onClick={() => onPendingSocial({ kind: "social", platform: r.platform, url: r.url, handle: r.handle, name: r.displayName || r.handle || r.title, avatar: r.avatarUrl || null })}
-                        className="flex-1 py-1 rounded-lg text-[11px] font-bold text-white cta-gradient">✉️ Mesaj</button>
+                        className="flex-1 py-1 rounded-lg text-[11px] font-bold text-white cta-gradient" title="Ödənişli təklif: müddət + qiymət + ilk mesaj">🗣️ Təklif göndər</button>
                     )}
                     <a href={r.url} target="_blank" rel="noopener noreferrer"
                       className="px-2 py-1 rounded-lg border border-card-border text-[11px] font-semibold">↗</a>

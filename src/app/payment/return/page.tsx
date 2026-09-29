@@ -24,6 +24,13 @@ export default function PaymentReturnPage() {
         window.location.replace(`/business?fee=${status}`);
         return;
       }
+      // Rəy təklifi / konsultasiya ödənişi — chat-ın «Ödənişli» bölməsinə qayıt.
+      const consult = sessionStorage.getItem("consultPay");
+      if (consult) {
+        sessionStorage.removeItem("consultPay");
+        window.location.replace(`/messages?consult=${encodeURIComponent(consult)}&paid=${status}`);
+        return;
+      }
       // VIP elan ödənişi — elanın səhifəsinə qayıt.
       const vipListing = sessionStorage.getItem("vipPay");
       if (vipListing) {

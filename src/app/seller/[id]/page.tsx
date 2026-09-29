@@ -15,6 +15,7 @@ import { API, imgUrl } from "@/lib/api";
 import { groupSelectedParts } from "@/lib/sellerCategories";
 import { SOCIAL_META } from "@/lib/social";
 import SocialIcon from "@/components/SocialIcon";
+import OfferModal, { type OfferTarget } from "@/components/OfferModal";
 
 export default function SellerProfilePage() {
   const { t } = useLanguage();
@@ -27,7 +28,7 @@ export default function SellerProfilePage() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [reqBusy, setReqBusy] = useState<number | null>(null);
+  const reqBusy: number | null = null;
   // İxtisas bölməsindən gəlibsə (?from=ixtisas) VƏ YA şəxs rəy (konsultasiya) təklif edirsə →
   // məhsul satışı və telefon gizlədilir; rəy yönümlü kompakt profil (platformadan kənar əlaqə olmasın).
   const [fromIxtisas, setFromIxtisas] = useState(false);
@@ -37,20 +38,13 @@ export default function SellerProfilePage() {
   const [qty, setQty] = useState<{ [offerId: number]: number }>({});
   const getQty = (id: number) => qty[id] || 1;
 
-  const requestConsultation = async (offerId: number) => {
+  // «Rəy al» — əvvəl ödəniş, sonra qəbul (OfferModal). Paket və ya öz təklifin.
+  const [offerTarget, setOfferTarget] = useState<OfferTarget | null>(null);
+  const requestConsultation = (offerId: number) => {
     if (!isLoggedIn) { router.push("/"); return; }
-    setReqBusy(offerId);
-    try {
-      const r = await fetch(`${API}/consultations/request`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ offerId, quantity: getQty(offerId) }),
-      }).then((x) => x.json());
-      if (r.success) {
-        toast(r.needsVoen ? "Sorğu göndərildi (peşəkar VÖEN əlavə edənə qədər ödəniş donur)" : "Sorğu göndərildi ✓", "success");
-        router.push(`/consultations/${r.session.id}`);
-      } else toast(r.message || t("error"), "error");
-    } catch { toast(t("error"), "error"); } finally { setReqBusy(null); }
+    const o = data?.user?.consultationOffers?.find((x: any) => x.id === offerId);
+    if (!o) return;
+    setOfferTarget({ kind: "package", offerId, name: data.user.name, title: o.title, price: o.price, minutes: o.durationMinutes, quantity: getQty(offerId) });
   };
 
   useEffect(() => {
@@ -99,6 +93,7 @@ export default function SellerProfilePage() {
   return (
     <div className={`${ixtisasMode ? "max-w-3xl" : "max-w-7xl"} mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6`}>
       {/* Geri qayıtma qlobal BackButton ilə edilir (layout) */}
+      {offerTarget && <OfferModal target={offerTarget} onClose={() => setOfferTarget(null)} />}
 
       {/* Seller Profile Card */}
       <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-8 mb-6">
@@ -232,7 +227,11 @@ export default function SellerProfilePage() {
                     </div>
                   ))}
                 </div>
-                <p className="text-[11px] text-muted mt-2">ℹ️ «Rəy al» basdıqda söhbət açılır; peşəkar sayğacı başladanda vaxt işləyir, ödədiyiniz müddət bitəndə yazışma dayanır.</p>
+                <button onClick={() => { if (!isLoggedIn) { router.push("/"); return; } setOfferTarget({ kind: "user", id: user.id, name: user.name, avatar: user.avatar }); }}
+                  className="mt-2.5 w-full py-2.5 rounded-xl border border-dashed border-orange-500/50 text-orange-600 text-sm font-semibold hover:bg-orange-500/5">
+                  ✍️ Öz təklifini yaz (müddət + qiymət)
+                </button>
+                <p className="text-[11px] text-muted mt-2">ℹ️ Ödəniş əvvəlcədən alınır və platformada saxlanılır. Peşəkar qəbul edəndə söhbət açılır; öz qiymətini təklif edə bilər. 7 gün cavab gəlməsə pul avtomatik qaytarılır.</p>
               </div>
             )}
 
