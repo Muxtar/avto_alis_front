@@ -78,6 +78,25 @@ function pickRecorderMime(candidates: string[]): string {
   return ""; // brauzer default seçsin
 }
 
+// Sosial profil üzərindən yazılmış (hələ çatdırılmamış) söhbət — «Instagram (gözlənilir)».
+// Şəxs qeydiyyatdan keçib həmin hesabı təsdiqləyəndə söhbət adi söhbətə çevrilir.
+const SOCIAL_CHIP: Record<string, string> = {
+  instagram: "bg-gradient-to-r from-fuchsia-500 to-orange-400 text-white",
+  facebook: "bg-blue-600 text-white",
+  linkedin: "bg-sky-700 text-white",
+  twitter: "bg-neutral-900 text-white", x: "bg-neutral-900 text-white",
+  tiktok: "bg-neutral-900 text-white", youtube: "bg-red-600 text-white", telegram: "bg-sky-500 text-white",
+};
+function PendingSocialChip({ platform }: { platform: string }) {
+  const p = platform.toLowerCase();
+  return (
+    <span className={`shrink-0 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold whitespace-nowrap ${SOCIAL_CHIP[p] || "bg-input-bg text-muted"}`}
+      title="Hələ platformada deyil — şəxs qeydiyyatdan keçib bu hesabı təsdiqləyəndə mesajlar çatacaq">
+      {PLATFORM_LABEL[p] || platform} (gözlənilir)
+    </span>
+  );
+}
+
 export default function MessagesPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -1484,6 +1503,7 @@ export default function MessagesPage() {
                       {/* Başlıq: iş söhbətində məhsulun adı, şəxsidə şəxsin adı. */}
                       <span className="font-semibold text-sm truncate flex items-center gap-1 min-w-0">
                         {chat.segment === "PAID" && <span title="Rəy konsultasiyası — ödənişli">🗣️</span>}
+                        {chat.type === "pending" && chat.target?.kind === "social" && <PendingSocialChip platform={chat.target.platform} />}
                         {chat.segment === "BUSINESS" ? (chat.listing?.title || chat.businessObject?.name || chat.name) : chat.name}
                         {chat.kind === "PRO_CITY" && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand-to)] text-[9.5px] font-bold" title="Şəhər + ixtisas üzrə peşə qrupu">🎓 Peşə</span>}
                       </span>
@@ -1569,6 +1589,7 @@ export default function MessagesPage() {
                           🏢 {active.businessObject?.name || active.listing?.title || "İş"}
                         </span>
                       )}
+                      {active.type === "pending" && active.target?.kind === "social" && <PendingSocialChip platform={active.target.platform} />}
                       {active.segment === "PAID" && (
                         <span className="shrink-0 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 text-[10px] font-bold" title="Rəy konsultasiyası — yalnız seans aktiv olanda yazmaq olur">🗣️ Ödənişli</span>
                       )}
