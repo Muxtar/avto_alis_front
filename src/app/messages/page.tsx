@@ -9,6 +9,7 @@ import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import { getSocket } from "@/lib/callSocket";
 import ContactsPanel from "@/components/ContactsPanel";
+import PendingInviteChat from "@/components/PendingInviteChat";
 import ChatPeopleSearch from "@/components/ChatPeopleSearch";
 import Avatar from "@/components/Avatar";
 import { useCall } from "@/lib/CallContext";
@@ -34,8 +35,10 @@ const rowDate = (iso: string) => {
 // Serverdəki ayrımın eynisi (backend: segOf) — real-time gələn mesajı açıq
 // söhbətə əlavə etməzdən əvvəl seqmenti burada da yoxlamalıyıq, yoxsa "iş"
 // mesajı açıq "şəxsi" söhbətə düşərdi.
-type Seg = "PERSONAL" | "BUSINESS";
-const segOfMsg = (m: any): Seg => (m?.isBusiness || m?.businessObjectId || m?.listingId ? "BUSINESS" : "PERSONAL");
+const CONSULT_STATUS: Record<string, string> = { REQUESTED: "təsdiq gözlənilir", ACCEPTED: "ödəniş gözlənilir", PAID: "ödənilib", ACTIVE: "aktiv", PAUSED: "dayandırılıb", ENDED: "bitib", REJECTED: "rədd edilib", PENDING_VOEN: "VÖEN gözlənilir" };
+// PAID — «Rəy» konsultasiyası ilə yaranan ödənişli yazışma (öz sətrində).
+type Seg = "PERSONAL" | "BUSINESS" | "PAID";
+const segOfMsg = (m: any): Seg => (m?.consultationId ? "PAID" : m?.isBusiness || m?.businessObjectId || m?.listingId ? "BUSINESS" : "PERSONAL");
 // Mətndəki linkləri klikləyilə bilən et — paylaşılan məhsul/profil linkləri açılsın.
 function linkify(text: string): React.ReactNode {
   if (!text) return text;
@@ -104,7 +107,11 @@ export default function MessagesPage() {
   // Axtarış üçün kontakt siyahısı (id + ad + avatar).
   const [contactPeople, setContactPeople] = useState<{ id: number; name: string; avatar?: string | null; sub?: string }[]>([]);
   // Söhbət siyahısının seqmenti: hamısı / şəxsi / iş.
-  const [segTab, setSegTab] = useState<"ALL" | Seg>("ALL");
+  // Çat bölmələri: «Ödənişsiz» (şəxsi + iş + qruplar + qeydiyyatsız nömrələr) və «Ödənişli» (Rəy).
+  const [segTab, setSegTab] = useState<"FREE" | "PAID">("FREE");
+  // Qeydiyyatsız nömrəyə yazılmış (gözləyən) söhbətlər və açıq olan.
+  const [pendingThreads, setPendingThreads] = useState<any[]>([]);
+  const [pendingOpen, setPendingOpen] = useState<{ name: string; phone: string } | null>(null);
   const { startCall, startGroupCall } = useCall();
   const [replyTo, setReplyTo] = useState<any>(null);
   const [editingMsg, setEditingMsg] = useState<any>(null);
@@ -416,7 +423,8 @@ export default function MessagesPage() {
       await Promise.all([fetchProGroups(), fetch(`${API}/groups`, { headers }).then((x) => x.json()).then((d) => setGroups(d.groups || []))]);
     } finally { setProBusy(null); }
   };
-  const fetchAll = () => { fetchDirect(); fetchGroups(); setLoading(false); };
+  const fetchPending = () => fetch(`${API}/me/invites`, { headers }).then((r) => r.json()).then((d) => { if (d?.success) setPendingThreads(d.threads || []); }).catch(() => {});
+  const fetchAll = () => { fetchDirect(); fetchGroups(); fetchPending(); setLoading(false); };
 
   // Birləşmiş siyahı (1:1 + qruplar), son fəaliyyətə görə sıralı.
   //
@@ -433,11 +441,13 @@ export default function MessagesPage() {
     })),
     // Qruplar həmişə şəxsi tərəfdədir — biznes obyektinə bağlı qrup anlayışı yoxdur.
     ...groups.map((g) => ({ type: "group", id: g.id, key: `g${g.id}`, segment: "PERSONAL" as Seg, kind: g.kind, name: g.name, avatar: g.avatar, memberCount: g.memberCount, lastMessage: g.lastMessage, unreadCount: g.unreadCount, lastAt: g.lastAt })),
+    // Qeydiyyatsız nömrə — yazılanlar o qeydiyyatdan keçəndə çatdırılacaq.
+    ...pendingThreads.map((p) => ({ type: "pending", id: p.phoneKey, key: `p${p.phoneKey}`, segment: "PERSONAL" as Seg, name: p.name, phone: p.phone, count: p.count, consults: p.consults, lastInvite: p.last, unreadCount: 0, lastAt: p.last?.createdAt })),
   ].sort((a, b) => new Date(b.lastAt || 0).getTime() - new Date(a.lastAt || 0).getTime());
 
   // Seqment üzrə oxunmamış saylar — tab başlığındakı nişanlar.
-  const segUnread = (s: Seg) => chatList.filter((c) => c.segment === s).reduce((n, c) => n + (c.unreadCount || 0), 0);
-  const visibleChats = segTab === "ALL" ? chatList : chatList.filter((c) => c.segment === segTab);
+  const segUnread = (s: "FREE" | "PAID") => chatList.filter((c) => (c.segment === "PAID") === (s === "PAID")).reduce((n, c) => n + (c.unreadCount || 0), 0);
+  const visibleChats = chatList.filter((c) => (c.segment === "PAID") === (segTab === "PAID"));
 
   // İki söhbət eyni sətir sayılırmı. İd kifayət etmir — seqment də uyğun olmalıdır.
   // Açar bəzi girişlərdə (qrup yaradılması, kontaktdan açma) verilmir, ona görə
@@ -760,15 +770,13 @@ export default function MessagesPage() {
   const deleteAllThreads = async () => {
     const total = visibleChats.length;
     if (!total) { toast("Silinəcək söhbət yoxdur", "info"); return; }
-    const what = segTab === "BUSINESS" ? "BÜTÜN İŞ söhbətləri"
-      : segTab === "PERSONAL" ? "BÜTÜN ŞƏXSİ söhbətlər"
-      : "BÜTÜN söhbətlər (qruplar daxil)";
+    const what = segTab === "PAID" ? "BÜTÜN ÖDƏNİŞLİ (Rəy) söhbətləri" : "BÜTÜN ödənişsiz söhbətlər (qruplar daxil)";
     if (!confirm(`${what} sizdə silinsin? (${total} söhbət)\n\nQarşı tərəfdə mesajlar qalacaq, qruplardan çıxmırsınız.`)) return;
     setWipeBusy(true);
     try {
       const qs = new URLSearchParams();
-      if (segTab !== "ALL") qs.set("segment", segTab);
-      qs.set("scope", segTab === "ALL" ? "all" : "direct");
+      qs.set("segment", segTab);
+      qs.set("scope", segTab === "PAID" ? "direct" : "all");
       const r = await fetch(`${API}/messages/threads/all?${qs.toString()}`, { method: "DELETE", headers })
         .then((x) => x.json()).catch(() => null);
       if (!r?.success) { toast(r?.message || t('error'), 'error'); return; }
@@ -1097,6 +1105,11 @@ export default function MessagesPage() {
     // Əvvəl `max-w-5xl` idi: geniş monitorda söhbət ortada dar zolaq kimi
     // qalırdı, sağ "Təsvir" paneli üçün isə ümumiyyətlə yer yox idi.
     <div className="w-full px-0 sm:px-3 pt-0 sm:pt-3 pb-0 sm:pb-3">
+      {pendingOpen && (
+        <PendingInviteChat phone={pendingOpen.phone} name={pendingOpen.name}
+          onClose={() => { setPendingOpen(null); fetchPending(); }}
+          onRegistered={(u) => { setPendingOpen(null); fetchAll(); setSideTab("chats"); openChat({ type: "direct", id: u.id, name: u.name, avatar: u.avatar, segment: "PERSONAL", key: `${u.id}:PERSONAL` }); }} />
+      )}
 
       <div ref={attachBox} className={`surface overflow-hidden flex chat-shell ${active ? "chat-active-mobile" : ""}`}>
         {/* Sol panel */}
@@ -1137,8 +1150,7 @@ export default function MessagesPage() {
                       <button onClick={() => { setNewMenuOpen(false); deleteAllThreads(); }} disabled={wipeBusy}
                         className="w-full flex items-center gap-2.5 px-3 py-2.5 text-sm hover:bg-red-500/10 text-red-500 text-left border-t border-card-border disabled:opacity-50">
                         <Ico.Trash className="w-4 h-4" />
-                        {wipeBusy ? "silinir…" : segTab === "BUSINESS" ? "İş söhbətlərini sil"
-                          : segTab === "PERSONAL" ? "Şəxsi söhbətləri sil" : "Bütün söhbətləri sil"}
+                        {wipeBusy ? "silinir…" : segTab === "PAID" ? "Ödənişli söhbətləri sil" : "Ödənişsiz söhbətləri sil"}
                       </button>
                     </div>
                   </>
@@ -1151,7 +1163,7 @@ export default function MessagesPage() {
                 <button onClick={() => { if (sideTab === "calls") markCallsSeen(); setSideTab("chats"); }} role="tab" aria-selected={sideTab === "chats"}
                   className={`seg-tab ${sideTab === "chats" ? "is-active" : ""}`}>
                   <Ico.Chat className="w-3.5 h-3.5" />Söhbətlər
-                  {segUnread("PERSONAL") + segUnread("BUSINESS") > 0 && sideTab !== "chats" && <span className="seg-badge">{Math.min(99, segUnread("PERSONAL") + segUnread("BUSINESS"))}</span>}
+                  {segUnread("FREE") + segUnread("PAID") > 0 && sideTab !== "chats" && <span className="seg-badge">{Math.min(99, segUnread("FREE") + segUnread("PAID"))}</span>}
                 </button>
                 <button onClick={() => { setSideTab("calls"); markCallsSeen(); fetchCalls(); }} role="tab" aria-selected={sideTab === "calls"}
                   className={`seg-tab ${sideTab === "calls" ? "is-active" : ""}`}>
@@ -1194,7 +1206,7 @@ export default function MessagesPage() {
                     onOpenChat={(p) => {
                       // «İş» sekməsindən açılan söhbət İŞ axınında qalsın —
                       // əvvəl hər halda PERSONAL açılırdı.
-                      const seg: Seg = segTab === "BUSINESS" ? "BUSINESS" : "PERSONAL";
+                      const seg: Seg = "PERSONAL";
                       openChat({ type: "direct", id: p.id, name: p.name, avatar: p.avatar, segment: seg, key: `${p.id}:${seg}` });
                     }}
                   />
@@ -1206,9 +1218,8 @@ export default function MessagesPage() {
                     satış mesajı şəxsi söhbətlə qarışmasın. */}
                 <div className="seg-tabs mt-2.5" role="tablist" aria-label="Söhbət bölmələri">
                   {([
-                    { k: "ALL" as const, label: "Hamısı", icon: <Ico.Chat className="w-3.5 h-3.5" />, n: 0 },
-                    { k: "PERSONAL" as const, label: "Şəxsi", icon: <Ico.User className="w-3.5 h-3.5" />, n: segUnread("PERSONAL") },
-                    { k: "BUSINESS" as const, label: "İş", icon: <Ico.Store className="w-3.5 h-3.5" />, n: segUnread("BUSINESS") },
+                    { k: "FREE" as const, label: "Ödənişsiz", icon: <Ico.Chat className="w-3.5 h-3.5" />, n: segUnread("FREE") },
+                    { k: "PAID" as const, label: "Ödənişli", icon: <span className="text-[13px] leading-none">🗣️</span>, n: segUnread("PAID") },
                   ]).map((s) => (
                     <button key={s.k} onClick={() => setSegTab(s.k)}
                       role="tab" aria-selected={segTab === s.k}
@@ -1226,7 +1237,8 @@ export default function MessagesPage() {
               məhsul/obyekt üzərindən başlayır. */}
           {sideTab === "contacts" ? (
             <div className="relative flex-1 min-h-0 flex flex-col">
-              <ContactsPanel onMessage={(u) => openChat({ type: "direct", id: u.id, name: u.name, segment: "PERSONAL", key: `${u.id}:PERSONAL` })} />
+              <ContactsPanel onMessage={(u) => openChat({ type: "direct", id: u.id, name: u.name, segment: "PERSONAL", key: `${u.id}:PERSONAL` })}
+                onPending={(c) => setPendingOpen(c)} />
               {/* WhatsApp üslubunda üzən "+" — yeni kontakt/qrup. Kontaktlar
                   siyahısı uzun olanda da həmişə əlçatan qalır. */}
               <button onClick={openGroupModal} title="Yeni qrup / kontakt"
@@ -1277,7 +1289,7 @@ export default function MessagesPage() {
           ) : (
           <div className="flex-1 overflow-y-auto">
             {/* ── Peşə qrupları: qoşulma / çıxma təklifləri ── */}
-            {segTab !== "BUSINESS" && proInfo && (proInfo.leaveSuggestions?.length > 0 || proInfo.joinable?.some((j: any) => !j.optedOut)) && (
+            {segTab !== "PAID" && proInfo && (proInfo.leaveSuggestions?.length > 0 || proInfo.joinable?.some((j: any) => !j.optedOut)) && (
               <div className="m-2 rounded-2xl overflow-hidden border border-[var(--brand-to)]/25">
                 <div className="brand-band px-3 py-2">
                   <p className="brand-band-kicker">tradixai · peşə qrupları</p>
@@ -1319,13 +1331,13 @@ export default function MessagesPage() {
               <div className="text-center py-10 px-4">
                 <p className="text-muted text-sm">
                   {chatList.length === 0 ? t("noMessages")
-                    : segTab === "BUSINESS" ? "İş yazışması yoxdur — məhsullarınıza gələn mesajlar burada görünəcək."
+                    : segTab === "PAID" ? "Ödənişli söhbət yoxdur — «Rəy» (konsultasiya) ilə başlayan yazışmalar burada görünəcək."
                     : "Bu bölmədə söhbət yoxdur."}
                 </p>
               </div>
             ) : (
               visibleChats.map((chat) => (
-                <div key={`${chat.type}-${chat.key}`} role="button" tabIndex={0} onClick={() => openChat(chat)}
+                <div key={`${chat.type}-${chat.key}`} role="button" tabIndex={0} onClick={() => chat.type === "pending" ? setPendingOpen({ name: chat.name, phone: chat.phone }) : openChat(chat)}
                   className={`group w-full flex items-center gap-3 p-3 hover:bg-input-bg/50 transition-colors text-left border-b border-card-border/30 cursor-pointer ${sameChat(active, chat) ? "bg-input-bg" : ""}`}>
                   {/* Şəkil: İŞ söhbətində MƏHSUL şəkli əsasdır, şəxsin avatarı
                       küncdə kiçik nişan kimi durur. Söhbətin nə haqqında olduğu
@@ -1341,6 +1353,10 @@ export default function MessagesPage() {
                           <Avatar name={chat.name} src={chat.avatar} className="w-5 h-5 ring-2 ring-card" gradient={typeColor(chat.partnerType)} />
                         </span>
                       </>
+                    ) : chat.type === "pending" ? (
+                      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br from-gray-400 to-gray-500">
+                        {String(chat.name).split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+                      </div>
                     ) : chat.type === "group" ? (
                       chat.avatar
                         ? <Avatar name={chat.name} src={chat.avatar} className="w-11 h-11" />
@@ -1356,7 +1372,8 @@ export default function MessagesPage() {
                     <div className="flex items-center justify-between gap-2">
                       {/* Başlıq: iş söhbətində məhsulun adı, şəxsidə şəxsin adı. */}
                       <span className="font-semibold text-sm truncate flex items-center gap-1 min-w-0">
-                        {chat.type !== "group" && chat.lastMessage?.consultationId && <span title="Rəy konsultasiyası">🗣️</span>}
+                        {chat.segment === "PAID" && <span title="Rəy konsultasiyası — ödənişli">🗣️</span>}
+                        {chat.type === "pending" && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 text-[9.5px] font-bold" title="Nömrə hələ qeydiyyatdan keçməyib">⏳ qeydiyyatsız</span>}
                         {chat.segment === "BUSINESS" ? (chat.listing?.title || chat.businessObject?.name || chat.name) : chat.name}
                         {chat.kind === "PRO_CITY" && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand-to)] text-[9.5px] font-bold" title="Şəhər + ixtisas üzrə peşə qrupu">🎓 Peşə</span>}
                       </span>
@@ -1364,11 +1381,18 @@ export default function MessagesPage() {
                     </div>
                     <p className="text-muted text-xs truncate">
                       {chat.type === "group" && chat.lastMessage?.sender ? `${chat.lastMessage.sender.name?.split(" ")[0]}: ` : ""}
-                      {previewText(chat.lastMessage) || (chat.type === "group" ? `${chat.memberCount} üzv` : "")}
+                      {chat.type === "pending"
+                        ? (chat.lastInvite?.kind === "CONSULTATION" ? "🗣️ Rəy sorğusu" : chat.lastInvite?.content) + ` · ${chat.count} gözləyir`
+                        : previewText(chat.lastMessage) || (chat.type === "group" ? `${chat.memberCount} üzv` : "")}
                       {chat.lastAt && <span className="text-muted/70"> · {rowDate(chat.lastAt)}</span>}
                     </p>
                     {/* İş söhbətində kimin yazdığı ayrıca sətirdə — başlıq artıq
                         məhsulun adıdır, şəxs itməsin. */}
+                    {chat.segment === "PAID" && chat.consultation && (
+                      <p className="text-[11px] text-muted/80 truncate">
+                        {chat.consultation.role === "professional" ? "Siz peşəkarsınız" : "Siz alıcısınız"} · {CONSULT_STATUS[chat.consultation.status] || chat.consultation.status}
+                      </p>
+                    )}
                     {chat.segment === "BUSINESS" && chat.type === "direct" && (
                       <p className="text-[11px] text-muted/80 truncate flex items-center gap-1">
                         <Ico.Store className="w-3 h-3" />{chat.businessObject?.name || chat.name}
@@ -1376,9 +1400,9 @@ export default function MessagesPage() {
                     )}
                   </div>
                   {/* Söhbəti sil (məndə) */}
-                  <button onClick={(e) => { e.stopPropagation(); deleteThread(chat); }} title="Söhbəti sil" className="shrink-0 w-8 h-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  {chat.type !== "pending" && <button onClick={(e) => { e.stopPropagation(); deleteThread(chat); }} title="Söhbəti sil" className="shrink-0 w-8 h-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
-                  </button>
+                  </button>}
                 </div>
               ))
             )}
@@ -1434,6 +1458,9 @@ export default function MessagesPage() {
                           title={active.businessObject ? `Obyekt: ${active.businessObject.name}` : "Biznes yazışması"}>
                           🏢 {active.businessObject?.name || active.listing?.title || "İş"}
                         </span>
+                      )}
+                      {active.segment === "PAID" && (
+                        <span className="shrink-0 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 text-[10px] font-bold" title="Rəy konsultasiyası — yalnız seans aktiv olanda yazmaq olur">🗣️ Ödənişli</span>
                       )}
                     </span>
                     <p className="text-muted text-xs h-4 flex items-center gap-2">

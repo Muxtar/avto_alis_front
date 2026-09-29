@@ -29,6 +29,9 @@ export default function ConsultationDetailPage() {
   const [stars, setStars] = useState(5);
   const [like, setLike] = useState<boolean | null>(null);
   const [rateText, setRateText] = useState("");
+  // Nömrəyə (qeydiyyatdan əvvəl) göndərilmiş sorğu — qiyməti peşəkar qəbul edəndə yazır.
+  const [offerPrice, setOfferPrice] = useState("");
+  const [offerMin, setOfferMin] = useState(0);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const loadSession = useCallback(async () => {
@@ -105,7 +108,7 @@ export default function ConsultationDetailPage() {
       <div className="surface p-4 mb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <p className="font-semibold">{session.title} · {session.price} AZN</p>
+            <p className="font-semibold">{session.title} · {session.needsPrice ? "qiymət təyin olunmayıb" : `${session.price} AZN`}</p>
             <p className="text-xs text-muted">{isPro ? "Siz peşəkarsınız" : "Siz alıcısınız"}</p>
           </div>
           <div className={`text-2xl font-bold tabular-nums ${active ? "text-green-500" : "text-muted"}`}>{fmt(localRemaining)}</div>
@@ -125,9 +128,30 @@ export default function ConsultationDetailPage() {
           {isPro ? (
             <>
               {/* Yeni sorğu → peşəkar qəbul/rədd edir (alıcı ödənişindən əvvəl) */}
+              {session.status === "REQUESTED" && session.needsPrice && (
+                <div className="w-full rounded-xl border border-card-border p-3 space-y-2">
+                  <p className="text-sm font-semibold">Bu sorğu sizə qeydiyyatdan əvvəl göndərilib — qiyməti siz yazın:</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input value={offerPrice} onChange={(e) => setOfferPrice(e.target.value.replace(/[^\d.,]/g, ""))} inputMode="decimal" placeholder="Qiymət"
+                      className="w-28 px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm" />
+                    <span className="text-sm text-muted">AZN ·</span>
+                    {[15, 30, 60].map((m) => {
+                      const cur = offerMin || Math.round(session.durationSeconds / 60);
+                      return <button key={m} onClick={() => setOfferMin(m)} className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${cur === m ? "bg-green-500 text-white border-transparent" : "border-input-border"}`}>{m} dəq</button>;
+                    })}
+                  </div>
+                </div>
+              )}
               {session.status === "REQUESTED" && (
                 <>
-                  <button onClick={() => act("accept")} disabled={busy} className="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">✓ Qəbul et</button>
+                  <button onClick={async () => {
+                    if (session.needsPrice) {
+                      const price = parseFloat(offerPrice.replace(",", "."));
+                      if (!(price >= 1)) { toast("Qiyməti yazın (ən azı 1 AZN)", "error"); return; }
+                      const r = await act("accept", { price, durationMinutes: offerMin || Math.round(session.durationSeconds / 60) });
+                      if (r?.needsVoen) toast("Qəbul edildi. Ödəniş üçün VÖEN (biznes) əlavə etməlisiniz: Profil → Biznes əlavə et", "info");
+                    } else act("accept");
+                  }} disabled={busy} className="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">✓ Qəbul et</button>
                   <button onClick={() => { if (confirm("Sorğunu rədd etmək istəyirsiniz?")) act("reject"); }} disabled={busy} className="px-4 py-2 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold disabled:opacity-50">✕ Rədd et</button>
                 </>
               )}

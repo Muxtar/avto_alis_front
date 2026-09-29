@@ -81,7 +81,7 @@ export default function ConsultationsPage() {
                     <span className="text-[11px] text-muted">{s.role === "professional" ? "(alıcı)" : "(peşəkar)"}</span>
                     <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${STATUS_CLS[s.status]}`}>{STATUS_LABEL[s.status]}</span>
                   </div>
-                  <p className="text-xs text-muted mt-0.5">{s.title} · {s.price} AZN · Qalan: <b>{fmt(s.remainingSeconds)}</b></p>
+                  <p className="text-xs text-muted mt-0.5">{s.title} · {s.needsPrice ? "qiymət gözlənilir" : `${s.price} AZN`} · Qalan: <b>{fmt(s.remainingSeconds)}</b></p>
                 </div>
                 <svg className="w-5 h-5 text-muted shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
               </Link>
