@@ -1184,7 +1184,7 @@ export default function ListingDetailPage() {
             )}
             {/* ── DAHA UCUZ TƏKLİF ET — istənilən elana (biznes və fərdi, məhsul və xidmət):
                 satıcıya öz qiymətini təklif et və ya başqa satıcılardan daha ucuzunu istə ── */}
-            {!isOwner && listing.status === "APPROVED" && !isExpired && !gb?.enabled && !((listing.groupBuyDays || 0) > 0 && listing.stock > 1 && listing.priceTiers?.length > 0) && (
+            {!isOwner && listing.status === "APPROVED" && !isExpired && !gb?.enabled && !(listing.type === "PRODUCT" && (listing.groupBuyDays || 0) > 0 && listing.stock > 1 && listing.priceTiers?.length > 0) && (
               <button type="button" onClick={openOffer}
                 className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-bold border border-dashed border-[var(--brand-to)]/45 text-[var(--brand-to)] bg-transparent hover:bg-[var(--brand-soft)] hover:border-solid transition-all">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M3 7l6 6 4-4 8 8m0 0v-6m0 6h-6" /></svg>

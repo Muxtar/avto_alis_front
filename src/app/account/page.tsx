@@ -315,7 +315,8 @@ function AccountPageInner() {
           .map((t) => ({ minQty: Number(t.minQty), price: Number(t.price) })),
       ));
       // Birgə alış pəncərəsi: bağlıdırsa boş göndərilir (server null yazır).
-      fd.append("groupBuyDays", listingMode === "voen" && groupBuyOn && tiers.some((t) => t.minQty && t.price) && Number(form.stock) > 1 ? String(groupBuyDays || "3") : "");
+      // Birgə alış yalnız MƏHSULDA — növ xidmətə dəyişdirilibsə göndərilmir.
+      fd.append("groupBuyDays", form.type === "PRODUCT" && listingMode === "voen" && groupBuyOn && tiers.some((t) => t.minQty && t.price) && Number(form.stock) > 1 ? String(groupBuyDays || "3") : "");
       if (listingMode === "voen") { fd.append("pickupOnly", String(pickupOnly)); fd.append("allowSelfDelivery", String(!pickupOnly && allowSelfDelivery)); if (!pickupOnly && allowSelfDelivery) fd.append("selfDeliveryNote", selfDeliveryNote); }
       // Taksit yalnız biznes elanında göndərilir; şəxsi elanda kartla ödəniş
       // olmadığı üçün onsuz da tətbiq olunmur.
