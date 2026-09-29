@@ -3,7 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
-import type { InviteTarget } from "@/components/PendingInviteChat";
+import type { InviteTarget } from "@/lib/invites";
 
 /**
  * CHAT-DA ŞƏXS AXTARIŞI (WhatsApp üslubu).

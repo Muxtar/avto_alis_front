@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import { getSocket } from "@/lib/callSocket";
 import ContactsPanel from "@/components/ContactsPanel";
-import PendingInviteChat, { type InviteTarget } from "@/components/PendingInviteChat";
+import { type InviteTarget, inviteKey, inviteBody, inviteToMsg, PLATFORM_LABEL } from "@/lib/invites";
 import ChatPeopleSearch from "@/components/ChatPeopleSearch";
 import Avatar from "@/components/Avatar";
 import { useCall } from "@/lib/CallContext";
@@ -111,7 +111,8 @@ export default function MessagesPage() {
   const [segTab, setSegTab] = useState<"FREE" | "PAID">("FREE");
   // Qeydiyyatsız nömrəyə yazılmış (gözləyən) söhbətlər və açıq olan.
   const [pendingThreads, setPendingThreads] = useState<any[]>([]);
-  const [pendingOpen, setPendingOpen] = useState<InviteTarget | null>(null);
+  // «Rəy istə» pəncərəsi (platformada olmayan şəxsə) — qeyd + müddət.
+  const [consultAsk, setConsultAsk] = useState<{ note: string; minutes: number } | null>(null);
   const { startCall, startGroupCall } = useCall();
   const [replyTo, setReplyTo] = useState<any>(null);
   const [editingMsg, setEditingMsg] = useState<any>(null);
@@ -426,6 +427,12 @@ export default function MessagesPage() {
   const fetchPending = () => fetch(`${API}/me/invites`, { headers }).then((r) => r.json()).then((d) => { if (d?.success) setPendingThreads(d.threads || []); }).catch(() => {});
   const fetchAll = () => { fetchDirect(); fetchGroups(); fetchPending(); setLoading(false); };
 
+  // Platformada olmayan şəxs — adi söhbət sətri/pəncərəsi kimi (type: "pending").
+  const pendingChat = (t: InviteTarget) => ({
+    type: "pending", id: inviteKey(t), key: `p${inviteKey(t)}`, segment: "PERSONAL" as Seg, name: t.name, target: t,
+    avatar: t.kind === "social" && t.avatar ? `${API}/avatar-proxy?url=${encodeURIComponent(t.avatar)}` : null,
+  });
+
   // Birləşmiş siyahı (1:1 + qruplar), son fəaliyyətə görə sıralı.
   //
   // Eyni şəxs həm dost, həm müştəri ola bilər — server bizə onu İKİ ayrı söhbət
@@ -442,11 +449,12 @@ export default function MessagesPage() {
     // Qruplar həmişə şəxsi tərəfdədir — biznes obyektinə bağlı qrup anlayışı yoxdur.
     ...groups.map((g) => ({ type: "group", id: g.id, key: `g${g.id}`, segment: "PERSONAL" as Seg, kind: g.kind, name: g.name, avatar: g.avatar, memberCount: g.memberCount, lastMessage: g.lastMessage, unreadCount: g.unreadCount, lastAt: g.lastAt })),
     // Qeydiyyatsız nömrə — yazılanlar o qeydiyyatdan keçəndə çatdırılacaq.
+    // Görünüşcə adi söhbətdir; yalnız mesajların saatı yanında 🕓 olur.
     ...pendingThreads.map((p) => ({
-      type: "pending", id: p.key, key: `p${p.key}`, segment: "PERSONAL" as Seg, name: p.name, avatar: p.avatar || null, count: p.count, consults: p.consults, lastInvite: p.last, unreadCount: 0, lastAt: p.last?.createdAt,
-      target: (p.social
+      ...pendingChat((p.social
         ? { kind: "social", platform: p.platform, url: p.url, name: p.name, avatar: p.avatar, handle: String(p.social).split(":")[1] }
-        : { kind: "phone", phone: p.phone, name: p.name }) as InviteTarget,
+        : { kind: "phone", phone: p.phone, name: p.name }) as InviteTarget),
+      lastMessage: inviteToMsg(p.last, user?.id), unreadCount: 0, lastAt: p.last?.createdAt,
     })),
   ].sort((a, b) => new Date(b.lastAt || 0).getTime() - new Date(a.lastAt || 0).getTime());
 
@@ -486,8 +494,76 @@ export default function MessagesPage() {
     return () => document.body.classList.remove("chat-fullscreen");
   }, [active]);
 
+  const openDirect = (u: { id: number; name: string; avatar?: string | null }) =>
+    openChat({ type: "direct", id: u.id, name: u.name, avatar: u.avatar, segment: "PERSONAL", key: `${u.id}:PERSONAL` });
+  // Göndərmə cavabı: server mesajı və ya gözləyən element. Şəxs artıq platformadadırsa adi söhbət açılır.
+  const pushSent = (d: any) => {
+    if (d?.code === "REGISTERED" && d.user) { toast(`${d.user.name || "Bu şəxs"} artıq platformadadır — söhbət açılır`, "success"); fetchAll(); openDirect(d.user); return false; }
+    const m = d?.message && typeof d.message === "object" ? d.message : d?.item ? inviteToMsg(d.item, user?.id) : null;
+    if (!m) return false;
+    setMessages((prev) => prev.some((x) => x.id === m.id) ? prev : [...prev, m]);
+    return true;
+  };
+  const removePending = async (msg: any) => {
+    if (!confirm("Bu mesaj hələ çatdırılmayıb. Geri götürülsün?")) return;
+    const r = await fetch(`${API}/me/invites/item/${msg.inviteId}`, { method: "DELETE", headers }).then((x) => x.json()).catch(() => null);
+    if (r?.success) { setMessages((prev) => prev.filter((x) => x.id !== msg.id)); fetchPending(); }
+  };
+  const askConsult = async () => {
+    if (!consultAsk || active?.type !== "pending") return;
+    const r = await fetch(`${API}/me/invites`, { method: "POST", headers, body: JSON.stringify({ ...inviteBody(active.target), kind: "CONSULTATION", content: consultAsk.note.trim(), durationMinutes: consultAsk.minutes }) }).then((x) => x.json()).catch(() => null);
+    if (r?.success || r?.code === "REGISTERED") { setConsultAsk(null); pushSent(r); scrollToEnd(); fetchPending(); }
+    else toast(r?.message || t("error"), "error");
+  };
+  const inviteText = (tg: InviteTarget) => {
+    const site = typeof window !== "undefined" ? window.location.origin : "https://www.tradixai.io";
+    return tg.kind === "social"
+      ? `Salam! Sizə tradixai-da mesaj yazmışam. ${site} saytında qeydiyyatdan keçin və profilinizdə bu ${PLATFORM_LABEL[tg.platform] || tg.platform} hesabını təsdiqləyin — mesajlarım sizə çatacaq.`
+      : `Salam! Sizə tradixai-da mesaj yazmışam. Bu nömrə ilə qeydiyyatdan keçin, mesajlarım sizə çatacaq: ${site}`;
+  };
+  const sendInvite = async () => {
+    setAttachOpen(false);
+    const tg: InviteTarget | undefined = active?.target;
+    if (!tg) return;
+    const text = inviteText(tg);
+    if (tg.kind === "phone") {
+      const d = tg.phone.replace(/\D/g, "");
+      const wa = d.length === 9 ? `994${d}` : d.length === 10 && d.startsWith("0") ? `994${d.slice(1)}` : d;
+      window.open(`https://wa.me/${wa}?text=${encodeURIComponent(text)}`, "_blank", "noopener");
+      return;
+    }
+    try { await navigator.clipboard.writeText(text); toast("Dəvət mətni kopyalandı — profildə ona göndərin", "success"); } catch { /* keç */ }
+    window.open(tg.url, "_blank", "noopener");
+  };
+  const askAdminNotify = async () => {
+    setAttachOpen(false);
+    const tg: InviteTarget | undefined = active?.target;
+    if (!tg || tg.kind !== "social") return;
+    const last = [...messages].reverse().find((m) => m.pending && m.content)?.content;
+    const r = await fetch(`${API}/social-outreach`, { method: "POST", headers, body: JSON.stringify({
+      targetUrl: tg.url, targetPlatform: tg.platform, targetHandle: tg.handle || inviteKey(tg).split(":")[1], targetName: tg.name, targetAvatar: tg.avatar || null,
+      message: `${inviteText(tg)}${last ? `\n\nMesaj: «${String(last).slice(0, 600)}»` : ""}`,
+    }) }).then((x) => x.json()).catch(() => null);
+    toast(r?.success ? "Adminlər bu profilə xəbər verəcək ✓" : r?.message || t("error"), r?.success ? "success" : "error");
+  };
+
   const openChat = (chat: any) => {
     setActive(chat);
+    if (chat.type === "pending") {
+      // Gözləyən söhbət — yazılanlar serverdə saxlanır, şəxs qoşulanda çatır.
+      setNewMsg(typeof window !== "undefined" ? (localStorage.getItem(`draft:pending:${chat.key}`) || "") : "");
+      setMessages([]); setHasMore(false); setReplyTo(null); setEditingMsg(null); setSelectedMsg(null); setPartnerTyping(false); setAttachOpen(false); setSideTab("chats");
+      const tg: InviteTarget = chat.target;
+      const url = tg.kind === "phone"
+        ? `${API}/me/invites/${encodeURIComponent(tg.phone.replace(/\D/g, ""))}`
+        : `${API}/me/invites/social?platform=${encodeURIComponent(tg.platform)}&url=${encodeURIComponent(tg.url)}`;
+      fetch(url, { headers }).then((r) => r.json()).then((d) => {
+        if (d?.registered) { openDirect(d.registered); return; }
+        setMessages((d?.items || []).map((i: any) => inviteToMsg(i, user?.id)));
+        scrollToEnd(false);
+      }).catch(() => toast(t("error"), "error"));
+      return;
+    }
     // Qaralama: göndərilməmiş mətn həmin söhbətdə saxlanır — girəndə inputa qaytarılır.
     setNewMsg(typeof window !== "undefined" ? (localStorage.getItem(`draft:${chat.type}:${chat.key || chat.id}`) || "") : "");
     setHasMore(false); setReplyTo(null); setEditingMsg(null); setSelectedMsg(null); setPartnerTyping(false); setAttachOpen(false); setSideTab("chats");
@@ -542,9 +618,11 @@ export default function MessagesPage() {
   // Göndərmə hədəfi (1:1 → receiverId, qrup → conversationId).
   // `segment` göndərilir ki, "iş" sekmesindəki cavab da iş axınında qalsın —
   // server konteksti (obyekt/məhsul) keçmişdən bərpa edib mesaja yazır.
-  const sendTarget = () => active?.type === "group"
+  const sendTarget = (): any => active?.type === "group"
     ? { conversationId: active.id }
-    : { receiverId: active.id, segment: active?.segment || undefined };
+    : active?.type === "pending"
+      ? { pending: inviteBody(active.target) }
+      : { receiverId: active.id, segment: active?.segment || undefined };
 
   const emitTyping = () => {
     const socket = token ? getSocket(token) : null;
@@ -565,11 +643,14 @@ export default function MessagesPage() {
         if (res.ok && d.success) { setMessages((prev) => prev.map((x) => x.id === editingMsg.id ? d.message : x)); setEditingMsg(null); setNewMsg(""); }
         else toast(d.message || t('error'), 'error');
       } else {
-        const res = await fetch(`${API}/messages`, { method: "POST", headers, body: JSON.stringify({ ...sendTarget(), content: newMsg, replyToId: replyTo?.id }) });
+        const res = active.type === "pending"
+          ? await fetch(`${API}/me/invites`, { method: "POST", headers, body: JSON.stringify({ ...inviteBody(active.target), content: newMsg }) })
+          : await fetch(`${API}/messages`, { method: "POST", headers, body: JSON.stringify({ ...sendTarget(), content: newMsg, replyToId: replyTo?.id }) });
         const d = await res.json();
-        if (res.ok && d.success) {
+        if (d?.code === "REGISTERED") pushSent(d);
+        else if (res.ok && d.success) {
           setNewMsg(""); setReplyTo(null);
-          setMessages((prev) => prev.some((x) => x.id === d.message.id) ? prev : [...prev, d.message]);
+          pushSent(d);
           scrollToEnd(); fetchAll();
         } else toast(d.message || t('error'), 'error');
       }
@@ -585,13 +666,15 @@ export default function MessagesPage() {
       const fd = new FormData();
       fd.append("media", file);
       if (active.type === "group") fd.append("conversationId", String(active.id));
+      else if (active.type === "pending") fd.append("pending", JSON.stringify(inviteBody(active.target)));
       else { fd.append("receiverId", String(active.id)); if (active.segment) fd.append("segment", active.segment); }
       fd.append("type", type);
       if (duration) fd.append("duration", String(duration));
       if (replyTo) fd.append("replyToId", String(replyTo.id));
       const res = await fetch(`${API}/messages/media`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd });
       const d = await res.json().catch(() => ({}));
-      if (res.ok && d.success) { setMessages((prev) => prev.some((x) => x.id === d.message.id) ? prev : [...prev, d.message]); setReplyTo(null); scrollToEnd(); fetchAll(); }
+      if (d?.code === "REGISTERED") pushSent(d);
+      else if (res.ok && d.success) { pushSent(d); setReplyTo(null); scrollToEnd(); fetchAll(); }
       else toast(d.message || `Göndərilmədi (${res.status})`, 'error');
     } catch { toast("Şəbəkə xətası — media göndərilmədi", 'error'); } finally { setUploadingMedia(false); }
   };
@@ -610,7 +693,8 @@ export default function MessagesPage() {
           const body: any = { ...sendTarget(), latitude: pos.coords.latitude, longitude: pos.coords.longitude, replyToId: replyTo?.id };
           const res = await fetch(`${API}/messages/location`, { method: "POST", headers, body: JSON.stringify(body) });
           const d = await res.json().catch(() => ({}));
-          if (res.ok && d.success) { setMessages((prev) => prev.some((x) => x.id === d.message.id) ? prev : [...prev, d.message]); setReplyTo(null); scrollToEnd(); fetchAll(); }
+          if (d?.code === "REGISTERED") pushSent(d);
+          else if (res.ok && d.success) { pushSent(d); setReplyTo(null); scrollToEnd(); fetchAll(); }
           else toast(d.message || `Göndərilmədi (${res.status})`, "error");
         } catch { toast("Konum göndərilmədi", "error"); } finally { setSendingLocation(false); }
       },
@@ -639,7 +723,7 @@ export default function MessagesPage() {
       try {
         const res = await fetch(`${API}/messages/contact`, { method: "POST", headers, body: JSON.stringify({ ...sendTarget(), contactName: c.name, contactPhone: c.phone, contactUserId: c.user?.id || null }) });
         const d = await res.json();
-        if (res.ok && d.success) setMessages((prev) => [...prev, d.message]);
+        if (res.ok && d.success) pushSent(d);
       } catch { /* keç */ }
     }
     setContactSel(new Set()); scrollToEnd(); fetchAll();
@@ -651,7 +735,8 @@ export default function MessagesPage() {
     try {
       const res = await fetch(`${API}/messages/contact`, { method: "POST", headers, body: JSON.stringify({ ...sendTarget(), contactName: c.name, contactPhone: c.phone, contactUserId: c.user?.id || null, replyToId: replyTo?.id }) });
       const d = await res.json();
-      if (res.ok && d.success) { setMessages((prev) => [...prev, d.message]); setReplyTo(null); scrollToEnd(); fetchAll(); }
+      if (d?.code === "REGISTERED") pushSent(d);
+      else if (res.ok && d.success) { pushSent(d); setReplyTo(null); scrollToEnd(); fetchAll(); }
       else toast(d.message || t('error'), 'error');
     } catch { toast(t('error'), 'error'); }
   };
@@ -749,6 +834,13 @@ export default function MessagesPage() {
   };
   // Söhbəti sil (məndə) — şəxs/qrup siyahıdan çıxır, bütün mesajlar məndə gizlənir.
   const deleteThread = async (chat: any) => {
+    if (chat.type === "pending") {
+      if (!confirm(`"${chat.name}" ilə söhbət silinsin? Hələ çatdırılmamış mesajlar da geri götürüləcək.`)) return;
+      const r = await fetch(`${API}/me/invites/thread/${encodeURIComponent(chat.id)}`, { method: "DELETE", headers }).then((x) => x.json()).catch(() => null);
+      if (r?.success) { if (sameChat(active, chat)) { setActive(null); setMessages([]); } fetchPending(); }
+      else toast(r?.message || t("error"), "error");
+      return;
+    }
     const what = chat.segment === "BUSINESS" ? `"${chat.name}" ilə İŞ söhbəti` : `"${chat.name}" ilə söhbət`;
     if (!confirm(`${what} sizdə silinsin? (Qarşı tərəfdə qalacaq)`)) return;
     try {
@@ -984,6 +1076,7 @@ export default function MessagesPage() {
   const typeColor = (type: string) => type === "MECHANIC" ? "from-green-500 to-emerald-600" : type === "PARTS_SELLER" ? "from-purple-500 to-violet-600" : "from-blue-500 to-blue-600";
 
   const ticks = (msg: any) => {
+    if (msg.pending) return <span className="opacity-80" title="Gözləyir — platformaya qoşulanda çatacaq">🕓</span>;
     if (msg.read) return <span className="text-sky-300" title="Oxundu">✓✓</span>;
     if (msg.deliveredAt) return <span className="opacity-70" title="Çatdırıldı">✓✓</span>;
     return <span className="opacity-70" title="Göndərildi">✓</span>;
@@ -1110,10 +1203,27 @@ export default function MessagesPage() {
     // Əvvəl `max-w-5xl` idi: geniş monitorda söhbət ortada dar zolaq kimi
     // qalırdı, sağ "Təsvir" paneli üçün isə ümumiyyətlə yer yox idi.
     <div className="w-full px-0 sm:px-3 pt-0 sm:pt-3 pb-0 sm:pb-3">
-      {pendingOpen && (
-        <PendingInviteChat target={pendingOpen}
-          onClose={() => { setPendingOpen(null); fetchPending(); }}
-          onRegistered={(u) => { setPendingOpen(null); fetchAll(); setSideTab("chats"); openChat({ type: "direct", id: u.id, name: u.name, avatar: u.avatar, segment: "PERSONAL", key: `${u.id}:PERSONAL` }); }} />
+      {/* Platformada olmayan şəxsdən Rəy istə — o qoşulanda sorğu «Ödənişli»yə düşür */}
+      {consultAsk && (
+        <div className="fixed inset-0 z-[130] bg-black/50 flex items-end sm:items-center justify-center" onClick={() => setConsultAsk(null)}>
+          <div className="modern-page w-full sm:max-w-sm bg-card rounded-t-2xl sm:rounded-2xl p-4 space-y-3" onClick={(e) => e.stopPropagation()}>
+            <p className="font-bold">🗣️ Rəy (ödənişli konsultasiya) istə</p>
+            <p className="text-xs text-muted">Qiyməti o qəbul edəndə yazacaq, sonra ödəyirsiniz.</p>
+            <textarea value={consultAsk.note} onChange={(e) => setConsultAsk({ ...consultAsk, note: e.target.value })} rows={3} maxLength={2000}
+              placeholder="Nə barədə rəy istəyirsiniz? (istəyə görə)" className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm resize-none" />
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted">Müddət:</span>
+              {[15, 30, 60].map((m) => (
+                <button key={m} onClick={() => setConsultAsk({ ...consultAsk, minutes: m })}
+                  className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${consultAsk.minutes === m ? "bg-[var(--brand-to)] text-white border-transparent" : "border-input-border"}`}>{m} dəq</button>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setConsultAsk(null)} className="flex-1 py-2.5 border border-input-border text-sm">Ləğv</button>
+              <button onClick={askConsult} className="flex-1 py-2.5 text-white text-sm font-semibold bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)]">Göndər</button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div ref={attachBox} className={`surface overflow-hidden flex chat-shell ${active ? "chat-active-mobile" : ""}`}>
@@ -1198,7 +1308,7 @@ export default function MessagesPage() {
                 {/* Şəxs axtarışı — əvvəl söhbətlərdə, sonra sosial mediada.
                     Ana səhifə axtarışından bura köçürüldü (orada yalnız məhsul qaldı). */}
                 <div className="mt-2">
-                  <ChatPeopleSearch onPendingSocial={(t) => setPendingOpen(t)}
+                  <ChatPeopleSearch onPendingSocial={(t) => openChat(pendingChat(t))}
                     people={(() => {
                       // Söhbətlər + kontaktlar (təkrarsız).
                       const rows: { id: number; name: string; avatar?: string | null; sub?: string }[] = chatList
@@ -1243,7 +1353,7 @@ export default function MessagesPage() {
           {sideTab === "contacts" ? (
             <div className="relative flex-1 min-h-0 flex flex-col">
               <ContactsPanel onMessage={(u) => openChat({ type: "direct", id: u.id, name: u.name, segment: "PERSONAL", key: `${u.id}:PERSONAL` })}
-                onPending={(c) => setPendingOpen({ kind: "phone", phone: c.phone, name: c.name })} />
+                onPending={(c) => openChat(pendingChat({ kind: "phone", phone: c.phone, name: c.name }))} />
               {/* WhatsApp üslubunda üzən "+" — yeni kontakt/qrup. Kontaktlar
                   siyahısı uzun olanda da həmişə əlçatan qalır. */}
               <button onClick={openGroupModal} title="Yeni qrup / kontakt"
@@ -1342,7 +1452,7 @@ export default function MessagesPage() {
               </div>
             ) : (
               visibleChats.map((chat) => (
-                <div key={`${chat.type}-${chat.key}`} role="button" tabIndex={0} onClick={() => chat.type === "pending" ? setPendingOpen(chat.target) : openChat(chat)}
+                <div key={`${chat.type}-${chat.key}`} role="button" tabIndex={0} onClick={() => openChat(chat)}
                   className={`group w-full flex items-center gap-3 p-3 hover:bg-input-bg/50 transition-colors text-left border-b border-card-border/30 cursor-pointer ${sameChat(active, chat) ? "bg-input-bg" : ""}`}>
                   {/* Şəkil: İŞ söhbətində MƏHSUL şəkli əsasdır, şəxsin avatarı
                       küncdə kiçik nişan kimi durur. Söhbətin nə haqqında olduğu
@@ -1358,13 +1468,6 @@ export default function MessagesPage() {
                           <Avatar name={chat.name} src={chat.avatar} className="w-5 h-5 ring-2 ring-card" gradient={typeColor(chat.partnerType)} />
                         </span>
                       </>
-                    ) : chat.type === "pending" && chat.avatar ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={`${API}/avatar-proxy?url=${encodeURIComponent(chat.avatar)}`} alt="" loading="lazy" className="w-11 h-11 rounded-xl object-cover bg-input-bg" />
-                    ) : chat.type === "pending" ? (
-                      <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br from-gray-400 to-gray-500">
-                        {String(chat.name).split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
-                      </div>
                     ) : chat.type === "group" ? (
                       chat.avatar
                         ? <Avatar name={chat.name} src={chat.avatar} className="w-11 h-11" />
@@ -1381,7 +1484,6 @@ export default function MessagesPage() {
                       {/* Başlıq: iş söhbətində məhsulun adı, şəxsidə şəxsin adı. */}
                       <span className="font-semibold text-sm truncate flex items-center gap-1 min-w-0">
                         {chat.segment === "PAID" && <span title="Rəy konsultasiyası — ödənişli">🗣️</span>}
-                        {chat.type === "pending" && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 text-[9.5px] font-bold" title="Hələ platformada deyil — qoşulanda çatdırılacaq">⏳ {chat.target?.kind === "social" ? (({ facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn", twitter: "X", tiktok: "TikTok" } as Record<string, string>)[chat.target.platform] || "sosial") : "qeydiyyatsız"}</span>}
                         {chat.segment === "BUSINESS" ? (chat.listing?.title || chat.businessObject?.name || chat.name) : chat.name}
                         {chat.kind === "PRO_CITY" && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand-to)] text-[9.5px] font-bold" title="Şəhər + ixtisas üzrə peşə qrupu">🎓 Peşə</span>}
                       </span>
@@ -1389,9 +1491,7 @@ export default function MessagesPage() {
                     </div>
                     <p className="text-muted text-xs truncate">
                       {chat.type === "group" && chat.lastMessage?.sender ? `${chat.lastMessage.sender.name?.split(" ")[0]}: ` : ""}
-                      {chat.type === "pending"
-                        ? (chat.lastInvite?.kind === "CONSULTATION" ? "🗣️ Rəy sorğusu" : chat.lastInvite?.content) + ` · ${chat.count} gözləyir`
-                        : previewText(chat.lastMessage) || (chat.type === "group" ? `${chat.memberCount} üzv` : "")}
+                      {previewText(chat.lastMessage) || (chat.type === "group" ? `${chat.memberCount} üzv` : "")}
                       {chat.lastAt && <span className="text-muted/70"> · {rowDate(chat.lastAt)}</span>}
                     </p>
                     {/* İş söhbətində kimin yazdığı ayrıca sətirdə — başlıq artıq
@@ -1408,7 +1508,7 @@ export default function MessagesPage() {
                     )}
                   </div>
                   {/* Söhbəti sil (məndə) */}
-                  {chat.type !== "pending" && <button onClick={(e) => { e.stopPropagation(); deleteThread(chat); }} title="Söhbəti sil" className="shrink-0 w-8 h-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                  {<button onClick={(e) => { e.stopPropagation(); deleteThread(chat); }} title="Söhbəti sil" className="shrink-0 w-8 h-8 rounded-lg text-muted hover:text-red-500 hover:bg-red-500/10 flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
                   </button>}
                 </div>
@@ -1458,7 +1558,9 @@ export default function MessagesPage() {
                     <button onClick={openInfo} className="text-left"><p className="font-medium text-sm">{active.name}</p><p className="text-muted text-xs">{active.memberCount} üzv · məlumat üçün toxun</p></button>
                   ) : (
                     <><span className="flex items-center gap-1.5 min-w-0">
-                      <Link href={`/seller/${active.id}`} className="font-medium text-sm hover:text-orange-500 transition-colors truncate">{active.name}</Link>
+                      {active.type === "pending"
+                        ? <span className="font-medium text-sm truncate">{active.name}</span>
+                        : <Link href={`/seller/${active.id}`} className="font-medium text-sm hover:text-orange-500 transition-colors truncate">{active.name}</Link>}
                       {/* Açıq söhbətin hansı axın olduğu başlıqda görünsün —
                           eyni şəxslə iki söhbət var, hansında yazdığın bilinməlidir. */}
                       {active.segment === "BUSINESS" && (
@@ -1472,9 +1574,16 @@ export default function MessagesPage() {
                       )}
                     </span>
                     <p className="text-muted text-xs h-4 flex items-center gap-2">
-                      {partnerTyping ? <span className="text-orange-500">yazır...</span> : presence[active.id]?.online ? <span className="text-green-500">onlayn</span> : presence[active.id]?.lastSeen ? lastSeenText(presence[active.id].lastSeen) : null}
+                      {active.type === "pending" ? (
+                        <span className="truncate">
+                          {active.target?.kind === "social"
+                            ? <a href={active.target.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{PLATFORM_LABEL[active.target.platform] || active.target.platform}</a>
+                            : active.target?.phone}
+                          {" · platformaya qoşulanda mesajlar çatacaq"}
+                        </span>
+                      ) : partnerTyping ? <span className="text-orange-500">yazır...</span> : presence[active.id]?.online ? <span className="text-green-500">onlayn</span> : presence[active.id]?.lastSeen ? lastSeenText(presence[active.id].lastSeen) : null}
                       {/* Kontaktda deyilsə — adı/nömrəni bilmədən userId ilə əlavə et (WhatsApp üslubu) */}
-                      {!contactUserIds.has(active.id) && <button onClick={saveContact} className="text-orange-500 hover:underline shrink-0">➕ Kontakta əlavə et</button>}
+                      {active.type !== "pending" && !contactUserIds.has(active.id) && <button onClick={saveContact} className="text-orange-500 hover:underline shrink-0">➕ Kontakta əlavə et</button>}
                     </p></>
                   )}
                 </div>
@@ -1530,7 +1639,7 @@ export default function MessagesPage() {
                       )}
                       {/* Əməliyyat menyusu düyməsi — media mesajlarında da əlçatan olsun (sil/redaktə/cavab) */}
                       {isMine && !deleted && !selMode && (
-                        <button onClick={(e) => { e.stopPropagation(); setSelectedMsg(msg); }} title="Seçimlər" className="order-1 shrink-0 w-7 h-7 rounded-full text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">⋮</button>
+                        <button onClick={(e) => { e.stopPropagation(); if (msg.pending) removePending(msg); else setSelectedMsg(msg); }} title="Seçimlər" className="order-1 shrink-0 w-7 h-7 rounded-full text-muted hover:text-foreground hover:bg-input-bg flex items-center justify-center opacity-70 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">⋮</button>
                       )}
                       <div className={`max-w-[75%] min-w-0 ${isMine ? "order-2" : ""}`}>
                         {active.type === "group" && !isMine && !deleted && msg.sender && (
@@ -1540,7 +1649,7 @@ export default function MessagesPage() {
                             title="Şəxsi mesaj yaz"
                           >{msg.sender?.name?.split(" ")[0]} 💬</button>
                         )}
-                        <div onClick={() => !selMode && !deleted && setSelectedMsg(selectedMsg?.id === msg.id ? null : msg)}
+                        <div onClick={() => { if (msg.pending) { removePending(msg); return; } if (!selMode && !deleted) setSelectedMsg(selectedMsg?.id === msg.id ? null : msg); }}
                           className={`px-3.5 py-2.5 rounded-2xl text-sm break-words cursor-pointer ${deleted ? "bg-input-bg/50 border border-input-border text-muted italic" : isMine ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-br-md" : "bg-input-bg border border-input-border text-foreground rounded-bl-md"}`}>
                           {msg.replyTo && !deleted && (
                             <div className={`text-[11px] mb-1 px-2 py-1 rounded-lg border-l-2 ${isMine ? "bg-white/15 border-white/50" : "bg-orange-500/10 border-orange-500/50"}`}>{previewText(msg.replyTo)}</div>
@@ -1558,7 +1667,7 @@ export default function MessagesPage() {
                           <p className={`text-[10px] mt-1 flex items-center gap-1 ${isMine ? 'text-white/50 justify-end' : 'text-muted'}`}>
                             {msg.editedAt && !deleted && <span title="Redaktə edilib">redaktə</span>}
                             {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                            {isMine && !deleted && active.type === "direct" && ticks(msg)}
+                            {isMine && !deleted && (active.type === "direct" || active.type === "pending") && ticks(msg)}
                           </p>
                         </div>
                         {reactionChips(msg)}
@@ -1608,6 +1717,11 @@ export default function MessagesPage() {
                         <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">📄 Sənəd / Fayl</button>
                         <button onClick={sendLocation} disabled={sendingLocation} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap disabled:opacity-50">📍 {sendingLocation ? "Konum alınır…" : "Konum"}</button>
                         <button onClick={openContactPicker} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">👤 Kontakt</button>
+                        {active.type === "pending" && (<>
+                          <button onClick={() => { setAttachOpen(false); setConsultAsk({ note: "", minutes: 30 }); }} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap border-t border-card-border">🗣️ Rəy istə</button>
+                          <button onClick={sendInvite} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">📨 Dəvət göndər</button>
+                          {active.target?.kind === "social" && <button onClick={askAdminNotify} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-input-bg text-sm w-full whitespace-nowrap">📣 Adminlər xəbər versin</button>}
+                        </>)}
                       </div>
                     </>)}
                     {/* Emoji seçici */}
