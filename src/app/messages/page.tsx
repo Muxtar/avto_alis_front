@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import { getSocket } from "@/lib/callSocket";
 import ContactsPanel from "@/components/ContactsPanel";
-import PendingInviteChat from "@/components/PendingInviteChat";
+import PendingInviteChat, { type InviteTarget } from "@/components/PendingInviteChat";
 import ChatPeopleSearch from "@/components/ChatPeopleSearch";
 import Avatar from "@/components/Avatar";
 import { useCall } from "@/lib/CallContext";
@@ -111,7 +111,7 @@ export default function MessagesPage() {
   const [segTab, setSegTab] = useState<"FREE" | "PAID">("FREE");
   // Qeydiyyatsız nömrəyə yazılmış (gözləyən) söhbətlər və açıq olan.
   const [pendingThreads, setPendingThreads] = useState<any[]>([]);
-  const [pendingOpen, setPendingOpen] = useState<{ name: string; phone: string } | null>(null);
+  const [pendingOpen, setPendingOpen] = useState<InviteTarget | null>(null);
   const { startCall, startGroupCall } = useCall();
   const [replyTo, setReplyTo] = useState<any>(null);
   const [editingMsg, setEditingMsg] = useState<any>(null);
@@ -442,7 +442,12 @@ export default function MessagesPage() {
     // Qruplar həmişə şəxsi tərəfdədir — biznes obyektinə bağlı qrup anlayışı yoxdur.
     ...groups.map((g) => ({ type: "group", id: g.id, key: `g${g.id}`, segment: "PERSONAL" as Seg, kind: g.kind, name: g.name, avatar: g.avatar, memberCount: g.memberCount, lastMessage: g.lastMessage, unreadCount: g.unreadCount, lastAt: g.lastAt })),
     // Qeydiyyatsız nömrə — yazılanlar o qeydiyyatdan keçəndə çatdırılacaq.
-    ...pendingThreads.map((p) => ({ type: "pending", id: p.phoneKey, key: `p${p.phoneKey}`, segment: "PERSONAL" as Seg, name: p.name, phone: p.phone, count: p.count, consults: p.consults, lastInvite: p.last, unreadCount: 0, lastAt: p.last?.createdAt })),
+    ...pendingThreads.map((p) => ({
+      type: "pending", id: p.key, key: `p${p.key}`, segment: "PERSONAL" as Seg, name: p.name, avatar: p.avatar || null, count: p.count, consults: p.consults, lastInvite: p.last, unreadCount: 0, lastAt: p.last?.createdAt,
+      target: (p.social
+        ? { kind: "social", platform: p.platform, url: p.url, name: p.name, avatar: p.avatar, handle: String(p.social).split(":")[1] }
+        : { kind: "phone", phone: p.phone, name: p.name }) as InviteTarget,
+    })),
   ].sort((a, b) => new Date(b.lastAt || 0).getTime() - new Date(a.lastAt || 0).getTime());
 
   // Seqment üzrə oxunmamış saylar — tab başlığındakı nişanlar.
@@ -1106,7 +1111,7 @@ export default function MessagesPage() {
     // qalırdı, sağ "Təsvir" paneli üçün isə ümumiyyətlə yer yox idi.
     <div className="w-full px-0 sm:px-3 pt-0 sm:pt-3 pb-0 sm:pb-3">
       {pendingOpen && (
-        <PendingInviteChat phone={pendingOpen.phone} name={pendingOpen.name}
+        <PendingInviteChat target={pendingOpen}
           onClose={() => { setPendingOpen(null); fetchPending(); }}
           onRegistered={(u) => { setPendingOpen(null); fetchAll(); setSideTab("chats"); openChat({ type: "direct", id: u.id, name: u.name, avatar: u.avatar, segment: "PERSONAL", key: `${u.id}:PERSONAL` }); }} />
       )}
@@ -1193,7 +1198,7 @@ export default function MessagesPage() {
                 {/* Şəxs axtarışı — əvvəl söhbətlərdə, sonra sosial mediada.
                     Ana səhifə axtarışından bura köçürüldü (orada yalnız məhsul qaldı). */}
                 <div className="mt-2">
-                  <ChatPeopleSearch
+                  <ChatPeopleSearch onPendingSocial={(t) => setPendingOpen(t)}
                     people={(() => {
                       // Söhbətlər + kontaktlar (təkrarsız).
                       const rows: { id: number; name: string; avatar?: string | null; sub?: string }[] = chatList
@@ -1238,7 +1243,7 @@ export default function MessagesPage() {
           {sideTab === "contacts" ? (
             <div className="relative flex-1 min-h-0 flex flex-col">
               <ContactsPanel onMessage={(u) => openChat({ type: "direct", id: u.id, name: u.name, segment: "PERSONAL", key: `${u.id}:PERSONAL` })}
-                onPending={(c) => setPendingOpen(c)} />
+                onPending={(c) => setPendingOpen({ kind: "phone", phone: c.phone, name: c.name })} />
               {/* WhatsApp üslubunda üzən "+" — yeni kontakt/qrup. Kontaktlar
                   siyahısı uzun olanda da həmişə əlçatan qalır. */}
               <button onClick={openGroupModal} title="Yeni qrup / kontakt"
@@ -1337,7 +1342,7 @@ export default function MessagesPage() {
               </div>
             ) : (
               visibleChats.map((chat) => (
-                <div key={`${chat.type}-${chat.key}`} role="button" tabIndex={0} onClick={() => chat.type === "pending" ? setPendingOpen({ name: chat.name, phone: chat.phone }) : openChat(chat)}
+                <div key={`${chat.type}-${chat.key}`} role="button" tabIndex={0} onClick={() => chat.type === "pending" ? setPendingOpen(chat.target) : openChat(chat)}
                   className={`group w-full flex items-center gap-3 p-3 hover:bg-input-bg/50 transition-colors text-left border-b border-card-border/30 cursor-pointer ${sameChat(active, chat) ? "bg-input-bg" : ""}`}>
                   {/* Şəkil: İŞ söhbətində MƏHSUL şəkli əsasdır, şəxsin avatarı
                       küncdə kiçik nişan kimi durur. Söhbətin nə haqqında olduğu
@@ -1353,6 +1358,9 @@ export default function MessagesPage() {
                           <Avatar name={chat.name} src={chat.avatar} className="w-5 h-5 ring-2 ring-card" gradient={typeColor(chat.partnerType)} />
                         </span>
                       </>
+                    ) : chat.type === "pending" && chat.avatar ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={`${API}/avatar-proxy?url=${encodeURIComponent(chat.avatar)}`} alt="" loading="lazy" className="w-11 h-11 rounded-xl object-cover bg-input-bg" />
                     ) : chat.type === "pending" ? (
                       <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br from-gray-400 to-gray-500">
                         {String(chat.name).split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
@@ -1373,7 +1381,7 @@ export default function MessagesPage() {
                       {/* Başlıq: iş söhbətində məhsulun adı, şəxsidə şəxsin adı. */}
                       <span className="font-semibold text-sm truncate flex items-center gap-1 min-w-0">
                         {chat.segment === "PAID" && <span title="Rəy konsultasiyası — ödənişli">🗣️</span>}
-                        {chat.type === "pending" && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 text-[9.5px] font-bold" title="Nömrə hələ qeydiyyatdan keçməyib">⏳ qeydiyyatsız</span>}
+                        {chat.type === "pending" && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-amber-500/15 text-amber-700 text-[9.5px] font-bold" title="Hələ platformada deyil — qoşulanda çatdırılacaq">⏳ {chat.target?.kind === "social" ? (({ facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn", twitter: "X", tiktok: "TikTok" } as Record<string, string>)[chat.target.platform] || "sosial") : "qeydiyyatsız"}</span>}
                         {chat.segment === "BUSINESS" ? (chat.listing?.title || chat.businessObject?.name || chat.name) : chat.name}
                         {chat.kind === "PRO_CITY" && <span className="shrink-0 px-1.5 py-0.5 rounded-md bg-[var(--brand-soft)] text-[var(--brand-to)] text-[9.5px] font-bold" title="Şəhər + ixtisas üzrə peşə qrupu">🎓 Peşə</span>}
                       </span>

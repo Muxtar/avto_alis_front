@@ -3,6 +3,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import type { InviteTarget } from "@/components/PendingInviteChat";
 
 /**
  * CHAT-DA ŞƏXS AXTARIŞI (WhatsApp üslubu).
@@ -15,8 +16,9 @@ import { API, imgUrl } from "@/lib/api";
  *      olmasa belə. Əvvəl bu axtarış yox idi: saytda qeydiyyatdan keçmiş
  *      usta yalnız kontaktımda olsaydı tapılırdı.
  *   3. SONRA sosial media — "İnternetdə axtar" ilə. Nəticələr şəkilləri,
- *      platforması və "tradixai istifadəçisi" nişanı ilə gəlir; tanımadığın
- *      şəxsə mesaj yazmaq üçün admin panelə düşən sorğu göndərilir.
+ *      platforması və "tradixai istifadəçisi" nişanı ilə gəlir. Platformada
+ *      olmayan şəxsə yazılan mesaj ÇAT siyahısına «⏳ gözləyir» kimi düşür və
+ *      o qeydiyyatdan keçib HƏMİN hesabı təsdiqləyəndə ona çatdırılır.
  *
  * İnternet axtarışı KREDİT xərclədiyi üçün avtomatik işə düşmür — istifadəçi
  * özü düyməyə basır.
@@ -34,10 +36,12 @@ const PLAT: Record<string, { icon: string; label: string; cls: string }> = {
 const proxyImg = (u: string) => `${API}/avatar-proxy?url=${encodeURIComponent(u)}`;
 
 export default function ChatPeopleSearch({
-  people, onOpenChat,
+  people, onOpenChat, onPendingSocial,
 }: {
   people: LocalPerson[];                       // chat + kontakt siyahısı
   onOpenChat: (p: LocalPerson) => void;
+  /** Platformada olmayan sosial profilə yaz — gözləyən söhbət açılır. */
+  onPendingSocial: (t: InviteTarget) => void;
 }) {
   const { token, isLoggedIn, user } = useAuth();
   const { toast } = useToast();
@@ -47,10 +51,6 @@ export default function ChatPeopleSearch({
   const [webLoading, setWebLoading] = useState(false);
   const [web, setWeb] = useState<any[] | null>(null);
   const [webErr, setWebErr] = useState<string | null>(null);
-  // Sosial profilə mesaj — admin əl ilə çatdırır
-  const [msgTarget, setMsgTarget] = useState<any>(null);
-  const [msgText, setMsgText] = useState("");
-  const [msgBusy, setMsgBusy] = useState(false);
 
   // ── 1) Yerli süzgəc — şəbəkə sorğusu YOXDUR ──
   const local = useMemo(() => {
@@ -98,26 +98,6 @@ export default function ChatPeopleSearch({
       if (r.success) setWeb(r.results || []);
       else setWebErr(r.message || "Nəticə tapılmadı");
     } catch { setWebErr("Şəbəkə xətası"); } finally { setWebLoading(false); }
-  };
-
-  const sendOutreach = async () => {
-    if (!msgTarget || !msgText.trim()) return;
-    setMsgBusy(true);
-    try {
-      const r = await fetch(`${API}/social-outreach`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          targetUrl: msgTarget.url, targetPlatform: msgTarget.platform, targetHandle: msgTarget.handle,
-          targetName: msgTarget.siteUser?.name || msgTarget.displayName || msgTarget.handle,
-          targetAvatar: msgTarget.siteUser?.avatar || msgTarget.avatarUrl || null,
-          matchedUserId: msgTarget.siteUser?.id || null,
-          message: msgText.trim(),
-        }),
-      }).then((x) => x.json());
-      if (r.success) { toast("Mesaj göndərildi — admin çatdıracaq ✓", "success"); setMsgTarget(null); setMsgText(""); }
-      else toast(r.message || "Xəta", "error");
-    } catch { toast("Xəta", "error"); } finally { setMsgBusy(false); }
   };
 
   return (
@@ -271,7 +251,7 @@ export default function ChatPeopleSearch({
                       <button onClick={() => onOpenChat({ id: r.siteUser.id, name: r.siteUser.name, avatar: r.siteUser.avatar })}
                         className="flex-1 py-1 rounded-lg text-[11px] font-bold text-white cta-gradient">💬 Chat</button>
                     ) : (
-                      <button onClick={() => { setMsgTarget(r); setMsgText(""); }}
+                      <button onClick={() => onPendingSocial({ kind: "social", platform: r.platform, url: r.url, handle: r.handle, name: r.displayName || r.handle || r.title, avatar: r.avatarUrl || null })}
                         className="flex-1 py-1 rounded-lg text-[11px] font-bold text-white cta-gradient">✉️ Mesaj</button>
                     )}
                     <a href={r.url} target="_blank" rel="noopener noreferrer"
@@ -284,31 +264,6 @@ export default function ChatPeopleSearch({
         </div>
       )}
 
-      {/* ── Sosial profilə mesaj — admin əl ilə çatdırır ── */}
-      {msgTarget && (
-        <div className="fixed inset-0 z-[120] bg-black/60 flex items-center justify-center p-4" onClick={() => !msgBusy && setMsgTarget(null)}>
-          <div className="bg-card text-foreground border border-card-border rounded-2xl p-4 w-full max-w-sm" onClick={(e) => e.stopPropagation()}>
-            <p className="font-bold text-sm mb-1">
-              ✉️ {msgTarget.displayName || msgTarget.handle}
-              <span className="font-normal text-muted"> · {PLAT[msgTarget.platform || ""]?.label || msgTarget.platform}</span>
-            </p>
-            <p className="text-[11px] text-muted mb-2">
-              Mesaj admin panelinə düşür və oradan həmin profilə <b>əl ilə</b> göndərilir. Sizin adınız da yazılır.
-            </p>
-            <textarea value={msgText} onChange={(e) => setMsgText(e.target.value)} rows={4}
-              placeholder="Mesajınızı yazın…"
-              className="w-full px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm resize-none mb-2" />
-            <div className="flex gap-2">
-              <button onClick={() => setMsgTarget(null)} disabled={msgBusy}
-                className="px-3 py-2 rounded-xl border border-card-border text-sm">Ləğv</button>
-              <button onClick={sendOutreach} disabled={msgBusy || !msgText.trim()}
-                className="flex-1 py-2 rounded-xl text-white text-sm font-bold cta-gradient disabled:opacity-50">
-                {msgBusy ? "Göndərilir…" : "Göndər"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

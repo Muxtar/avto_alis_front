@@ -1,17 +1,26 @@
 "use client";
-// QEYDİYYATSIZ NÖMRƏ İLƏ SÖHBƏT — yazılanlar gözləmədə qalır; həmin nömrə ilə
-// qeydiyyat tamamlananda hamısı (mesajlar + Rəy sorğusu) ona çatdırılır.
+// PLATFORMADA OLMAYAN ŞƏXSLƏ SÖHBƏT — yazılanlar gözləmədə qalır:
+//   • NÖMRƏ: həmin nömrə ilə qeydiyyat tamamlananda çatdırılır;
+//   • SOSİAL HESAB (chat axtarışında internetdə tapılan profil): şəxs qeydiyyatdan
+//     keçib HƏMİN hesabı öz profilində təsdiqləyəndə çatdırılır.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
-import { API } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
+
+export type InviteTarget =
+  | { kind: "phone"; phone: string; name: string }
+  | { kind: "social"; platform: string; url: string; name: string; avatar?: string | null; handle?: string | null };
 
 type Registered = { id: number; name: string; avatar?: string | null };
 
-export default function PendingInviteChat({ phone, name, onClose, onRegistered }: {
-  phone: string; name: string; onClose: () => void;
-  /** Nömrə artıq platformadadır — adi söhbəti aç. */
+const PLAT_LABEL: Record<string, string> = { facebook: "Facebook", instagram: "Instagram", linkedin: "LinkedIn", twitter: "X", x: "X", tiktok: "TikTok", youtube: "YouTube", telegram: "Telegram" };
+const proxyImg = (u: string) => (/^https?:\/\//.test(u) ? `${API}/avatar-proxy?url=${encodeURIComponent(u)}` : imgUrl(u));
+
+export default function PendingInviteChat({ target, onClose, onRegistered }: {
+  target: InviteTarget; onClose: () => void;
+  /** Şəxs artıq platformadadır — adi söhbəti aç. */
   onRegistered?: (u: Registered) => void;
 }) {
   const { token } = useAuth();
@@ -22,22 +31,33 @@ export default function PendingInviteChat({ phone, name, onClose, onRegistered }
   const [consultOpen, setConsultOpen] = useState(false);
   const [note, setNote] = useState("");
   const [minutes, setMinutes] = useState(30);
+  const [notified, setNotified] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const social = target.kind === "social";
+  const plat = social ? PLAT_LABEL[target.platform] || target.platform : "";
+  const name = target.name;
 
+  const threadUrl = target.kind === "phone"
+    ? `${API}/me/invites/${encodeURIComponent(target.phone.replace(/\D/g, ""))}`
+    : `${API}/me/invites/social?platform=${encodeURIComponent(target.platform)}&url=${encodeURIComponent(target.url)}`;
   const load = useCallback(async () => {
-    const r = await fetch(`${API}/me/invites/${encodeURIComponent(phone.replace(/\D/g, ""))}`, { headers }).then((x) => x.json()).catch(() => null);
+    const r = await fetch(threadUrl, { headers }).then((x) => x.json()).catch(() => null);
     if (r?.registered && onRegistered) { onRegistered(r.registered); return; }
     if (r?.success) setItems(r.items || []);
+    else if (r?.message) toast(r.message, "error");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phone, token]);
+  }, [threadUrl, token]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [items.length]);
 
+  const targetBody = target.kind === "phone"
+    ? { phone: target.phone }
+    : { social: { platform: target.platform, url: target.url, name: target.name, avatar: target.avatar || null } };
   const post = async (body: any) => {
     setBusy(true);
     try {
-      const r = await fetch(`${API}/me/invites`, { method: "POST", headers, body: JSON.stringify({ phone, ...body }) }).then((x) => x.json());
+      const r = await fetch(`${API}/me/invites`, { method: "POST", headers, body: JSON.stringify({ ...targetBody, ...body }) }).then((x) => x.json());
       if (r?.code === "REGISTERED" && onRegistered) { toast(`${name} artıq platformadadır — söhbət açılır`, "success"); onRegistered(r.user); return false; }
       if (!r?.success) { toast(r?.message || "Göndərilmədi", "error"); return false; }
       setItems((p) => [...p, r.item]);
@@ -54,31 +74,72 @@ export default function PendingInviteChat({ phone, name, onClose, onRegistered }
   };
 
   const site = typeof window !== "undefined" ? window.location.origin : "https://www.tradixai.io";
-  const inviteText = `Salam! Sizə tradixai-da mesaj yazmışam. Bu nömrə ilə qeydiyyatdan keçin, mesajlarım sizə çatacaq: ${site}`;
-  const digits = phone.replace(/\D/g, "");
-  const waNumber = digits.length === 9 ? `994${digits}` : digits.length === 10 && digits.startsWith("0") ? `994${digits.slice(1)}` : digits;
+  const inviteText = social
+    ? `Salam! Sizə tradixai-da mesaj yazmışam. ${site} saytında qeydiyyatdan keçin və profilinizdə bu ${plat} hesabını təsdiqləyin — mesajlarım sizə çatacaq.`
+    : `Salam! Sizə tradixai-da mesaj yazmışam. Bu nömrə ilə qeydiyyatdan keçin, mesajlarım sizə çatacaq: ${site}`;
+  const copyInvite = async () => { try { await navigator.clipboard.writeText(inviteText); toast("Dəvət mətni kopyalandı — profilə keçib göndərin", "success"); } catch { toast("Kopyalanmadı", "error"); } };
+  // Sosial hesab: adminlər həmin profilə əl ilə xəbər versin (mövcud «outreach» axını).
+  const askAdmin = async () => {
+    if (target.kind !== "social") return;
+    const lastMsg = [...items].reverse().find((i) => i.kind === "MESSAGE")?.content;
+    const r = await fetch(`${API}/social-outreach`, {
+      method: "POST", headers,
+      body: JSON.stringify({
+        targetUrl: target.url, targetPlatform: target.platform, targetHandle: target.handle || target.url.split("/").filter(Boolean).pop(),
+        targetName: target.name, targetAvatar: target.avatar || null,
+        message: `${inviteText}${lastMsg ? `\n\nMesaj: «${lastMsg.slice(0, 600)}»` : ""}`,
+      }),
+    }).then((x) => x.json()).catch(() => null);
+    if (r?.success) { setNotified(true); toast("Adminlər bu profilə xəbər verəcək ✓", "success"); }
+    else toast(r?.message || "Alınmadı", "error");
+  };
+  let waNumber = "";
+  if (target.kind === "phone") {
+    const d = target.phone.replace(/\D/g, "");
+    waNumber = d.length === 9 ? `994${d}` : d.length === 10 && d.startsWith("0") ? `994${d.slice(1)}` : d;
+  }
   const hasConsult = items.some((i) => i.kind === "CONSULTATION");
 
   return createPortal(
-    <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="fixed inset-0 z-[130] flex items-end sm:items-center justify-center bg-black/50" onClick={onClose}>
       <div className="modern-page w-full sm:max-w-md h-[85vh] sm:h-[620px] bg-card sm:rounded-2xl rounded-t-2xl flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         {/* Başlıq */}
         <div className="px-4 py-3 border-b border-card-border flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-400 to-gray-500 text-white font-bold text-sm flex items-center justify-center shrink-0">
-            {name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
-          </div>
+          {social && target.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={proxyImg(target.avatar)} alt="" className="w-10 h-10 rounded-xl object-cover bg-input-bg shrink-0" />
+          ) : (
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-gray-400 to-gray-500 text-white font-bold text-sm flex items-center justify-center shrink-0">
+              {name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <p className="font-bold text-sm truncate">{name}</p>
-            <p className="text-[11px] text-muted truncate">{phone} · ⏳ platformada deyil</p>
+            <p className="text-[11px] text-muted truncate">
+              {target.kind === "phone" ? target.phone : <a href={target.url} target="_blank" rel="noopener noreferrer" className="hover:underline">{plat} profili ↗</a>} · ⏳ platformada deyil
+            </p>
           </div>
           <button onClick={onClose} className="w-8 h-8 rounded-lg text-muted hover:text-foreground" aria-label="Bağla">✕</button>
         </div>
 
         <div className="px-4 py-2.5 text-[11.5px] bg-amber-500/10 text-amber-800 border-b border-amber-500/20 leading-relaxed">
-          Bu nömrə hələ qeydiyyatdan keçməyib. Yazdıqlarınız saxlanılır. <b>Bu nömrə ilə qeydiyyatdan keçəndə</b> hamısı ona çatacaq, sizə də bildiriş gələcək.
+          {social
+            ? <>Bu şəxs hələ platformada deyil. Yazdıqlarınız saxlanılır. O, qeydiyyatdan keçib <b>profilində bu {plat} hesabını təsdiqləyəndə</b> hamısı ona çatacaq, sizə də bildiriş gələcək.</>
+            : <>Bu nömrə hələ qeydiyyatdan keçməyib. Yazdıqlarınız saxlanılır. <b>Bu nömrə ilə qeydiyyatdan keçəndə</b> hamısı ona çatacaq, sizə də bildiriş gələcək.</>}
           <div className="flex flex-wrap gap-1.5 mt-2">
-            <a href={`https://wa.me/${waNumber}?text=${encodeURIComponent(inviteText)}`} target="_blank" rel="noreferrer" className="px-2.5 py-1 rounded-full bg-white/70 border border-amber-500/30 font-semibold">WhatsApp ilə dəvət et</a>
-            <a href={`sms:${phone.replace(/\s/g, "")}?&body=${encodeURIComponent(inviteText)}`} className="px-2.5 py-1 rounded-full bg-white/70 border border-amber-500/30 font-semibold">SMS ilə dəvət et</a>
+            {target.kind === "phone" ? (
+              <>
+                <a href={`https://wa.me/${waNumber}?text=${encodeURIComponent(inviteText)}`} target="_blank" rel="noreferrer" className="px-2.5 py-1 rounded-full bg-white/70 border border-amber-500/30 font-semibold">WhatsApp ilə dəvət et</a>
+                <a href={`sms:${target.phone.replace(/\s/g, "")}?&body=${encodeURIComponent(inviteText)}`} className="px-2.5 py-1 rounded-full bg-white/70 border border-amber-500/30 font-semibold">SMS ilə dəvət et</a>
+              </>
+            ) : (
+              <>
+                <button onClick={copyInvite} className="px-2.5 py-1 rounded-full bg-white/70 border border-amber-500/30 font-semibold">Dəvət mətnini kopyala</button>
+                <a href={target.url} target="_blank" rel="noopener noreferrer" className="px-2.5 py-1 rounded-full bg-white/70 border border-amber-500/30 font-semibold">{plat}-da aç ↗</a>
+                <button onClick={askAdmin} disabled={notified || !items.length} title={!items.length ? "Əvvəlcə mesaj yazın" : undefined}
+                  className="px-2.5 py-1 rounded-full bg-white/70 border border-amber-500/30 font-semibold disabled:opacity-50">{notified ? "✓ Adminlər xəbər verəcək" : "📣 Adminlər xəbər versin"}</button>
+              </>
+            )}
           </div>
         </div>
 
