@@ -98,7 +98,7 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
       if (!r?.success && r?.code === "PORTAL_DOWN") {
         stopCam(); setShot(null); setShotNoQr(false); setStatus("");
         setPendingFiscal(r.fiscalId); setPortalDown(true); setTab("photo");
-        toast("QR oxundu ✓ — indi çekin tam şəklini çəkin", "success");
+        toast("QR oxundu ✓ — çeki e-kassadan yükləyib seçin", "success");
         return;
       }
       if (!r?.success) {
@@ -165,12 +165,12 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
   // ── Şəkil: QR tap, tapılmasa fotonu AI oxusun ──
   const onPhoto = async (file: File | null) => {
     if (!file) return;
-    setBusy(true); setStatus(pendingFiscal ? "Çek şəkildən oxunur (AI)…" : "QR axtarılır…");
+    setBusy(true); setStatus(pendingFiscal ? "Çek oxunur…" : "QR axtarılır…");
     try {
       if (pendingFiscal || file.type === "application/pdf") {
         const fd = new FormData(); fd.append("image", file); if (pendingFiscal) fd.append("fiscalId", pendingFiscal);
         const r = await fetch(`${API}/receipts/scan-photo`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd }).then((x) => x.json());
-        if (!r?.success) { toast(r?.message || "Çek oxunmadı — bütün məhsullar görünən aydın şəkil çəkin", "error"); setStatus(""); return; }
+        if (!r?.success) { toast(r?.message || "Çek oxunmadı — e-kassadan yüklənmiş document.jpg faylını seçin", "error"); setStatus(""); return; }
         finish(r.receipt.id); return;
       }
       const bmp = await createImageBitmap(file);
@@ -183,7 +183,7 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
       if (det) { try { qr = (await det.detect(bmp))?.[0]?.rawValue || null; } catch { qr = null; } }
       if (!qr) qr = robustDecode(c, w, h);
       if (qr) { setBusy(false); await sendText(qr); return; }
-      setStatus("QR tapılmadı — çekin özü oxunur (AI)…");
+      setStatus("QR tapılmadı — çekin özü oxunur…");
       const fd = new FormData(); fd.append("image", file);
       const r = await fetch(`${API}/receipts/scan-photo`, { method: "POST", headers: { Authorization: `Bearer ${token}` }, body: fd }).then((x) => x.json());
       if (!r?.success) { toast(r?.message || "Çek oxunmadı", "error"); setStatus(""); return; }
@@ -282,7 +282,7 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <button onClick={retake} className="py-2.5 rounded-xl bg-input-bg border border-input-border text-sm font-semibold">🔄 Yenidən çək</button>
-                      <button onClick={sendShotAsPhoto} disabled={busy} className="py-2.5 rounded-xl text-white text-sm font-semibold bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] disabled:opacity-50">🧾 Çek kimi oxu (AI)</button>
+                      <button onClick={sendShotAsPhoto} disabled={busy} className="py-2.5 rounded-xl text-white text-sm font-semibold bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] disabled:opacity-50">🧾 Çek kimi oxu</button>
                     </div>
                   </div>
                 ) : null}
@@ -295,7 +295,7 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
           {tab === "photo" && pendingFiscal ? (
             <div className="space-y-3">
               <div className="rounded-xl px-3 py-2 bg-emerald-500/10 text-emerald-800 border border-emerald-500/25 text-[12px]">
-                <b>✓ QR oxundu.</b> Çek e-kassadan yüklənib sayta verilməlidir — 3 addım:
+                <b>✓ QR oxundu.</b> e-kassa portalı yalnız Azərbaycan internetinə açıqdır, serverimiz hazırda ona birbaşa çata bilmir. Çeki öz telefonunuzla yükləyin — 3 addım:
               </div>
               <div className="rounded-2xl border border-card-border overflow-hidden bg-white max-h-64 overflow-y-auto">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -315,10 +315,6 @@ export default function ReceiptScanner({ onClose }: { onClose: () => void }) {
                 <span className="w-7 h-7 rounded-full bg-white/25 font-bold text-sm flex items-center justify-center shrink-0">3</span>
                 <span className="text-sm font-semibold">Yüklənmiş çeki seçin (JPG / PDF)</span>
                 <input type="file" accept="image/*,application/pdf" className="hidden" disabled={busy} onChange={(e) => onPhoto(e.target.files?.[0] || null)} />
-              </label>
-              <label className="block text-center text-xs text-muted cursor-pointer hover:text-foreground">
-                və ya çekin kağız fotosunu çəkin
-                <input type="file" accept="image/*" capture="environment" className="hidden" disabled={busy} onChange={(e) => onPhoto(e.target.files?.[0] || null)} />
               </label>
             </div>
           ) : tab === "photo" && (
