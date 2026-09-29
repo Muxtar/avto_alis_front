@@ -282,6 +282,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     "/admin/social-links": "socialLinks",
     "/admin/complaints": "complaints",
     "/admin/returns": "returns",
+    "/admin/outreach": "socialInvites",   // sosial profillərə yazılıb, xəbər verilməyib
   };
   const pendingFor = (href: string): number => {
     const k = pendingByHref[href];

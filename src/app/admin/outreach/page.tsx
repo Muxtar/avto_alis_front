@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import SocialInvites from "./SocialInvites";
 
 interface Item {
   id: number;
@@ -37,7 +38,7 @@ tradixai.io saytindan ${from} sizə mesaj göndərir:
 Cavab vermək üçün: tradixai.io`;
 }
 
-export default function AdminOutreachPage() {
+function RequestsTab() {
   const { toast } = useToast();
   const [items, setItems] = useState<Item[]>([]);
   const [filter, setFilter] = useState("PENDING");
@@ -75,11 +76,10 @@ export default function AdminOutreachPage() {
   };
 
   return (
-    <div className="max-w-4xl">
-      <h1 className="text-xl sm:text-2xl font-bold mb-1">Sosial media mesajları</h1>
-      <p className="text-muted text-sm mb-4">
-        İstifadəçilər websearch-də tapdıqları şəxslərə mesaj yazır. Siz profili açıb mesajı
-        <b> əl ilə</b> göndərir, sonra "Göndərildi" ilə işarələyirsiniz.
+    <div>
+      <p className="text-muted text-sm mb-3">
+        İstifadəçi çatda «📣 Adminlər xəbər versin» basıb öz mesajını xüsusi olaraq çatdırmağı istəyib.
+        Profili açıb hazır mesajı <b>əl ilə</b> göndərin, sonra «Göndərildi» ilə işarələyin.
       </p>
 
       <div className="flex gap-1 bg-input-bg border border-input-border rounded-xl p-1 mb-4 w-fit">
@@ -164,6 +164,31 @@ export default function AdminOutreachPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// SOSİAL MEDİA MESAJLARI — iki bölmə:
+//  • Profillərə yazılanlar: çatda internetdə tapılan profilə yazılmış bütün mesajlar (profil üzrə).
+//  • Xüsusi müraciətlər: istifadəçinin «Adminlər xəbər versin» ilə göndərdiyi mətn.
+export default function AdminOutreachPage() {
+  const [tab, setTab] = useState<"INVITES" | "REQUESTS">("INVITES");
+  return (
+    <div className="max-w-5xl space-y-4">
+      <div className="brand-band rounded-2xl px-5 py-4">
+        <p className="brand-band-kicker">tradixai · admin · sosial media</p>
+        <p className="text-lg font-bold leading-tight mt-0.5">Sosial profillərə yazılan mesajlar</p>
+        <p className="text-[12.5px] opacity-90 mt-1 max-w-2xl">
+          İstifadəçilər çatda internetdə tapdıqları şəxslərə (Instagram, Facebook…) yazır. Mesaj o şəxs saytda qeydiyyatdan keçib
+          həmin hesabı təsdiqləyənə qədər gözləyir. Sizin işiniz — saytın <b>rəsmi sosial hesabından</b> ona xəbər vermək:
+          profili açın → hazır mətni göndərin → «Xəbər verildi» basın.
+        </p>
+      </div>
+      <div className="seg-tabs max-w-md" role="tablist">
+        <button onClick={() => setTab("INVITES")} role="tab" aria-selected={tab === "INVITES"} className={`seg-tab ${tab === "INVITES" ? "is-active" : ""}`}>Profillərə yazılanlar</button>
+        <button onClick={() => setTab("REQUESTS")} role="tab" aria-selected={tab === "REQUESTS"} className={`seg-tab ${tab === "REQUESTS" ? "is-active" : ""}`}>Xüsusi müraciətlər</button>
+      </div>
+      {tab === "INVITES" ? <SocialInvites /> : <RequestsTab />}
     </div>
   );
 }

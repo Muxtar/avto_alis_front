@@ -9,7 +9,7 @@ import { useToast } from "@/components/Toast";
 // sürətli əməliyyatlar, canlı statistika və çıxış.
 type Overview = {
   stats: { users: number; blockedUsers: number; listings: number; orders: number; businesses: number; couriers: number; revenueTotal: number; revenueToday: number; ordersToday: number; newUsers7d: number; activeConsult: number };
-  pending: { listings: number; businesses: number; sellerApps: number; credentials: number; socialLinks: number; complaints: number; returns: number; identity: number };
+  pending: { listings: number; businesses: number; sellerApps: number; credentials: number; socialLinks: number; complaints: number; returns: number; identity: number; socialInvites?: number };
   pendingTotal: number;
 };
 
@@ -24,6 +24,7 @@ const PENDING_LINKS: { key: keyof Overview["pending"]; label: string; href: stri
   { key: "socialLinks", label: "Sosial linklər", href: "/admin/social-links" },
   { key: "complaints", label: "Şikayətlər", href: "/admin/complaints" },
   { key: "returns", label: "Qaytarmalar", href: "/admin/returns" },
+  { key: "socialInvites", label: "Sosial profillərə xəbər", href: "/admin/outreach" },
 ];
 
 export default function AdminHeader({ overview, adminName, onRefresh, onLogout, collapsed, onToggleSidebar }: {
