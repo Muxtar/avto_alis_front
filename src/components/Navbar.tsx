@@ -784,6 +784,12 @@ export default function Navbar() {
                 masaüstündə şrink-0 (təbii en) — böyüyən axtarışın həmən sağında
                 durur ki, bell/ikonlarla search arasında böyük boşluq qalmasın. */}
             <div className="order-3 ml-auto sm:ml-0 flex items-center justify-end gap-0.5 sm:gap-2 shrink-0">
+              {/* Dil — telefonda alt naviqasiya sətri (md:block) gizlidir, orada
+                  seçici görünmür; ona görə telefonda burada kompakt seçici var. */}
+              <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)} aria-label="Dil"
+                translate="no" className="md:hidden nav-glass h-9 rounded-lg px-1 text-xs font-bold text-white bg-transparent outline-none">
+                {languages.map((l) => <option key={l.code} value={l.code} className="text-black">{l.flag} {l.label}</option>)}
+              </select>
               {/* Admin panelə qayıt — YALNIZ admin panelinə giriş edənlərdə.
                   Adi istifadəçi bu düyməni heç vaxt görmür. */}
               {isAdminSession && (
