@@ -96,7 +96,10 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fil
         {/* Kart rejimində kartlar arası 16px boşluq (-ml-4 / pl-4); hero-da boşluq yoxdur */}
         <div className={cn("overflow-hidden", fillHeight && "lg:h-full")} ref={emblaRef}>
           <div className={cn("flex", !hero && "-ml-4", fillHeight && "lg:h-full")}>
-            {items.map((it) => {
+            {items.map((it, idx) => {
+              // Bulanıq fon yalnız görünən slayd və qonşularında (loop nəzərə alınır).
+              const dist = Math.abs(idx - selected);
+              const nearby = Math.min(dist, items.length - dist) <= 1;
               // 16:9-dan ±12% kənara çıxmayan şəkil "cover" ilə tam doldurulur
               // (kəsilmə gözlə seçilmir); daha fərqli nisbətlərdə kəsmirik.
               const ratio = ratios[String(it.id)];
@@ -110,12 +113,16 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fil
                   fillHeight ? "aspect-[16/9] max-h-[560px] lg:aspect-auto lg:h-full lg:max-h-none" : "aspect-[16/9] max-h-[560px]",
                 )}>
                   {/* Bulanıq arxa fon — yalnız şəkil çərçivəni doldurmayanda lazımdır */}
-                  {/* Öz kompozit qatı (translateZ): blur BİR DƏFƏ rasterləşir, hər
-                      scroll kadrında yenidən hesablanmır — sticky header-də flash səbəbi. */}
-                  {!fill && (
+                  {/* DİQQƏT: burada will-change / translateZ OLMAMALIDIR. Onlar hər
+                      slaydın blur-lu şəklini ayrıca GPU qatına çıxarırdı (10 × ~1600×1340
+                      teksturu, DPR 2) və blur(40px) HƏR KADRDA kompozitorda yenidən
+                      hesablanırdı → scroll zamanı GPU çatdırmır, Chrome rəsm olunmamış
+                      sahələri ağ göstərirdi («ağ pəncərələr» flash-ı). Qatsız halda blur
+                      bir dəfə rasterləşib keşlənir. Üstəlik yalnız aktiv slayd və
+                      qonşuları üçün render olunur. */}
+                  {!fill && nearby && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={it.image} alt="" aria-hidden
-                      style={{ willChange: "transform", transform: "translateZ(0)" }}
                       className="absolute inset-0 w-full h-full object-cover blur-2xl brightness-90 scale-125" />
                   )}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -126,7 +133,7 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fil
                         setRatios((p) => p[String(it.id)] ? p : { ...p, [String(it.id)]: im.naturalWidth / im.naturalHeight });
                       }
                     }}
-                    className={cn("absolute inset-0 w-full h-full select-none", fill ? "object-cover" : "object-contain drop-shadow-2xl")} />
+                    className={cn("absolute inset-0 w-full h-full select-none", fill ? "object-cover" : cn("object-contain", nearby && "drop-shadow-2xl"))} />
                   {/* Brend naxışı — bütün slaydlar profil kartları ilə eyni dildə görünsün */}
                   <div aria-hidden className="absolute inset-0 pointer-events-none opacity-60"
                     style={{ background: "repeating-radial-gradient(circle at 100% 0%, rgba(255,255,255,.10) 0 1px, transparent 1px 11px)" }} />

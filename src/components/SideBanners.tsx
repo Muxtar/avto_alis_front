@@ -43,9 +43,10 @@ export default function SideBanners() {
         const src = /^(https?:|data:)/.test(b.image) ? b.image : imgUrl(b.image);
         const inner = (
           <div className="relative flex-1 min-h-[122px] rounded overflow-hidden ring-1 ring-black/10 bg-black group/side">
-            {/* Bulanıq arxa fon — şəkil kəsilmir */}
+            {/* Bulanıq arxa fon — şəkil kəsilmir. will-change/translateZ YOXDUR:
+                ayrıca GPU qatında blur hər scroll kadrında yenidən hesablanırdı (ağ flash). */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt="" aria-hidden="true" style={{ willChange: "transform", transform: "translateZ(0)" }} className="absolute inset-0 w-full h-full object-cover blur-xl brightness-[0.6] scale-110" />
+            <img src={src} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover blur-xl brightness-[0.6] scale-110" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt={b.title || "banner"} className="absolute inset-0 w-full h-full object-contain transition-transform duration-500 group-hover/side:scale-105" />
             {b.title && (
