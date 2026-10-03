@@ -1420,15 +1420,30 @@ export default function ProfilePage() {
                             )}
                           </div>
                         ) : (
-                          <label className="flex flex-col items-center justify-center h-36 border-2 border-dashed border-input-border rounded-xl cursor-pointer hover:border-orange-500/30 text-xs text-muted bg-input-bg/30">
+                          /* İki ayrı giriş: tək `accept="image/*"` bir çox Android
+                             telefonda yalnız qalereyanı açır — kamera üçün `capture` lazımdır. */
+                          <div className="flex flex-col items-center justify-center gap-2 h-36 border-2 border-dashed border-input-border rounded-xl text-xs text-muted bg-input-bg/30 p-2">
                             <span>{sideLabel} şəkli</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={(e) => onPickPassportFile(side, e.target.files?.[0] || null)}
-                            />
-                          </label>
+                            <label className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-orange-500 text-white font-semibold cursor-pointer hover:bg-orange-600 transition-colors">
+                              📷 Şəkil çək
+                              <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                className="hidden"
+                                onChange={(e) => { onPickPassportFile(side, e.target.files?.[0] || null); e.target.value = ""; }}
+                              />
+                            </label>
+                            <label className="w-full flex items-center justify-center gap-1.5 py-2 rounded-lg bg-orange-500/10 text-orange-500 font-semibold cursor-pointer hover:bg-orange-500/20 transition-colors">
+                              🖼️ Qalereya
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                onChange={(e) => { onPickPassportFile(side, e.target.files?.[0] || null); e.target.value = ""; }}
+                              />
+                            </label>
+                          </div>
                         )}
                       </div>
                     );
