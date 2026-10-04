@@ -371,6 +371,22 @@ export default function ProfilePage() {
   const [voenForm, setVoenForm] = useState({ voen: "", name: "", iban: "" });
   const [voenEdit, setVoenEdit] = useState(false);
   const [voenBusy, setVoenBusy] = useState(false);
+  // İxtisası elə bu bölmədən dəyişmək (əvvəl yalnız «Profili redaktə et»dən mümkün idi).
+  const [profEdit, setProfEdit] = useState<string[] | null>(null);   // null = redaktə bağlıdır
+  const [profBusy, setProfBusy] = useState(false);
+  const saveProfessions = async () => {
+    if (!profEdit) return;
+    setProfBusy(true);
+    try {
+      const data = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify({ professions: profEdit }) }).then((x) => x.json());
+      if (data.success) {
+        login(token!, data.user);
+        await refreshProfile();
+        setProfEdit(null);
+        toast(profEdit.length ? "İxtisas yeniləndi ✓" : "İxtisas silindi", "success");
+      } else toast(data.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setProfBusy(false); }
+  };
   const saveVoen = async () => {
     const voen = voenForm.voen.replace(/\D/g, "");
     if (voen.length !== 10) { toast("VÖEN 10 rəqəmdən ibarət olmalıdır", "error"); return; }
@@ -1708,6 +1724,44 @@ export default function ProfilePage() {
       {/* Rəy konsultasiyası təklifi */}
       <IdCard collapsible open={openCard === "consult"} onToggle={() => toggleCard("consult")} summary={offers.length ? `${offers.length} təklif · ${offers.filter((o) => o.active).length} aktiv` : "Konsultasiya təklifi yoxdur"} icon="🗣️" title="Rəy konsultasiyası" tone="purple" stamp={offers.some((o) => o.active) ? "ok" : null} stampText={{ ok: "Aktiv" }}
         subtitle="İxtisasınız üzrə ödənişli konsultasiya təklif edin. İstifadəçi sizi İxtisas bölməsindən tapıb sorğu göndərə bilər; siz vaxtı Başlat/Dayandır ilə idarə edirsiniz.">
+
+        {/* İXTİSAS — konsultasiya hansı ixtisas üzrədir. Buradan dəyişmək, yenisini
+            əlavə etmək və ya silmək olur (maksimum 3). */}
+        {(() => {
+          const cur: string[] = profile.professions?.length ? profile.professions : (profile.profession ? [profile.profession] : []);
+          return (
+            <div className="mb-3 p-3 rounded-xl border border-input-border bg-input-bg/40">
+              {profEdit === null ? (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-muted mb-1.5">🎓 İxtisasınız</p>
+                    {cur.length ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {cur.map((p) => <span key={p} className="px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-600 text-xs font-semibold">{p}</span>)}
+                      </div>
+                    ) : <p className="text-xs text-amber-600">İxtisas seçilməyib — konsultasiya təklifiniz axtarışda görünməsi üçün ixtisas əlavə edin.</p>}
+                  </div>
+                  <button type="button" onClick={() => setProfEdit(cur)} className="shrink-0 px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-xs font-semibold hover:bg-orange-500/20">
+                    ✏️ {cur.length ? "Dəyiş" : "Əlavə et"}
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm font-semibold mb-0.5">🎓 İxtisası dəyiş</p>
+                  <p className="text-[11px] text-muted mb-2">Mövcud ixtisası «✕» ilə silib yenisini seçə və ya əlavə ixtisas yaza bilərsiniz (ən çox 3).</p>
+                  <ProfessionMultiPicker values={profEdit} onChange={setProfEdit} max={3} className={inputCls} />
+                  {cur.some((p) => !profEdit.includes(p)) && (
+                    <p className="text-[11px] text-amber-600 mt-2">⚠️ Çıxardığınız ixtisasa bağlı təsdiqli sənəd yeni ixtisası təsdiqləmir — yeni ixtisas üçün sənəd ayrıca yüklənməlidir (ixtisas endirimi və referal üçün).</p>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    <button type="button" onClick={saveProfessions} disabled={profBusy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{profBusy ? "..." : "Yadda saxla"}</button>
+                    <button type="button" onClick={() => setProfEdit(null)} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv et</button>
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })()}
 
         {/* VÖEN HESABI — məcburidir: konsultasiyadan və referal satışdan qazanılan pul
             bu hesaba ödənilir. Hesab yazılmadan təklif yaratmaq olmur. */}
