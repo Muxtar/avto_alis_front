@@ -10,8 +10,11 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
+  // Paylaşım önizləməsindəki nisbi şəkil ünvanları (app/opengraph-image) bu əsasla tam ünvana çevrilir.
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.tradixai.io"),
   title: "tradixai — Onlayn Ticarət Platforması",
   description: "Hər şeyin alınıb-satıldığı onlayn ticarət platforması",
+  openGraph: { siteName: "tradixai", type: "website", locale: "az_AZ" },
 };
 
 // Klaviatura açılanda layout-un resize olması üçün (mobil chat üçün vacib).

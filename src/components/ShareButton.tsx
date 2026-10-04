@@ -22,6 +22,7 @@ export default function ShareButton({
   path,
   className,
   compact,
+  label,
   listingId,
   beforeShare,
   disabled,
@@ -31,6 +32,7 @@ export default function ShareButton({
   path?: string; // verilməzsə cari səhifə URL-i istifadə olunur
   className?: string;
   compact?: boolean; // yalnız ikon
+  label?: string; // düymə mətni (standart: «Paylaş»)
   listingId?: number; // məhsul paylaşımında — qarşı tərəf çat-da klikləyə bilən kart görünür
   beforeShare?: () => Promise<string | null>; // menyu açılmadan əvvəl linki yarat, path qaytar (null=xəta)
   disabled?: boolean;
@@ -119,7 +121,7 @@ export default function ShareButton({
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M7.217 10.907a2.25 2.25 0 100 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186l9.566-5.314m-9.566 7.5l9.566 5.314m0 0a2.25 2.25 0 103.935 2.186 2.25 2.25 0 00-3.935-2.186zm0-12.814a2.25 2.25 0 103.933-2.185 2.25 2.25 0 00-3.933 2.185z" />
         </svg>
-        {!compact && <span>Paylaş</span>}
+        {!compact && <span>{label || "Paylaş"}</span>}
       </button>
 
       {/* Seçim menyusu — tətbiqdə / xaricdə */}

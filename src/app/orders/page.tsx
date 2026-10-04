@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import ShareButton from "@/components/ShareButton";
 import { formatPostedAt } from "@/lib/format";
 import Link from "next/link";
 import OrderMap from "@/components/OrderMapWrapper";
@@ -717,6 +718,15 @@ export default function OrdersPage() {
                     kodunu istəyir (aşağıdakı kuryer blokunda çıxır). Bizim «TX-…»
                     kodumuzu kuryerə deyəndə tətbiq «kod yalnız rəqəmlərdən ibarət
                     olmalıdır» deyib rədd edirdi. */}
+                {/* BİRGƏ ALIŞ: alışdan sonra da paylaşmaq olar — pəncərə açıq ikən qoşulan hər kəs qiyməti aşağı salır. */}
+                {activeTab === "buying" && order.groupBuy?.code && order.status !== "CANCELLED" && order.groupBuy.status === "OPEN" && new Date(order.groupBuy.expiresAt).getTime() > Date.now() && (
+                  <div className="mb-3 flex items-center gap-2 flex-wrap rounded-xl border border-orange-500/25 bg-orange-500/5 px-3 py-2.5">
+                    <p className="text-xs flex-1 min-w-[160px]"><b className="text-orange-600">👥 Paylaş — daha ucuz olsun</b><span className="block text-muted text-[11px]">Bu sifariş birgə alışdadır: dostlarınız qoşulduqca qiymət düşür və fərq sizə qaytarılır. Məcburi deyil.</span></p>
+                    <a href={`/g/${order.groupBuy.code}`} className="shrink-0 px-3 py-1.5 rounded-lg bg-input-bg border border-input-border text-xs font-semibold hover:border-orange-500/50">Pəncərə</a>
+                    <ShareButton title={`Birgə alış: ${order.items[0]?.title || "məhsul"}`} text="Birlikdə alaq — daha ucuz olsun! tradixai" path={`/g/${order.groupBuy.code}`}
+                      className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors" />
+                  </div>
+                )}
                 {activeTab === "buying" && order.pickupCode && order.status !== "CANCELLED" && !isYangoOrder && (
                   <div className="p-4 border-t border-card-border">
                     <div className="flex items-center gap-3 bg-orange-500/5 border border-orange-500/20 rounded-xl p-3">

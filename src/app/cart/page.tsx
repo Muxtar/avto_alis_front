@@ -895,6 +895,15 @@ export default function CartPage() {
                               )}
                             </div>
                           )}
+                          {/* Paylaş — daha ucuz olsun: pəncərəyə nə qədər çox adam qoşulsa qiymət o qədər düşür. */}
+                          {item.groupRefundLater && (
+                            <div className="mt-1.5 flex items-center gap-2 flex-wrap rounded-xl border border-orange-500/25 bg-orange-500/5 px-2.5 py-2">
+                              <p className="text-[11px] flex-1 min-w-[150px]"><b className="text-orange-600">Paylaş — daha ucuz olsun</b><span className="block text-muted">Dostlar qoşulduqca qiymət düşür. Məcburi deyil.</span></p>
+                              <ShareButton title={`Birgə alış: ${item.listing.title}`} text="Birlikdə alaq — daha ucuz olsun! tradixai" label="Paylaş"
+                                path={item.groupCode ? `/g/${item.groupCode}` : `/marketplace/${item.listing.id}`} listingId={item.listing.id}
+                                className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors" />
+                            </div>
+                          )}
                           {item.groupRefundLater && (
                             <p className="mt-1 text-[11px] text-muted">
                               İndi tam qiymət ödənilir · pəncərə bitib {item.returnWindowDays || 14} günlük qaytarma
