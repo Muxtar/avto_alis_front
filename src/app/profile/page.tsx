@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { useLive } from "@/lib/live";
 import { API, imgUrl } from "@/lib/api";
+import { brandNames, getModels } from "@/lib/vehicleData";
 import { rotateImageFile } from "@/lib/rotateImage";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import { SOCIAL_META } from "@/lib/social";
@@ -60,6 +61,7 @@ export default function ProfilePage() {
     ownershipType: string;
     validUntil: string;
     cardSerial: string;
+    driverLicense: string;
     vehicleType: string;
     engineNumber: string;
     bodyNumber: string;
@@ -78,7 +80,7 @@ export default function ProfilePage() {
     id: null, brand: "", model: "", year: "",
     passportImageFront: null, passportImageBack: null,
     registrationNumber: "", registrationDate: "", ownerName: "", ownerAddress: "",
-    ownershipType: "", validUntil: "", cardSerial: "", vehicleType: "",
+    ownershipType: "", validUntil: "", cardSerial: "", driverLicense: "", vehicleType: "",
     engineNumber: "", bodyNumber: "", chassisNumber: "", color: "",
     maxMass: "", unloadedMass: "", seatCount: "", engineCapacity: "",
     issuedBy: "", specialMarks: "", aiRaw: null, aiVerified: false,
@@ -521,6 +523,7 @@ export default function ProfilePage() {
       ownershipType: v.ownershipType || "",
       validUntil: v.validUntil || "",
       cardSerial: v.cardSerial || "",
+      driverLicense: v.driverLicense || "",
       vehicleType: v.vehicleType || "",
       engineNumber: v.engineNumber || "",
       bodyNumber: v.bodyNumber || "",
@@ -544,15 +547,15 @@ export default function ProfilePage() {
     setPendingFront(null); setPendingBack(null); setExtractError(null);
   };
 
-  // Hər iki şəkil seçildikdə avtomatik AI çağırışı.
-  // Tək şəkil dəyişərkən sadəcə preview göstər, kullanıcı ikincisini də
-  // seçəndə AI işə düşür.
+  // Şəkil seçilən kimi AI sənədi oxuyur. TƏK üz də kifayətdir: ön üzdə dövlət
+  // nişanı və il, arxa üzdə marka, model və ban nömrəsi olur — ikinci üz
+  // əlavə olunanda çatışmayan sahələr tamamlanır.
   const tryRunExtract = async (frontFile: File | null, backFile: File | null) => {
-    if (!frontFile || !backFile) return;
+    if (!frontFile && !backFile) return;
     setExtractLoading("both"); setExtractError(null);
     const fd = new FormData();
-    fd.append("passportImageFront", frontFile);
-    fd.append("passportImageBack", backFile);
+    if (frontFile) fd.append("passportImageFront", frontFile);
+    if (backFile) fd.append("passportImageBack", backFile);
     try {
       const res = await fetch(`${API}/me/vehicles/extract`, {
         method: "POST",
@@ -579,6 +582,8 @@ export default function ProfilePage() {
         const newBrand = overrideStr("Marka", f.brand, prev.brand);
         const newModel = overrideStr("Model", f.model, prev.model);
         const newYear = overrideStr("İl", f.year ? String(f.year) : null, prev.year);
+        const newPlate = overrideStr("Nömrə", f.registrationNumber, prev.registrationNumber);
+        const newVin = overrideStr("Ban nömrəsi", f.bodyNumber, prev.bodyNumber);
         return {
           ...prev,
           passportImageFront: data.passportImageFront || prev.passportImageFront,
@@ -586,7 +591,7 @@ export default function ProfilePage() {
           brand: newBrand,
           model: newModel,
           year: newYear,
-          registrationNumber: f.registrationNumber || prev.registrationNumber || "",
+          registrationNumber: newPlate,
           registrationDate: f.registrationDate || prev.registrationDate || "",
           ownerName: f.ownerName || prev.ownerName || "",
           ownerAddress: f.ownerAddress || prev.ownerAddress || "",
@@ -595,7 +600,7 @@ export default function ProfilePage() {
           cardSerial: f.cardSerial || prev.cardSerial || "",
           vehicleType: f.vehicleType || prev.vehicleType || "",
           engineNumber: f.engineNumber || prev.engineNumber || "",
-          bodyNumber: f.bodyNumber || prev.bodyNumber || "",
+          bodyNumber: newVin,
           chassisNumber: f.chassisNumber || prev.chassisNumber || "",
           color: f.color || prev.color || "",
           maxMass: f.maxMass || prev.maxMass || "",
@@ -611,10 +616,10 @@ export default function ProfilePage() {
       // Marka/model/il dəyişikliyi varsa kullanıcıya bildiriş ver — bu sahələr
       // dropdown/select kimi başqa axında doldurulduğundan, dəyişiklik vacibdir.
       if (overridden.length > 0) {
-        toast(`Pasportdakı dəyərə uyğunlaşdırıldı: ${overridden.join(", ")}`, "success");
+        toast(`AI sənəddən oxudu: ${overridden.join(", ")}`, "success");
       }
       if (!data.ok && data.error) {
-        setExtractError(`AI xəbərdarlığı: ${data.error}. Sahələri əllə yoxlayın və düzəldin.`);
+        setExtractError(data.error);
       }
     } catch (err: any) {
       setExtractError(err?.message || "Şəkil yüklənmədi");
@@ -625,8 +630,9 @@ export default function ProfilePage() {
 
   const onPickPassportFile = (side: "front" | "back", file: File | null) => {
     if (!file) {
-      if (side === "front") setPendingFront(null);
-      else setPendingBack(null);
+      // Şəkil silinir — əvvəl yüklənmiş fayl adı da təmizlənir (şəkil könüllüdür).
+      if (side === "front") { setPendingFront(null); setVehicleForm((p) => ({ ...p, passportImageFront: null })); }
+      else { setPendingBack(null); setVehicleForm((p) => ({ ...p, passportImageBack: null })); }
       return;
     }
     const preview = URL.createObjectURL(file);
@@ -651,10 +657,10 @@ export default function ProfilePage() {
       const next = { file: rotated, preview };
       if (side === "front") {
         setPendingFront(next);
-        if (pendingBack) tryRunExtract(rotated, pendingBack.file);
+        tryRunExtract(rotated, pendingBack?.file || null);
       } else {
         setPendingBack(next);
-        if (pendingFront) tryRunExtract(pendingFront.file, rotated);
+        tryRunExtract(pendingFront?.file || null, rotated);
       }
     } catch (err: any) {
       setExtractError(err?.message || "Şəkil fırlatıla bilmədi");
@@ -666,9 +672,12 @@ export default function ProfilePage() {
     if (!vehicleForm.brand || !vehicleForm.model || !vehicleForm.year) {
       toast('Marka, model və il tələb olunur', 'error'); return;
     }
-    if (!vehicleForm.passportImageFront || !vehicleForm.passportImageBack) {
-      toast('Əvvəlcə pasportun ön və arxa şəkillərini yükləyin', 'error'); return;
-    }
+    // Texniki sənədin şəkli könüllüdür — bu altı sahə kifayətdir.
+    if (!vehicleForm.registrationNumber.trim()) { toast('Maşının nömrəsini (dövlət nişanı) yazın', 'error'); return; }
+    if (!vehicleForm.bodyNumber.trim()) { toast('Ban nömrəsini (VIN) yazın', 'error'); return; }
+    if (!vehicleForm.driverLicense.trim()) { toast('Sürücülük vəsiqəsinin nömrəsini yazın', 'error'); return; }
+    const yr = parseInt(vehicleForm.year, 10);
+    if (!Number.isFinite(yr) || yr < 1900 || yr > new Date().getFullYear() + 1) { toast('Buraxılış ilini düzgün yazın', 'error'); return; }
     const url = vehicleForm.id ? `${API}/me/vehicles/${vehicleForm.id}` : `${API}/me/vehicles`;
     const method = vehicleForm.id ? 'PUT' : 'POST';
     const body = {
@@ -677,16 +686,17 @@ export default function ProfilePage() {
       year: vehicleForm.year,
       passportImageFront: vehicleForm.passportImageFront,
       passportImageBack: vehicleForm.passportImageBack,
-      registrationNumber: vehicleForm.registrationNumber,
+      registrationNumber: vehicleForm.registrationNumber.replace(/[\s-]/g, '').toUpperCase(),
       registrationDate: vehicleForm.registrationDate,
       ownerName: vehicleForm.ownerName,
       ownerAddress: vehicleForm.ownerAddress,
       ownershipType: vehicleForm.ownershipType,
       validUntil: vehicleForm.validUntil,
       cardSerial: vehicleForm.cardSerial,
+      driverLicense: vehicleForm.driverLicense.trim(),
       vehicleType: vehicleForm.vehicleType,
       engineNumber: vehicleForm.engineNumber,
-      bodyNumber: vehicleForm.bodyNumber,
+      bodyNumber: vehicleForm.bodyNumber.replace(/\s/g, '').toUpperCase(),
       chassisNumber: vehicleForm.chassisNumber,
       color: vehicleForm.color,
       maxMass: vehicleForm.maxMass,
@@ -1363,8 +1373,11 @@ export default function ProfilePage() {
             <form onSubmit={submitVehicle} className="bg-input-bg/50 border border-input-border rounded-xl p-4 mb-4 space-y-4">
               {/* STEP 1 — şəkillər */}
               <div>
-                <p className="text-xs font-medium text-muted mb-1">
-                  1. Texniki pasportun şəkillərini yükləyin
+                <p className="text-sm font-semibold mb-0.5 flex items-center gap-1.5">
+                  🤖 AI ilə texniki sənəd <span className="px-1.5 py-0.5 rounded-md bg-input-bg text-muted text-[10px] font-medium">könüllü</span>
+                </p>
+                <p className="text-[11px] text-muted mb-1">
+                  Texniki pasportun şəklini çəkin və ya qalereyadan seçin — AI marka, model, il, nömrə və ban nömrəsini özü dolduracaq. Bir üz də kifayətdir; şəkilsiz də aşağıdakı sahələri əl ilə yaza bilərsiniz.
                 </p>
                 <p className="text-[11px] text-muted-foreground mb-2">
                   Şəkil yan və ya tərs çəkilibsə, alt-da görünən <span className="text-orange-500 font-medium">"Sola fırlat" / "Sağa fırlat"</span> düymələri ilə düz vəziyyətə gətirin — AI o zaman daha düzgün oxuyacaq.
@@ -1455,53 +1468,55 @@ export default function ProfilePage() {
                       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
                       <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" />
                     </svg>
-                    AI şəkilləri oxuyur, gözləyin...
+                    AI sənədi oxuyur, gözləyin...
                   </p>
                 )}
                 {extractError && (
                   <p className="text-[11px] text-red-500 mt-2">{extractError}</p>
                 )}
                 {vehicleForm.aiVerified && !extractLoading && !extractError && (
-                  <p className="text-[11px] text-green-500 mt-2">✓ AI sahələri oxudu — aşağıda yoxlayıb düzəldə bilərsiniz</p>
+                  <p className="text-[11px] text-green-500 mt-2">✓ AI sənədi oxudu — aşağıdakı sahələri yoxlayın, lazım olsa düzəldin</p>
                 )}
               </div>
 
-              {/* STEP 2 — redaktə edilə bilən sahələr */}
+              {/* Avtomobil məlumatı — bu altı sahə kifayətdir. Texpasportdan oxunan
+                  digər sahələr (rəng, mühərrik və s.) soruşulmur, amma oxunubsa saxlanır. */}
               <div>
-                <p className="text-xs font-medium text-muted mb-2">
-                  2. Sahələri yoxlayın və lazım olarsa düzəldin, sonra yadda saxlayın
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <input value={vehicleForm.brand} onChange={(e) => setVehicleForm({ ...vehicleForm, brand: e.target.value })} placeholder="Marka (D)" className={inputCls} required />
-                  <input value={vehicleForm.model} onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })} placeholder="Model (D.2)" className={inputCls} required />
-                  <input type="number" min="1900" max={new Date().getFullYear() + 1} value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} placeholder="İl (B.2)" className={inputCls} required />
+                <p className="text-sm font-semibold mb-2">Avtomobil məlumatı</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="block">
+                    <span className="block text-xs text-muted mb-1">Marka *</span>
+                    <input list="veh-brands" value={vehicleForm.brand} onChange={(e) => setVehicleForm({ ...vehicleForm, brand: e.target.value })} placeholder="məs. Toyota" className={inputCls} required />
+                  </label>
+                  <label className="block">
+                    <span className="block text-xs text-muted mb-1">Model *</span>
+                    <input list="veh-models" value={vehicleForm.model} onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })} placeholder="məs. Camry" className={inputCls} required />
+                  </label>
+                  <label className="block">
+                    <span className="block text-xs text-muted mb-1">Maşının nömrəsi (dövlət nişanı) *</span>
+                    <input value={vehicleForm.registrationNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, registrationNumber: e.target.value.toUpperCase() })} placeholder="məs. 77NP518" autoCapitalize="characters" className={`${inputCls} font-mono`} required />
+                  </label>
+                  <label className="block">
+                    <span className="block text-xs text-muted mb-1">Buraxılış ili *</span>
+                    <input type="number" inputMode="numeric" min="1900" max={new Date().getFullYear() + 1} value={vehicleForm.year} onChange={(e) => setVehicleForm({ ...vehicleForm, year: e.target.value })} placeholder="məs. 2018" className={inputCls} required />
+                  </label>
+                  <label className="block">
+                    <span className="block text-xs text-muted mb-1">Ban nömrəsi (VIN) *</span>
+                    <input value={vehicleForm.bodyNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, bodyNumber: e.target.value.toUpperCase() })} placeholder="17 simvol" maxLength={20} autoCapitalize="characters" className={`${inputCls} font-mono`} required />
+                  </label>
+                  <label className="block">
+                    <span className="block text-xs text-muted mb-1">Sürücülük vəsiqəsinin nömrəsi *</span>
+                    <input value={vehicleForm.driverLicense} onChange={(e) => setVehicleForm({ ...vehicleForm, driverLicense: e.target.value.toUpperCase() })} placeholder="məs. AA123456" maxLength={20} autoCapitalize="characters" className={`${inputCls} font-mono`} required />
+                  </label>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                  <input value={vehicleForm.registrationNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, registrationNumber: e.target.value })} placeholder="A — Qeydiyyat nişanı (77NP518)" className={inputCls} />
-                  <input value={vehicleForm.registrationDate} onChange={(e) => setVehicleForm({ ...vehicleForm, registrationDate: e.target.value })} placeholder="B.1 — Qeydiyyat tarixi" className={inputCls} />
-                  <input value={vehicleForm.ownerName} onChange={(e) => setVehicleForm({ ...vehicleForm, ownerName: e.target.value })} placeholder="C.1 — Mülkiyyətçi" className={inputCls} />
-                  <input value={vehicleForm.ownerAddress} onChange={(e) => setVehicleForm({ ...vehicleForm, ownerAddress: e.target.value })} placeholder="C.2 — Ünvan" className={inputCls} />
-                  <input value={vehicleForm.ownershipType} onChange={(e) => setVehicleForm({ ...vehicleForm, ownershipType: e.target.value })} placeholder="C.3 — Mülkiyyət növü" className={inputCls} />
-                  <input value={vehicleForm.vehicleType} onChange={(e) => setVehicleForm({ ...vehicleForm, vehicleType: e.target.value })} placeholder="D.3 — Tip (MİNİK)" className={inputCls} />
-                  <input value={vehicleForm.engineNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, engineNumber: e.target.value })} placeholder="E.1 — Mühərrik nömrəsi" className={inputCls} />
-                  <input value={vehicleForm.bodyNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, bodyNumber: e.target.value })} placeholder="E.2 — Ban / VIN" className={inputCls} />
-                  <input value={vehicleForm.chassisNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, chassisNumber: e.target.value })} placeholder="E.3 — Şassi nömrəsi" className={inputCls} />
-                  <input value={vehicleForm.color} onChange={(e) => setVehicleForm({ ...vehicleForm, color: e.target.value })} placeholder="E.4 — Rəng" className={inputCls} />
-                  <input value={vehicleForm.maxMass} onChange={(e) => setVehicleForm({ ...vehicleForm, maxMass: e.target.value })} placeholder="F.1 — Maks. kütlə" className={inputCls} />
-                  <input value={vehicleForm.unloadedMass} onChange={(e) => setVehicleForm({ ...vehicleForm, unloadedMass: e.target.value })} placeholder="F.2 — Yüksüz kütlə" className={inputCls} />
-                  <input type="number" min="1" max="20" value={vehicleForm.seatCount} onChange={(e) => setVehicleForm({ ...vehicleForm, seatCount: e.target.value })} placeholder="F.3 — Oturacaq sayı" className={inputCls} />
-                  <input value={vehicleForm.engineCapacity} onChange={(e) => setVehicleForm({ ...vehicleForm, engineCapacity: e.target.value })} placeholder="G — Mühərrik həcmi (sm³)" className={inputCls} />
-                  <input value={vehicleForm.validUntil} onChange={(e) => setVehicleForm({ ...vehicleForm, validUntil: e.target.value })} placeholder="H — Etibarlıdır" className={inputCls} />
-                  <input value={vehicleForm.cardSerial} onChange={(e) => setVehicleForm({ ...vehicleForm, cardSerial: e.target.value })} placeholder="Kart seriyası (BB667834)" className={inputCls} />
-                  <input value={vehicleForm.issuedBy} onChange={(e) => setVehicleForm({ ...vehicleForm, issuedBy: e.target.value })} placeholder="Verilib" className={inputCls} />
-                  <input value={vehicleForm.specialMarks} onChange={(e) => setVehicleForm({ ...vehicleForm, specialMarks: e.target.value })} placeholder="Xüsusi qeydlər" className={inputCls} />
-                </div>
+                <datalist id="veh-brands">{brandNames.map((b) => <option key={b} value={b} />)}</datalist>
+                <datalist id="veh-models">{getModels(vehicleForm.brand).map((m) => <option key={m} value={m} />)}</datalist>
               </div>
 
               <div className="flex gap-2 pt-2 border-t border-input-border/50">
                 <button
                   type="submit"
-                  disabled={!vehicleForm.passportImageFront || !vehicleForm.passportImageBack || extractLoading !== null}
+                  disabled={extractLoading !== null}
                   className="px-5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {vehicleForm.id ? t("adminSave") : "Yadda saxla"}
@@ -1553,7 +1568,7 @@ export default function ProfilePage() {
                       <IdField label="Dövlət nişanı" value={v.registrationNumber} mono />
                       <IdField label="İl" value={v.year} />
                       <IdField label="VIN / Ban" value={v.bodyNumber} mono />
-                      <IdField label="Mühərrik" value={v.engineCapacity} />
+                      <IdField label="Sürücülük vəsiqəsi" value={v.driverLicense} mono />
                     </div>
                     {passportRows.length > 0 && (
                       <details className="mt-2">
