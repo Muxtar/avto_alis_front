@@ -40,7 +40,12 @@ export default function ProDiscountInfo({ listingId, price }: { listingId: numbe
         ))}
         {d.rules.length > 6 && <span className="text-[11px] text-muted">+{d.rules.length - 6}</span>}
       </div>
-      {d.missingDoc?.length > 0 ? (
+      {d.cooldown ? (
+        <p className="text-[11px] mt-2 text-amber-700">
+          ⏳ İxtisasınızı yeni dəyişmisiniz — «{d.cooldown.profession}» endirimi (−{d.cooldown.percent}%) sizin üçün{" "}
+          <b>{new Date(d.cooldown.until).toLocaleDateString("az-AZ", { day: "numeric", month: "long" })}</b> tarixindən aktiv olacaq.
+        </p>
+      ) : d.missingDoc?.length > 0 ? (
         <p className="text-[11px] mt-2 text-amber-700">
           Bu mağaza «{d.missingDoc[0]}» endirimi üçün təsdiqli sənəd tələb edir.{" "}
           <Link href="/profile" className="font-semibold underline">Diplom/lisenziyanı yükləyin →</Link>

@@ -136,7 +136,7 @@ export default function ProfilePage() {
       fetch(`${API}/me/listings`, { headers }).then((r) => r.json()),
     ]).then(([p, l]) => {
       setProfile(p.user);
-      setEditData({ name: p.user.name, professions: p.user.professions?.length ? p.user.professions : (p.user.profession ? [p.user.profession] : []), bio: p.user.bio || "", idNumber: p.user.idNumber || "", birthDate: p.user.birthDate ? String(p.user.birthDate).slice(0, 10) : "", gender: p.user.gender || "" });
+      setEditData({ name: p.user.name, professions: (p.user.profession ? [p.user.profession] : (p.user.professions || [])).slice(0, 1), bio: p.user.bio || "", idNumber: p.user.idNumber || "", birthDate: p.user.birthDate ? String(p.user.birthDate).slice(0, 10) : "", gender: p.user.gender || "" });
       setListings(l.listings || []);
       setLocationDraft({
         city: p.user.city || "",
@@ -151,7 +151,12 @@ export default function ProfilePage() {
     // FIN/doğum/cins yalnız Veriff ilə doldurulur — əl ilə göndərilmir.
     // Kimlik təsdiqlənibsə (şəkil var) ad da kilidlidir.
     const idLocked = !!profile.idCardImage;
-    const body: any = { professions: editData.professions, bio: editData.bio };
+    const oldProf: string | null = profile.profession || (profile.professions || [])[0] || null;
+    const newProf: string | null = editData.professions[0] || null;
+    // İxtisas dəyişimi 30 günlük gözləmə yaradır — istifadəçi bilərək təsdiqləsin.
+    if (oldProf && newProf && oldProf !== newProf
+      && !confirm(`İxtisas «${oldProf}» → «${newProf}» dəyişdirilsin?\n\nYeni ixtisasın endirimli məhsullarından yalnız 30 gün sonra ala biləcəksiniz.`)) return;
+    const body: any = { professions: editData.professions.slice(0, 1), bio: editData.bio };
     if (!idLocked) {
       body.name = editData.name;
     }
@@ -172,7 +177,7 @@ export default function ProfilePage() {
       const u = res.user;
       setProfile(u);
       // Veriff təsdiqindən sonra ad/FIN/doğum/cins serverdə yenilənir — input sahələrini də doldur.
-      setEditData({ name: u.name || "", professions: u.professions?.length ? u.professions : (u.profession ? [u.profession] : []), bio: u.bio || "", idNumber: u.idNumber || "", birthDate: u.birthDate ? String(u.birthDate).slice(0, 10) : "", gender: u.gender || "" });
+      setEditData({ name: u.name || "", professions: (u.profession ? [u.profession] : (u.professions || [])).slice(0, 1), bio: u.bio || "", idNumber: u.idNumber || "", birthDate: u.birthDate ? String(u.birthDate).slice(0, 10) : "", gender: u.gender || "" });
     }
   };
 
@@ -377,6 +382,10 @@ export default function ProfilePage() {
   const [profBusy, setProfBusy] = useState(false);
   const saveProfessions = async () => {
     if (!profEdit) return;
+    const curP: string[] = (profile.profession ? [profile.profession] : (profile.professions || [])).slice(0, 1);
+    // Dəyişim 30 günlük gözləmə yaradır — istifadəçi bilərək təsdiqləsin.
+    if (curP.length > 0 && profEdit.length > 0 && !curP.includes(profEdit[0])
+      && !confirm(`İxtisas «${curP[0]}» → «${profEdit[0]}» dəyişdirilsin?\n\nYeni ixtisasın endirimli məhsullarından yalnız 30 gün sonra ala biləcəksiniz.`)) return;
     setProfBusy(true);
     try {
       const data = await fetch(`${API}/me`, { method: "PUT", headers, body: JSON.stringify({ professions: profEdit }) }).then((x) => x.json());
@@ -1051,8 +1060,8 @@ export default function ProfilePage() {
                   </>
                 )}
                 <div>
-                  <label className="block text-xs font-medium text-muted mb-1">İxtisas (3-ə qədər seçə bilərsiniz)</label>
-                  <ProfessionMultiPicker values={editData.professions} onChange={(v) => setEditData((d) => ({ ...d, professions: v }))} max={3} className={inputCls} />
+                  <label className="block text-xs font-medium text-muted mb-1">İxtisas (yalnız bir ixtisas; dəyişsəniz endirimli alış 30 gün sonra açılır)</label>
+                  <ProfessionMultiPicker values={editData.professions} onChange={(v) => setEditData((d) => ({ ...d, professions: v }))} max={1} className={inputCls} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted mb-1">Qeyd</label>
@@ -1120,7 +1129,7 @@ export default function ProfilePage() {
                   <p className="text-sm text-foreground/80 mb-3 whitespace-pre-line max-w-prose text-center sm:text-left">{profile.bio}</p>
                 )}
                 <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                  <button onClick={() => { setEditData({ name: profile.name, professions: profile.professions?.length ? profile.professions : (profile.profession ? [profile.profession] : []), bio: profile.bio || "", idNumber: profile.idNumber || "", birthDate: profile.birthDate ? String(profile.birthDate).slice(0, 10) : "", gender: profile.gender || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
+                  <button onClick={() => { setEditData({ name: profile.name, professions: (profile.profession ? [profile.profession] : (profile.professions || [])).slice(0, 1), bio: profile.bio || "", idNumber: profile.idNumber || "", birthDate: profile.birthDate ? String(profile.birthDate).slice(0, 10) : "", gender: profile.gender || "" }); setEditing(true); }} className="flex items-center gap-1.5 px-4 py-2 bg-orange-500/10 text-orange-500 rounded-xl text-sm font-medium hover:bg-orange-500/20 transition-colors">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     {t("editProfile")}
                   </button>
@@ -1728,9 +1737,10 @@ export default function ProfilePage() {
         subtitle="İxtisasınız üzrə ödənişli konsultasiya təklif edin. İstifadəçi sizi İxtisas bölməsindən tapıb birbaşa sorğu göndərir; qəbul edən kimi vaxt başlayır. Növbə və vaxt təyini yoxdur — sayğac yalnız qarşılıqlı yazışma zamanı işləyir, yazışma kəsiləndə özü dayanır.">
 
         {/* İXTİSAS — konsultasiya hansı ixtisas üzrədir. Buradan dəyişmək, yenisini
-            əlavə etmək və ya silmək olur (maksimum 3). */}
+            dəyişmək olur. BİR HESAB — BİR İXTİSAS; dəyişimdə endirimlər 30 gün gözləyir. */}
         {(() => {
-          const cur: string[] = profile.professions?.length ? profile.professions : (profile.profession ? [profile.profession] : []);
+          // Bir hesab — bir ixtisas (köhnə hesablarda bir neçəsi varsa birincisi qüvvədədir).
+          const cur: string[] = (profile.profession ? [profile.profession] : (profile.professions || [])).slice(0, 1);
           return (
             <div className="mb-3 p-3 rounded-xl border border-input-border bg-input-bg/40">
               {profEdit === null ? (
@@ -1742,6 +1752,9 @@ export default function ProfilePage() {
                         {cur.map((p) => <span key={p} className="px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-600 text-xs font-semibold">{p}</span>)}
                       </div>
                     ) : <p className="text-xs text-amber-600">İxtisas seçilməyib — konsultasiya təklifiniz axtarışda görünməsi üçün ixtisas əlavə edin.</p>}
+                    {profile.professionDiscountFrom && new Date(profile.professionDiscountFrom).getTime() > Date.now() && (
+                      <p className="text-[11px] text-amber-600 mt-1.5">⏳ İxtisas dəyişdirilib — endirimli alış <b>{new Date(profile.professionDiscountFrom).toLocaleDateString("az-AZ", { day: "numeric", month: "long", year: "numeric" })}</b> tarixindən aktiv olacaq.</p>
+                    )}
                   </div>
                   <button type="button" onClick={() => setProfEdit(cur)} className="shrink-0 px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-xs font-semibold hover:bg-orange-500/20">
                     ✏️ {cur.length ? "Dəyiş" : "Əlavə et"}
@@ -1750,10 +1763,12 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <p className="text-sm font-semibold mb-0.5">🎓 İxtisası dəyiş</p>
-                  <p className="text-[11px] text-muted mb-2">Mövcud ixtisası «✕» ilə silib yenisini seçə və ya əlavə ixtisas yaza bilərsiniz (ən çox 3).</p>
-                  <ProfessionMultiPicker values={profEdit} onChange={setProfEdit} max={3} className={inputCls} />
-                  {cur.some((p) => !profEdit.includes(p)) && (
-                    <p className="text-[11px] text-amber-600 mt-2">⚠️ Çıxardığınız ixtisasa bağlı təsdiqli sənəd yeni ixtisası təsdiqləmir — yeni ixtisas üçün sənəd ayrıca yüklənməlidir (ixtisas endirimi və referal üçün).</p>
+                  <p className="text-[11px] text-muted mb-2">Bir hesaba yalnız <b>bir ixtisas</b> bağlana bilər. Dəyişmək üçün mövcud ixtisası «✕» ilə silib yenisini seçin.</p>
+                  <ProfessionMultiPicker values={profEdit} onChange={setProfEdit} max={1} className={inputCls} />
+                  {cur.length > 0 && profEdit.length > 0 && !cur.includes(profEdit[0]) && (
+                    <p className="text-[11px] text-amber-600 mt-2 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      ⚠️ İxtisası dəyişirsiniz. Yeni ixtisasın <b>endirimli məhsullarından yalnız 30 gün sonra</b> ala biləcəksiniz. Köhnə ixtisasa bağlı təsdiqli sənəd yeni ixtisası təsdiqləmir.
+                    </p>
                   )}
                   <div className="flex gap-2 mt-2">
                     <button type="button" onClick={saveProfessions} disabled={profBusy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{profBusy ? "..." : "Yadda saxla"}</button>

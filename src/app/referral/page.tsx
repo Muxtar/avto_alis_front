@@ -205,6 +205,11 @@ export default function ReferralHubPage() {
       {benefits && (
         <Section title="🎓 İxtisasıma güzəşt verən obyektlər"
           hint="Bu mağazalar sizin ixtisasınıza alışda endirim və ya məhsullarını tövsiyə edəndə komissiya verir.">
+          {benefits.cooldownUntil && (
+            <p className="mb-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-700">
+              ⏳ İxtisasınızı yeni dəyişmisiniz — endirimli alış <b>{new Date(benefits.cooldownUntil).toLocaleDateString("az-AZ", { day: "numeric", month: "long", year: "numeric" })}</b> tarixindən aktiv olacaq.
+            </p>
+          )}
           {benefits.objects?.length ? (
             <div className="space-y-2.5">
               {benefits.objects.map((o: any) => (
