@@ -77,12 +77,26 @@ export default function BusinessSalesPage() {
   useLive(["order", "return"], () => { if (active) loadOrders(active); });
   useLive(["business", "object"], () => { loadScopes(); });
 
-  const changeStatus = async (orderId: number, status: string) => {
+  const changeStatus = async (orderId: number, status: string, code?: string): Promise<void> => {
     try {
-      const res = await fetch(`${API}/me/business-orders/${orderId}/status`, { method: "PUT", headers: { ...authH, "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+      // Eyni ünvan satıcı, biznes sahibi və səlahiyyətli işçi üçündür: ləğvdə
+      // ödəniş qaytarılır, kuryer ləğv olunur, hər iki tərəfə bildiriş gedir.
+      const res = await fetch(`${API}/orders/${orderId}/status`, { method: "PUT", headers: { ...authH, "Content-Type": "application/json" }, body: JSON.stringify(code ? { status, code } : { status }) });
       const data = await res.json();
-      if (res.ok && data.success) { toast(t("adminStatusUpdated") || "Status yeniləndi", "success"); if (active) loadOrders(active); }
-      else toast(data.message || t("error"), "error");
+      if (res.ok && data.success) {
+        toast(data.refundPending ? (data.message || "Sifariş ləğv edildi, ödənişin qaytarılması emal olunur")
+          : status === "CANCELLED" ? "Sifariş ləğv edildi — alıcıya bildiriş göndərildi"
+          : (t("adminStatusUpdated") || "Status yeniləndi"), data.refundPending ? "info" : "success");
+        if (active) loadOrders(active);
+        return;
+      }
+      // Təhvil kodu tələb olunur (mağazadan götürmə / özü çatdırma) — alıcıdan soruşulur.
+      if (status === "DELIVERED" && !code && /kod/i.test(data.message || "")) {
+        const entered = prompt("Alıcının təhvil kodunu yazın:");
+        if (entered?.trim()) return changeStatus(orderId, status, entered.trim());
+        return;
+      }
+      toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); }
   };
 
@@ -137,7 +151,7 @@ export default function BusinessSalesPage() {
                   </div>
                   <div className="flex items-center gap-2 flex-wrap border-t border-card-border pt-2">
                     <span className="text-xs text-muted">{t("adminChangeStatus") || "Status"}:</span>
-                    <select value={o.status} onChange={(e) => changeStatus(o.id, e.target.value)} className="px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs">
+                    <select value={o.status} onChange={(e) => { const v = e.target.value; if (v === "CANCELLED" && !confirm(`Sifariş #${o.id} ləğv edilsin? Alıcıya xəbər gedəcək${o.paymentStatus === "PAID" && o.paymentMethod !== "CASH" ? " və ödənişi geri qaytarılacaq" : ""}.`)) return; changeStatus(o.id, v); }} className="px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs">
                       {STATUSES.map((s) => <option key={s} value={s}>{statusAz(s, o.deliveryType === "PICKUP")}</option>)}
                     </select>
                   </div>

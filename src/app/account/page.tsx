@@ -158,9 +158,22 @@ function AccountPageInner() {
           else list.push({ id: b.id, name: b.name, objects: objs });
           objs.forEach((o: any) => opts.push({ id: o.id, label: `${b.name} — ${o.name}` }));
         });
-        setBizObjects(opts);
-        setApprovedBizNoObj(noObj);
-        setBizList(list);
+        // İŞÇİ olduğum (satış səlahiyyətli) mağazalar da seçilə bilsin — əvvəl
+        // forma yalnız öz bizneslərimi göstərirdi, işçi mağazanı seçə bilmirdi.
+        return fetch(`${API}/me/sellable-objects`, { headers: { Authorization: `Bearer ${token}` } })
+          .then((r) => r.json()).catch(() => null)
+          .then((so) => {
+            for (const o of (so?.objects || []).filter((x: any) => !x.owned)) {
+              if (opts.some((x) => x.id === o.id)) continue;
+              opts.push({ id: o.id, label: `${o.businessName} — ${o.name} (işçi)` });
+              const g = list.find((b) => b.id === o.businessId);
+              if (g) g.objects.push({ id: o.id, name: o.name });
+              else list.push({ id: o.businessId, name: `${o.businessName} (işçi)`, objects: [{ id: o.id, name: o.name }] });
+            }
+            setBizObjects(opts);
+            setApprovedBizNoObj(noObj);
+            setBizList(list);
+          });
       })
       .catch(() => undefined)
       .finally(() => setBizLoading(false));
@@ -1435,6 +1448,12 @@ function AccountPageInner() {
                   )}
                 </div>
                 <h3 className="font-medium truncate">{listing.title}</h3>
+                {/* İşçi kimi idarə etdiyim mağaza elanı — satıcısı biznes sahibidir. */}
+                {listing.staff && (
+                  <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded-md bg-blue-500/10 text-blue-600 text-[10px] font-semibold">
+                    🏢 {listing.businessObject?.name || listing.business?.name || "Mağaza"} — işçi kimi
+                  </span>
+                )}
                 <p className="text-muted text-xs truncate">{listing.description}</p>
               </div>
 
