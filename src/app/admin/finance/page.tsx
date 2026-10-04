@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, Fragment } from "react";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import FinanceTree from "./FinanceTree";
+import { useAdminLive } from "@/lib/live";
 
 interface Person { id: number; name: string | null; phone: string | null; email?: string | null }
 interface Item { title: string; quantity: number; price: number }
@@ -67,8 +68,8 @@ export default function AdminFinancePage() {
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const H = () => ({ Authorization: `Bearer ${token}` });
 
-  const load = useCallback(() => {
-    setLoading(true);
+  const load = useCallback((silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     const params = new URLSearchParams({ page: String(page), limit: "25", method, paymentStatus: payStatus });
     if (q) params.set("q", q);
     fetch(`${API}/admin/finance?${params.toString()}`, { headers: H() })
@@ -82,6 +83,8 @@ export default function AdminFinancePage() {
   }, [page, method, payStatus, q, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["order", "refund", "return", "payout"], () => { load(true); });
 
   const toggle = async (id: number) => {
     if (openId === id) { setOpenId(null); setDetail(null); return; }

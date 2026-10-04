@@ -122,12 +122,43 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       window.dispatchEvent(new CustomEvent("admin:live", { detail: p }));
       if (p?.toast) toastRef.current(`🔔 ${p.toast}`, "info");
     };
+    /* TAM SİNXRON — hadisə buraxıla biləcək hallarda hər şeyi təzələ:
+       soket qırılıb yenidən qoşulanda, tab-a / telefona qayıdanda, və soket
+       qırıq qalıbsa hər 30 saniyədən bir (canlı kanal işləməsə belə panel
+       köhnə məlumatda ilişib qalmasın). */
+    const syncAll = () => {
+      loadOverview();
+      window.dispatchEvent(new CustomEvent("admin:live", { detail: { kind: "*" } }));
+    };
+    let wasDown = false;
+    const onDisconnect = () => { wasDown = true; };
+    const onConnect = () => { if (wasDown) { wasDown = false; syncAll(); } };
+    let hiddenAt = 0;
+    const onVisible = () => {
+      if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
+      if (!socket.connected) socket.connect();
+      if (hiddenAt && Date.now() - hiddenAt > 5000) syncAll();
+      hiddenAt = 0;
+    };
+    const onOnline = () => { if (!socket.connected) socket.connect(); syncAll(); };
+    const fallback = setInterval(() => {
+      if (!socket.connected && document.visibilityState === "visible") { socket.connect(); syncAll(); }
+    }, 30000);
     socket.on("admin:identity", onIdentity);
     socket.on("admin:live", onLive);
+    socket.on("disconnect", onDisconnect);
+    socket.on("connect", onConnect);
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("online", onOnline);
     return () => {
       if (overviewTimer) clearTimeout(overviewTimer);
+      clearInterval(fallback);
       socket.off("admin:identity", onIdentity);
       socket.off("admin:live", onLive);
+      socket.off("disconnect", onDisconnect);
+      socket.off("connect", onConnect);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", onOnline);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, pathname]);
@@ -143,9 +174,15 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     } else {
       // Token doğrulanması + icazələr (sidebar-ı filtrləmək üçün) — tək sorğu.
       fetch(`${API}/admin/me`, { headers: { Authorization: `Bearer ${token}` } })
-        .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
-        .then((d) => { setMe({ isSuperAdmin: !!d.isSuperAdmin, permissions: Array.isArray(d.permissions) ? d.permissions : [] }); setReady(true); })
-        .catch(() => { localStorage.removeItem("adminToken"); router.push("/admin/login"); });
+        .then((r) => {
+          // Yalnız token həqiqətən etibarsızdırsa çıxış et. Əvvəl şəbəkə
+          // kəsilməsi və ya serverin qısa fasiləsi də admini paneldən atırdı.
+          if (r.status === 401 || r.status === 403) { localStorage.removeItem("adminToken"); router.push("/admin/login"); return null; }
+          if (!r.ok) throw new Error();
+          return r.json();
+        })
+        .then((d) => { if (!d) return; setMe({ isSuperAdmin: !!d.isSuperAdmin, permissions: Array.isArray(d.permissions) ? d.permissions : [] }); setReady(true); })
+        .catch(() => { setReady(true); });   // şəbəkə xətası — panel açıq qalır, növbəti keçiddə təkrar yoxlanır
     }
   }, [pathname, router]);
 
@@ -313,7 +350,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       {/* Açıq menyu üstdə durur — məzmun yerindən oynamasın deyə dar zolağın yeri saxlanır */}
       {mobile && mobileOpen && <div className="w-16 shrink-0" />}
       <aside style={{ width }}
-        className={`adm-side h-full flex flex-col shrink-0 ${narrow ? "is-collapsed" : ""} ${dragging ? "is-dragging" : ""} ${mobile && mobileOpen ? "absolute left-0 top-0 z-30 shadow-2xl" : ""}`}>
+        className={`adm-side h-full flex flex-col shrink-0 ${narrow ? "is-collapsed" : ""} ${dragging ? "is-dragging" : ""} ${mobile && mobileOpen ? "is-overlay" : ""}`}>
         <nav className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden py-2">
           {GROUPS.map((g) => {
             const items = g.hrefs.map((h) => byHref.get(h)).filter(Boolean) as typeof visibleLinks;

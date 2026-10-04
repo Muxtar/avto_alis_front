@@ -1363,6 +1363,13 @@ button.add-listing-btn { border-radius: 12px; }
   transition: width .22s cubic-bezier(.4, 0, .2, 1);
 }
 .adm-side.is-dragging { transition: none; user-select: none; }
+/* Telefonda açıq menyu məzmunun ÜSTÜNDƏ durur. Mövqe burada verilir: yuxarıdakı
+   `position: relative` Tailwind-in `absolute` sinfini üstələyirdi, menyu axında
+   qalırdı və solunda dar zolağın yeri (64px) boş görünürdü. */
+.adm-side.is-overlay {
+  position: absolute; left: 0; top: 0; z-index: 30; max-width: 86vw;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / .35);
+}
 .adm-side nav { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--brand-from) 35%, transparent) transparent; }
 .adm-group {
   padding: 12px 12px 4px; font-size: 9.5px; font-weight: 700; letter-spacing: .14em;

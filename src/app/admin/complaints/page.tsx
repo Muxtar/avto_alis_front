@@ -46,10 +46,10 @@ export default function AdminComplaintsPage() {
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" };
 
   // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
-  useAdminLive(["complaint"], () => { load(); });
+  useAdminLive(["complaint"], () => { load(true); });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const r = await fetch(`${API}/admin/complaints?status=${filter}`, { headers }).then((x) => x.json());
       setItems(r.complaints || []);

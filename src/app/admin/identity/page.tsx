@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 interface IdentityUser {
   id: number;
@@ -103,8 +104,12 @@ export default function AdminIdentityPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const refresh = async () => {
-    setLoading(true);
+  // ANLIQ: başqa admin təsdiq/rədd edəndə və ya Veriff nəticəsi gələndə siyahı
+  // səssizcə yenilənir. Admin formada yazdığı düzəlişlər (drafts) SAXLANIR.
+  useAdminLive(["identity", "user"], () => { refresh(true); });
+
+  const refresh = async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const url = `${API}/admin/identity?status=${status}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
       const d = await fetch(url, { headers }).then((r) => r.json());
@@ -112,7 +117,7 @@ export default function AdminIdentityPage() {
       setItems(users);
       setCounts(d.counts || {});
       // Formaları istifadəçinin mövcud (AI oxumuşsa — onun doldurduğu) dəyəri ilə aç.
-      setDrafts(Object.fromEntries(users.map((u) => [u.id, {
+      setDrafts((prev) => Object.fromEntries(users.map((u) => [u.id, silent === true && prev[u.id] ? prev[u.id] : {
         name: u.name || "",
         idNumber: u.idNumber || "",
         birthDate: u.birthDate ? String(u.birthDate).slice(0, 10) : "",

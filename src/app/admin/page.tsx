@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 export default function AdminDashboard() {
   const { t } = useLanguage();
@@ -11,21 +12,29 @@ export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState<any>(null);
   const [adv, setAdv] = useState<any>(null);
 
-  useEffect(() => {
+  // Genişləndirilmiş analitika ağır sorğudur — canlı hadisələrdə dəqiqədə ən çox bir dəfə.
+  const advAt = useRef(0);
+  const load = (silent?: boolean) => {
     const token = localStorage.getItem("adminToken");
-    fetch(`${API}/admin/dashboard`, { headers: { Authorization: `Bearer ${token}` } })
+    const H = { headers: { Authorization: `Bearer ${token}` } };
+    fetch(`${API}/admin/dashboard`, H)
       .then((r) => r.json())
-      .then(setData)
-      .catch(() => { toast(t('error'), 'error'); });
-    fetch(`${API}/admin/analytics`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((d) => { if (d?.stats) setData(d); else if (!silent) toast(d?.message || t('error'), 'error'); })
+      .catch(() => { if (!silent) toast(t('error'), 'error'); });
+    fetch(`${API}/admin/analytics`, H)
       .then((r) => r.json())
       .then(setAnalytics)
       .catch(() => {});
-    fetch(`${API}/admin/analytics/advanced`, { headers: { Authorization: `Bearer ${token}` } })
+    if (silent && Date.now() - advAt.current < 60000) return;
+    advAt.current = Date.now();
+    fetch(`${API}/admin/analytics/advanced`, H)
       .then((r) => r.json())
       .then((d) => { if (d.success) setAdv(d); })
       .catch(() => {});
-  }, []);
+  };
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // ANLIQ: yeni istifadəçi / elan / sifariş gələndə rəqəmlər səhifə yenilənmədən dəyişir.
+  useAdminLive(["user", "listing", "order", "payout", "refund", "return"], () => { load(true); });
 
   const azn = (n: number) => (n || 0).toLocaleString("az-AZ", { maximumFractionDigits: 0 });
 

@@ -33,10 +33,10 @@ export default function AdminCredentialsPage() {
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}` };
 
   // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
-  useAdminLive(["credential"], () => { load(); });
+  useAdminLive(["credential"], () => { load(true); });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const res = await fetch(`${API}/admin/credentials?status=${filter}`, { headers });
       const data = await res.json();

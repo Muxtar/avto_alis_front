@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { API, imgUrl } from "@/lib/api";
 import { useToast } from "@/components/Toast";
+import { useAdminLive } from "@/lib/live";
 
 export default function AdminBannersPage() {
   const { toast } = useToast();
@@ -23,6 +24,8 @@ export default function AdminBannersPage() {
       .then((r) => r.json()).then((d) => { if (d.success) setBanners(d.banners); }).catch(() => {}).finally(() => setLoading(false));
   };
   useEffect(load, []);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["banner"], () => { load(); });
 
   const upload = async () => {
     if (!file) { toast("Şəkil seçin", "error"); return; }

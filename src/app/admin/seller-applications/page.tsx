@@ -41,10 +41,10 @@ export default function AdminSellerApplicationsPage() {
   }, [filter]);
 
   // ANLIQ: yeni satıcı ərizəsi gələn kimi siyahıya düşür.
-  useAdminLive(["seller"], () => { refresh(); });
+  useAdminLive(["seller"], () => { refresh(true); });
 
-  const refresh = async () => {
-    setLoading(true);
+  const refresh = async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const url = filter === "ALL"
         ? `${API}/admin/seller-applications`

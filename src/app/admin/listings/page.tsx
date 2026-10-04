@@ -76,8 +76,8 @@ export default function AdminListingsPage() {
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  const fetchOwners = () => {
-    setLoading(true);
+  const fetchOwners = (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (statusFilter !== "all") params.set("status", statusFilter);
@@ -117,13 +117,14 @@ export default function AdminListingsPage() {
   // qalırdı — admin əli ilə F5 etməli olurdu.
   useEffect(() => {
     const onChanged = () => {
-      fetchOwners();
+      fetchOwners(true);   // səssiz — siyahı yanıb-sönməsin, açıq sahib bağlanmasın
       // Açıq sahibin elanları da təzələnsin (yeni elan onun altına düşə bilər).
       const cur = owners.find((o) => o.key === openKey);
       if (cur) fetchRows(cur);
     };
     // `admin:live` — yeni elan göndərilən kimi (30 saniyəlik sorğunu gözləmədən).
-    const onLive = (ev: Event) => { if ((ev as CustomEvent).detail?.kind === "listing") onChanged(); };
+    // "*" — soket yenidən qoşuldu / tab-a qayıdıldı: arada hadisə buraxıla bilər.
+    const onLive = (ev: Event) => { const k = (ev as CustomEvent).detail?.kind; if (k === "listing" || k === "object" || k === "business" || k === "*") onChanged(); };
     window.addEventListener("admin:listings-changed", onChanged);
     window.addEventListener("admin:live", onLive);
     return () => {

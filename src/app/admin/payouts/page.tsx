@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import ReferralPayouts from "./ReferralPayouts";
+import { useAdminLive } from "@/lib/live";
 
 interface SellerRow {
   sellerId: number; name: string; phone: string;
@@ -28,8 +29,8 @@ export default function AdminPayoutsPage() {
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
   const H = () => ({ Authorization: `Bearer ${token()}` });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const [c, s, h] = await Promise.all([
         fetch(`${API}/admin/payouts/commission`, { headers: H() }).then((r) => r.json()),
@@ -43,6 +44,8 @@ export default function AdminPayoutsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["payout", "order", "refund", "return"], () => { load(true); });
 
   const saveCommission = async () => {
     const p = parseFloat(commission);

@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 interface Page { id: number; slug: string; title: string; content: string; published: boolean; updatedAt: string; }
 
@@ -15,14 +16,16 @@ export default function AdminPagesPage() {
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
   const H = () => ({ Authorization: `Bearer ${token()}`, "Content-Type": "application/json" });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const r = await fetch(`${API}/admin/pages`, { headers: { Authorization: `Bearer ${token()}` } }).then((x) => x.json());
       if (r.success) setPages(r.pages || []);
     } catch { toast("Xəta", "error"); } finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["page"], () => { load(true); });
 
   const save = async () => {
     if (!edit) return;

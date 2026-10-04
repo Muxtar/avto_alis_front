@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 // REFERAL ÖDƏNİŞLƏRİ — referrerlərə (link ilə satanlara) komissiya ödənişi.
 // Çatdırılma + saxlama müddəti bitəndən sonra AVAILABLE olur; "Ödə" hamısını bir payout-la bağlayır.
@@ -27,8 +28,8 @@ export default function ReferralPayouts() {
 
   const H = () => ({ Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}` });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const [p, h] = await Promise.all([
         fetch(`${API}/admin/referral/payables`, { headers: H() }).then((r) => r.json()),
@@ -41,6 +42,8 @@ export default function ReferralPayouts() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["payout", "order", "refund", "return"], () => { load(true); });
 
   const copy = async (text: string) => {
     try { await navigator.clipboard.writeText(text); toast("Kopyalandı", "success"); } catch { toast("Kopyalanmadı", "error"); }

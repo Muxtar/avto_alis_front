@@ -28,10 +28,10 @@ export default function AdminSocialLinksPage() {
   const headers: any = { Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}` };
 
   // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
-  useAdminLive(["social"], () => { load(); });
+  useAdminLive(["social"], () => { load(true); });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const res = await fetch(`${API}/admin/social-links?status=${filter}`, { headers });
       const data = await res.json();

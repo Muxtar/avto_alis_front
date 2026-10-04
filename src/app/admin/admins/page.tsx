@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 // Modul açarları backend ADMIN_MODULES ilə eyni olmalıdır. 'admins' modulu adi
 // adminə verilmir (yalnız super-admin) — ona görə checkbox siyahısında yoxdur.
@@ -45,10 +46,11 @@ export default function AdminAdminsPage() {
   const [q, setQ] = useState("");
   const [candidates, setCandidates] = useState<{ id: number; name: string; phone: string }[]>([]);
 
+  const savedRef = useRef<Record<number, string[]>>({});
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const res = await fetch(`${API}/admin/admins`, { headers: { Authorization: `Bearer ${token()}` } });
       const d = await res.json();
@@ -58,11 +60,23 @@ export default function AdminAdminsPage() {
       setModules((d.modules || []).filter((m: string) => m !== "admins"));
       const e: Record<number, string[]> = {};
       for (const a of d.admins || []) e[a.id] = [...(a.permissions || [])];
-      setEdit(e);
+      // Səssiz yeniləmədə adminin işarələyib hələ saxlamadığı seçimlər qalır.
+      const saved = savedRef.current; savedRef.current = e;
+      setEdit((cur) => {
+        if (silent !== true) return e;
+        const out: Record<number, string[]> = {};
+        for (const id of Object.keys(e).map(Number)) {
+          const dirty = cur[id] && saved[id] && [...cur[id]].sort().join(",") !== [...saved[id]].sort().join(",");
+          out[id] = dirty ? cur[id] : e[id];
+        }
+        return out;
+      });
     } catch { toast("Xəta", "error"); } finally { setLoading(false); }
   }, [toast]);
 
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa super-admin icazələri dəyişəndə siyahı yenilənir.
+  useAdminLive(["admin", "user"], () => { load(true); });
 
   // Namizəd axtarışı (debounce).
   useEffect(() => {

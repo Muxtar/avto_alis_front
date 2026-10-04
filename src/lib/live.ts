@@ -96,19 +96,32 @@ export function useLive(kinds: LiveKind[] | "*", onChange: (e?: LiveEvent) => vo
    pəncərəyə eyni adlı hadisə yayır; səhifələr bu hook ilə tutur. */
 export type AdminLiveKind =
   | "listing" | "identity" | "seller" | "business" | "object" | "credential" | "social"
-  | "complaint" | "support" | "return" | "order" | "refund";
+  | "complaint" | "support" | "return" | "order" | "refund"
+  | "user" | "payout" | "comment" | "promo" | "banner" | "page" | "setting" | "admin"
+  | "outreach" | "broadcast" | "courier";
 
-export function useAdminLive(kinds: AdminLiveKind[], onChange: (detail?: { kind: AdminLiveKind; id?: number | string }) => void) {
+/** AdminShell-in yaydığı "hər şeyi təzələ" siqnalı: soket yenidən qoşulanda,
+    tab-a/telefona qayıdanda və soket qırıq ikən dövri yoxlamada. Arada
+    buraxılmış hadisə ola bilər — açıq səhifə hansı növü dinləsə də yenilənir. */
+export const ADMIN_SYNC = "*";
+
+/**
+ * Admin səhifəsinin siyahısını canlı saxlayır. `kinds` — səhifənin göstərdiyi
+ * məlumat növləri; `"*"` — istənilən dəyişiklik (məs. audit jurnalı).
+ * Callback səssiz yeniləmə etməlidir (spinner göstərmədən), yoxsa hər hadisədə
+ * siyahı yanıb-sönər.
+ */
+export function useAdminLive(kinds: AdminLiveKind[] | "*", onChange: (detail?: { kind: AdminLiveKind | "*"; id?: number | string }) => void) {
   const cbRef = useRef(onChange);
   useEffect(() => { cbRef.current = onChange; });
-  const kindsKey = [...kinds].sort().join(",");
+  const kindsKey = kinds === "*" ? "*" : [...kinds].sort().join(",");
 
   useEffect(() => {
-    const want = new Set(kindsKey.split(","));
+    const want = kindsKey === "*" ? null : new Set(kindsKey.split(","));
     let timer: ReturnType<typeof setTimeout> | null = null;
     const handler = (ev: Event) => {
       const d = (ev as CustomEvent).detail;
-      if (!d?.kind || !want.has(d.kind)) return;
+      if (!d?.kind || (want && d.kind !== ADMIN_SYNC && !want.has(d.kind))) return;
       if (timer) clearTimeout(timer);
       timer = setTimeout(() => { timer = null; try { cbRef.current(d); } catch { /* boş */ } }, 300);
     };

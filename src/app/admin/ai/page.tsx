@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 interface AiFlag {
   key: string;
@@ -71,8 +72,8 @@ export default function AdminAiPage() {
     } catch { toast("Yoxlanmadı", "error"); } finally { setTariffBusy(false); }
   };
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const res = await fetch(`${API}/admin/ai`, { headers: { Authorization: `Bearer ${token()}` } });
       const d = await res.json();
@@ -83,6 +84,8 @@ export default function AdminAiPage() {
   }, [toast]);
 
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["setting"], () => { load(true); });
 
   const toggle = async (f: AiFlag) => {
     setBusy(f.key);

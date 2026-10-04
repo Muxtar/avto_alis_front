@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 interface Log {
   id: number; adminId: number; adminName: string; method: string; path: string;
@@ -28,8 +29,8 @@ export default function AdminAuditPage() {
 
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const params = new URLSearchParams({ page: String(page), limit: "50" });
       if (adminId) params.set("adminId", adminId);
@@ -42,6 +43,8 @@ export default function AdminAuditPage() {
   }, [page, adminId, q, toast]);
 
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive("*", () => { load(true); });
 
   const dt = (s: string) => new Date(s).toLocaleString("az-AZ", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 interface AdminComment {
   id: number;
@@ -23,8 +24,8 @@ export default function AdminCommentsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [busyId, setBusyId] = useState<number | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const adminToken = localStorage.getItem("adminToken");
       const res = await fetch(`${API}/admin/comments?page=${page}&limit=20`, { headers: { Authorization: `Bearer ${adminToken}` } });
@@ -39,6 +40,8 @@ export default function AdminCommentsPage() {
   }, [page, t, toast]);
 
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["comment"], () => { load(true); });
 
   const remove = async (id: number) => {
     if (busyId || !confirm(t("adminCommentDeleteConfirm"))) return;

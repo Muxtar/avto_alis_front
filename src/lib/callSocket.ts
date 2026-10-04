@@ -14,7 +14,7 @@ export function getCallSocket(token: string): Socket {
   socket = io(base, {
     auth: { token },
     transports: ["websocket", "polling"], // Railway hər ikisini dəstəkləyir
-    reconnectionAttempts: 5,
+    reconnectionDelayMax: 10000,          // cəhd sayı məhdud deyil — şəbəkə qayıdanda özü qoşulur
   });
   socketToken = token;
   return socket;
@@ -35,10 +35,13 @@ export function getAdminSocket(token: string): Socket {
   if (adminSocket && adminToken === token) return adminSocket;
   if (adminSocket) { try { adminSocket.disconnect(); } catch { /* boş */ } }
   const base = API.replace(/\/api\/?$/, "");
+  // Yenidən qoşulma cəhdi MƏHDUDLAŞDIRILMIR: əvvəl 5 uğursuz cəhddən sonra
+  // (telefon yuxuya gedəndə, şəbəkə dəyişəndə, server yenilənəndə) soket
+  // həmişəlik susurdu və panel səhifə yenilənənə qədər canlı xəbər almırdı.
   adminSocket = io(base, {
     auth: { token },
     transports: ["websocket", "polling"],
-    reconnectionAttempts: 5,
+    reconnectionDelayMax: 10000,
   });
   adminToken = token;
   return adminSocket;

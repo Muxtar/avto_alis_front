@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { useLanguage } from "@/lib/LanguageContext";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 interface Promo {
   id: number;
@@ -49,8 +50,11 @@ export default function AdminPromoPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const refresh = async () => {
-    setLoading(true);
+  // ANLIQ: başqa admin kodu dəyişəndə / kod istifadə olunanda siyahı səssizcə yenilənir.
+  useAdminLive(["promo", "order"], () => { refresh(true); });
+
+  const refresh = async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const res = await fetch(`${API}/admin/promo`, { headers: { Authorization: `Bearer ${adminToken}` } });
       const data = await res.json();

@@ -43,10 +43,10 @@ export default function AdminRefundsPage() {
   const H = () => ({ Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" });
 
   // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
-  useAdminLive(["refund", "order"], () => { load(); });
+  useAdminLive(["refund", "order", "return"], () => { load(true); });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const r = await fetch(`${API}/admin/refunds?status=${status}`, { headers: H() }).then((x) => x.json());
       if (r.success) { setRows(r.rows || []); setTotals(r.totals || null); }

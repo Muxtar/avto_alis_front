@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 /**
  * BİZNES ÜZRƏ HESABLAŞMA.
@@ -57,8 +58,8 @@ export default function AdminBusinessPayoutsPage() {
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
   const H = () => ({ Authorization: `Bearer ${token()}`, "Content-Type": "application/json" });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const [r, h, c] = await Promise.all([
         fetch(`${API}/admin/payouts/businesses?q=${encodeURIComponent(q)}`, { headers: H() }).then((x) => x.json()),
@@ -73,6 +74,8 @@ export default function AdminBusinessPayoutsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["payout", "order", "refund", "return", "business"], () => { load(true); });
 
   const openDetail = async (key: string) => {
     setOpenKey(key); setDetail(null); setPicked(new Set()); setReference(""); setDetailLoading(true);

@@ -25,8 +25,8 @@ export default function AdminSupportPage() {
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
   const H = () => ({ Authorization: `Bearer ${token()}` });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const r = await fetch(`${API}/admin/support?status=${filter}`, { headers: H() }).then((x) => x.json());
       if (r.success) setTickets(r.tickets || []);
@@ -38,7 +38,7 @@ export default function AdminSupportPage() {
   // ANLIQ: yeni müraciət / istifadəçi cavabı — siyahı və açıq söhbət
   // yenilənir. Admin yazmaqda olduğu cavab (reply) silinmir.
   useAdminLive(["support"], async (d) => {
-    load();
+    load(true);
     if (sel && (!d?.id || Number(d.id) === sel.id)) {
       try {
         const r = await fetch(`${API}/admin/support/${sel.id}`, { headers: H() }).then((x) => x.json());

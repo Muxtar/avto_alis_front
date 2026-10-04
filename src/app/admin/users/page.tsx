@@ -4,6 +4,7 @@ import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import UserDetail from "./UserDetail";
+import { useAdminLive } from "@/lib/live";
 const USER_TYPES = ["CAR_OWNER", "MECHANIC", "PARTS_SELLER"];
 const USER_ROLES = ["USER", "ADMIN"];
 
@@ -57,8 +58,8 @@ export default function AdminUsersPage() {
     } catch { toast("Export alınmadı", "error"); }
   };
 
-  const fetchUsers = () => {
-    setLoading(true);
+  const fetchUsers = (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     const params = new URLSearchParams();
     if (search) params.set("search", search);
     if (typeFilter) params.set("type", typeFilter);
@@ -72,6 +73,8 @@ export default function AdminUsersPage() {
   };
 
   useEffect(() => { fetchUsers(); }, [typeFilter, page]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["user", "identity", "seller"], () => { fetchUsers(true); });
   useEffect(() => { setPage(1); const tm = setTimeout(fetchUsers, 300); return () => clearTimeout(tm); }, [search]);
 
   const handleDelete = async (id: number, force = false) => {

@@ -39,10 +39,10 @@ export default function AdminObjectsPage() {
   }), []);
 
   // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
-  useAdminLive(["object", "business"], () => { load(); });
+  useAdminLive(["object", "business", "listing"], () => { load(true); });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const r = await fetch(`${API}/admin/objects?search=${encodeURIComponent(search)}`, { headers: H() }).then((x) => x.json());
       if (r.success) setObjects(r.objects || []);

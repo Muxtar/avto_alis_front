@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 type Row = {
   key: string; platform: string; handle: string; url: string | null; name: string | null; avatar: string | null;
@@ -72,6 +73,8 @@ export default function SocialInvites() {
   }, [tab, q]);
   useEffect(() => { const t = setTimeout(load, q ? 250 : 0); return () => clearTimeout(t); }, [load, q]);
   useEffect(() => { const id = setInterval(load, 60000); return () => clearInterval(id); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["outreach", "social"], () => { load(); });
 
   const copy = (text: string, msg = "Kopyalandı") => navigator.clipboard?.writeText(text).then(() => toast(msg, "success")).catch(() => {});
   const markNotified = async (r: Row) => {

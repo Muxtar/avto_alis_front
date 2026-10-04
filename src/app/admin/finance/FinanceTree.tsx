@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 /**
  * MALİYYƏ — SATICI ÜZRƏ GÖRÜNÜŞ.
@@ -38,8 +39,8 @@ export default function FinanceTree() {
 
   const H = () => ({ Authorization: `Bearer ${typeof window !== "undefined" ? localStorage.getItem("adminToken") : ""}`, "Content-Type": "application/json" });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const p = new URLSearchParams({ paymentStatus: payStatus });
       if (q.trim()) p.set("q", q.trim());
@@ -51,6 +52,8 @@ export default function FinanceTree() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q, payStatus, from, to]);
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["order", "refund", "return", "payout"], () => { load(true); });
 
   const sellers = data?.sellers || [];
   return (

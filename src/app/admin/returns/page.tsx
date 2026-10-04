@@ -43,8 +43,8 @@ export default function AdminReturnsPage() {
     "Content-Type": "application/json",
   };
 
-  const fetchReturns = () => {
-    setLoading(true);
+  const fetchReturns = (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     fetch(`${API}/admin/returns?status=${statusFilter}&page=${page}`, { headers })
       .then((r) => r.json())
       .then((d) => { setReturns(d.returns || []); setTotalPages(d.totalPages || 1); })
@@ -53,7 +53,7 @@ export default function AdminReturnsPage() {
   };
 
   // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
-  useAdminLive(["return"], () => fetchReturns());
+  useAdminLive(["return", "order"], () => fetchReturns(true));
 
   useEffect(() => { fetchReturns(); }, [statusFilter, page]);
 

@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import SocialInvites from "./SocialInvites";
+import { useAdminLive } from "@/lib/live";
 
 interface Item {
   id: number;
@@ -49,8 +50,8 @@ function RequestsTab() {
   const token = () => (typeof window !== "undefined" ? localStorage.getItem("adminToken") : null);
   const H = () => ({ Authorization: `Bearer ${token()}`, "Content-Type": "application/json" });
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     try {
       const r = await fetch(`${API}/admin/social-outreach?status=${filter}`, { headers: H() }).then((x) => x.json());
       if (r.success) setItems(r.items || []);
@@ -59,6 +60,8 @@ function RequestsTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter]);
   useEffect(() => { load(); }, [load]);
+  // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
+  useAdminLive(["outreach", "social"], () => { load(true); });
 
   const act = async (id: number, action: "sent" | "reject") => {
     setBusy(id);

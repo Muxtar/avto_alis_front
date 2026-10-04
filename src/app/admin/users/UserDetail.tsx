@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { API, imgUrl } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 /**
  * BİR İSTİFADƏÇİ HAQQINDA HƏR ŞEY.
@@ -73,14 +74,17 @@ export default function UserDetail({ userId, onClose }: { userId: number; onClos
   const [d, setD] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
+  const load = (silent?: boolean) => {
     const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
-    setD(null); setErr(null);
+    if (!silent) { setD(null); setErr(null); }
     fetch(`${API}/admin/users/${userId}/full`, { headers: { Authorization: `Bearer ${token}` } })
       .then((r) => r.json())
-      .then((r) => { if (r.success) setD(r); else setErr(r.message || "Məlumat alınmadı"); })
-      .catch(() => setErr("Şəbəkə xətası"));
-  }, [userId]);
+      .then((r) => { if (r.success) setD(r); else if (!silent) setErr(r.message || "Məlumat alınmadı"); })
+      .catch(() => { if (!silent) setErr("Şəbəkə xətası"); });
+  };
+  useEffect(() => { load(); }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // ANLIQ: profil açıq ikən sifariş / balans / status dəyişsə pəncərə özü yenilənir.
+  useAdminLive("*", () => { load(true); });
 
   // Escape ilə bağlansın — admin panelində sürətli baxış üçün.
   useEffect(() => {

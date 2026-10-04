@@ -1,7 +1,8 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useAdminLive } from "@/lib/live";
 
 interface Flag {
   key: string;
@@ -47,6 +48,7 @@ export default function AdminSettingsPage() {
   const [draft, setDraft] = useState<Record<string, string>>({}); // input mətni (yazarkən)
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const numbersRef = useRef<NumberSetting[]>([]);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [wa, setWa] = useState<OtpDiag | null>(null);
   // Hər kanal üçün AYRI test nömrəsi (WhatsApp və SMS-i müstəqil test etmək üçün).
@@ -57,15 +59,23 @@ export default function AdminSettingsPage() {
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
   const headers: any = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 
-  const load = () => {
-    setLoading(true);
+  const load = (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     fetch(`${API}/admin/settings`, { headers })
       .then((r) => r.json())
       .then((d) => {
         setFlags(d.settings || []);
         const nums: NumberSetting[] = d.numbers || [];
         setNumbers(nums);
-        setDraft(Object.fromEntries(nums.map((n) => [n.key, n.value.toFixed(n.decimals)])));
+        // Səssiz yeniləmədə adminin yazmaqda olduğu (hələ saxlamadığı) rəqəm silinməsin:
+        // yalnız toxunulmamış xanalar serverdəki yeni dəyərlə əvəzlənir.
+        const prevSaved = Object.fromEntries(numbersRef.current.map((n) => [n.key, n.value.toFixed(n.decimals)]));
+        numbersRef.current = nums;
+        setDraft((cur) => Object.fromEntries(nums.map((n) => {
+          const fresh = n.value.toFixed(n.decimals);
+          const dirty = silent === true && cur[n.key] !== undefined && cur[n.key] !== prevSaved[n.key];
+          return [n.key, dirty ? cur[n.key] : fresh];
+        })));
       })
       .catch(() => toast("Tənzimləmələr yüklənmədi", "error"))
       .finally(() => setLoading(false));
@@ -74,7 +84,9 @@ export default function AdminSettingsPage() {
       .then((d) => setWa(d.channel ? { channel: d.channel, sms: d.sms, whatsapp: d.whatsapp } : null))
       .catch(() => {});
   };
-  useEffect(load, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // ANLIQ: başqa admin tənzimləməni dəyişəndə açar/rəqəm burada da yenilənir.
+  useAdminLive(["setting"], () => { load(true); });
 
   // Bir kanalı ayrıca test et (WhatsApp və ya SMS) — provayderin real cavabı gəlir.
   const runTest = async (channel: "whatsapp" | "sms") => {

@@ -19,8 +19,8 @@ export default function AdminOrdersPage() {
     "Content-Type": "application/json",
   };
 
-  const fetchData = () => {
-    setLoading(true);
+  const fetchData = (silent?: unknown) => {
+    if (silent !== true) setLoading(true);
     fetch(`${API}/admin/orders?status=${statusFilter}&page=${page}`, { headers })
       .then((r) => r.json())
       .then((o) => {
@@ -30,7 +30,7 @@ export default function AdminOrdersPage() {
   };
 
   // ANLIQ: yeni iş gələn kimi siyahı özü yenilənir.
-  useAdminLive(["order"], () => fetchData());
+  useAdminLive(["order", "refund", "return"], () => fetchData(true));
 
   useEffect(() => { fetchData(); }, [statusFilter, page]);
 
