@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useLive } from "@/lib/live";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
-import { API } from "@/lib/api";
+import { API, imgUrl } from "@/lib/api";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import SellerContract from "@/components/SellerContract";
 import QRShare from "@/components/QRShare";
@@ -90,7 +90,9 @@ export default function BusinessPage() {
   const [editingObjId, setEditingObjId] = useState<number | null>(null); // redaktə olunan obyekt
   const [openObjId, setOpenObjId] = useState<number | null>(null);       // açıq (genişlənmiş) obyekt kartı
   const [objEditInput, setObjEditInput] = useState<any>(null);
-  const [termsTick, setTermsTick] = useState(0); // güzəştlər saxlananda paneldəki cədvəl yenilənsin
+  const [termsTick, setTermsTick] = useState(0);
+  // Açıq obyektin paneli: məhsullar / məlumat / güzəştlər.
+  const [objTab, setObjTab] = useState<"products" | "info" | "terms">("products"); // güzəştlər saxlananda paneldəki cədvəl yenilənsin
   // Obyekti redaktəyə aç: paneli genişləndir, formanı mövcud məlumatla doldur və görünən yerə gətir.
   const startEditObj = (o: BizObject) => {
     setOpenObjId(o.id);
@@ -655,7 +657,7 @@ export default function BusinessPage() {
                       // Kart `div`-dir (button yox): içində ayrıca «Redaktə» düyməsi var.
                       <div key={o.id} role="button" tabIndex={0}
                         className={`block w-full text-left cursor-pointer rounded-2xl transition-shadow ${openObjId === o.id ? "ring-2 ring-[var(--brand-to)]/40" : "hover:shadow-md"}`}
-                        onClick={() => { setOpenObjId(openObjId === o.id ? null : o.id); setEditingObjId(null); }}
+                        onClick={() => { setOpenObjId(openObjId === o.id ? null : o.id); setEditingObjId(null); setObjTab("products"); }}
                         onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenObjId(openObjId === o.id ? null : o.id); setEditingObjId(null); } }}>
                         <IdMini icon="🏪" tone={o.isActive ? "teal" : "slate"}
                           title={`${o.name} · №${o.id}`}
@@ -701,12 +703,24 @@ export default function BusinessPage() {
                         <div className={`px-4 py-3.5 flex items-center gap-3 text-white ${o.isActive ? "bg-gradient-to-r from-teal-500 to-cyan-600" : "bg-gradient-to-r from-slate-500 to-slate-600"}`}>
                           <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center text-xl shrink-0">🏪</div>
                           <div className="min-w-0 flex-1">
+                            <p className="text-[11px] text-white/80 truncate">🏢 {b.name} <span className="opacity-70">›</span> obyekt №{o.id}</p>
                             <p className="font-bold text-base leading-tight truncate">{o.name}</p>
-                            <p className="text-[11px] text-white/80">Obyekt №{o.id} · {b.name}</p>
                           </div>
                           <span className={`px-2 py-1 rounded-lg text-[11px] font-bold shrink-0 ${o.isActive ? "bg-white/25" : "bg-black/25"}`}>{o.isActive ? "● Aktiv" : "○ Deaktiv"}</span>
                         </div>
 
+                        {/* Tablar: biznes → obyekt → məhsullar */}
+                        <div className="flex border-b border-card-border text-xs sm:text-sm">
+                          {([["products", `📦 Məhsullar${typeof o._count?.listings === "number" ? ` (${o._count.listings})` : ""}`], ["info", "ℹ️ Məlumat"], ["terms", "🎓 Güzəştlər"]] as const).map(([k, l]) => (
+                            <button key={k} type="button" onClick={() => setObjTab(k)}
+                              className={`flex-1 px-1 py-2.5 font-semibold whitespace-nowrap border-b-2 -mb-px transition-colors ${objTab === k ? "border-[var(--brand-to)] text-[var(--brand-to)]" : "border-transparent text-muted hover:text-foreground"}`}>{l}</button>
+                          ))}
+                        </div>
+
+                        {objTab === "products" && <ObjectProducts objectId={o.id} objectName={o.name} />}
+                        {objTab === "terms" && <div className="p-4"><ObjectTerms objectId={o.id} tick={termsTick} onEdit={() => startEditObj(o)} /></div>}
+
+                        {objTab === "info" && (
                         <div className="p-4 space-y-4">
                           {/* Göstəricilər */}
                           <div className="grid grid-cols-3 gap-2">
@@ -757,12 +771,10 @@ export default function BusinessPage() {
                           {/* Əməliyyatlar */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             <button type="button" onClick={() => startEditObj(o)} className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors">✏️ Redaktə et</button>
-                            <a href={`/object/${o.id}`} className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-input-bg border border-input-border text-xs font-semibold hover:border-orange-500/50 hover:text-orange-500 transition-colors">📦 Məhsullar</a>
+                            <a href={`/object/${o.id}`} className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-input-bg border border-input-border text-xs font-semibold hover:border-orange-500/50 hover:text-orange-500 transition-colors">🌐 Saytda bax</a>
                             <a href={`/business/sales?objectId=${o.id}`} className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-input-bg border border-input-border text-xs font-semibold hover:border-orange-500/50 hover:text-orange-500 transition-colors">🛒 Sifarişlər</a>
                             <QRShare path={`/object/${o.id}`} title={o.name} subtitle={`Obyekt №${o.id}`} buttonLabel="QR kod" className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-input-bg border border-input-border text-xs font-semibold hover:border-orange-500/50 hover:text-orange-500 transition-colors" />
                           </div>
-
-                          <ObjectTerms objectId={o.id} tick={termsTick} onEdit={() => startEditObj(o)} />
 
                           {/* Vəziyyət və silmə */}
                           <div className="flex items-center justify-between gap-3 pt-3 border-t border-input-border/50">
@@ -780,6 +792,7 @@ export default function BusinessPage() {
                               className="px-3 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-semibold hover:bg-red-500/20 transition-colors">🗑 Sil</button>
                           </div>
                         </div>
+                        )}
                       </>
                     )}
                   </div>
@@ -900,6 +913,90 @@ export default function BusinessPage() {
             </IdCard>
           ))}
         </>
+      )}
+    </div>
+  );
+}
+
+// ── OBYEKTİN MƏHSULLARI ─────────────────────────────────────────────────────
+// Biznes → obyekt → məhsullar: obyektə klikləyəndə məhsulları elə burada görünür
+// (əvvəl ayrı səhifəyə aparırdı). Axtarış, vəziyyət süzgəci, məhsula keçid və redaktə.
+const P_STATE: Record<string, { label: string; cls: string }> = {
+  LIVE: { label: "Satışda", cls: "bg-emerald-500/10 text-emerald-600" },
+  OUT: { label: "Stok bitib", cls: "bg-red-500/10 text-red-500" },
+  PENDING: { label: "Təsdiq gözləyir", cls: "bg-amber-500/10 text-amber-600" },
+  REJECTED: { label: "Rədd edilib", cls: "bg-red-500/10 text-red-500" },
+  EXPIRED: { label: "Müddəti bitib", cls: "bg-slate-500/10 text-slate-500" },
+  ARCHIVED: { label: "Arxivdə", cls: "bg-slate-500/10 text-slate-500" },
+};
+function ObjectProducts({ objectId, objectName }: { objectId: number; objectName: string }) {
+  const { token } = useAuth();
+  const [items, setItems] = useState<any[] | null>(null);
+  const [q, setQ] = useState("");
+  const [only, setOnly] = useState<"all" | "live" | "issue">("all");
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    fetch(`${API}/me/objects/${objectId}/listings`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json()).then((d) => { if (alive) setItems(d?.listings || []); })
+      .catch(() => { if (alive) setItems([]); });
+    return () => { alive = false; };
+  }, [token, objectId]);
+  const list = (items || []).filter((l) => {
+    if (only === "live" && l.state !== "LIVE") return false;
+    if (only === "issue" && l.state === "LIVE") return false;
+    return !q.trim() || String(l.title).toLocaleLowerCase("az").includes(q.trim().toLocaleLowerCase("az"));
+  });
+  const issues = (items || []).filter((l) => l.state !== "LIVE").length;
+  return (
+    <div className="p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`🔍 «${objectName}» məhsullarında axtar`}
+          className="flex-1 min-w-0 px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm" />
+        <a href="/account?new=1&mode=voen" className="shrink-0 px-3 py-2 rounded-xl bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600">＋ Məhsul</a>
+      </div>
+      {items && items.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap mb-3">
+          {([["all", `Hamısı (${items.length})`], ["live", `Satışda (${items.length - issues})`], ["issue", `Diqqət tələb edir (${issues})`]] as const).map(([k, l]) => (
+            <button key={k} type="button" onClick={() => setOnly(k)} className={`px-2.5 py-1 rounded-full text-[11px] font-medium border ${only === k ? "bg-teal-500 text-white border-teal-500" : "bg-input-bg border-input-border text-muted"}`}>{l}</button>
+          ))}
+        </div>
+      )}
+      {!items ? (
+        <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>
+      ) : items.length === 0 ? (
+        <div className="text-center py-8 rounded-xl border border-dashed border-input-border">
+          <p className="text-sm text-muted mb-2">Bu obyektdə hələ məhsul yoxdur.</p>
+          <a href="/account?new=1&mode=voen" className="text-sm font-semibold text-orange-500 hover:underline">İlk məhsulu əlavə et →</a>
+        </div>
+      ) : list.length === 0 ? (
+        <p className="text-center py-6 text-sm text-muted">Uyğun məhsul tapılmadı.</p>
+      ) : (
+        <div className="divide-y divide-input-border/50 rounded-xl border border-input-border/60 overflow-hidden">
+          {list.map((l) => {
+            const st = P_STATE[l.state] || { label: l.state, cls: "bg-input-bg text-muted" };
+            return (
+              <div key={l.id} className="flex items-center gap-3 px-3 py-2.5 bg-card hover:bg-input-bg/40 transition-colors">
+                <a href={`/marketplace/${l.id}`} className="shrink-0 w-12 h-12 rounded-lg bg-input-bg overflow-hidden flex items-center justify-center text-lg">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {l.image ? <img src={imgUrl(l.image)} alt="" loading="lazy" className="w-full h-full object-cover" /> : "📦"}
+                </a>
+                <a href={`/marketplace/${l.id}`} className="min-w-0 flex-1">
+                  <p className="text-sm font-medium truncate hover:text-[var(--brand-to)]">{l.title}</p>
+                  <p className="text-[11px] text-muted flex items-center gap-1.5 flex-wrap">
+                    <span className={`px-1.5 py-0.5 rounded-md font-semibold ${st.cls}`}>{st.label}</span>
+                    {l.type === "PRODUCT" && <span>stok: {l.stock}</span>}
+                    <span>👁 {l.viewCount ?? 0}</span>
+                  </p>
+                </a>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-bold">{Number(l.price).toFixed(2)} ₼</p>
+                  <a href={`/account?edit=${l.id}`} className="text-[11px] font-semibold text-orange-500 hover:underline">✏️ Redaktə</a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
