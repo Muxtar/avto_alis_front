@@ -27,7 +27,7 @@ const AUDIENCES: { v: Audience; label: string; hint: string }[] = [
   { v: "PROFESSION", label: "İxtisasa görə", hint: "Yalnız seçdiyiniz ixtisaslar (lazım olsa diplom/CV ilə) — hər ixtisasa ayrıca faiz." },
   { v: "INVITED", label: "Yalnız dəvət etdiklərim", hint: "Yalnız sizin dəvət etdiyiniz və ya müraciətini təsdiqlədiyiniz şəxslər." },
 ];
-const DOCS: Record<string, string> = { NONE: "Sənəd yox", DIPLOMA: "Diplom", CV: "CV", ANY: "Diplom və ya CV" };
+const DOCS: Record<string, string> = { DIPLOMA: "Təsdiqli diplom", CV: "CV", ANY: "Diplom və ya CV", NONE: "Sənədsiz" };
 const PARTNER: Record<string, { label: string; cls: string }> = {
   ACTIVE: { label: "Aktiv", cls: "text-emerald-600 bg-emerald-500/10" },
   INVITED: { label: "Dəvət göndərilib", cls: "text-blue-600 bg-blue-500/10" },
@@ -392,8 +392,13 @@ function ManageInner() {
                     </div>
                   ))}
                 </div>
+                {rules.some((r) => r.requiredDoc === "NONE") && (
+                  <p className="mt-2 text-[11px] text-amber-600 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5">
+                    ⚠️ «Sənədsiz» seçilən ixtisasda profilində həmin ixtisası özü yazan hər kəs komissiya qazana bilər. Yalnız həqiqi ixtisas sahibləri üçün «təsdiqli diplom» seçin.
+                  </p>
+                )}
                 {rules.length < 10 && (
-                  <button onClick={() => setRules([...rules, { profession: "", commissionPercent: "", requiredDoc: "NONE" }])} className="mt-2 text-xs text-orange-500 font-medium">+ İxtisas əlavə et</button>
+                  <button onClick={() => setRules([...rules, { profession: "", commissionPercent: "", requiredDoc: "DIPLOMA" }])} className="mt-2 text-xs text-orange-500 font-medium">+ İxtisas əlavə et</button>
                 )}
               </div>
             )}

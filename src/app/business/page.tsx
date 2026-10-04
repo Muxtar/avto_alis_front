@@ -886,7 +886,7 @@ export default function BusinessPage() {
 // satanda (referal) komissiya verdiyini bir yerdə yazır. Məs. aptek: «Həkim —
 // alışda 10% endirim, satışda 7% komissiya».
 interface TermRow { profession: string; discountPercent: string; commissionPercent: string; requiredDoc: string }
-const DOC_LABEL: Record<string, string> = { DIPLOMA: "Təsdiqli diplom / sertifikat", CV: "CV", ANY: "Diplom və ya CV", NONE: "Sənədsiz" };
+const DOC_LABEL: Record<string, string> = { DIPLOMA: "Təsdiqli diplom / sertifikat (tövsiyə olunur)", CV: "CV", ANY: "Diplom və ya CV", NONE: "Sənədsiz — ixtisası özü yazan hər kəs" };
 const numStr = (n: any) => (n === null || n === undefined || n === "" ? "" : String(n));
 const termsToForm = (list: any): TermRow[] => (Array.isArray(list) ? list : []).map((t: any) => ({
   profession: t.profession || "", discountPercent: numStr(t.discountPercent), commissionPercent: numStr(t.commissionPercent), requiredDoc: t.requiredDoc || "DIPLOMA",
@@ -939,6 +939,9 @@ function TermsEditor({ terms, onChange, inputCls }: { terms: TermRow[] | null | 
                   <select value={r.requiredDoc} onChange={(e) => upd(i, { requiredDoc: e.target.value })} className={inputCls}>
                     {Object.entries(DOC_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   </select>
+                  {r.requiredDoc === "NONE" && (
+                    <span className="block mt-1 text-[10px] text-amber-600">⚠️ Sənəd yoxlanmır: profilində «{r.profession || "bu ixtisas"}» yazan hər kəs komissiya qazana bilər.</span>
+                  )}
                 </label>
               )}
             </div>

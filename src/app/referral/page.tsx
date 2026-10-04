@@ -41,6 +41,8 @@ export default function ReferralHubPage() {
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [links, setLinks] = useState<any[]>([]);
+  // İxtisasıma güzəşt (alanda endirim / satanda komissiya) verən obyektlər.
+  const [benefits, setBenefits] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -53,10 +55,12 @@ export default function ReferralHubPage() {
     if (!silent) { setLoading(true); setError(false); }
     const h = { headers: { Authorization: `Bearer ${token}` } };
     try {
-      const [s, l] = await Promise.all([
+      const [s, l, b] = await Promise.all([
         fetch(`${API}/referral/stores`, h).then((r) => { if (!r.ok) throw new Error(); return r.json(); }),
         fetch(`${API}/me/referral/links`, h).then((r) => r.json()).catch(() => ({ links: [] })),
+        fetch(`${API}/me/profession-benefits`, h).then((r) => r.json()).catch(() => null),
       ]);
+      setBenefits(b?.success ? b : null);
       if (s?.success === false) throw new Error();
       setData(s);
       setLinks(l?.links || []);
@@ -174,6 +178,62 @@ export default function ReferralHubPage() {
           <p className="text-[11px] text-muted mt-2">💡 Bəzi satıcılar yalnız müəyyən ixtisaslı şəxslərə icazə verir. Profildə uyğun ixtisas (və tələb olunan sənəd) əlavə etsəniz, onların məhsullarını da sata bilərsiniz.</p>
         )}
       </div>
+
+      {/* İxtisasıma güzəşt verən obyektlər — alanda endirim, satanda komissiya */}
+      {benefits && (
+        <Section title="🎓 İxtisasıma güzəşt verən obyektlər"
+          hint="Bu mağazalar sizin ixtisasınıza alışda endirim və ya məhsullarını tövsiyə edəndə komissiya verir.">
+          {benefits.objects?.length ? (
+            <div className="space-y-2.5">
+              {benefits.objects.map((o: any) => (
+                <div key={o.id} className="surface p-3.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link href={`/object/${o.id}`} className="font-bold text-sm truncate block hover:text-orange-500">🏪 {o.name}</Link>
+                      <p className="text-xs text-muted truncate">{[o.businessName, o.city].filter(Boolean).join(" · ")}{(o.businessName || o.city) ? " · " : ""}{o.listingCount} məhsul</p>
+                    </div>
+                    <Link href={`/object/${o.id}`} className={`${btnGhost} shrink-0 !py-1.5 !text-xs`}>Mağazaya bax</Link>
+                  </div>
+                  <div className="mt-2.5 space-y-1.5">
+                    {o.benefits.map((b: any) => (
+                      <div key={b.profession} className="rounded-xl bg-input-bg/50 border border-card-border px-3 py-2">
+                        <p className="text-xs font-semibold mb-1">{b.profession}</p>
+                        <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                          {b.discountPercent != null && (
+                            <p>
+                              🛒 Alanda <b className="text-emerald-600">−{b.discountPercent}%</b>{b.discountProducts != null ? ` (${b.discountProducts} məhsul)` : ""}
+                              <span className={`block text-[11px] ${b.discountReady ? "text-emerald-600" : "text-amber-600"}`}>
+                                {b.discountReady ? "✓ Aktivdir — səbətdə avtomatik tətbiq olunur" : "Təsdiqli ixtisas sənədi lazımdır"}
+                              </span>
+                            </p>
+                          )}
+                          {b.commissionPercent != null && (
+                            <p>
+                              🤝 Satanda <b className="text-[var(--brand-to)]">{b.commissionPercent}%</b> komissiya
+                              <span className={`block text-[11px] ${b.commissionReady ? "text-emerald-600" : "text-amber-600"}`}>
+                                {b.commissionReady ? "✓ Link yaradıb tövsiyə edə bilərsiniz" : (b.commissionReason || "Hələ aktiv deyil")}
+                              </span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  {!o.ready && (
+                    <Link href="/profile" className="inline-block mt-2 text-xs text-orange-500 font-medium hover:underline">Profildə ixtisas sənədini əlavə et →</Link>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="surface p-4 text-sm text-muted">
+              {benefits.professions?.length
+                ? "Hələ sizin ixtisasınıza güzəşt verən obyekt yoxdur. Yeni obyektlər qoşulduqca burada görünəcək."
+                : <>Güzəştləri görmək üçün <Link href="/profile" className="text-orange-500 hover:underline">profildə ixtisasınızı əlavə edin</Link>.</>}
+            </div>
+          )}
+        </Section>
+      )}
 
       {/* (b) Dəvətlər */}
       {invitations.length > 0 && (
