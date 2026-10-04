@@ -875,6 +875,7 @@ export default function BusinessPage() {
                   </div>
                   );
                 })}
+                <BizActivity businessId={b.id} />
                 <p className="text-[10px] text-muted mb-2">Eyni işçini başqa obyektə də bağlamaq üçün aşağıda ID-sini yenidən yazıb həmin obyekti seçin — dəvətsiz, dərhal əlavə olunur.</p>
 
                 {/* Yeni işçi dəvəti — ID ilə (istifadəçi qəbul edəndə aktivləşir) */}
@@ -900,6 +901,64 @@ export default function BusinessPage() {
           ))}
         </>
       )}
+    </div>
+  );
+}
+
+// ── ƏMƏLİYYAT JURNALI + İŞÇİ HESABATI ───────────────────────────────────────
+// Sahib üçün: son 30 gündə hər işçi neçə əməliyyat edib və son əməliyyatlar
+// (kim, nə vaxt, nə etdi). Klikləyəndə açılır — səhifə açılanda yüklənmir.
+const ACT_TYPE: Record<string, string> = { order: "sifariş", listing: "məhsul", review: "rəy", return: "iadə", complaint: "şikayət", other: "digər" };
+function BizActivity({ businessId }: { businessId: number }) {
+  const { token } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [data, setData] = useState<any>(null);
+  const [userId, setUserId] = useState<number | null>(null);
+  useEffect(() => {
+    if (!open || !token) return;
+    let alive = true;
+    fetch(`${API}/me/businesses/${businessId}/activity${userId ? `?userId=${userId}` : ""}`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json()).then((d) => { if (alive) setData(d?.success ? d : { activity: [], report: [] }); })
+      .catch(() => { if (alive) setData({ activity: [], report: [] }); });
+    return () => { alive = false; };
+  }, [open, token, businessId, userId]);
+  const when = (d: string) => new Date(d).toLocaleString("az-AZ", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return (
+    <div className="rounded-xl border border-input-border/60 mb-2 overflow-hidden">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="w-full flex items-center justify-between gap-2 px-3 py-2.5 bg-input-bg/50 text-sm font-semibold">
+        <span>📋 Əməliyyat jurnalı və işçi hesabatı</span><span className="text-xs text-[var(--brand-to)]">{open ? "Bağla ▲" : "Aç ▼"}</span>
+      </button>
+      {open && (!data ? <p className="px-3 py-3 text-[11px] text-muted">Yüklənir…</p> : (
+        <div className="p-3 space-y-3">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted mb-1.5">Son {data.days || 30} gün — kim nə qədər iş görüb</p>
+            {data.report?.length ? (
+              <div className="space-y-1.5">
+                {data.report.map((r: any) => (
+                  <button key={r.userId} type="button" onClick={() => setUserId(userId === r.userId ? null : r.userId)}
+                    className={`w-full text-left rounded-lg px-2.5 py-2 border text-xs ${userId === r.userId ? "border-teal-500 bg-teal-500/5" : "border-input-border/60 bg-input-bg/40"}`}>
+                    <span className="flex items-center justify-between gap-2"><b className="truncate">{r.name}</b><span className="font-bold">{r.total} əməliyyat</span></span>
+                    <span className="block text-[11px] text-muted mt-0.5">{Object.entries(r.byType).map(([k, n]) => `${n as number} ${ACT_TYPE[k] || k}`).join(" · ")}</span>
+                  </button>
+                ))}
+              </div>
+            ) : <p className="text-[11px] text-muted">Bu müddətdə əməliyyat qeydə alınmayıb.</p>}
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted mb-1.5">Son əməliyyatlar{userId ? " (seçilmiş şəxs)" : ""}</p>
+            {data.activity?.length ? (
+              <div className="divide-y divide-input-border/40 max-h-72 overflow-y-auto">
+                {data.activity.map((a: any) => (
+                  <div key={a.id} className="py-1.5 text-xs flex gap-2">
+                    <span className="text-muted shrink-0 w-[74px]">{when(a.createdAt)}</span>
+                    <span className="min-w-0"><b>{a.userName}</b>{a.isOwner ? <span className="text-muted"> (sahib)</span> : null} — {a.summary}</span>
+                  </div>
+                ))}
+              </div>
+            ) : <p className="text-[11px] text-muted">Hələ qeyd yoxdur. Jurnal bu yenilikdən sonrakı əməliyyatları yazır.</p>}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

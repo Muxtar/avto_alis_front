@@ -25,6 +25,9 @@ export default function BusinessSalesPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  // İŞ BÖLGÜSÜ: sifarişi kim görür. `staff` — bu mağazada sifariş icazəli şəxslər.
+  const [staff, setStaff] = useState<{ isOwner: boolean; me: number | null; staff: { id: number; name: string; owner: boolean }[] }>({ isOwner: false, me: null, staff: [] });
+  const [who, setWho] = useState<"all" | "mine" | "free">("all");
 
   const authH: any = { Authorization: `Bearer ${token}` };
 
@@ -61,6 +64,8 @@ export default function BusinessSalesPage() {
       const res = await fetch(`${API}/me/businesses/${s.businessId}/orders${q}`, { headers: authH });
       const data = await res.json();
       setOrders(data.orders || []);
+      fetch(`${API}/me/businesses/${s.businessId}/order-staff${q}`, { headers: authH }).then((r) => r.json())
+        .then((d) => { if (d?.success) setStaff({ isOwner: !!d.isOwner, me: d.me ?? null, staff: d.staff || [] }); }).catch(() => {});
     } catch { toast(t("error"), "error"); } finally { setOrdersLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
@@ -100,6 +105,19 @@ export default function BusinessSalesPage() {
     } catch { toast(t("error"), "error"); }
   };
 
+  // Sifarişi işçiyə təyin et / üzərinə götür / burax. userId = null → təyinat silinir.
+  const assign = async (orderId: number, userId: number | null) => {
+    try {
+      const res = await fetch(`${API}/orders/${orderId}/assign`, { method: "PUT", headers: { ...authH, "Content-Type": "application/json" }, body: JSON.stringify({ userId }) });
+      const d = await res.json();
+      if (res.ok && d.success) {
+        setOrders((list) => list.map((o) => (o.id === orderId ? { ...o, assignedStaffId: d.order.assignedStaffId, assignedStaffName: d.order.assignedStaffName } : o)));
+        toast(userId ? "Sifariş təyin olundu ✓" : "Təyinat silindi", "success");
+      } else toast(d.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); }
+  };
+  const shown = orders.filter((o) => (who === "mine" ? o.assignedStaffId === staff.me : who === "free" ? !o.assignedStaffId : true));
+
   const statusColor = (s: string) => s === "DELIVERED" ? "text-green-500" : s === "CANCELLED" ? "text-red-500" : s === "SHIPPED" ? "text-purple-500" : s === "CONFIRMED" ? "text-blue-500" : "text-yellow-600";
 
   return (
@@ -129,7 +147,14 @@ export default function BusinessSalesPage() {
             <div className="bg-card border border-card-border rounded-xl p-8 text-center text-muted">{t("adminNoData") || "Sifariş yoxdur"}</div>
           ) : (
             <div className="space-y-3">
-              {orders.map((o) => (
+              {/* İş bölgüsü süzgəci */}
+              <div className="flex gap-1.5 flex-wrap">
+                {([["all", "Hamısı", orders.length], ["mine", "Mənim", orders.filter((o) => o.assignedStaffId === staff.me).length], ["free", "Təyin olunmayan", orders.filter((o) => !o.assignedStaffId).length]] as const).map(([k, l, n]) => (
+                  <button key={k} onClick={() => setWho(k)} className={`px-3 py-1.5 rounded-full text-xs font-medium border ${who === k ? "bg-teal-500 text-white border-teal-500" : "bg-input-bg border-input-border text-muted"}`}>{l} ({n})</button>
+                ))}
+              </div>
+              {shown.length === 0 && <div className="bg-card border border-card-border rounded-xl p-6 text-center text-muted text-sm">Bu süzgəcdə sifariş yoxdur</div>}
+              {shown.map((o) => (
                 <div key={o.id} className="bg-card border border-card-border rounded-xl p-4">
                   <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                     <div>
@@ -138,7 +163,7 @@ export default function BusinessSalesPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-orange-500 font-bold text-sm">{o.total?.toFixed(2)} AZN</p>
-                      <p className={`text-xs font-medium ${statusColor(o.status)}`}>{o.status}</p>
+                      <p className={`text-xs font-medium ${statusColor(o.status)}`}>{statusAz(o.status, o.deliveryType === "PICKUP")}</p>
                     </div>
                   </div>
                   <div className="text-sm space-y-0.5 mb-3">
@@ -149,7 +174,24 @@ export default function BusinessSalesPage() {
                       </div>
                     ))}
                   </div>
-                  <div className="flex items-center gap-2 flex-wrap border-t border-card-border pt-2">
+                  {/* Kim məşğul olur — sahib istənilən işçiyə təyin edir, işçi özü götürə bilər */}
+                  <div className="flex items-center gap-2 flex-wrap border-t border-card-border pt-2 mb-2">
+                    <span className="text-xs text-muted">👤 Məşğul olan:</span>
+                    {staff.isOwner ? (
+                      <select value={o.assignedStaffId || ""} onChange={(e) => assign(o.id, e.target.value ? Number(e.target.value) : null)}
+                        className="px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs">
+                        <option value="">Təyin olunmayıb</option>
+                        {staff.staff.map((u) => <option key={u.id} value={u.id}>{u.name}{u.owner ? " (sahib)" : ""}</option>)}
+                      </select>
+                    ) : (
+                      <>
+                        <span className={`text-xs font-semibold ${o.assignedStaffId ? "" : "text-muted"}`}>{o.assignedStaffId ? (o.assignedStaffId === staff.me ? "Siz" : o.assignedStaffName) : "heç kim"}</span>
+                        {!o.assignedStaffId && <button onClick={() => assign(o.id, staff.me)} className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-600 text-xs font-semibold">Üzərimə götürürəm</button>}
+                        {o.assignedStaffId === staff.me && <button onClick={() => assign(o.id, null)} className="px-2.5 py-1 rounded-lg bg-input-bg border border-input-border text-xs">Burax</button>}
+                      </>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs text-muted">{t("adminChangeStatus") || "Status"}:</span>
                     <select value={o.status} onChange={(e) => { const v = e.target.value; if (v === "CANCELLED" && !confirm(`Sifariş #${o.id} ləğv edilsin? Alıcıya xəbər gedəcək${o.paymentStatus === "PAID" && o.paymentMethod !== "CASH" ? " və ödənişi geri qaytarılacaq" : ""}.`)) return; changeStatus(o.id, v); }} className="px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs">
                       {STATUSES.map((s) => <option key={s} value={s}>{statusAz(s, o.deliveryType === "PICKUP")}</option>)}
