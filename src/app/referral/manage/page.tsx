@@ -352,7 +352,11 @@ function ManageInner() {
                 <div>
                   <p className="text-xs font-semibold text-muted mb-2">Hansı məhsullar?</p>
                   <div className="space-y-1.5">
-                    {([["ALL", "Bütün məhsullarım", "Söndürdükləriniz istisna olmaqla hamısı."], ["SELECTED", "Yalnız seçdiklərim", "Yalnız aşağıda açdığınız məhsullar."]] as const).map(([v, l, h]) => (
+                    {([["ALL", "Bütün məhsullarım", "Söndürdükləriniz istisna olmaqla hamısı."], ["SELECTED", "Yalnız seçdiklərim", "Yalnız aşağıda açdığınız məhsullar."]] as const)
+                      // MAĞAZADA referal obyektə verilir — «yalnız seçdiklərim» rejimi yeni
+                      // qurulmur (köhnədən seçilibsə görünür ki, dəyişmək mümkün olsun).
+                      .filter(([v]) => selKey === "p" || v === "ALL" || scope === "SELECTED")
+                      .map(([v, l, h]) => (
                       <label key={v} className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer ${scope === v ? "border-orange-500 bg-orange-500/5" : "border-card-border"}`}>
                         <input type="radio" name="scope" checked={scope === v} onChange={() => setScope(v)} className="mt-0.5 accent-orange-500" />
                         <span><span className="block text-sm font-medium">{l}</span><span className="block text-[11px] text-muted">{h}</span></span>
@@ -424,8 +428,12 @@ function ManageInner() {
                         <Link href={`/marketplace/${l.id}`} className="text-sm font-medium line-clamp-1 hover:text-orange-500">{l.title}</Link>
                         <p className="text-[11px] text-muted">{azn(l.price)}{l.stock != null ? ` · stok ${l.stock}` : ""}{l.status === "PENDING" ? " · yoxlamada" : ""}{dirty ? " · dəyişib" : ""}</p>
                       </div>
-                      <input type="number" min={0} max={90} placeholder="% std" value={st.percent} onChange={(e) => setRow(l, { percent: e.target.value })}
-                        className="w-20 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+                      {/* Məhsula xüsusi faiz yalnız fərdi proqramda: mağazada faiz ixtisas
+                          qaydasından (obyektin «İxtisas güzəştləri») gəlir. */}
+                      {selKey === "p" && (
+                        <input type="number" min={0} max={90} placeholder="% std" value={st.percent} onChange={(e) => setRow(l, { percent: e.target.value })}
+                          className="w-20 px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-orange-500/50" />
+                      )}
                       <Switch on={on} onChange={(v) => setRow(l, { mode: modeFor(v) })} />
                     </div>
                   );

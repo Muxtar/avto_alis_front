@@ -11,6 +11,7 @@ import SellerContract from "@/components/SellerContract";
 import QRShare from "@/components/QRShare";
 import IdCard, { IdMini } from "@/components/IdCard";
 import PageHero, { heroBtn, heroBtnPrimary } from "@/components/PageHero";
+import ProfessionPicker from "@/components/ProfessionPicker";
 
 // Obyektin fəaliyyət sahələri — 16 əsas kateqoriya.
 const ACTIVITY_AREAS = [
@@ -89,11 +90,17 @@ export default function BusinessPage() {
   const [editingObjId, setEditingObjId] = useState<number | null>(null); // redaktə olunan obyekt
   const [openObjId, setOpenObjId] = useState<number | null>(null);       // açıq (genişlənmiş) obyekt kartı
   const [objEditInput, setObjEditInput] = useState<any>(null);
+  const [termsTick, setTermsTick] = useState(0); // güzəştlər saxlananda paneldəki cədvəl yenilənsin
   // Obyekti redaktəyə aç: paneli genişləndir, formanı mövcud məlumatla doldur və görünən yerə gətir.
   const startEditObj = (o: BizObject) => {
     setOpenObjId(o.id);
     setEditingObjId(o.id);
-    setObjEditInput({ name: o.name, phone: o.phone || "", address: o.address, city: o.city || "", activityAreas: o.activityAreas || [], latitude: o.latitude ?? null, longitude: o.longitude ?? null });
+    setObjEditInput({ name: o.name, phone: o.phone || "", address: o.address, city: o.city || "", activityAreas: o.activityAreas || [], latitude: o.latitude ?? null, longitude: o.longitude ?? null, terms: null });
+    // Mövcud ixtisas güzəştləri (yüklənənə qədər `terms: null` — forma «yüklənir» göstərir).
+    fetch(`${API}/me/objects/${o.id}/profession-terms`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => setObjEditInput((p: any) => (p ? { ...p, terms: termsToForm(d?.terms) } : p)))
+      .catch(() => setObjEditInput((p: any) => (p ? { ...p, terms: [] } : p)));
     setTimeout(() => document.getElementById(`obj-panel-${o.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 60);
   };
   const [memberInput, setMemberInput] = useState<Record<number, { publicId: string; objectId: string }>>({});
@@ -681,8 +688,10 @@ export default function BusinessPage() {
                           saveLabel="💾 Yadda saxla" onCancel={() => { setEditingObjId(null); setObjEditInput(null); }}
                           onAdd={wrap(async () => {
                             const v = objEditInput; if (!v?.name?.trim() || !v?.address?.trim()) throw new Error(t("bizObjRequired") || "Ad və ünvan");
+                            const terms = termsFromForm(v.terms);
                             await jsonReq(`${API}/me/objects/${o.id}`, "PUT", v);
-                            setEditingObjId(null); setObjEditInput(null);
+                            if (Array.isArray(v.terms)) await jsonReq(`${API}/me/objects/${o.id}/profession-terms`, "PUT", { terms });
+                            setEditingObjId(null); setObjEditInput(null); setTermsTick((n) => n + 1);
                             toast("Obyekt yeniləndi ✓", "success");
                           })} />
                       </div>
@@ -753,8 +762,7 @@ export default function BusinessPage() {
                             <QRShare path={`/object/${o.id}`} title={o.name} subtitle={`Obyekt №${o.id}`} buttonLabel="QR kod" className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-input-bg border border-input-border text-xs font-semibold hover:border-orange-500/50 hover:text-orange-500 transition-colors" />
                           </div>
 
-                          <ObjectReferral objectId={o.id} />
-                          <ObjectProDiscount objectId={o.id} />
+                          <ObjectTerms objectId={o.id} tick={termsTick} onEdit={() => startEditObj(o)} />
 
                           {/* Vəziyyət və silmə */}
                           <div className="flex items-center justify-between gap-3 pt-3 border-t border-input-border/50">
@@ -785,7 +793,10 @@ export default function BusinessPage() {
                     </div>
                     <ObjectAdder bizId={b.id} input={objInput[b.id]} setInput={(v: any) => setObjInput((p) => ({ ...p, [b.id]: v }))} onAdd={wrap(async () => {
                       const v = objInput[b.id]; if (!v?.name?.trim() || !v?.address?.trim()) throw new Error(t("bizObjRequired") || "Ad və ünvan");
-                      await jsonReq(`${API}/me/businesses/${b.id}/objects`, "POST", v); setObjInput((p) => ({ ...p, [b.id]: { name: "", phone: "", address: "", city: "", activityAreas: [], latitude: null, longitude: null } })); setAddObjFor(null);
+                      const terms = termsFromForm((v as any).terms);
+                      const made = await jsonReq(`${API}/me/businesses/${b.id}/objects`, "POST", v);
+                      if (terms.length && made?.object?.id) await jsonReq(`${API}/me/objects/${made.object.id}/profession-terms`, "PUT", { terms });
+                      setObjInput((p) => ({ ...p, [b.id]: { name: "", phone: "", address: "", city: "", activityAreas: [], latitude: null, longitude: null } })); setAddObjFor(null);
                     })} inputCls={inputCls} t={t} />
                   </div>
                 ) : (
@@ -870,6 +881,128 @@ export default function BusinessPage() {
   );
 }
 
+// ── İXTİSAS GÜZƏŞTLƏRİ ──────────────────────────────────────────────────────
+// Referal MƏHSULA yox, OBYEKTƏ verilir: obyekt hansı ixtisaslara alanda endirim,
+// satanda (referal) komissiya verdiyini bir yerdə yazır. Məs. aptek: «Həkim —
+// alışda 10% endirim, satışda 7% komissiya».
+interface TermRow { profession: string; discountPercent: string; commissionPercent: string; requiredDoc: string }
+const DOC_LABEL: Record<string, string> = { DIPLOMA: "Təsdiqli diplom / sertifikat", CV: "CV", ANY: "Diplom və ya CV", NONE: "Sənədsiz" };
+const numStr = (n: any) => (n === null || n === undefined || n === "" ? "" : String(n));
+const termsToForm = (list: any): TermRow[] => (Array.isArray(list) ? list : []).map((t: any) => ({
+  profession: t.profession || "", discountPercent: numStr(t.discountPercent), commissionPercent: numStr(t.commissionPercent), requiredDoc: t.requiredDoc || "DIPLOMA",
+}));
+/** Formadan serverə: boş sətirlər atılır; ixtisassız dolu sətir xəta verir. */
+const termsFromForm = (rows: TermRow[] | null | undefined) => {
+  const out: any[] = [];
+  for (const r of rows || []) {
+    const has = r.discountPercent.trim() !== "" || r.commissionPercent.trim() !== "";
+    if (!r.profession.trim()) { if (has) throw new Error("İxtisas güzəştləri: ixtisası seçin"); continue; }
+    if (!has) throw new Error(`«${r.profession}»: endirim və ya komissiya faizini yazın`);
+    out.push({ profession: r.profession.trim(), discountPercent: r.discountPercent.trim() || null, commissionPercent: r.commissionPercent.trim() || null, requiredDoc: r.requiredDoc });
+  }
+  return out;
+};
+
+function TermsEditor({ terms, onChange, inputCls }: { terms: TermRow[] | null | undefined; onChange: (t: TermRow[]) => void; inputCls: string }) {
+  const rows = terms || [];
+  const upd = (i: number, patch: Partial<TermRow>) => onChange(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+  const pct = (v: string) => v.replace(",", ".").replace(/[^\d.]/g, "").slice(0, 5);
+  return (
+    <div className="rounded-xl border border-input-border/70 bg-card p-3">
+      <p className="text-sm font-semibold flex items-center gap-1.5">🎓 İxtisas güzəştləri <span className="px-1.5 py-0.5 rounded-md bg-input-bg text-muted text-[10px] font-medium">könüllü</span></p>
+      <p className="text-[11px] text-muted mt-0.5 mb-2">
+        Bu obyektin məhsullarını hansı ixtisas sahibləri endirimlə alsın və ya referal ilə satıb komissiya qazansın? Bir neçə ixtisas əlavə edə bilərsiniz. Güzəşt obyektin bütün məhsullarına aiddir.
+      </p>
+      {terms === null ? (
+        <p className="text-[11px] text-muted">Yüklənir…</p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map((r, i) => (
+            <div key={i} className="rounded-xl bg-input-bg/40 border border-input-border/60 p-2.5 space-y-2">
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0"><ProfessionPicker value={r.profession} onChange={(v) => upd(i, { profession: v })} className={inputCls} /></div>
+                <button type="button" onClick={() => onChange(rows.filter((_, j) => j !== i))} className="shrink-0 px-2 py-2 text-red-500 text-xs hover:bg-red-500/10 rounded-lg" title="Sətri sil">✕</button>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="block text-[10px] text-muted mb-0.5">🛒 Alanda endirim, %</span>
+                  <input inputMode="decimal" value={r.discountPercent} onChange={(e) => upd(i, { discountPercent: pct(e.target.value) })} placeholder="məs. 10" className={inputCls} />
+                </label>
+                <label className="block">
+                  <span className="block text-[10px] text-muted mb-0.5">🤝 Satanda komissiya, %</span>
+                  <input inputMode="decimal" value={r.commissionPercent} onChange={(e) => upd(i, { commissionPercent: pct(e.target.value) })} placeholder="məs. 7" className={inputCls} />
+                </label>
+              </div>
+              {r.commissionPercent.trim() !== "" && (
+                <label className="block">
+                  <span className="block text-[10px] text-muted mb-0.5">Komissiya üçün tələb olunan sənəd</span>
+                  <select value={r.requiredDoc} onChange={(e) => upd(i, { requiredDoc: e.target.value })} className={inputCls}>
+                    {Object.entries(DOC_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </label>
+              )}
+            </div>
+          ))}
+          <button type="button" onClick={() => onChange([...rows, { profession: "", discountPercent: "", commissionPercent: "", requiredDoc: "DIPLOMA" }])}
+            className="w-full py-2 rounded-xl border border-dashed border-orange-500/40 text-orange-500 text-xs font-semibold hover:bg-orange-500/5">＋ İxtisas əlavə et</button>
+          <p className="text-[10px] text-muted">Alış endirimi yalnız ixtisasını admin təsdiqli sənədlə sübut etmiş alıcıya tətbiq olunur.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Ətraflı paneldə: obyektin ixtisas güzəştləri cədvəli (endirim + komissiya bir yerdə). */
+function ObjectTerms({ objectId, tick, onEdit }: { objectId: number; tick: number; onEdit: () => void }) {
+  const { token } = useAuth();
+  const [data, setData] = useState<{ terms: any[]; referral?: { enabled: boolean; audience: string } } | null>(null);
+  useEffect(() => {
+    if (!token) return;
+    let alive = true;
+    fetch(`${API}/me/objects/${objectId}/profession-terms`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json()).then((d) => { if (alive) setData({ terms: d?.terms || [], referral: d?.referral }); })
+      .catch(() => { if (alive) setData({ terms: [] }); });
+    return () => { alive = false; };
+  }, [token, objectId, tick]);
+  const terms = data?.terms || [];
+  return (
+    <div className="rounded-xl border border-input-border/60 overflow-hidden">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 bg-input-bg/50">
+        <p className="text-sm font-semibold">🎓 İxtisas güzəştləri</p>
+        <button type="button" onClick={onEdit} className="text-xs font-semibold text-orange-500 hover:underline">{terms.length ? "Dəyiş" : "＋ Əlavə et"}</button>
+      </div>
+      {!data ? (
+        <p className="px-3 py-3 text-[11px] text-muted">Yüklənir…</p>
+      ) : terms.length === 0 ? (
+        <p className="px-3 py-3 text-[11px] text-muted">Hələ güzəşt yazılmayıb. Məsələn: «Həkim — alışda 10% endirim, satışda 7% komissiya».</p>
+      ) : (
+        <div className="divide-y divide-input-border/50">
+          <div className="grid grid-cols-[1fr_72px_72px] gap-2 px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted">
+            <span>İxtisas</span><span className="text-right">Alanda</span><span className="text-right">Satanda</span>
+          </div>
+          {terms.map((t: any) => (
+            <div key={t.profession} className="grid grid-cols-[1fr_72px_72px] gap-2 px-3 py-2 text-sm items-center">
+              <span className="min-w-0">
+                <span className="block truncate font-medium">{t.profession}</span>
+                {t.commissionPercent != null && <span className="block text-[10px] text-muted truncate">{DOC_LABEL[t.requiredDoc] || t.requiredDoc}</span>}
+              </span>
+              <span className="text-right font-semibold text-emerald-600">{t.discountPercent != null ? `−${t.discountPercent}%` : "—"}</span>
+              <span className="text-right font-semibold text-[var(--brand-to)]">{t.commissionPercent != null ? `${t.commissionPercent}%` : "—"}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 border-t border-input-border/50 text-[11px]">
+        <a href={`/referral/manage?objectId=${objectId}`} className="text-muted hover:text-orange-500">Referal partnyorları və linklər →</a>
+        <a href={`/business/pro-discounts?objectId=${objectId}`} className="text-muted hover:text-orange-500">Endirim limitləri →</a>
+        {data?.referral && data.referral.audience !== "PROFESSION" && data.referral.enabled && (
+          <span className="text-amber-600">Referal rejimi: {data.referral.audience === "ALL" ? "hamı sata bilər" : "yalnız dəvətlilər"}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t, saveLabel, onCancel }: any) {
   const v = input || { name: "", phone: "", address: "", city: "", activityAreas: [], latitude: null, longitude: null };
   const toggle = (a: string) => setInput({ ...v, activityAreas: v.activityAreas.includes(a) ? v.activityAreas.filter((x: string) => x !== a) : [...v.activityAreas, a] });
@@ -898,6 +1031,7 @@ function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t, saveLabel, on
           ))}
         </div>
       </div>
+      <TermsEditor terms={v.terms} onChange={(terms: TermRow[]) => setInput({ ...v, terms })} inputCls={inputCls} />
       <div className="flex gap-3 items-center">
         <button onClick={onAdd} className="text-sm text-orange-500 font-medium">{saveLabel || `+ ${t("bizAddObject") || "Obyekt əlavə et"}`}</button>
         {onCancel && <button type="button" onClick={onCancel} className="text-sm text-muted hover:text-foreground">Ləğv</button>}
@@ -906,59 +1040,4 @@ function ObjectAdder({ bizId, input, setInput, onAdd, inputCls, t, saveLabel, on
   );
 }
 
-// Obyektin referal satış proqramının qısa xülasəsi — tam idarəetmə /referral/manage səhifəsindədir.
-// Bütün obyektlər üçün tək sorğu (hər kart ayrıca çəkməsin).
-let referralProgramsReq: { token: string; at: number; p: Promise<any[]> } | null = null;
-function fetchReferralPrograms(token: string): Promise<any[]> {
-  const now = Date.now();
-  if (referralProgramsReq && referralProgramsReq.token === token && now - referralProgramsReq.at < 5000) return referralProgramsReq.p;
-  const p = fetch(`${API}/me/referral/programs`, { headers: { Authorization: `Bearer ${token}` } })
-    .then((x) => x.json()).then((r) => (r?.programs || []) as any[]).catch(() => [] as any[]);
-  referralProgramsReq = { token, at: now, p };
-  return p;
-}
 
-function ObjectReferral({ objectId }: { objectId: number }) {
-  const { token } = useAuth();
-  const [row, setRow] = useState<any>(null);
-  useEffect(() => {
-    if (!token) return;
-    let alive = true;
-    fetchReferralPrograms(token).then((list) => { if (alive) setRow(list.find((x) => x.objectId === objectId) || null); });
-    return () => { alive = false; };
-  }, [token, objectId]);
-  const AUD: Record<string, string> = { ALL: "hamı", PROFESSION: "ixtisasa görə", INVITED: "yalnız dəvətlilər" };
-
-  return (
-    <div className="mt-2 border-t border-card-border/50 pt-2 flex flex-wrap items-center justify-between gap-2">
-      <p className="text-[11px] text-muted">
-        🤝 Referal satış:{" "}
-        {row?.enabled
-          ? <b className="text-emerald-600">aktiv{row.audience ? ` · ${AUD[row.audience] || row.audience}` : ""}{row.defaultPercent != null ? ` · ${row.defaultPercent}%` : ""}</b>
-          : <b>söndürülüb</b>}
-      </p>
-      <a href={`/referral/manage?objectId=${objectId}`} className="text-xs text-orange-500 font-medium hover:underline">Referal proqramını idarə et →</a>
-    </div>
-  );
-}
-
-// İxtisas endirimləri — «hansı peşə sahibinə neçə faiz» (sənədlə təsdiqli alıcılara).
-function ObjectProDiscount({ objectId }: { objectId: number }) {
-  const [rules, setRules] = useState<{ profession: string; percent: number }[] | null>(null);
-  useEffect(() => {
-    let alive = true;
-    fetch(`${API}/objects/${objectId}/pro-discounts`).then((r) => r.json()).then((d) => { if (alive) setRules(d?.rules || []); }).catch(() => {});
-    return () => { alive = false; };
-  }, [objectId]);
-  return (
-    <div className="mt-2 border-t border-card-border/50 pt-2 flex flex-wrap items-center justify-between gap-2">
-      <p className="text-[11px] text-muted">
-        🎓 İxtisas endirimi:{" "}
-        {rules?.length
-          ? <b className="text-emerald-600">{rules.slice(0, 3).map((r) => `${r.profession} −${r.percent}%`).join(", ")}{rules.length > 3 ? ` +${rules.length - 3}` : ""}</b>
-          : <b>yoxdur</b>}
-      </p>
-      <a href={`/business/pro-discounts?objectId=${objectId}`} className="text-xs text-orange-500 font-medium hover:underline">İxtisas endirimlərini idarə et →</a>
-    </div>
-  );
-}
