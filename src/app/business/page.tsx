@@ -89,6 +89,13 @@ export default function BusinessPage() {
   const [editingObjId, setEditingObjId] = useState<number | null>(null); // redaktə olunan obyekt
   const [openObjId, setOpenObjId] = useState<number | null>(null);       // açıq (genişlənmiş) obyekt kartı
   const [objEditInput, setObjEditInput] = useState<any>(null);
+  // Obyekti redaktəyə aç: paneli genişləndir, formanı mövcud məlumatla doldur və görünən yerə gətir.
+  const startEditObj = (o: BizObject) => {
+    setOpenObjId(o.id);
+    setEditingObjId(o.id);
+    setObjEditInput({ name: o.name, phone: o.phone || "", address: o.address, city: o.city || "", activityAreas: o.activityAreas || [], latitude: o.latitude ?? null, longitude: o.longitude ?? null });
+    setTimeout(() => document.getElementById(`obj-panel-${o.id}`)?.scrollIntoView({ behavior: "smooth", block: "nearest" }), 60);
+  };
   const [memberInput, setMemberInput] = useState<Record<number, { publicId: string; objectId: string }>>({});
 
   const authH: any = { Authorization: `Bearer ${token}` };
@@ -638,60 +645,134 @@ export default function BusinessPage() {
                 {b.objects.length > 0 && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {b.objects.map((o) => (
-                      <button key={o.id} type="button" className={`block w-full text-left ${openObjId === o.id ? "ring-2 ring-[var(--brand-to)]/40 rounded-2xl" : ""}`}
-                        onClick={() => { setOpenObjId(openObjId === o.id ? null : o.id); setEditingObjId(null); }}>
+                      // Kart `div`-dir (button yox): içində ayrıca «Redaktə» düyməsi var.
+                      <div key={o.id} role="button" tabIndex={0}
+                        className={`block w-full text-left cursor-pointer rounded-2xl transition-shadow ${openObjId === o.id ? "ring-2 ring-[var(--brand-to)]/40" : "hover:shadow-md"}`}
+                        onClick={() => { setOpenObjId(openObjId === o.id ? null : o.id); setEditingObjId(null); }}
+                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpenObjId(openObjId === o.id ? null : o.id); setEditingObjId(null); } }}>
                         <IdMini icon="🏪" tone={o.isActive ? "teal" : "slate"}
                           title={`${o.name} · №${o.id}`}
                           stamp={o.isActive ? "ok" : "none"} stampText={{ ok: "Aktiv", none: "Deaktiv" }}
                           sub={`${[o.city, o.address].filter(Boolean).join(", ") || "—"}${typeof o._count?.listings === "number" ? ` · 📦 ${o._count.listings} məhsul` : ""}`}
-                          actions={<span className="text-xs font-semibold text-[var(--brand-to)]">{openObjId === o.id ? "Bağla ▲" : "Ətraflı ▼"}</span>} />
-                      </button>
+                          actions={<div className="flex items-center gap-2 shrink-0">
+                            <button type="button" title="Obyekti redaktə et"
+                              onClick={(e) => { e.stopPropagation(); startEditObj(o); }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-xs font-semibold hover:bg-orange-500/20 transition-colors">
+                              ✏️<span className="hidden sm:inline"> Redaktə</span>
+                            </button>
+                            <span className="text-xs font-semibold text-[var(--brand-to)]"><span className="hidden sm:inline">{openObjId === o.id ? "Bağla " : "Ətraflı "}</span>{openObjId === o.id ? "▲" : "▼"}</span>
+                          </div>} />
+                      </div>
                     ))}
                   </div>
                 )}
 
-                {/* Açıq obyektin paneli — redaktə / idarəetmə */}
+                {/* Açıq obyektin paneli — ətraflı baxış / redaktə */}
                 {b.objects.filter((o) => o.id === openObjId).map((o) => (
-                  <div key={o.id} className="mt-3 rounded-xl bg-input-bg/40 border border-card-border/60 p-3 animate-fade-in">
+                  <div key={o.id} id={`obj-panel-${o.id}`} className="mt-3 rounded-2xl bg-card border border-card-border overflow-hidden shadow-sm animate-fade-in">
                     {editingObjId === o.id ? (
-                      <ObjectAdder bizId={b.id} input={objEditInput} setInput={setObjEditInput} inputCls={inputCls} t={t}
-                        saveLabel="💾 Yadda saxla" onCancel={() => { setEditingObjId(null); setObjEditInput(null); }}
-                        onAdd={wrap(async () => {
-                          const v = objEditInput; if (!v?.name?.trim() || !v?.address?.trim()) throw new Error(t("bizObjRequired") || "Ad və ünvan");
-                          await jsonReq(`${API}/me/objects/${o.id}`, "PUT", v);
-                          setEditingObjId(null); setObjEditInput(null);
-                        })} />
+                      <div className="p-4">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-sm font-bold">✏️ Obyekti redaktə et — {o.name}</p>
+                          <button type="button" onClick={() => { setEditingObjId(null); setObjEditInput(null); }} className="text-muted text-xs hover:text-foreground">✕ Bağla</button>
+                        </div>
+                        <p className="text-[11px] text-muted mb-1">Ad, telefon, ünvan, xəritədəki yer və fəaliyyət sahələrini dəyişə bilərsiniz.</p>
+                        <ObjectAdder bizId={b.id} input={objEditInput} setInput={setObjEditInput} inputCls={inputCls} t={t}
+                          saveLabel="💾 Yadda saxla" onCancel={() => { setEditingObjId(null); setObjEditInput(null); }}
+                          onAdd={wrap(async () => {
+                            const v = objEditInput; if (!v?.name?.trim() || !v?.address?.trim()) throw new Error(t("bizObjRequired") || "Ad və ünvan");
+                            await jsonReq(`${API}/me/objects/${o.id}`, "PUT", v);
+                            setEditingObjId(null); setObjEditInput(null);
+                            toast("Obyekt yeniləndi ✓", "success");
+                          })} />
+                      </div>
                     ) : (
-                      <div className="flex items-start gap-2.5">
-                        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-teal-500/20 to-cyan-600/10 flex items-center justify-center text-base shrink-0">🏪</div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="font-semibold truncate">{o.name} <span className="text-[10px] text-muted font-normal">№{o.id}</span></p>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <QRShare path={`/object/${o.id}`} title={o.name} subtitle={`Obyekt №${o.id}`} compact className="inline-flex items-center justify-center w-6 h-6 rounded-md text-muted hover:text-orange-500 transition-colors" />
-                              <button onClick={() => { setEditingObjId(o.id); setObjEditInput({ name: o.name, phone: o.phone || "", address: o.address, city: o.city || "", activityAreas: o.activityAreas || [], latitude: o.latitude ?? null, longitude: o.longitude ?? null }); }} className="text-orange-500 text-sm" title="Redaktə et">✎</button>
-                              <label className="text-[11px] flex items-center gap-1"><input type="checkbox" checked={o.isActive} onChange={(e) => wrap(() => jsonReq(`${API}/me/objects/${o.id}/active`, "PATCH", { isActive: e.target.checked }))()} />{t("bizActive") || "Aktiv"}</label>
-                              <button onClick={wrap(() => jsonReq(`${API}/me/objects/${o.id}`, "DELETE"))} className="text-red-500 text-sm" title="Sil">✕</button>
+                      <>
+                        {/* Başlıq zolağı */}
+                        <div className={`px-4 py-3.5 flex items-center gap-3 text-white ${o.isActive ? "bg-gradient-to-r from-teal-500 to-cyan-600" : "bg-gradient-to-r from-slate-500 to-slate-600"}`}>
+                          <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center text-xl shrink-0">🏪</div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-base leading-tight truncate">{o.name}</p>
+                            <p className="text-[11px] text-white/80">Obyekt №{o.id} · {b.name}</p>
+                          </div>
+                          <span className={`px-2 py-1 rounded-lg text-[11px] font-bold shrink-0 ${o.isActive ? "bg-white/25" : "bg-black/25"}`}>{o.isActive ? "● Aktiv" : "○ Deaktiv"}</span>
+                        </div>
+
+                        <div className="p-4 space-y-4">
+                          {/* Göstəricilər */}
+                          <div className="grid grid-cols-3 gap-2">
+                            {[
+                              { label: "Məhsul", value: typeof o._count?.listings === "number" ? o._count.listings : "—" },
+                              { label: "Fəaliyyət sahəsi", value: o.activityAreas?.length || 0 },
+                              { label: "İşçi", value: b.members.filter((m: any) => (!m.status || m.status === "ACTIVE") && (!m.object || m.object.id === o.id)).length },
+                            ].map((x) => (
+                              <div key={x.label} className="rounded-xl bg-input-bg/60 border border-input-border/60 px-2 py-2.5 text-center">
+                                <p className="text-lg font-bold leading-none">{x.value}</p>
+                                <p className="text-[10px] text-muted mt-1">{x.label}</p>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Məlumat sətirləri */}
+                          <div className="rounded-xl border border-input-border/60 divide-y divide-input-border/50 text-sm">
+                            <div className="flex items-start gap-3 px-3 py-2.5">
+                              <span className="shrink-0">📍</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] uppercase tracking-wider text-muted">Ünvan</p>
+                                <p className="break-words">{[o.city, o.address].filter(Boolean).join(", ") || "—"}</p>
+                              </div>
+                              {o.latitude != null && o.longitude != null && (
+                                <a href={`https://www.google.com/maps?q=${o.latitude},${o.longitude}`} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-[var(--brand-to)] hover:underline">Xəritədə ↗</a>
+                              )}
+                            </div>
+                            <div className="flex items-start gap-3 px-3 py-2.5">
+                              <span className="shrink-0">📞</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] uppercase tracking-wider text-muted">Telefon</p>
+                                {o.phone ? <a href={`tel:${o.phone}`} className="hover:text-[var(--brand-to)]">{o.phone}</a> : <p className="text-muted">Qeyd edilməyib</p>}
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-3 px-3 py-2.5">
+                              <span className="shrink-0">🏷️</span>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[10px] uppercase tracking-wider text-muted mb-1">Fəaliyyət sahələri</p>
+                                {o.activityAreas?.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {o.activityAreas.map((a) => <span key={a} className="text-[11px] px-2 py-0.5 rounded-full bg-[var(--brand-soft)] text-[var(--brand-to)] font-medium">{a}</span>)}
+                                  </div>
+                                ) : <p className="text-muted">Seçilməyib</p>}
+                              </div>
                             </div>
                           </div>
-                          <div className="flex flex-col gap-0.5 mt-1 text-[11px] text-muted">
-                            <span className="flex items-start gap-1"><span>📍</span><span>{[o.city, o.address].filter(Boolean).join(", ") || "—"}</span></span>
-                            {o.phone && <span className="flex items-center gap-1">📞 {o.phone}</span>}
+
+                          {/* Əməliyyatlar */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <button type="button" onClick={() => startEditObj(o)} className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-orange-500 text-white text-xs font-semibold hover:bg-orange-600 transition-colors">✏️ Redaktə et</button>
+                            <a href={`/object/${o.id}`} className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-input-bg border border-input-border text-xs font-semibold hover:border-orange-500/50 hover:text-orange-500 transition-colors">📦 Məhsullar</a>
+                            <a href={`/business/sales?objectId=${o.id}`} className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-input-bg border border-input-border text-xs font-semibold hover:border-orange-500/50 hover:text-orange-500 transition-colors">🛒 Sifarişlər</a>
+                            <QRShare path={`/object/${o.id}`} title={o.name} subtitle={`Obyekt №${o.id}`} buttonLabel="QR kod" className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-input-bg border border-input-border text-xs font-semibold hover:border-orange-500/50 hover:text-orange-500 transition-colors" />
                           </div>
-                          {o.activityAreas?.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-1.5">
-                              {o.activityAreas.map((a) => <span key={a} className="text-[10px] px-1.5 py-0.5 rounded-md bg-input-bg border border-input-border">{a}</span>)}
-                            </div>
-                          )}
-                          {/* Obyektə görə idarəetmə — məhsullar və sifarişlər */}
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            <a href={`/object/${o.id}`} className="px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-[11px] font-medium hover:border-orange-500/50 hover:text-orange-500 transition-colors">📦 Məhsullar{typeof o._count?.listings === "number" ? ` (${o._count.listings})` : ""}</a>
-                            <a href={`/business/sales?objectId=${o.id}`} className="px-2.5 py-1.5 rounded-lg bg-input-bg border border-input-border text-[11px] font-medium hover:border-orange-500/50 hover:text-orange-500 transition-colors">🛒 Sifarişlər</a>
-                          </div>
+
                           <ObjectReferral objectId={o.id} />
                           <ObjectProDiscount objectId={o.id} />
+
+                          {/* Vəziyyət və silmə */}
+                          <div className="flex items-center justify-between gap-3 pt-3 border-t border-input-border/50">
+                            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                              <input type="checkbox" className="sr-only peer" checked={o.isActive}
+                                onChange={(e) => wrap(() => jsonReq(`${API}/me/objects/${o.id}/active`, "PATCH", { isActive: e.target.checked }))()} />
+                              <span className="relative w-10 h-6 rounded-full bg-input-border peer-checked:bg-teal-500 transition-colors after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:rounded-full after:bg-white after:shadow after:transition-transform peer-checked:after:translate-x-4" />
+                              <span className="text-xs">
+                                <b>{o.isActive ? "Aktivdir" : "Deaktivdir"}</b>
+                                <span className="block text-[10px] text-muted">{o.isActive ? "Məhsulları saytda görünür" : "Məhsulları saytda gizlidir"}</span>
+                              </span>
+                            </label>
+                            <button type="button"
+                              onClick={() => { if (confirm(`«${o.name}» obyekti silinsin? Ona bağlı məhsullar saytdan götürüləcək.`)) wrap(() => jsonReq(`${API}/me/objects/${o.id}`, "DELETE"))(); }}
+                              className="px-3 py-2 rounded-xl bg-red-500/10 text-red-500 text-xs font-semibold hover:bg-red-500/20 transition-colors">🗑 Sil</button>
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
                   </div>
                 ))}
