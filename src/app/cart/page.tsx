@@ -13,6 +13,7 @@ import ConsentBox from "@/components/ConsentBox";
 import { installmentAllowed, monthsForListings, useInstallmentConfig, feePercentFor } from "@/lib/installment";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import ShareButton from "@/components/ShareButton";
+import QtyInput from "@/components/QtyInput";
 
 /** Razılaşdırılmış qiymətin son tarixi: «28.09, 14:30». */
 function fmtUntil(d: string | Date): string {
@@ -246,6 +247,7 @@ export default function CartPage() {
           body.removeFromCart = shareRemove;
         }
       }
+      await flushQty();
       const res = await fetch(`${API}/cart/share`, { method: "POST", headers, body: JSON.stringify(body) });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -347,21 +349,47 @@ export default function CartPage() {
     }
   };
 
-  const updateQty = async (id: number, qty: number) => {
-    if (qty < 1) return;
+  /* SAY DƏYİŞİMİ — ekranda dərhal dəyişir, serverə isə istifadəçi dayanandan
+     sonra TƏK sorğu gedir. Əvvəl hər «+» ayrı PUT + GET göndərirdi: sürətli
+     basanda gec çatan köhnə cavab sayı geri atırdı (11 → 8 → 11) və böyük say
+     seçmək mümkün olmurdu. */
+  const qtyPending = useRef<Map<number, { qty: number; timer: ReturnType<typeof setTimeout> }>>(new Map());
+  const qtySeq = useRef(0);
+  const syncQty = async (id: number, qty: number) => {
+    qtyPending.current.delete(id);
+    const seq = ++qtySeq.current;
+    try {
+      const res = await fetch(`${API}/cart/item/${id}`, { method: "PUT", headers, body: JSON.stringify({ quantity: qty }) });
+      const r = await res.json().catch(() => null);
+      if (!res.ok || r?.success === false) toast(r?.message || t('error'), 'error');
+      refreshCart();
+      // Dəqiq rəqəmlər (pillə, ixtisas endiriminin ədəd limiti) serverdən — spinnersiz.
+      const d = await fetch(`${API}/cart`, { headers }).then((x) => x.json());
+      // Bu arada yeni dəyişiklik olubsa köhnə cavabı tətbiq etmə.
+      if (seq !== qtySeq.current || qtyPending.current.size > 0) return;
+      if (d?.cart) { setItems(d.cart.items || []); setTotal(d.total || 0); }
+    } catch { toast(t('error'), 'error'); fetchCart(); }
+  };
+  /** Gözləyən say dəyişikliklərini dərhal göndər (sifariş / paylaşımdan əvvəl). */
+  const flushQty = async () => {
+    const pend = Array.from(qtyPending.current.entries());
+    for (const [, p] of pend) clearTimeout(p.timer);
+    await Promise.all(pend.map(([id, p]) => syncQty(id, p.qty)));
+  };
+  useEffect(() => () => { for (const p of qtyPending.current.values()) clearTimeout(p.timer); }, []);
+
+  const updateQty = (id: number, qty: number) => {
+    if (!Number.isFinite(qty) || qty < 1) return;
     // Stokdan çox seçməyə icazə vermə (satıcının qoyduğu say maksimumdur).
     const it0 = items.find((it) => it.id === id);
     if (it0?.offer) { toast("Sayı dəyişmək üçün yeni təklif göndərin", "error"); return; }
     const max = it0?.listing?.stock;
-    if (typeof max === "number" && qty > max) { toast(`Bu məhsuldan maksimum ${max} ədəd var`, "error"); return; }
+    if (typeof max === "number" && qty > max) { toast(`Bu məhsuldan maksimum ${max} ədəd var`, "error"); qty = max; if (qty < 1 || qty === it0?.quantity) return; }
     // Optimistik yeniləmə — səhifə yenilənmədən (spinner göstərmədən) dərhal dəyişir.
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, quantity: qty, lineTotal: it.unitPrice != null ? Math.round(it.unitPrice * qty * 100) / 100 : it.lineTotal } : it)));
-    try {
-      await fetch(`${API}/cart/item/${id}`, { method: "PUT", headers, body: JSON.stringify({ quantity: qty }) });
-      refreshCart();
-      // Dəqiq rəqəmlər (pillə, ixtisas endiriminin ədəd limiti) serverdən — spinnersiz.
-      fetch(`${API}/cart`, { headers }).then((r) => r.json()).then((d) => { if (d?.cart) { setItems(d.cart.items || []); setTotal(d.total || 0); } }).catch(() => {});
-    } catch { toast(t('error'), 'error'); fetchCart(); }
+    const old = qtyPending.current.get(id);
+    if (old) clearTimeout(old.timer);
+    qtyPending.current.set(id, { qty, timer: setTimeout(() => syncQty(id, qty), 450) });
   };
 
   const removeItem = async (id: number) => {
@@ -475,6 +503,7 @@ export default function CartPage() {
     }
     setPlacing(true);
     try {
+      await flushQty();   // son say dəyişikliyi serverə çatmamış sifariş getməsin
       const res = await fetch(`${API}/cart/checkout`, {
         method: "POST", headers,
         body: JSON.stringify({
@@ -762,18 +791,40 @@ export default function CartPage() {
 
             {/* Mağazaya görə qruplar — eyni mağaza birlikdə çatdırılır */}
             {(() => {
-              const groups = new Map<number, { name: string; items: any[] }>();
+              // Qrup = satıcı (sifariş də satıcı üzrə bölünür). Başlıqda sahibin şəxsi
+              // adı yox, mağazanın (obyekt / biznes) adı göstərilir.
+              const groups = new Map<number, { name: string; owner: string; shops: string[]; items: any[] }>();
               for (const it of items) {
-                const sid = it.listing.user?.id ?? 0;
-                const g = groups.get(sid) || { name: it.listing.user?.name || "Mağaza", items: [] as any[] };
+                const sid = it.listing.user?.id ?? it.listing.userId ?? 0;
+                const owner = it.listing.user?.name || "";
+                const shop = it.listing.businessObject?.name || it.listing.business?.name || "";
+                const g = groups.get(sid) || { name: "", owner, shops: [] as string[], items: [] as any[] };
+                if (shop && !g.shops.includes(shop)) g.shops.push(shop);
+                g.name = g.shops.join(", ") || owner || "Satıcı";
                 g.items.push(it); groups.set(sid, g);
               }
-              return Array.from(groups.values()).map((g, gi) => (
-                <div key={gi} className="surface p-3 sm:p-4">
-                  <div className="flex items-center justify-between mb-2 pb-2 border-b border-card-border">
-                    <p className="text-sm font-semibold flex items-center gap-1.5">🏪 {g.name}</p>
-                    {g.items.length > 1 && <span className="text-[11px] text-green-500">✓ Birlikdə çatdırılır</span>}
+              const list = Array.from(groups.values());
+              return list.map((g, gi) => {
+                const live = g.items.filter((i) => !isOut(i));
+                const sub = live.reduce((x, i) => x + (i.lineTotal != null ? Number(i.lineTotal) : (i.listing?.price || 0) * i.quantity), 0);
+                const allOn = live.length > 0 && live.every((i) => selected.has(i.id));
+                return (
+                <div key={gi} className="surface overflow-hidden">
+                  <div className="flex items-center gap-2.5 px-3 sm:px-4 py-2.5 border-b border-card-border bg-[color-mix(in_srgb,var(--brand-to)_7%,transparent)]">
+                    <input type="checkbox" checked={allOn} disabled={live.length === 0} aria-label={`${g.name} — hamısını seç`}
+                      onChange={() => setSelected((prev) => { const n = new Set(prev); for (const i of live) { if (allOn) n.delete(i.id); else n.add(i.id); } return n; })}
+                      className="w-4 h-4 accent-orange-500 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] uppercase tracking-wider text-muted leading-none mb-1">Satıcı {list.length > 1 ? `${gi + 1}/${list.length}` : ""}</p>
+                      <p className="text-sm font-bold truncate">🏪 {g.name}</p>
+                      {g.owner && g.owner !== g.name && <p className="text-[11px] text-muted truncate">{g.owner}</p>}
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-sm font-bold">{sub.toFixed(2)} AZN</p>
+                      <p className="text-[11px] text-muted">{g.items.length} məhsul{g.items.length > 1 ? " · birlikdə çatdırılır" : ""}</p>
+                    </div>
                   </div>
+                  <div className="p-3 sm:p-4">
                   <div className="space-y-3">
                     {g.items.map((item) => {
                       const out = isOut(item);
@@ -863,10 +914,11 @@ export default function CartPage() {
                             </div>
                             ) : (
                             <div className="flex items-center gap-2 mt-2">
-                              <button onClick={() => updateQty(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">−</button>
-                              <span className="text-sm font-medium w-8 text-center">{item.quantity}</span>
-                              <button onClick={() => updateQty(item.id, item.quantity + 1)} disabled={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock} title={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock ? `Maksimum ${item.listing.stock} ədəd` : ""} className="w-7 h-7 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">+</button>
-                              {typeof item.listing?.stock === "number" && <span className="text-[11px] text-muted ml-1">stok: {item.listing.stock}</span>}
+                              <button onClick={() => updateQty(item.id, item.quantity - 1)} disabled={item.quantity <= 1} className="w-7 h-7 shrink-0 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">−</button>
+                              <QtyInput value={item.quantity} max={typeof item.listing?.stock === "number" ? item.listing.stock : null}
+                                onCommit={(q) => updateQty(item.id, q)} onOver={(m) => toast(`Bu məhsuldan maksimum ${m} ədəd var`, "error")} />
+                              <button onClick={() => updateQty(item.id, item.quantity + 1)} disabled={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock} title={typeof item.listing?.stock === "number" && item.quantity >= item.listing.stock ? `Maksimum ${item.listing.stock} ədəd` : ""} className="w-7 h-7 shrink-0 bg-input-bg border border-input-border rounded-lg hover:opacity-80 text-sm disabled:opacity-40 disabled:cursor-not-allowed">+</button>
+                              {typeof item.listing?.stock === "number" && <span className="text-[11px] text-muted ml-1 whitespace-nowrap">stok: {item.listing.stock}</span>}
                             </div>
                             )
                           )}
@@ -887,8 +939,10 @@ export default function CartPage() {
                       );
                     })}
                   </div>
+                  </div>
                 </div>
-              ));
+                );
+              });
             })()}
           </div>
 

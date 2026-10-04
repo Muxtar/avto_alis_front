@@ -13,6 +13,7 @@ import { countryLabel } from "@/lib/countries";
 import { getCategoryAttrs, parseCat, getListingFields, catToSlugs } from "@/lib/categories";
 import OrderMap from "@/components/OrderMapWrapper";
 import ShareButton from "@/components/ShareButton";
+import QtyInput from "@/components/QtyInput";
 import ListingCard from "@/components/ListingCard";
 import ComplaintButton from "@/components/ComplaintButton";
 import SellerReputation from "@/components/SellerReputation";
@@ -1159,7 +1160,11 @@ export default function ListingDetailPage() {
                     {cartAdded && <div className="mb-2 px-3 py-2 bg-green-500/10 border border-green-500/20 rounded-lg text-green-500 text-xs text-center">{t("addedToCart")}</div>}
                     <div className="flex items-center gap-2 mb-3">
                       <button onClick={() => setCartQty(Math.max(1, cartQty - 1))} className="w-8 h-8 bg-input-bg border border-input-border rounded-lg flex items-center justify-center hover:opacity-80">−</button>
-                      <span className="flex-1 text-center font-medium">{cartQty}</span>
+                      <div className="flex-1 flex items-center justify-center gap-2">
+                        <QtyInput value={cartQty} max={listing.stock} onCommit={setCartQty} className="!h-8 !w-16"
+                          onOver={(m) => toast(`Bu məhsuldan maksimum ${m} ədəd var`, "error")} />
+                        <span className="text-[11px] text-muted">stok: {listing.stock}</span>
+                      </div>
                       <button onClick={() => setCartQty(Math.min(listing.stock, cartQty + 1))} className="w-8 h-8 bg-input-bg border border-input-border rounded-lg flex items-center justify-center hover:opacity-80">+</button>
                     </div>
                     <button onClick={handleBuyNow} disabled={cartAdding}
