@@ -89,10 +89,9 @@ export default function EmploymentSection({ embedded = false, onStatus }: { embe
   const myRequests = memberships.filter((m) => m.status === "PENDING_BUSINESS");
 
   const perms = (m: any) => {
-    const p: string[] = [];
-    if (m.canSell) p.push("🛒 satış");
-    if (m.canBuy) p.push("📦 alış");
-    return p.length ? p.join(" · ") : "səlahiyyət hələ verilməyib";
+    const L: Record<string, string> = { listings: "📦 məhsullar", orders: "🛒 sifarişlər", returns: "↩️ iadələr", reviews: "⭐ rəylərə cavab", complaints: "⚠️ şikayətlər", buy: "🧾 alış" };
+    const eff: string[] = Array.isArray(m.permissions) && m.permissions.length ? m.permissions : [...(m.canSell ? ["listings", "orders"] : []), ...(m.canBuy ? ["buy"] : [])];
+    return eff.length ? eff.map((k) => L[k] || k).join(" · ") : "səlahiyyət hələ verilməyib";
   };
 
   return (

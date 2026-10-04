@@ -21,12 +21,12 @@ export function fmtReviewDate(d?: string | Date | null) {
 }
 
 /** Yalnız göstəriş bloku: «Satıcının cavabı». */
-export function SellerReplyBlock({ reply, at }: { reply?: string | null; at?: string | Date | null }) {
+export function SellerReplyBlock({ reply, at, by }: { reply?: string | null; at?: string | Date | null; by?: string | null }) {
   if (!reply) return null;
   return (
     <div className="mt-2 ml-2 sm:ml-4 pl-3 border-l-2 border-orange-500/40 bg-orange-500/[0.04] rounded-r-xl py-2 pr-3">
       <div className="flex items-center gap-2 mb-0.5">
-        <span className="text-[11px] font-bold text-orange-600">↳ Satıcının cavabı</span>
+        <span className="text-[11px] font-bold text-orange-600">↳ Satıcının cavabı{by ? <span className="font-normal text-muted"> · mağaza adından {by}</span> : null}</span>
         {at && <span className="text-[10px] text-muted ml-auto">{fmtReviewDate(at)}</span>}
       </div>
       <p className="text-sm text-foreground/85 break-words whitespace-pre-line">{reply}</p>
@@ -87,7 +87,7 @@ export default function SellerReply({
 
   return (
     <>
-      {!open && <SellerReplyBlock reply={comment.sellerReply} at={comment.sellerReplyAt} />}
+      {!open && <SellerReplyBlock reply={comment.sellerReply} at={comment.sellerReplyAt} by={comment.sellerReplyByName} />}
       {canReply && (open ? (
         <div className="mt-2 space-y-2">
           <textarea value={text} onChange={(e) => setText(e.target.value.slice(0, REPLY_MAX))} rows={3} autoFocus maxLength={REPLY_MAX}

@@ -829,30 +829,53 @@ export default function BusinessPage() {
                   </div>
                 ))}
 
-                {/* Aktiv işçilər — səlahiyyət redaktoru (satış / alış / obyekt) */}
-                {b.members.filter((m: any) => !m.status || m.status === "ACTIVE").map((m: any) => (
-                  <div key={m.id} className="px-3 py-2 bg-input-bg/50 rounded-lg text-sm mb-1.5">
+                {/* Aktiv işçilər — rol və ayrı-ayrı icazələr (iş bölgüsü), obyekt bağlantısı */}
+                {b.members.filter((m: any) => !m.status || m.status === "ACTIVE").map((m: any) => {
+                  const perms = memberPerms(m);
+                  const savePerms = (next: string[], role: string | null) =>
+                    wrap(() => jsonReq(`${API}/me/businesses/${b.id}/members/${m.id}`, "PUT", { permissions: next, role }))();
+                  return (
+                  <div key={m.id} className="px-3 py-2.5 bg-input-bg/50 border border-input-border/50 rounded-xl text-sm mb-2">
                     <div className="flex items-center justify-between gap-2">
-                      <span>✅ <b>{m.user.name}</b> <span className="text-muted text-xs">({m.user.publicId})</span></span>
+                      <span className="min-w-0 truncate">✅ <b>{m.user.name}</b> <span className="text-muted text-xs">({m.user.publicId})</span></span>
                       <button onClick={() => { if (confirm("İşçini çıxarmaq istədiyinizə əminsiniz?")) wrap(() => jsonReq(`${API}/me/members/${m.id}`, "DELETE"))(); }} className="text-red-500 text-xs shrink-0">✕ Çıxar</button>
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-1.5">
-                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                        <input type="checkbox" checked={!!m.canSell} onChange={wrap(() => jsonReq(`${API}/me/businesses/${b.id}/members/${m.id}`, "PUT", { canSell: !m.canSell }))} className="w-3.5 h-3.5 accent-orange-500" />
-                        🛒 Məhsul satmaq
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <label className="block">
+                        <span className="block text-[10px] text-muted mb-0.5">Rol</span>
+                        <select className="w-full px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs" value={roleOf(m, perms)}
+                          onChange={(e) => { const r = STAFF_ROLES.find((x) => x.key === e.target.value); if (r) savePerms(r.perms, r.key); }}>
+                          {roleOf(m, perms) === "CUSTOM" && <option value="CUSTOM">Xüsusi</option>}
+                          {STAFF_ROLES.map((r) => <option key={r.key} value={r.key}>{r.label}</option>)}
+                        </select>
                       </label>
-                      <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                        <input type="checkbox" checked={!!m.canBuy} onChange={wrap(() => jsonReq(`${API}/me/businesses/${b.id}/members/${m.id}`, "PUT", { canBuy: !m.canBuy }))} className="w-3.5 h-3.5 accent-orange-500" />
-                        📦 Biznes adına almaq
+                      <label className="block">
+                        <span className="block text-[10px] text-muted mb-0.5">Harada işləyir</span>
+                        <select className="w-full px-2 py-1.5 bg-input-bg border border-input-border rounded-lg text-xs" value={m.object?.id || ""}
+                          onChange={(e) => wrap(() => jsonReq(`${API}/me/businesses/${b.id}/members/${m.id}`, "PUT", { objectId: e.target.value || null }))()}>
+                          <option value="">{t("bizWholeBusiness") || "Bütün biznes"}</option>
+                          {b.objects.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+                        </select>
                       </label>
-                      <select className="px-2 py-1 bg-input-bg border border-input-border rounded-lg text-xs" value={m.object?.id || ""}
-                        onChange={(e) => wrap(() => jsonReq(`${API}/me/businesses/${b.id}/members/${m.id}`, "PUT", { objectId: e.target.value || null }))()}>
-                        <option value="">{t("bizWholeBusiness") || "Bütün biznes"}</option>
-                        {b.objects.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-                      </select>
                     </div>
+                    <p className="text-[10px] text-muted mt-2 mb-1">İcazələr — hər işi ayrıca aça və ya bağlaya bilərsiniz:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {STAFF_PERMS.map((p) => {
+                        const on = perms.includes(p.key);
+                        return (
+                          <button key={p.key} type="button" title={p.hint}
+                            onClick={() => savePerms(on ? perms.filter((x) => x !== p.key) : [...perms, p.key], null)}
+                            className={`px-2 py-1 rounded-full text-[11px] border transition-colors ${on ? "bg-teal-500 border-teal-500 text-white" : "bg-input-bg border-input-border text-muted hover:border-teal-500/50"}`}>
+                            {on ? "✓ " : ""}{p.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {perms.length === 0 && <p className="text-[10px] text-amber-600 mt-1.5">⚠️ Heç bir icazə verilməyib — işçi rəsmi görünür, amma mağazada heç nə edə bilmir.</p>}
                   </div>
-                ))}
+                  );
+                })}
+                <p className="text-[10px] text-muted mb-2">Eyni işçini başqa obyektə də bağlamaq üçün aşağıda ID-sini yenidən yazıb həmin obyekti seçin — dəvətsiz, dərhal əlavə olunur.</p>
 
                 {/* Yeni işçi dəvəti — ID ilə (istifadəçi qəbul edəndə aktivləşir) */}
                 <p className="text-[11px] text-muted mt-2 mb-1">İşçi dəvət et — istifadəçi qəbul edəndə rəsmi işçi olur:</p>
@@ -880,6 +903,33 @@ export default function BusinessPage() {
     </div>
   );
 }
+
+// ── İŞÇİ İCAZƏLƏRİ ──────────────────────────────────────────────────────────
+// Backend ilə eyni siyahı (services/bizAccess → STAFF_PERMS / STAFF_ROLES).
+const STAFF_PERMS: { key: string; label: string; hint: string }[] = [
+  { key: "listings", label: "📦 Məhsullar", hint: "Məhsul əlavə etmək, redaktə, stok və qiymət" },
+  { key: "orders", label: "🛒 Sifarişlər", hint: "Sifarişi təsdiqləmək, göndərmək, ləğv etmək" },
+  { key: "returns", label: "↩️ İadələr", hint: "İadə sorğularını qəbul / rədd etmək" },
+  { key: "reviews", label: "⭐ Rəylərə cavab", hint: "Mağazaya və məhsullara yazılan rəylərə cavab" },
+  { key: "complaints", label: "⚠️ Şikayətlər", hint: "Alıcı şikayətlərinə cavab yazmaq" },
+  { key: "buy", label: "🧾 Biznes adına alış", hint: "Biznes adına məhsul almaq" },
+];
+const STAFF_ROLES: { key: string; label: string; perms: string[] }[] = [
+  { key: "MANAGER", label: "Müdir — hər şey", perms: ["listings", "orders", "returns", "reviews", "complaints", "buy"] },
+  { key: "SELLER", label: "Satıcı — məhsul və sifariş", perms: ["listings", "orders"] },
+  { key: "STOCK", label: "Anbardar — yalnız məhsullar", perms: ["listings"] },
+  { key: "SUPPORT", label: "Müştəri dəstəyi", perms: ["orders", "returns", "reviews", "complaints"] },
+  { key: "BUYER", label: "Təchizatçı — yalnız alış", perms: ["buy"] },
+];
+/** Üzvün qüvvədə olan icazələri (yeni siyahı boşdursa köhnə bayraqlardan). */
+const memberPerms = (m: any): string[] =>
+  Array.isArray(m.permissions) && m.permissions.length ? m.permissions : [...(m.canSell ? ["listings", "orders"] : []), ...(m.canBuy ? ["buy"] : [])];
+/** İcazə dəstinə uyğun rol; heç birinə uyğun deyilsə «Xüsusi». */
+const roleOf = (m: any, perms: string[]): string => {
+  const same = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
+  if (m.role && STAFF_ROLES.some((r) => r.key === m.role && same(r.perms, perms))) return m.role;
+  return STAFF_ROLES.find((r) => same(r.perms, perms))?.key || "CUSTOM";
+};
 
 // ── İXTİSAS GÜZƏŞTLƏRİ ──────────────────────────────────────────────────────
 // Referal MƏHSULA yox, OBYEKTƏ verilir: obyekt hansı ixtisaslara alanda endirim,
