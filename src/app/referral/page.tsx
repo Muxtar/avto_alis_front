@@ -179,6 +179,28 @@ export default function ReferralHubPage() {
         )}
       </div>
 
+      {/* REFERAL SATICI OLMAQ ŞƏRTLƏRİ — yalnız Rəy konsultasiyası edə bilən ixtisas
+          sahibləri referal sata bilir (komissiya onların VÖEN hesabına ödənilir). */}
+      {data?.requirements && !data.requirements.ok && (
+        <div className="surface p-4 mb-6 border border-amber-500/30 bg-amber-500/5">
+          <p className="font-semibold text-sm mb-1">Referal satış hələ sizə açıq deyil</p>
+          <p className="text-xs text-muted mb-2.5">Referal ilə yalnız «Rəy konsultasiyası» edə bilən ixtisas sahibləri sata bilər. Komissiya VÖEN hesabınıza ödənilir.</p>
+          <ul className="space-y-1.5 text-sm">
+            {([
+              [data.requirements.hasProfession, "Profildə ixtisas qeyd olunub"],
+              [data.requirements.hasVoen, "VÖEN hesabı yazılıb (profil → Rəy konsultasiyası)"],
+              [data.requirements.hasOffer, "Ən azı bir aktiv Rəy konsultasiyası təklifi var"],
+            ] as [boolean, string][]).map(([ok, label]) => (
+              <li key={label} className="flex items-center gap-2">
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold ${ok ? "bg-emerald-500 text-white" : "bg-input-bg border border-input-border text-muted"}`}>{ok ? "✓" : "–"}</span>
+                <span className={ok ? "text-muted" : "font-medium"}>{label}</span>
+              </li>
+            ))}
+          </ul>
+          <Link href="/profile" className="inline-block mt-3 px-3.5 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold">Profildə tamamla →</Link>
+        </div>
+      )}
+
       {/* İxtisasıma güzəşt verən obyektlər — alanda endirim, satanda komissiya */}
       {benefits && (
         <Section title="🎓 İxtisasıma güzəşt verən obyektlər"

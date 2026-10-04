@@ -7,7 +7,7 @@ import { useAdminLive } from "@/lib/live";
 // REFERAL ÖDƏNİŞLƏRİ — referrerlərə (link ilə satanlara) komissiya ödənişi.
 // Çatdırılma + saxlama müddəti bitəndən sonra AVAILABLE olur; "Ödə" hamısını bir payout-la bağlayır.
 
-interface Referrer { referrerId: number; name: string | null; phone: string | null; iban: string | null; payeeName: string | null; available: number; pending: number; paidOut: number }
+interface Referrer { referrerId: number; name: string | null; phone: string | null; voen?: string | null; iban: string | null; payeeName: string | null; available: number; pending: number; paidOut: number }
 interface Clawback { orderId: number; referrerId: number; amount: number }
 interface SellerOwe { sellerId: number; name: string | null; phone: string | null; amount: number }
 interface RefPayout { id: number; referrerId: number; referrerName: string | null; amount: number; iban: string | null; payeeName: string | null; method: string | null; reference: string | null; createdName: string; createdAt: string }
@@ -97,6 +97,7 @@ export default function ReferralPayouts() {
                         <span className="text-muted">Gözləyən: {az(r.pending)} ₼</span>
                         <span className="text-muted">Ödənilmiş: {az(r.paidOut)} ₼</span>
                       </div>
+                      {r.voen ? <span className="mr-2 text-[11px]">VÖEN: <b className="font-mono">{r.voen}</b></span> : <span className="mr-2 text-[11px] text-amber-600">VÖEN yoxdur</span>}
                       {r.iban ? (
                         <div className="flex items-center gap-1.5 text-[11px] mt-1">
                           <span className="font-mono">{r.iban}</span>

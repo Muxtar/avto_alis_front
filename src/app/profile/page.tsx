@@ -366,6 +366,23 @@ export default function ProfilePage() {
   // ---- Rəy konsultasiyası təklifləri (çoxlu) ----
   const [offers, setOffers] = useState<any[]>([]);
   const [offerHasVoen, setOfferHasVoen] = useState(false);
+  // İxtisas sahibinin VÖEN hesabı — konsultasiya və referal qazancı bura ödənilir.
+  const [voenAcct, setVoenAcct] = useState<{ voen: string; name: string | null; iban: string | null; source: string } | null>(null);
+  const [voenForm, setVoenForm] = useState({ voen: "", name: "", iban: "" });
+  const [voenEdit, setVoenEdit] = useState(false);
+  const [voenBusy, setVoenBusy] = useState(false);
+  const saveVoen = async () => {
+    const voen = voenForm.voen.replace(/\D/g, "");
+    if (voen.length !== 10) { toast("VÖEN 10 rəqəmdən ibarət olmalıdır", "error"); return; }
+    if (voenForm.name.trim().length < 3) { toast("VÖEN sahibinin adını yazın", "error"); return; }
+    if (!/^AZ\d{2}[A-Z]{4}[A-Z0-9]{20}$/.test(voenForm.iban.replace(/\s+/g, "").toUpperCase())) { toast("IBAN düzgün deyil (AZ + 26 simvol)", "error"); return; }
+    setVoenBusy(true);
+    try {
+      const r = await fetch(`${API}/me/pro-voen`, { method: "PUT", headers, body: JSON.stringify(voenForm) }).then((x) => x.json());
+      if (r.success) { toast("VÖEN hesabı yadda saxlandı ✓", "success"); setVoenAcct(r.voenAccount || null); setOfferHasVoen(true); setVoenEdit(false); }
+      else toast(r.message || t("error"), "error");
+    } catch { toast(t("error"), "error"); } finally { setVoenBusy(false); }
+  };
   const emptyOfferForm = { title: "", description: "", durationMinutes: "30", price: "", active: true };
   const [offerForm, setOfferForm] = useState(emptyOfferForm);
   const [editingOfferId, setEditingOfferId] = useState<number | null>(null);
@@ -374,6 +391,8 @@ export default function ProfilePage() {
     try {
       const r = await fetch(`${API}/me/consultation-offers`, { headers }).then((x) => x.json());
       setOfferHasVoen(!!r.hasVoen);
+      setVoenAcct(r.voenAccount || null);
+      if (r.voenAccount?.source === "PROFILE") setVoenForm({ voen: r.voenAccount.voen || "", name: r.voenAccount.name || "", iban: r.voenAccount.iban || "" });
       setOffers(r.offers || []);
     } catch { /* keç */ }
   };
@@ -1690,11 +1709,46 @@ export default function ProfilePage() {
       <IdCard collapsible open={openCard === "consult"} onToggle={() => toggleCard("consult")} summary={offers.length ? `${offers.length} təklif · ${offers.filter((o) => o.active).length} aktiv` : "Konsultasiya təklifi yoxdur"} icon="🗣️" title="Rəy konsultasiyası" tone="purple" stamp={offers.some((o) => o.active) ? "ok" : null} stampText={{ ok: "Aktiv" }}
         subtitle="İxtisasınız üzrə ödənişli konsultasiya təklif edin. İstifadəçi sizi İxtisas bölməsindən tapıb sorğu göndərə bilər; siz vaxtı Başlat/Dayandır ilə idarə edirsiniz.">
 
-        {!offerHasVoen && (
-          <div className="mb-3 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs text-amber-600">
-            ⚠ Təkliflər yarada bilərsiniz və sorğular sizə gələcək, amma <b>ödənişlərin aktivləşməsi üçün VÖEN (biznes) əlavə etməlisiniz</b>. VÖEN yoxdursa sorğular gəlir, lakin işləmir.
-          </div>
-        )}
+        {/* VÖEN HESABI — məcburidir: konsultasiyadan və referal satışdan qazanılan pul
+            bu hesaba ödənilir. Hesab yazılmadan təklif yaratmaq olmur. */}
+        <div className={`mb-3 p-3 rounded-xl border ${offerHasVoen && !voenEdit ? "bg-emerald-500/5 border-emerald-500/20" : "bg-amber-500/10 border-amber-500/30"}`}>
+          {offerHasVoen && voenAcct && !voenEdit ? (
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 text-xs">
+                <p className="font-semibold text-emerald-600 mb-0.5">✓ VÖEN hesabı — ödənişlər bu hesaba gedir</p>
+                <p className="truncate"><span className="text-muted">VÖEN:</span> <b className="font-mono">{voenAcct.voen}</b>{voenAcct.name ? ` · ${voenAcct.name}` : ""}</p>
+                {voenAcct.iban && <p className="truncate"><span className="text-muted">IBAN:</span> <span className="font-mono">{voenAcct.iban}</span></p>}
+                {voenAcct.source === "BUSINESS" && <p className="text-muted mt-0.5">Təsdiqli biznesinizdən götürülüb. Ayrı hesab yazmaq üçün «Dəyiş» basın.</p>}
+              </div>
+              <button type="button" onClick={() => setVoenEdit(true)} className="shrink-0 text-xs font-semibold text-orange-500">Dəyiş</button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-semibold mb-0.5">🏦 VÖEN hesabınız <span className="text-red-500">*</span></p>
+              <p className="text-[11px] text-muted mb-2">
+                Rəy konsultasiyasından aldığınız ödənişlər və referal satış komissiyanız bu VÖEN hesabına köçürülür. Hesab yazılmadan təklif yaratmaq və referal ilə satmaq olmur.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="block text-xs text-muted mb-1">VÖEN (10 rəqəm)</span>
+                  <input inputMode="numeric" maxLength={10} value={voenForm.voen} onChange={(e) => setVoenForm((f) => ({ ...f, voen: e.target.value.replace(/\D/g, "").slice(0, 10) }))} placeholder="1234567891" className={`${inputCls} font-mono`} />
+                </label>
+                <label className="block">
+                  <span className="block text-xs text-muted mb-1">VÖEN sahibinin adı</span>
+                  <input value={voenForm.name} onChange={(e) => setVoenForm((f) => ({ ...f, name: e.target.value }))} placeholder="məs. Əliyev Rəşad Kamil oğlu" className={inputCls} />
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="block text-xs text-muted mb-1">Bank hesabı (IBAN)</span>
+                  <input value={voenForm.iban} onChange={(e) => setVoenForm((f) => ({ ...f, iban: e.target.value.toUpperCase().replace(/\s+/g, "").slice(0, 28) }))} placeholder="AZ00XXXX00000000000000000000" autoCapitalize="characters" className={`${inputCls} font-mono`} />
+                </label>
+              </div>
+              <div className="flex gap-2 mt-2">
+                <button type="button" onClick={saveVoen} disabled={voenBusy} className="px-4 py-2 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{voenBusy ? "..." : "VÖEN hesabını saxla"}</button>
+                {voenEdit && <button type="button" onClick={() => setVoenEdit(false)} className="px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv et</button>}
+              </div>
+            </>
+          )}
+        </div>
 
         {/* Mövcud təkliflər */}
         {offers.length > 0 && (
@@ -1744,7 +1798,7 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={saveOffer} disabled={offerBusy} className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{offerBusy ? "..." : editingOfferId ? "Yenilə" : "Əlavə et"}</button>
+            <button onClick={saveOffer} disabled={offerBusy || (!offerHasVoen && !editingOfferId)} title={!offerHasVoen ? "Əvvəlcə VÖEN hesabınızı yazın" : undefined} className="px-5 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold disabled:opacity-50">{offerBusy ? "..." : editingOfferId ? "Yenilə" : "Əlavə et"}</button>
             {editingOfferId && <button onClick={resetOfferForm} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm">Ləğv et</button>}
             <Link href="/consultations" className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold self-center ml-auto">Sorğularıma bax →</Link>
           </div>
