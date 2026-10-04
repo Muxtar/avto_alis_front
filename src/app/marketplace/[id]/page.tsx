@@ -23,6 +23,7 @@ import InstallmentCalculator from "@/components/InstallmentCalculator";
 import ReferralSellCard from "@/components/ReferralSellCard";
 import CheaperOfferModal from "@/components/CheaperOfferModal";
 import ProDiscountInfo from "@/components/ProDiscountInfo";
+import { useMyProDiscounts } from "@/lib/proDiscount";
 import BarcodePrices from "@/components/BarcodePrices";
 import { listingInstallmentAllowed, monthsForListing, useInstallmentConfig } from "@/lib/installment";
 
@@ -64,6 +65,7 @@ export default function ListingDetailPage() {
      BİRGƏ ALIŞ AVTOMATİKDİR: satıcı açıbsa ilk sifariş pəncərəni başladır və
      burada geri sayım göstərilir — hamı eyni sayı və eyni qiyməti görür. */
   const [tierPrice, setTierPrice] = useState<any>(null);
+  const { forListing: proFor } = useMyProDiscounts();
   const [gb, setGb] = useState<any>(null);          // /listings/:id/group-buy
   const [nowTs, setNowTs] = useState(() => Date.now()); // geri sayım üçün saniyə döyüntüsü
   // Hissəli alış planı — səbətə əlavə edərkən ötürülür.
@@ -398,6 +400,8 @@ export default function ListingDetailPage() {
 
   const isService = listing.type === "SERVICE";
   const isOwner = isLoggedIn && user?.id === listing.user?.id;
+  // İxtisas endirimi — mənim üçün qiymət (birgə alış məhsullarına tətbiq olunmur).
+  const proPrice = !isOwner && !((listing.groupBuyDays || 0) > 0 && listing.priceTiers?.length > 0) ? proFor(listing) : null;
   const expiresMs = listing.expiresAt ? new Date(listing.expiresAt).getTime() : null;
   const isExpired = expiresMs != null && expiresMs <= Date.now();
   const expiringSoon = expiresMs != null && !isExpired && expiresMs - Date.now() <= 24 * 60 * 60 * 1000;
@@ -932,12 +936,25 @@ export default function ListingDetailPage() {
             })()}
 
             {/* Çox böyük qiymətlər qutudan daşmasın: qısa format + tam dəyər title-da */}
+            {proPrice ? (
+              /* İXTİSAS ENDİRİMİ: bu alıcı üçün qiymət — adi qiymət üstündən xətlə */
+              <div className="mb-3 min-w-0">
+                <div className="flex items-baseline flex-wrap gap-x-2 min-w-0">
+                  <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-emerald-600 break-words min-w-0">{formatPriceShort(proPrice.price)}</span>
+                  <span className="text-foreground/70 text-base font-semibold">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
+                  <span className="text-muted text-lg line-through">{formatPriceShort(listing.price)} {t("azn")}</span>
+                  <span className="px-2 py-0.5 rounded-lg bg-emerald-500 text-white text-xs font-bold">−{proPrice.percent}%</span>
+                </div>
+                <p className="text-xs font-semibold text-emerald-600 mt-1">🎓 Sizin üçün endirimli qiymət — «{proPrice.profession}» ixtisasına görə {formatPrice(listing.price - proPrice.price)} {t("azn")} ucuz</p>
+              </div>
+            ) : (
             <div className="flex items-baseline flex-wrap gap-x-1.5 mb-3 min-w-0" title={`${formatPrice(listing.price)} ${t("azn")}`}>
               <span className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] bg-clip-text text-transparent break-words min-w-0">
                 {formatPriceShort(listing.price)}
               </span>
               <span className="text-foreground/70 text-base font-semibold">{t("azn")}{listing.forRent ? " / icarə" : ""}</span>
             </div>
+            )}
             {(listing.forRent || listing.barter || listing.bookable || listing.weightKg) && (
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 {listing.forRent && <span className="px-2.5 py-1 bg-indigo-500/10 text-indigo-500 rounded-lg text-xs font-semibold">🔑 İcarəyə verilir</span>}
@@ -1170,7 +1187,7 @@ export default function ListingDetailPage() {
                     <button onClick={handleBuyNow} disabled={cartAdding}
                       className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl cta-gradient font-bold text-[15px] shadow-lg shadow-[var(--cta-from)]/25 mb-2">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.75 10.5V6a3.75 3.75 0 10-7.5 0v4.5m11.356-1.993l1.263 12A1.125 1.125 0 0119.75 21.75H4.25a1.125 1.125 0 01-1.119-1.243l1.264-12A1.125 1.125 0 015.513 7.5h12.974c.576 0 1.059.435 1.119 1.007z" /></svg>
-                      {t("buyNow")} — {formatPrice(tierPrice?.totalPrice ?? listing.price * cartQty)} {t("azn")}
+                      {t("buyNow")} — {formatPrice((tierPrice?.totalPrice ?? listing.price * cartQty) * (proPrice ? 1 - proPrice.percent / 100 : 1))} {t("azn")}
                     </button>
                     <button onClick={handleAddToCart} disabled={cartAdding}
                       className="w-full flex items-center justify-center gap-2 py-3 bg-input-bg border border-input-border rounded-xl font-semibold text-foreground hover:border-[var(--brand-to)]/50 transition-all disabled:opacity-50 mb-2">

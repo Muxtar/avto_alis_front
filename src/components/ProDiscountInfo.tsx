@@ -26,7 +26,7 @@ export default function ProDiscountInfo({ listingId, price }: { listingId: numbe
       <div className="mb-3 rounded-2xl p-3 border border-emerald-500/30 bg-emerald-500/10">
         <p className="text-sm font-bold text-emerald-700 flex items-center gap-1.5">🎓 Sizə −{d.mine.percent}% ixtisas endirimi</p>
         <p className="text-xs text-emerald-700/90 mt-0.5">
-          «{d.mine.profession}» ixtisasınız sənədlə təsdiqlidir — səbətdə avtomatik tətbiq olunur: <b>{formatPrice(after)} ₼</b> / ədəd
+          «{d.mine.profession}» ixtisasınıza görə — səbətdə avtomatik tətbiq olunur: <b>{formatPrice(after)} ₼</b> / ədəd (adi qiymət {formatPrice(price)} ₼)
         </p>
       </div>
     );
@@ -42,11 +42,11 @@ export default function ProDiscountInfo({ listingId, price }: { listingId: numbe
       </div>
       {d.missingDoc?.length > 0 ? (
         <p className="text-[11px] mt-2 text-amber-700">
-          Siz «{d.missingDoc[0]}» ixtisasındasınız, amma sənədiniz təsdiqlənməyib.{" "}
+          Bu mağaza «{d.missingDoc[0]}» endirimi üçün təsdiqli sənəd tələb edir.{" "}
           <Link href="/profile" className="font-semibold underline">Diplom/lisenziyanı yükləyin →</Link>
         </p>
       ) : (
-        <p className="text-[11px] mt-2 text-muted">Endirim ixtisasını sənədlə təsdiqləmiş alıcılara tətbiq olunur.</p>
+        <p className="text-[11px] mt-2 text-muted">Endirim profilində bu ixtisaslardan biri olan alıcılara tətbiq olunur. <Link href="/profile" className="underline">İxtisasınızı əlavə edin →</Link></p>
       )}
     </div>
   );

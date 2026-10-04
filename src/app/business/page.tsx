@@ -994,11 +994,11 @@ const roleOf = (m: any, perms: string[]): string => {
 // Referal MƏHSULA yox, OBYEKTƏ verilir: obyekt hansı ixtisaslara alanda endirim,
 // satanda (referal) komissiya verdiyini bir yerdə yazır. Məs. aptek: «Həkim —
 // alışda 10% endirim, satışda 7% komissiya».
-interface TermRow { profession: string; discountPercent: string; commissionPercent: string; requiredDoc: string }
+interface TermRow { profession: string; discountPercent: string; discountRequiresDoc?: boolean; commissionPercent: string; requiredDoc: string }
 const DOC_LABEL: Record<string, string> = { DIPLOMA: "Təsdiqli diplom / sertifikat (tövsiyə olunur)", CV: "CV", ANY: "Diplom və ya CV", NONE: "Sənədsiz — ixtisası özü yazan hər kəs" };
 const numStr = (n: any) => (n === null || n === undefined || n === "" ? "" : String(n));
 const termsToForm = (list: any): TermRow[] => (Array.isArray(list) ? list : []).map((t: any) => ({
-  profession: t.profession || "", discountPercent: numStr(t.discountPercent), commissionPercent: numStr(t.commissionPercent), requiredDoc: t.requiredDoc || "DIPLOMA",
+  profession: t.profession || "", discountPercent: numStr(t.discountPercent), discountRequiresDoc: !!t.discountRequiresDoc, commissionPercent: numStr(t.commissionPercent), requiredDoc: t.requiredDoc || "DIPLOMA",
 }));
 /** Formadan serverə: boş sətirlər atılır; ixtisassız dolu sətir xəta verir. */
 const termsFromForm = (rows: TermRow[] | null | undefined) => {
@@ -1007,7 +1007,7 @@ const termsFromForm = (rows: TermRow[] | null | undefined) => {
     const has = r.discountPercent.trim() !== "" || r.commissionPercent.trim() !== "";
     if (!r.profession.trim()) { if (has) throw new Error("İxtisas güzəştləri: ixtisası seçin"); continue; }
     if (!has) throw new Error(`«${r.profession}»: endirim və ya komissiya faizini yazın`);
-    out.push({ profession: r.profession.trim(), discountPercent: r.discountPercent.trim() || null, commissionPercent: r.commissionPercent.trim() || null, requiredDoc: r.requiredDoc });
+    out.push({ profession: r.profession.trim(), discountPercent: r.discountPercent.trim() || null, discountRequiresDoc: !!r.discountRequiresDoc, commissionPercent: r.commissionPercent.trim() || null, requiredDoc: r.requiredDoc });
   }
   return out;
 };
@@ -1042,6 +1042,12 @@ function TermsEditor({ terms, onChange, inputCls }: { terms: TermRow[] | null | 
                   <input inputMode="decimal" value={r.commissionPercent} onChange={(e) => upd(i, { commissionPercent: pct(e.target.value) })} placeholder="məs. 7" className={inputCls} />
                 </label>
               </div>
+              {r.discountPercent.trim() !== "" && (
+                <label className="flex items-start gap-2 text-[11px] cursor-pointer">
+                  <input type="checkbox" checked={!!r.discountRequiresDoc} onChange={(e) => upd(i, { discountRequiresDoc: e.target.checked })} className="mt-0.5 w-3.5 h-3.5 accent-orange-500" />
+                  <span>Endirim üçün təsdiqli sənəd tələb et<span className="block text-[10px] text-muted">{r.discountRequiresDoc ? "Yalnız ixtisası admin təsdiqli sənədlə sübut edən alıcı endirim alır." : "Seçilməyibsə profilində bu ixtisası olan hər alıcı endirimli qiyməti görür."}</span></span>
+                </label>
+              )}
               {r.commissionPercent.trim() !== "" && (
                 <label className="block">
                   <span className="block text-[10px] text-muted mb-0.5">Komissiya üçün tələb olunan sənəd</span>
@@ -1057,7 +1063,7 @@ function TermsEditor({ terms, onChange, inputCls }: { terms: TermRow[] | null | 
           ))}
           <button type="button" onClick={() => onChange([...rows, { profession: "", discountPercent: "", commissionPercent: "", requiredDoc: "DIPLOMA" }])}
             className="w-full py-2 rounded-xl border border-dashed border-orange-500/40 text-orange-500 text-xs font-semibold hover:bg-orange-500/5">＋ İxtisas əlavə et</button>
-          <p className="text-[10px] text-muted">Alış endirimi yalnız ixtisasını admin təsdiqli sənədlə sübut etmiş alıcıya tətbiq olunur.</p>
+          <p className="text-[10px] text-muted">Alış endirimi profilində həmin ixtisası olan alıcıya avtomatik tətbiq olunur və o, qiyməti endirimli görür.</p>
         </div>
       )}
     </div>

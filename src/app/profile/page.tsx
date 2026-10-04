@@ -8,6 +8,7 @@ import { useToast } from "@/components/Toast";
 import { useLive } from "@/lib/live";
 import { API, imgUrl } from "@/lib/api";
 import { brandNames, getModels } from "@/lib/vehicleData";
+import { resetProDiscounts } from "@/lib/proDiscount";
 import { rotateImageFile } from "@/lib/rotateImage";
 import LocationPicker from "@/components/LocationPickerWrapper";
 import { SOCIAL_META } from "@/lib/social";
@@ -383,6 +384,7 @@ export default function ProfilePage() {
         login(token!, data.user);
         await refreshProfile();
         setProfEdit(null);
+        resetProDiscounts();   // yeni ixtisasa görə endirimli qiymətlər yenidən hesablanır
         toast(profEdit.length ? "İxtisas yeniləndi ✓" : "İxtisas silindi", "success");
       } else toast(data.message || t("error"), "error");
     } catch { toast(t("error"), "error"); } finally { setProfBusy(false); }

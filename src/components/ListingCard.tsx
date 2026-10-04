@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useCart } from "@/lib/CartContext";
 import { API, imgUrl } from "@/lib/api";
 import { formatPrice, formatPriceShort, formatPostedAt } from "@/lib/format";
+import { useMyProDiscounts } from "@/lib/proDiscount";
 import { COUNTRY_BY_CODE } from "@/lib/countries";
 import { useCardGroupBuy } from "@/lib/groupBuyCard";
 import { useInstallmentConfig, listingInstallmentAllowed, monthsForListing } from "@/lib/installment";
@@ -66,6 +67,8 @@ export default function ListingCard({ listing }: { listing: Listing }) {
   const isVip = !!listing.isVip;
   // Taksit nişanı: «💳 18 ay» — ən uzun mümkün plan (admin planları ∩ satıcı limiti).
   const instCfg = useInstallmentConfig();
+  // Profilimdəki ixtisasa mağazanın verdiyi endirim (varsa) — «sizin üçün» qiymət.
+  const proPrice = useMyProDiscounts().forListing(listing);
   const instMax = listingInstallmentAllowed(listing, listing.price, instCfg) ? Math.max(...monthsForListing(listing, instCfg!.months)) : 0;
   const isOwner = isLoggedIn && user?.id === listing.user.id;
   const outOfStock = listing.stock !== undefined && listing.stock <= 0;
@@ -303,10 +306,22 @@ export default function ListingCard({ listing }: { listing: Listing }) {
             {/* Qiymət tam görünsün — formatPriceShort onsuz da yalnız çox
                 böyükləri (milyon+) qısaldır (məs. "1 trln"), ona görə truncate
                 lazım deyil; 40.000 kimi normal qiymətlər tam görünür. */}
+            {proPrice ? (
+              /* İxtisas endirimi: mənim üçün qiymət + üstündən xətt çəkilmiş adi qiymət */
+              <div className="min-w-0" title={`«${proPrice.profession}» ixtisas endirimi −${proPrice.percent}%`}>
+                <div className="flex items-baseline gap-1 min-w-0">
+                  <span className="text-emerald-600 font-extrabold text-xl sm:text-[22px] leading-none whitespace-nowrap">{formatPriceShort(proPrice.price)}</span>
+                  <span className="text-muted-foreground text-xs font-semibold shrink-0">{t("azn")}</span>
+                  <span className="text-muted text-[11px] line-through whitespace-nowrap">{formatPriceShort(listing.price)}</span>
+                </div>
+                <p className="text-[10px] font-bold text-emerald-600 leading-tight mt-0.5">🎓 sizin üçün −{proPrice.percent}%</p>
+              </div>
+            ) : (
             <div className="flex items-baseline gap-0.5 min-w-0" title={`${formatPrice(listing.price)} ${t("azn")}`}>
               <span className="brand-text font-extrabold text-xl sm:text-[22px] leading-none whitespace-nowrap">{formatPriceShort(listing.price)}</span>
               <span className="text-muted-foreground text-xs font-semibold ml-0.5 shrink-0">{t("azn")}</span>
             </div>
+            )}
             {/* Kateqoriya çipi — referans dizayn */}
             {listing.category && (
               <span className="shrink-0 px-2.5 py-1 rounded-full bg-input-bg text-muted text-[10px] font-semibold max-w-[45%] truncate" title={listing.category}>
