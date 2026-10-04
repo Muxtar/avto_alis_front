@@ -1725,7 +1725,7 @@ export default function ProfilePage() {
 
       {/* Rəy konsultasiyası təklifi */}
       <IdCard collapsible open={openCard === "consult"} onToggle={() => toggleCard("consult")} summary={offers.length ? `${offers.length} təklif · ${offers.filter((o) => o.active).length} aktiv` : "Konsultasiya təklifi yoxdur"} icon="🗣️" title="Rəy konsultasiyası" tone="purple" stamp={offers.some((o) => o.active) ? "ok" : null} stampText={{ ok: "Aktiv" }}
-        subtitle="İxtisasınız üzrə ödənişli konsultasiya təklif edin. İstifadəçi sizi İxtisas bölməsindən tapıb sorğu göndərə bilər; siz vaxtı Başlat/Dayandır ilə idarə edirsiniz.">
+        subtitle="İxtisasınız üzrə ödənişli konsultasiya təklif edin. İstifadəçi sizi İxtisas bölməsindən tapıb birbaşa sorğu göndərir; qəbul edən kimi vaxt başlayır. Növbə və vaxt təyini yoxdur — sayğac yalnız qarşılıqlı yazışma zamanı işləyir, yazışma kəsiləndə özü dayanır.">
 
         {/* İXTİSAS — konsultasiya hansı ixtisas üzrədir. Buradan dəyişmək, yenisini
             əlavə etmək və ya silmək olur (maksimum 3). */}

@@ -63,14 +63,22 @@ export default function ConsultationDetailPage() {
   // Canlı geri sayım — yalnız sayğac işləyəndə.
   useEffect(() => {
     if (!session?.running) return;
-    const iv = setInterval(() => setLocalRemaining((r) => Math.max(0, r - 1)), 1000);
+    // Sayğac yalnız qarşılıqlı yazışma zamanı sayır: `runsUntil` keçibsə gözləyir.
+    const until = session.runsUntil ? new Date(session.runsUntil).getTime() : Infinity;
+    const iv = setInterval(() => { if (Date.now() <= until) setLocalRemaining((r) => Math.max(0, r - 1)); }, 1000);
     return () => clearInterval(iv);
-  }, [session?.running]);
+  }, [session?.running, session?.runsUntil]);
 
   useEffect(() => { scrollRef.current?.scrollTo(0, scrollRef.current.scrollHeight); }, [messages.length]);
 
   const isPro = session?.role === "professional";
   const active = session?.status === "ACTIVE" && localRemaining > 0;
+  // Sayğac dayanıbsa da yazmaq olar — məhz yazışma onu davam etdirir.
+  const canChat = !!session?.canChat && localRemaining > 0;
+  const idleMin = Math.max(1, Math.round((session?.idleSeconds || 300) / 60));
+  const waitText = session?.waitingFor === "both" ? "hər iki tərəfin yazması gözlənilir"
+    : session?.waitingFor === (isPro ? "professional" : "buyer") ? "sizin yazmağınız gözlənilir"
+    : session?.waitingFor ? `${isPro ? "alıcının" : "peşəkarın"} yazması gözlənilir` : "";
 
   const act = async (path: string, body?: any) => {
     setBusy(true);
@@ -112,8 +120,21 @@ export default function ConsultationDetailPage() {
             <p className="font-semibold">{session.title} · {session.needsPrice ? "qiymət təyin olunmayıb" : `${session.price} AZN`}</p>
             <p className="text-xs text-muted">{isPro ? "Siz peşəkarsınız" : "Siz alıcısınız"}</p>
           </div>
-          <div className={`text-2xl font-bold tabular-nums ${active ? "text-green-500" : "text-muted"}`}>{fmt(localRemaining)}</div>
+          <div className="text-right">
+            <div className={`text-2xl font-bold tabular-nums ${active ? "text-green-500" : "text-muted"}`}>{fmt(localRemaining)}</div>
+            {session.status === "ACTIVE" && <p className="text-[11px] font-semibold text-green-600">● vaxt işləyir</p>}
+            {(session.status === "PAUSED" || session.status === "PAID") && localRemaining > 0 && <p className="text-[11px] font-semibold text-amber-600">⏸ vaxt gözləyir</p>}
+          </div>
         </div>
+
+        {/* Avtomatik sayğacın izahı — növbə / vaxt təyini yoxdur */}
+        {(session.status === "ACTIVE" || session.status === "PAUSED" || session.status === "PAID") && localRemaining > 0 && (
+          <div className={`mt-3 p-2.5 rounded-xl text-xs border ${session.status === "ACTIVE" ? "bg-green-500/5 border-green-500/20" : "bg-amber-500/10 border-amber-500/30"}`}>
+            {session.status === "ACTIVE"
+              ? <>Vaxt yalnız qarşılıqlı yazışma zamanı sayılır. Tərəflərdən biri <b>{idleMin} dəqiqə</b> yazmasa sayğac özü dayanır — vaxt itmir.</>
+              : <><b>Vaxt dayanıb — {waitText}.</b> Hər iki tərəf yazan kimi sayğac özü davam edəcək. Qalan vaxt qorunur.</>}
+          </div>
+        )}
 
         {/* Əvvəlcədən ödənilən təklif: qəbul / qarşı təklif / rədd / geri götür */}
         {session.flow === "OFFER" && <div className="mt-3"><OfferBar session={session} onChange={(x) => { setSession(x); setLocalRemaining(x.remainingSeconds); }} /></div>}
@@ -160,14 +181,9 @@ export default function ConsultationDetailPage() {
                 </>
               )}
               {session.status === "ACCEPTED" && <span className="text-sm text-blue-500 self-center">Qəbul edildi — alıcının ödənişi gözlənilir</span>}
-              {(session.status === "PAID" || session.status === "PAUSED") && localRemaining > 0 && (
-                <button onClick={() => act("start")} disabled={busy} className="px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">▶ Başlat / Davam</button>
-              )}
-              {session.status === "ACTIVE" && (
-                <button onClick={() => act("pause")} disabled={busy} className="px-4 py-2 bg-amber-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">⏸ Dayandır</button>
-              )}
+              {/* «Başlat / Dayandır» yoxdur: sayğac avtomatikdir. Seansı yalnız bitirmək olar. */}
               {(session.status === "ACTIVE" || session.status === "PAUSED") && (
-                <button onClick={() => act("end")} disabled={busy} className="px-4 py-2 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold disabled:opacity-50">Bitir</button>
+                <button onClick={() => { if (confirm("Seansı bitirmək istəyirsiniz? Qalan vaxt istifadə olunmayacaq.")) act("end"); }} disabled={busy} className="px-4 py-2 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold disabled:opacity-50">Seansı bitir</button>
               )}
             </>
           ) : (
@@ -180,7 +196,10 @@ export default function ConsultationDetailPage() {
                   {session.status === "ENDED" ? "Yenidən ödə (vaxt artır)" : `✓ Qəbul edildi — Ödə ${session.price} AZN`}
                 </button>
               )}
-              {session.status === "PAID" && <span className="text-sm text-blue-500 self-center">Ödənilib — peşəkarın başlatmasını gözləyin</span>}
+              {session.status === "PAID" && <span className="text-sm text-blue-500 self-center">Ödənilib — yazışmağa başlayın, vaxt özü işə düşəcək</span>}
+              {(session.status === "ACTIVE" || session.status === "PAUSED") && (
+                <button onClick={() => { if (confirm("Seansı bitirmək istəyirsiniz? Sonra rəy bildirə və ya şikayət edə bilərsiniz.")) act("end"); }} disabled={busy} className="px-4 py-2 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold disabled:opacity-50">Seansı bitir</button>
+              )}
             </>
           )}
         </div>
@@ -205,18 +224,19 @@ export default function ConsultationDetailPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-            disabled={!active || busy}
-            placeholder={active ? "Mesaj yazın…" : "Konsultasiya aktiv olduqda yaza bilərsiniz"}
+            disabled={!canChat || busy}
+            placeholder={canChat ? (active ? "Mesaj yazın…" : "Yazın — sayğac davam etsin…") : "Sorğu qəbul ediləndə yaza bilərsiniz"}
             className="flex-1 px-3.5 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 disabled:opacity-60"
           />
-          <button onClick={send} disabled={!active || busy || !input.trim()} className="px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Göndər</button>
+          <button onClick={send} disabled={!canChat || busy || !input.trim()} className="px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Göndər</button>
         </div>
       </div>
 
       {/* Qiymətləndirmə — alıcı, seans bitəndə */}
       {!isPro && session.status === "ENDED" && !session.rated && (
         <div className="surface p-4 mt-3">
-          <p className="font-semibold text-sm mb-2">Peşəkarı qiymətləndirin</p>
+          <p className="font-semibold text-sm">Seans bitdi — rəyinizi bildirin</p>
+          <p className="text-xs text-muted mb-2">Xidmətdən razısınızsa qiymətləndirin; narazısınızsa aşağıdan şikayət edə bilərsiniz.</p>
           <div className="flex items-center gap-1 mb-2">
             {[1, 2, 3, 4, 5].map((n) => (
               <button key={n} onClick={() => setStars(n)} className={`text-2xl ${n <= stars ? "text-amber-400" : "text-muted"}`}>★</button>
@@ -233,10 +253,16 @@ export default function ConsultationDetailPage() {
       {!isPro && session.rated && <p className="text-center text-sm text-green-500 mt-3">✓ Qiymətləndirildi</p>}
 
       {/* Şikayət — alıcı (peşəkar vaxtı boşa xərclədisə və s.) */}
-      {!isPro && (session.status === "ENDED" || session.status === "ACTIVE" || session.status === "PAUSED") && (
+      {!isPro && session.status === "ENDED" && (
+        <div className="surface p-4 mt-3 border border-red-500/20">
+          <p className="font-semibold text-sm mb-0.5">Xidmətdən narazısınız?</p>
+          <p className="text-xs text-muted mb-2">Peşəkar cavab vermədisə, vaxtı boşa xərclədisə və ya xidmət vəd olunana uyğun deyildisə şikayət edin — admin söhbəti və vaxt qeydlərini yoxlayacaq.</p>
+          <ComplaintButton consultationId={Number(id)} label="⚠️ Şikayət et" className="inline-block px-4 py-2 rounded-xl bg-red-500/10 text-red-500 text-sm font-semibold hover:bg-red-500/20" />
+        </div>
+      )}
+      {!isPro && (session.status === "ACTIVE" || session.status === "PAUSED") && (
         <div className="text-center mt-4">
           <ComplaintButton consultationId={Number(id)} label="Bu konsultasiyadan şikayət et" className="text-xs text-red-500 hover:underline" />
-          <p className="text-[11px] text-muted mt-1">Peşəkar vaxtı boşa xərclədisə və ya rəy vermədisə — admin söhbəti və vaxt loglarını yoxlayacaq.</p>
         </div>
       )}
     </div>
