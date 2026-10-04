@@ -911,7 +911,7 @@ function TermsEditor({ terms, onChange, inputCls }: { terms: TermRow[] | null | 
     <div className="rounded-xl border border-input-border/70 bg-card p-3">
       <p className="text-sm font-semibold flex items-center gap-1.5">🎓 İxtisas güzəştləri <span className="px-1.5 py-0.5 rounded-md bg-input-bg text-muted text-[10px] font-medium">könüllü</span></p>
       <p className="text-[11px] text-muted mt-0.5 mb-2">
-        Bu obyektin məhsullarını hansı ixtisas sahibləri endirimlə alsın və ya referal ilə satıb komissiya qazansın? Bir neçə ixtisas əlavə edə bilərsiniz. Güzəşt obyektin bütün məhsullarına aiddir.
+        Bu obyektin məhsullarını hansı ixtisas sahibləri endirimlə alsın və ya referal ilə satıb komissiya qazansın? Bir neçə ixtisas əlavə edə bilərsiniz. Güzəşt obyektin bütün məhsullarına aiddir. Endirim yalnız ixtisas sahibinin öz alışına verilir: onun yönləndirdiyi alıcı tam qiymət ödəyir, ixtisas sahibi isə komissiya qazanır.
       </p>
       {terms === null ? (
         <p className="text-[11px] text-muted">Yüklənir…</p>

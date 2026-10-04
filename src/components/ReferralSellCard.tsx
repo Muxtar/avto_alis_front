@@ -17,7 +17,7 @@ export default function ReferralSellCard({ listingId, maxQty }: { listingId: num
   const [info, setInfo] = useState<any>(null);
   const [qty, setQty] = useState(1);
   const [busy, setBusy] = useState(false);
-  const [link, setLink] = useState<{ url: string; expiresAt: string; percent: number } | null>(null);
+  const [link, setLink] = useState<{ url: string; expiresAt: string; percent: number; summary?: { goodsTotal: number; commission: number } | null } | null>(null);
   const [applyOpen, setApplyOpen] = useState(false);
   const [note, setNote] = useState("");
 
@@ -40,7 +40,7 @@ export default function ReferralSellCard({ listingId, maxQty }: { listingId: num
         method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ items: [{ listingId, quantity: qty }] }),
       }).then((x) => x.json());
-      if (r.success) { setLink({ url: referralUrl(r.token), expiresAt: r.expiresAt, percent: r.percent }); toast("Link yaradıldı ✓", "success"); }
+      if (r.success) { setLink({ url: referralUrl(r.token), expiresAt: r.expiresAt, percent: r.percent, summary: r.summary || null }); toast("Link yaradıldı ✓", "success"); }
       else toast(r.message || "Xəta", "error");
     } catch { toast("Xəta baş verdi", "error"); } finally { setBusy(false); }
   };
@@ -71,7 +71,7 @@ export default function ReferralSellCard({ listingId, maxQty }: { listingId: num
           </p>
           <p className="text-[11px] text-muted mt-0.5 mb-3">Link yaradın, alıcıya göndərin. Link {info.linkDays} gün etibarlıdır. <Link href="/referral" className="text-orange-500 hover:underline">Ətraflı →</Link></p>
           {link ? (
-            <ReferralLinkBox url={link.url} expiresAt={link.expiresAt} percent={link.percent} onReset={() => { setLink(null); setQty(1); }} />
+            <ReferralLinkBox url={link.url} expiresAt={link.expiresAt} percent={link.percent} summary={link.summary} onReset={() => { setLink(null); setQty(1); }} />
           ) : (
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted shrink-0">Say</label>

@@ -101,7 +101,7 @@ export default function CartPage() {
   const [shareNote, setShareNote] = useState("");
   const [shareNotes, setShareNotes] = useState<Record<number, string>>({});
   const [shareRemove, setShareRemove] = useState(true);
-  const [shareResult, setShareResult] = useState<{ referral: boolean; sentTo: string | null; bundle: boolean } | null>(null);
+  const [shareResult, setShareResult] = useState<{ referral: boolean; sentTo: string | null; bundle: boolean; summary?: any } | null>(null);
   // Seçim dəyişəndə paylaş düyməsini sıfırlamaq üçün (köhnə link yadda qalmasın).
   const [shareGen, setShareGen] = useState(0);
   // Məhsul seçimi (checkbox) — seçilənləri al və ya faktura göndər
@@ -253,7 +253,7 @@ export default function CartPage() {
       if (res.ok && data.success) {
         const path = `/shared/${data.token}`;
         setShareLink(`${window.location.origin}${path}`);
-        setShareResult({ referral: !!data.referral, sentTo: isBundle && friend ? friend.name : null, bundle: isBundle });
+        setShareResult({ referral: !!data.referral, sentTo: isBundle && friend ? friend.name : null, bundle: isBundle, summary: data.summary || null });
         if (isBundle && shareRemove) {
           // Göndərilən məhsullar səbətdən çıxarıldı — siyahını və nişanı yenilə.
           const sent = new Set(ids);
@@ -613,8 +613,40 @@ export default function CartPage() {
           path={shareLinkPath || undefined} compact className="w-9 rounded-lg bg-input-bg border border-input-border flex items-center justify-center text-orange-500 hover:bg-orange-500/10 transition-colors" />
       </div>
       <p className="text-[11px] text-muted">⏳ 30 gün etibarlıdır</p>
+      {/* Kim nə qədər ödəyir / qazanır. İxtisas endirimi yalnız ALANIN öz ixtisasına
+          görədir: məhsulu başqasına yönləndirəndə endirim ötürülmür, paylaşan komissiya qazanır. */}
+      {shareResult?.summary && shareResult.summary.goodsTotal > 0 && (
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl bg-input-bg/60 border border-input-border px-3 py-2">
+            <p className="text-[10px] uppercase tracking-wider text-muted">{shareMode === "SENDER" ? "Ödəyən ödəyəcək" : "Alıcı ödəyəcək"}</p>
+            <p className="text-sm font-bold">{Number(shareResult.summary.payerTotal).toFixed(2)} AZN</p>
+            <p className="text-[10px] text-muted">
+              {shareResult.summary.deliveryFee > 0 ? `məhsul ${Number(shareResult.summary.goodsTotal).toFixed(2)} + çatdırılma ${Number(shareResult.summary.deliveryFee).toFixed(2)}` : "məhsulların qiyməti"}
+            </p>
+          </div>
+          {shareResult.summary.commission > 0 ? (
+            <div className="rounded-xl bg-orange-500/10 border border-orange-500/20 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-orange-600">Sizin qazancınız</p>
+              <p className="text-sm font-bold text-orange-600">≈ {Number(shareResult.summary.commission).toFixed(2)} AZN</p>
+              <p className="text-[10px] text-muted">referal komissiyası · {shareResult.summary.commissionItems} məhsul</p>
+            </div>
+          ) : shareResult.summary.proDiscount > 0 ? (
+            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-emerald-600">İxtisas endirimi</p>
+              <p className="text-sm font-bold text-emerald-600">−{Number(shareResult.summary.proDiscount).toFixed(2)} AZN</p>
+              <p className="text-[10px] text-muted">{shareResult.summary.proDiscountProfession || "ixtisas"} — məhsul sizə gəlir</p>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-input-bg/60 border border-input-border px-3 py-2">
+              <p className="text-[10px] uppercase tracking-wider text-muted">Komissiya</p>
+              <p className="text-sm font-bold">—</p>
+              <p className="text-[10px] text-muted">{shareResult.summary.selfBuy ? "öz alışınızdan komissiya olmur" : "bu məhsullarda referal yoxdur"}</p>
+            </div>
+          )}
+        </div>
+      )}
       {shareResult?.referral && (
-        <p className="text-[11px] text-orange-600">🤝 Bu məhsullardan satış olsa referal komissiyası sizə yazılacaq</p>
+        <p className="text-[11px] text-orange-600">🤝 Alıcı tam qiymət ödəyir (sizin ixtisas endiriminiz ona keçmir); satış olsa komissiya sizə yazılacaq — çatdırılma və qaytarma müddətindən sonra.</p>
       )}
       <button onClick={() => { setShareLink(null); setShareResult(null); setShareGen((g) => g + 1); }} className="text-[11px] text-muted hover:text-foreground underline">Yeni link yarat</button>
     </div>

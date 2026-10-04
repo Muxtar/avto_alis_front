@@ -25,7 +25,7 @@ export default function ObjectPage() {
   const [refMode, setRefMode] = useState(false);
   const [sel, setSel] = useState<Record<number, number>>({});
   const [refBusy, setRefBusy] = useState(false);
-  const [refLink, setRefLink] = useState<{ url: string; expiresAt: string; percent: number } | null>(null);
+  const [refLink, setRefLink] = useState<{ url: string; expiresAt: string; percent: number; summary?: { goodsTotal: number; commission: number } | null } | null>(null);
   const [applyOpen, setApplyOpen] = useState(false);
   const [applyNote, setApplyNote] = useState("");
 
@@ -72,7 +72,7 @@ export default function ObjectPage() {
         method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ items }),
       }).then((x) => x.json());
-      if (r.success) { setRefLink({ url: referralUrl(r.token), expiresAt: r.expiresAt, percent: r.percent }); toast("Link yaradıldı ✓", "success"); }
+      if (r.success) { setRefLink({ url: referralUrl(r.token), expiresAt: r.expiresAt, percent: r.percent, summary: r.summary || null }); toast("Link yaradıldı ✓", "success"); }
       else toast(r.message || "Xəta", "error");
     } catch { toast("Xəta", "error"); } finally { setRefBusy(false); }
   };
@@ -238,7 +238,7 @@ export default function ObjectPage() {
                     </div>
                   )}
                   {refLink && (
-                    <ReferralLinkBox url={refLink.url} expiresAt={refLink.expiresAt} percent={refLink.percent} title={object.name}
+                    <ReferralLinkBox url={refLink.url} expiresAt={refLink.expiresAt} percent={refLink.percent} summary={refLink.summary} title={object.name}
                       onReset={() => { setRefLink(null); setRefMode(false); setSel({}); }} />
                   )}
                 </>
