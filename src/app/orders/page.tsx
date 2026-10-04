@@ -194,6 +194,10 @@ export default function OrdersPage() {
       body: JSON.stringify(code ? { status, code } : { status }),
     }).then((x) => x.json()).catch(() => null);
     if (!r || r.success === false) { toast(r?.message || t("error"), "error"); return false; }
+    // Nəticə açıq deyilsin: nə oldu və qarşı tərəf xəbərdar edildimi.
+    if (r.refundPending) toast(r.message || "Sifariş ləğv edildi, ödənişin qaytarılması emal olunur", "info");
+    else if (status === "CANCELLED") toast("Sifariş ləğv edildi — qarşı tərəfə bildiriş göndərildi", "success");
+    else if (status === "CONFIRMED") toast("Sifariş təsdiqləndi — alıcıya bildiriş göndərildi", "success");
     fetchOrders();
     // Təsdiqdə Yango avtomatik çağırılır (backend, fon) — nəticəni (kuryer/xəta) göstərmək üçün bir az sonra yenilə.
     if (status === "CONFIRMED") setTimeout(fetchOrders, 3500);
@@ -1072,7 +1076,7 @@ export default function OrdersPage() {
                     {order.status === "PENDING" && (
                       <>
                         <button onClick={() => updateStatus(order.id, "CONFIRMED")} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20">✓ Qəbul et</button>
-                        <button onClick={() => { if (confirm("Sifarişi rədd etmək istəyirsiniz?")) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-500/20">✕ Rədd et</button>
+                        <button onClick={() => { if (confirm(`Sifarişi rədd etmək istəyirsiniz? Alıcıya xəbər gedəcək${order.paymentStatus === "PAID" && order.paymentMethod !== "CASH" ? " və ödənişi geri qaytarılacaq" : ""}.`)) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-semibold hover:bg-red-500/20">✕ Rədd et</button>
                       </>
                     )}
                     {order.status === "CONFIRMED" && order.deliveryType === "PICKUP" && (
@@ -1115,7 +1119,7 @@ export default function OrdersPage() {
                     )}
                     {/* Ləğv — yalnız qəbul edilmiş/göndərilmiş sifariş üçün (PENDING-də 'Rədd et' var) */}
                     {(order.status === "CONFIRMED" || order.status === "SHIPPED") && (
-                      <button onClick={() => { if (confirm("Sifarişi ləğv etmək istəyirsiniz?")) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 ml-auto">Ləğv et</button>
+                      <button onClick={() => { if (confirm(`Sifarişi ləğv etmək istəyirsiniz? Alıcıya xəbər gedəcək${order.paymentStatus === "PAID" && order.paymentMethod !== "CASH" ? " və ödənişi geri qaytarılacaq" : ""}.`)) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20 ml-auto">Ləğv et</button>
                     )}
                   </div>
                 )}
@@ -1135,7 +1139,7 @@ export default function OrdersPage() {
                     )}
                     {/* Alıcı: gözləyən və ya təsdiqlənib GÖNDƏRİLMƏMİŞ sifarişi ləğv edə bilər. Ödənilibsə pul geri qaytarılır. */}
                     {(order.status === "PENDING" || order.status === "CONFIRMED" || deliveryCollapsed(order)) && (
-                      <button onClick={() => { if (confirm(order.paymentStatus === "PAID" ? "Sifarişi ləğv edib pulu geri almaq istəyirsiniz?" : "Sifarişi ləğv etmək istəyirsiniz?")) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">{order.paymentStatus === "PAID" ? "Ləğv et və geri al" : "Ləğv et"}</button>
+                      <button onClick={() => { if (confirm(order.paymentStatus === "PAID" && order.paymentMethod !== "CASH" ? "Sifarişi ləğv etmək istəyirsiniz? Ödənişiniz geri qaytarılacaq, satıcıya xəbər gedəcək." : "Sifarişi ləğv etmək istəyirsiniz? Satıcıya xəbər gedəcək.")) updateStatus(order.id, "CANCELLED"); }} className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">{order.paymentStatus === "PAID" ? "Ləğv et və geri al" : "Ləğv et"}</button>
                     )}
                     {order.status === "SHIPPED" && order.deliveryType !== "PICKUP" && (
                       <button onClick={() => { if (confirm("Məhsulu təhvil aldığınızı təsdiqləyirsiniz?")) updateStatus(order.id, "DELIVERED"); }} className="px-3 py-1.5 bg-green-500/10 text-green-600 rounded-lg text-xs font-semibold hover:bg-green-500/20">✓ Təhvil aldım</button>
