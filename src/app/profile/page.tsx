@@ -672,10 +672,9 @@ export default function ProfilePage() {
     if (!vehicleForm.brand || !vehicleForm.model || !vehicleForm.year) {
       toast('Marka, model və il tələb olunur', 'error'); return;
     }
-    // Texniki sənədin şəkli könüllüdür — bu altı sahə kifayətdir.
+    // Texniki sənədin şəkli könüllüdür — bu beş sahə kifayətdir.
     if (!vehicleForm.registrationNumber.trim()) { toast('Maşının nömrəsini (dövlət nişanı) yazın', 'error'); return; }
     if (!vehicleForm.bodyNumber.trim()) { toast('Ban nömrəsini (VIN) yazın', 'error'); return; }
-    if (!vehicleForm.driverLicense.trim()) { toast('Sürücülük vəsiqəsinin nömrəsini yazın', 'error'); return; }
     const yr = parseInt(vehicleForm.year, 10);
     if (!Number.isFinite(yr) || yr < 1900 || yr > new Date().getFullYear() + 1) { toast('Buraxılış ilini düzgün yazın', 'error'); return; }
     const url = vehicleForm.id ? `${API}/me/vehicles/${vehicleForm.id}` : `${API}/me/vehicles`;
@@ -1479,7 +1478,7 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {/* Avtomobil məlumatı — bu altı sahə kifayətdir. Texpasportdan oxunan
+              {/* Avtomobil məlumatı — bu beş sahə kifayətdir. Texpasportdan oxunan
                   digər sahələr (rəng, mühərrik və s.) soruşulmur, amma oxunubsa saxlanır. */}
               <div>
                 <p className="text-sm font-semibold mb-2">Avtomobil məlumatı</p>
@@ -1503,10 +1502,6 @@ export default function ProfilePage() {
                   <label className="block">
                     <span className="block text-xs text-muted mb-1">Ban nömrəsi (VIN) *</span>
                     <input value={vehicleForm.bodyNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, bodyNumber: e.target.value.toUpperCase() })} placeholder="17 simvol" maxLength={20} autoCapitalize="characters" className={`${inputCls} font-mono`} required />
-                  </label>
-                  <label className="block">
-                    <span className="block text-xs text-muted mb-1">Sürücülük vəsiqəsinin nömrəsi *</span>
-                    <input value={vehicleForm.driverLicense} onChange={(e) => setVehicleForm({ ...vehicleForm, driverLicense: e.target.value.toUpperCase() })} placeholder="məs. AA123456" maxLength={20} autoCapitalize="characters" className={`${inputCls} font-mono`} required />
                   </label>
                 </div>
                 <datalist id="veh-brands">{brandNames.map((b) => <option key={b} value={b} />)}</datalist>
@@ -1568,7 +1563,7 @@ export default function ProfilePage() {
                       <IdField label="Dövlət nişanı" value={v.registrationNumber} mono />
                       <IdField label="İl" value={v.year} />
                       <IdField label="VIN / Ban" value={v.bodyNumber} mono />
-                      <IdField label="Sürücülük vəsiqəsi" value={v.driverLicense} mono />
+                      <IdField label="Mühərrik" value={v.engineCapacity} />
                     </div>
                     {passportRows.length > 0 && (
                       <details className="mt-2">
