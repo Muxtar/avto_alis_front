@@ -296,7 +296,7 @@ export default function BusinessPage() {
     } catch { toast(t("error"), "error"); } finally { setBusy(false); }
   };
 
-  const wrap = (fn: () => Promise<any>) => async () => { try { await fn(); load(); } catch (e: any) { toast(e.message || t("error"), "error"); } };
+  const wrap = (fn: () => Promise<any>) => async () => { try { await fn(); load(true); } catch (e: any) { toast(e.message || t("error"), "error"); } };
 
   // Biznesi sil. Təsdiqlənmiş biznesdə silmə "yumşaqdır": elanlar arxivlənir,
   // obyektlər bağlanır, biznes saytdan yox olur — amma bizim ona olan pul

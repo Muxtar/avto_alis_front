@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
+import { useLive } from "@/lib/live";
 
 // Profil: "İş yerim" — istifadəçi özünü bir VÖEN-in (şirkətin) işçisi kimi qeyd edir.
 // Axın: şirkəti ad/VÖEN ilə axtar → sorğu göndər → sahib qəbul edəndə rəsmi işçi.
@@ -32,13 +33,16 @@ export default function EmploymentSection({ embedded = false, onStatus }: { embe
   }, [token]);
 
   useEffect(() => { if (token) load(); }, [token, load]);
+  // ANLIQ: şirkət sorğunu təsdiqləyəndə / rədd edəndə / dəvət göndərəndə status
+  // səhifə yenilənmədən dəyişir (əvvəl "təsdiq gözləyir" ilişib qalırdı).
+  useLive(["business"], () => { if (token) load(); });
 
   // Kart üçün qısa status (aktiv iş yeri / gözləyən sorğu / yoxdur).
   useEffect(() => {
     if (!onStatus) return;
     const act = memberships.find((m) => m.status === "ACTIVE");
     const wait = memberships.find((m) => m.status === "PENDING_BUSINESS" || m.status === "PENDING_USER");
-    if (act) onStatus({ state: "ok", label: act.business?.name || "Şirkət", hint: `VOEN: ${act.business?.voen || "—"}${act.object ? ` · ${act.object.name}` : ""}` });
+    if (act) onStatus({ state: "ok", label: `Rəsmi işçi — ${act.business?.name || "Şirkət"}`, hint: `VOEN: ${act.business?.voen || "—"}${act.object ? ` · ${act.object.name}` : ""}` });
     else if (wait) onStatus({ state: "pending", label: wait.business?.name || "Şirkət", hint: wait.status === "PENDING_USER" ? "Şirkət sizi dəvət edib — cavab gözlənilir" : "Sorğunuz təsdiq gözləyir" });
     else onStatus({ state: "none", label: "İş yeri əlavə edilməyib", hint: "Çalışdığınız şirkəti (VOEN) qeyd edin" });
   }, [memberships, onStatus]);
@@ -113,7 +117,7 @@ export default function EmploymentSection({ embedded = false, onStatus }: { embe
       {active.map((m) => (
         <div key={m.id} className="mb-2 p-3 bg-green-500/5 border border-green-500/20 rounded-xl flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-sm font-semibold">✅ {m.business.name}</p>
+            <p className="text-sm font-semibold">✅ {m.business.name} <span className="ml-1 px-1.5 py-0.5 rounded-md bg-green-500/15 text-green-600 text-[10px] font-bold uppercase tracking-wide align-middle">Rəsmi işçi</span></p>
             <p className="text-[11px] text-muted">VÖEN: {m.business.voen}{m.object ? ` · Obyekt: ${m.object.name}` : " · Bütün biznes"}</p>
             <p className="text-[11px] text-muted mt-0.5">Səlahiyyətlər: {perms(m)}</p>
           </div>
