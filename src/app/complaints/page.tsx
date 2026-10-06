@@ -7,6 +7,7 @@ import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import { COMPLAINT_CAT_LABEL, complaintStatusLabel, isComplaintClosed } from "@/lib/complaints";
+import CameraCapture from "@/components/CameraCapture";
 
 const MAX_PHOTOS = 6;
 
@@ -255,8 +256,10 @@ function ComplaintsInner() {
                         <input ref={(el) => { fileRefs.current[c.id] = el; }} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { addEvidence(c.id, e.target.files); e.target.value = ""; }} />
                         <button onClick={() => fileRefs.current[c.id]?.click()} disabled={busy === c.id}
                           className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-input-bg border border-input-border hover:border-orange-500 disabled:opacity-50">
-                          {busy === c.id ? "Yüklənir..." : "📷 Foto/sübut əlavə et"}
+                          {busy === c.id ? "Yüklənir..." : "🖼 Foto/sübut əlavə et"}
                         </button>
+                        <CameraCapture disabled={busy === c.id} onFiles={(fl) => addEvidence(c.id, fl)}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-orange-500/10 text-orange-500 border border-orange-500/20 hover:bg-orange-500/20">📷 Şəkil çək</CameraCapture>
                       </>
                     )}
                     {!isMine && respondOpen !== c.id && (
@@ -288,8 +291,12 @@ function ComplaintsInner() {
                       ))}
                       {respondFiles.length < MAX_PHOTOS && (
                         <button onClick={() => respondFileRef.current?.click()} className="w-16 h-16 rounded-lg border border-dashed border-input-border text-muted text-xs hover:border-orange-500">
-                          📷 +{MAX_PHOTOS - respondFiles.length}
+                          🖼 +{MAX_PHOTOS - respondFiles.length}
                         </button>
+                      )}
+                      {respondFiles.length < MAX_PHOTOS && (
+                        <CameraCapture onFiles={(fl) => { const add = pickImages(fl); setRespondFiles((p) => [...p, ...add].slice(0, MAX_PHOTOS)); }}
+                          className="w-16 h-16 rounded-lg border border-dashed border-orange-500/50 text-orange-500 text-xs flex flex-col items-center justify-center hover:bg-orange-500/5"><span className="text-lg leading-none">📷</span>Çək</CameraCapture>
                       )}
                     </div>
                     <div className="flex gap-2">

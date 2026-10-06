@@ -22,6 +22,7 @@ import EmploymentSection, { type EmploymentStatus } from "@/components/Employmen
 import ConnectedDevices from "@/components/ConnectedDevices";
 import QRShare from "@/components/QRShare";
 import IdCard, { IdMini, IdField } from "@/components/IdCard";
+import CameraCapture from "@/components/CameraCapture";
 
 export default function ProfilePage() {
   const { t } = useLanguage();
@@ -1036,6 +1037,9 @@ export default function ProfilePage() {
               )}
               <input type="file" accept="image/*" className="hidden" disabled={avatarBusy} onChange={(e) => handleAvatarUpload(e.target.files?.[0] || null)} />
             </label>
+            {/* Ön kamera ilə birbaşa çək (sağdakı düymə qalereyanı açır) */}
+            <CameraCapture facing="user" disabled={avatarBusy} onPick={(f) => handleAvatarUpload(f)} title="Kamera ilə çək"
+              className="absolute bottom-1.5 left-1.5 w-11 h-11 bg-card text-lg rounded-full flex items-center justify-center shadow-md border-2 border-card hover:bg-input-bg transition-colors">🤳</CameraCapture>
           </div>
 
           {/* Info */}
@@ -1888,16 +1892,20 @@ export default function ProfilePage() {
               {cvBusy ? "..." : "Dəyiş"}
               <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
             </label>
+            <CameraCapture disabled={cvBusy} onPick={(f) => handleCvUpload(f)} className="px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10">📷 Çək</CameraCapture>
             <button onClick={handleCvDelete} className="px-4 py-2.5 bg-red-500/10 text-red-500 rounded-xl text-sm font-semibold hover:bg-red-500/20">Sil</button>
             <button onClick={() => toggleCvPublic(!profile.cvPublic)} className={`px-4 py-2.5 rounded-xl text-sm font-semibold ${profile.cvPublic ? "bg-green-500/10 text-green-500" : "bg-input-bg text-muted border border-input-border"}`}>
               {profile.cvPublic ? "✓ Public (görünür)" : "Gizli — public et"}
             </button>
           </div>
         ) : (
+          <>
           <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl text-sm font-semibold cursor-pointer disabled:opacity-50">
             {cvBusy ? "Yüklənir…" : "📤 CV yüklə (PDF/şəkil)"}
             <input type="file" accept=".pdf,image/*" className="hidden" disabled={cvBusy} onChange={(e) => handleCvUpload(e.target.files?.[0] || null)} />
           </label>
+          <CameraCapture disabled={cvBusy} onPick={(f) => handleCvUpload(f)} className="inline-flex items-center gap-2 ml-2 px-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm font-semibold hover:bg-orange-500/10">📷 Şəkil çək</CameraCapture>
+          </>
         )}
       </IdCard>
 
@@ -1972,9 +1980,11 @@ export default function ProfilePage() {
             className={`${inputCls} sm:flex-1`}
           />
           <label className="px-4 py-3 bg-input-bg border border-input-border rounded-xl text-sm cursor-pointer text-center hover:bg-orange-500/5 transition-colors">
-            <span className="text-muted">{credFile ? `📎 ${credFile.name.slice(0, 22)}` : "📷 Şəkil seç"}</span>
+            <span className="text-muted">{credFile ? `📎 ${credFile.name.slice(0, 22)}` : "🖼 Qalereya"}</span>
             <input type="file" accept="image/*" className="hidden" onChange={(e) => setCredFile(e.target.files?.[0] || null)} />
           </label>
+          {/* Sənədi telefonla birbaşa çəkmək (əvvəl yalnız qalereyadan seçmək olurdu) */}
+          <CameraCapture onPick={setCredFile} className="px-4 py-3 bg-orange-500/10 text-orange-500 border border-orange-500/20 rounded-xl text-sm font-semibold text-center hover:bg-orange-500/20 transition-colors whitespace-nowrap">📷 Şəkil çək</CameraCapture>
           <button
             onClick={uploadCredential}
             disabled={credBusy}

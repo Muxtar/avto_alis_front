@@ -7,6 +7,7 @@ import { useLive } from "@/lib/live";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import { complaintStatusLabel } from "@/lib/complaints";
+import CameraCapture from "@/components/CameraCapture";
 
 /* ── İADƏLƏR ──
    Alıcı və satıcı üçün iadənin bütün yolu: sorğu → təsdiq → göndərmə →
@@ -142,6 +143,12 @@ function PhotoPicker({ files, setFiles, max }: { files: File[]; setFiles: (f: Fi
             e.target.value = "";
           }} />
         </label>
+      )}
+      {files.length < max && (
+        <CameraCapture onFiles={(fl) => { const list = Array.from(fl).filter((f) => /^image\//.test(f.type) && f.size < 8 * 1024 * 1024); setFiles([...files, ...list].slice(0, max)); }}
+          className="w-16 h-16 rounded-lg border-2 border-dashed border-orange-500/50 flex flex-col items-center justify-center text-orange-500 hover:bg-orange-500/5">
+          <span className="text-lg leading-none">📷</span><span className="text-[9px]">Çək</span>
+        </CameraCapture>
       )}
     </div>
   );

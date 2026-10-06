@@ -12,6 +12,7 @@ import Link from "next/link";
 import OrderMap from "@/components/OrderMapWrapper";
 import ComplaintButton from "@/components/ComplaintButton";
 import { yangoDead, yangoReturning, yangoLabel as yangoStatusAz, YANGO_STATUS_AZ } from "@/lib/yangoStatus";
+import CameraCapture from "@/components/CameraCapture";
 
 // ── Sifariş kartlarının rəng qrupları ──
 type OrderCat = "PENDING" | "ACTIVE" | "DONE" | "RETURN" | "CANCELLED";
@@ -930,6 +931,12 @@ export default function OrdersPage() {
                                 <input type="file" accept="image/*" multiple className="hidden"
                                   onChange={(e) => { addReturnFiles(e.target.files); e.target.value = ""; }} />
                               </label>
+                            )}
+                            {returnFiles.length < 6 && (
+                              <CameraCapture onFiles={(fl) => addReturnFiles(fl)}
+                                className="w-16 h-16 rounded-lg border-2 border-dashed border-orange-500/50 flex flex-col items-center justify-center text-orange-500 hover:bg-orange-500/5">
+                                <span className="text-lg leading-none">📷</span><span className="text-[9px]">Çək</span>
+                              </CameraCapture>
                             )}
                           </div>
                         </div>

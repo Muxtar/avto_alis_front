@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import { COMPLAINT_CATEGORIES, PERSON_COMPLAINT_CATEGORIES, CONSULTATION_COMPLAINT_CATEGORIES } from "@/lib/complaints";
+import CameraCapture from "@/components/CameraCapture";
 
 // Şikayət düyməsi + modal.
 // Şikayət = satıcının davranışı haqqında rəy → yalnız etibarlılıq reytinqinə təsir edir (pul qaytarılmır).
@@ -94,6 +95,12 @@ export default function ComplaintButton({
                   ))}
                   {images.length < 6 && (
                     <button onClick={() => fileRef.current?.click()} className="w-16 h-16 rounded-lg border-2 border-dashed border-input-border text-muted flex items-center justify-center text-2xl hover:border-orange-500">+</button>
+                  )}
+                  {images.length < 6 && (
+                    <CameraCapture onFiles={(fl) => { const list = Array.from(fl).filter((f) => /^image\//.test(f.type) && f.size < 8 * 1024 * 1024); setImages((prev) => [...prev, ...list].slice(0, 6)); }}
+                      className="w-16 h-16 rounded-lg border-2 border-dashed border-orange-500/50 text-orange-500 flex flex-col items-center justify-center hover:bg-orange-500/5">
+                      <span className="text-lg leading-none">📷</span><span className="text-[9px]">Çək</span>
+                    </CameraCapture>
                   )}
                 </div>
                 <p className="text-[11px] text-muted mt-1">Problemi göstərən şəkillər əlavə edin (məs. qüsur, yazışma, yanlış model).</p>

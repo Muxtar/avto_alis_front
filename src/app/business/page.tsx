@@ -12,6 +12,7 @@ import QRShare from "@/components/QRShare";
 import IdCard, { IdMini } from "@/components/IdCard";
 import PageHero, { heroBtn, heroBtnPrimary } from "@/components/PageHero";
 import ProfessionPicker from "@/components/ProfessionPicker";
+import CameraCapture from "@/components/CameraCapture";
 
 // Obyektin fəaliyyət sahələri — 16 əsas kateqoriya.
 const ACTIVITY_AREAS = [
@@ -345,17 +346,22 @@ export default function BusinessPage() {
 
   const inputCls = "w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground";
   const fileInputCls = "block w-full text-xs mt-1 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500";
+  const camBtnCls = "inline-flex items-center gap-1 mt-1.5 px-2.5 py-1.5 rounded-lg bg-orange-500/10 text-orange-500 text-xs font-semibold hover:bg-orange-500/20";
   const fileLabel = (key: string, label: string) => (
-    <label className="block">
-      <span className="text-xs text-muted">{label}{files[key] ? " ✓" : ""}</span>
-      <input type="file" accept="image/*" onChange={(e) => setFiles((p) => ({ ...p, [key]: e.target.files?.[0] || null }))} className={fileInputCls} />
-    </label>
+    <div>
+      <label className="block">
+        <span className="text-xs text-muted">{label}{files[key] ? " ✓" : ""}</span>
+        <input type="file" accept="image/*" onChange={(e) => setFiles((p) => ({ ...p, [key]: e.target.files?.[0] || null }))} className={fileInputCls} />
+      </label>
+      <CameraCapture onPick={(f) => setFiles((p) => ({ ...p, [key]: f }))} className={camBtnCls}>📷 Şəkil çək</CameraCapture>
+    </div>
   );
   // PDF + şəkil qəbul edən böyük drop-zona (vergi/şirkət sənədi — kliklə və ya sürüklə-burax).
   const docFileLabel = (key: string, label: string, onPick?: (file: File | null) => void) => {
     const file = files[key];
     const pick = (fl: File | null) => { onPick ? onPick(fl) : setFiles((p) => ({ ...p, [key]: fl })); };
     return (
+      <div>
       <label
         onDragOver={(e) => { e.preventDefault(); setDocDropKey(key); }}
         onDragLeave={() => setDocDropKey((k) => (k === key ? null : k))}
@@ -366,6 +372,9 @@ export default function BusinessPage() {
           : <span>📎 {label} — kliklə və ya sürüklə-burax</span>}
         <input type="file" accept=".pdf,image/*" className="hidden" onChange={(e) => { pick(e.target.files?.[0] || null); e.currentTarget.value = ""; }} />
       </label>
+      {/* Sənədi telefonla birbaşa çəkmək */}
+      <CameraCapture onPick={(f) => pick(f)} className={camBtnCls}>📷 Şəkil çək</CameraCapture>
+      </div>
     );
   };
 
@@ -495,6 +504,7 @@ export default function BusinessPage() {
                 📎 Bank sənədi əlavə et — kliklə və ya sürüklə-burax (PDF/şəkil)
                 <input type="file" accept=".pdf,image/*" multiple className="hidden" onChange={(e) => { Array.from(e.target.files || []).forEach((file) => addBankDoc(file)); e.currentTarget.value = ""; }} />
               </label>
+              <CameraCapture onPick={(f) => addBankDoc(f)} className={camBtnCls}>📷 Şəkil çək</CameraCapture>
             </div>
 
             {identityReusable ? (
@@ -586,14 +596,20 @@ export default function BusinessPage() {
                   </div>
                   {/* Sənədləri yenilə (opsional) — yükləsəniz yenidən admin təsdiqinə gedir */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
                     <label className="text-[11px] text-muted">{bizEdit.proofType === "TAX_DOC" ? "Vergi sənədi (yenilə)" : "Şirkət sənədi (yenilə)"}
                       <input type="file" accept=".pdf,image/*" onChange={(e) => setBizEditDoc(e.target.files?.[0] || null)} className="block mt-0.5 text-xs text-muted file:mr-2 file:px-2 file:py-1 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500" />
                       {bizEditDoc && <span className="text-[10px] text-green-500">✓ {bizEditDoc.name}</span>}
                     </label>
+                      <CameraCapture onPick={setBizEditDoc} className={camBtnCls}>📷 Şəkil çək</CameraCapture>
+                    </div>
+                    <div>
                     <label className="text-[11px] text-muted">Bank sənədi (yenilə)
                       <input type="file" accept=".pdf,image/*" onChange={(e) => setBizEditBank(e.target.files?.[0] || null)} className="block mt-0.5 text-xs text-muted file:mr-2 file:px-2 file:py-1 file:rounded-lg file:border-0 file:bg-orange-500/10 file:text-orange-500" />
                       {bizEditBank && <span className="text-[10px] text-green-500">✓ {bizEditBank.name}</span>}
                     </label>
+                      <CameraCapture onPick={setBizEditBank} className={camBtnCls}>📷 Şəkil çək</CameraCapture>
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <button onClick={wrap(async () => {
