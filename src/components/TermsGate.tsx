@@ -60,6 +60,7 @@ export default function TermsGate() {
           .filter((d: { requiredForPurchase: boolean }) => d.requiredForPurchase)
           .map((d: { slug: string; version: number }) => `${d.slug}:${d.version}`)
           .sort().join(",");
+        if (!cur) return;   // məcburi sənəd yoxdur — soruşulası bir şey yoxdur
         setSig(cur);
         const localOk = readSaved() === cur;
 

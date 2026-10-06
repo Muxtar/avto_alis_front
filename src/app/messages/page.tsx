@@ -130,6 +130,10 @@ export default function MessagesPage() {
   // Söhbət siyahısının seqmenti: hamısı / şəxsi / iş.
   // Çat bölmələri: «Ödənişsiz» (şəxsi + iş + qruplar + qeydiyyatsız nömrələr) və «Ödənişli» (Rəy).
   const [segTab, setSegTab] = useState<"FREE" | "PAID">("FREE");
+  // Şəxs axtarışı gedir — nəticələr sol panelin bütün hündürlüyünü tutur,
+  // «Ödənişsiz / Ödənişli» sekmələri və söhbət siyahısı gizlənir.
+  const [peopleSearch, setPeopleSearch] = useState(false);
+  const searchFill = peopleSearch && sideTab === "chats";
   // Qeydiyyatsız nömrəyə yazılmış (gözləyən) söhbətlər və açıq olan.
   const [pendingThreads, setPendingThreads] = useState<any[]>([]);
   // «Rəy istə» pəncərəsi (platformada olmayan şəxsə) — qeyd + müddət.
@@ -1301,7 +1305,7 @@ export default function MessagesPage() {
         {/* Sol panel — masaüstündə daha geniş: söhbət sətrində məhsul adı,
             son mesaj və satıcı adı sığsın deyə 320px azlıq edirdi. */}
         <div className={`${active ? 'hidden sm:flex' : 'flex'} flex-col w-full sm:w-80 lg:w-96 xl:w-[26rem] border-r border-card-border shrink-0`}>
-          <div className="p-2 border-b border-card-border">
+          <div className={`p-2 border-b border-card-border ${searchFill ? "flex-1 min-h-0 flex flex-col" : ""}`}>
             {/* Başlıq sətri — WhatsApp üslubu: solda bölmənin adı, sağda "+".
                 Əvvəl burada "Mesajlar / Kontaktlar" adlı iki tab vardı; söz
                 yerinə "+" düyməsi qoyuldu, kontaktlar həmin menyudan açılır. */}
@@ -1377,8 +1381,8 @@ export default function MessagesPage() {
               <>
                 {/* Şəxs axtarışı — əvvəl söhbətlərdə, sonra sosial mediada.
                     Ana səhifə axtarışından bura köçürüldü (orada yalnız məhsul qaldı). */}
-                <div className="mt-2">
-                  <ChatPeopleSearch onPendingSocial={(t) => { if (t.kind === "social") setOfferTarget({ kind: "social", platform: t.platform, url: t.url, name: t.name, avatar: t.avatar }); }}
+                <div className={`mt-2 ${searchFill ? "flex-1 min-h-0 flex flex-col" : ""}`}>
+                  <ChatPeopleSearch onActiveChange={setPeopleSearch} onPendingSocial={(t) => { if (t.kind === "social") setOfferTarget({ kind: "social", platform: t.platform, url: t.url, name: t.name, avatar: t.avatar }); }}
                     people={(() => {
                       // Söhbətlər + kontaktlar (təkrarsız).
                       const rows: { id: number; name: string; avatar?: string | null; sub?: string }[] = chatList
@@ -1401,7 +1405,7 @@ export default function MessagesPage() {
                     Eyni şəxs həm dost, həm müştəri ola bilər. Məhsul və ya
                     biznes obyekti üzərindən gələn yazışma ayrı sətirdə durur ki,
                     satış mesajı şəxsi söhbətlə qarışmasın. */}
-                <div className="seg-tabs mt-2.5" role="tablist" aria-label="Söhbət bölmələri">
+                {!searchFill && <div className="seg-tabs mt-2.5" role="tablist" aria-label="Söhbət bölmələri">
                   {([
                     { k: "FREE" as const, label: "Ödənişsiz", icon: <Ico.Chat className="w-3.5 h-3.5" />, n: segUnread("FREE") },
                     { k: "PAID" as const, label: "Ödənişli", icon: <span className="text-[13px] leading-none">🗣️</span>, n: segUnread("PAID") },
@@ -1413,7 +1417,7 @@ export default function MessagesPage() {
                       {s.n > 0 && <span className="seg-badge">{s.n > 99 ? "99+" : s.n}</span>}
                     </button>
                   ))}
-                </div>
+                </div>}
               </>
             )}
           </div>
@@ -1472,7 +1476,7 @@ export default function MessagesPage() {
               )}
             </div>
           ) : (
-          <div className="flex-1 overflow-y-auto">
+          <div className={searchFill ? "hidden" : "flex-1 overflow-y-auto"}>
             {/* ── Peşə qrupları: qoşulma / çıxma təklifləri ── */}
             {segTab !== "PAID" && proInfo && (proInfo.leaveSuggestions?.length > 0 || proInfo.joinable?.some((j: any) => !j.optedOut)) && (
               <div className="m-2 rounded-2xl overflow-hidden border border-[var(--brand-to)]/25">

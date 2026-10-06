@@ -36,8 +36,10 @@ const PLAT: Record<string, { icon: string; label: string; cls: string }> = {
 const proxyImg = (u: string) => `${API}/avatar-proxy?url=${encodeURIComponent(u)}`;
 
 export default function ChatPeopleSearch({
-  people, onOpenChat, onPendingSocial,
+  people, onOpenChat, onPendingSocial, onActiveChange,
 }: {
+  /** Axtarış mətni var/yox — valideyn nəticələrə bütün paneli verir (söhbət siyahısını gizlədir). */
+  onActiveChange?: (active: boolean) => void;
   people: LocalPerson[];                       // chat + kontakt siyahısı
   onOpenChat: (p: LocalPerson) => void;
   /** Platformada olmayan sosial profilə yaz — gözləyən söhbət açılır. */
@@ -110,7 +112,7 @@ export default function ChatPeopleSearch({
           Əvvəl adi, kiçik (py-2, text-xs) sahə idi və yan paneldə gözə
           dəymirdi. İndi daha iri, rəngli çərçivəli və fokusda işıqlanan
           qutudur: içində axtarış ikonu, altında qısa izah. */}
-      <div className="rounded-2xl p-[2px] bg-gradient-to-r from-orange-500 via-fuchsia-500 to-sky-500 shadow-md transition-shadow focus-within:shadow-[0_0_0_4px_rgba(249,115,22,0.15)]">
+      <div className="shrink-0 rounded-2xl p-[2px] bg-gradient-to-r from-orange-500 via-fuchsia-500 to-sky-500 shadow-md transition-shadow focus-within:shadow-[0_0_0_4px_rgba(249,115,22,0.15)]">
         <div className="relative bg-card rounded-[14px]">
           <span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-orange-500">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,13 +121,13 @@ export default function ChatPeopleSearch({
           </span>
           <input
             value={q}
-            onChange={(e) => { setQ(e.target.value); setWeb(null); setWebErr(null); setTab("all"); }}
+            onChange={(e) => { setQ(e.target.value); onActiveChange?.(!!e.target.value.trim()); setWeb(null); setWebErr(null); setTab("all"); }}
             onKeyDown={(e) => e.key === "Enter" && searchWeb()}
             placeholder="Ad və ya ixtisas axtar…"
             className="w-full pl-11 pr-10 py-3.5 bg-transparent rounded-[14px] text-sm font-medium placeholder:text-muted/80 focus:outline-none"
           />
           {q ? (
-            <button onClick={() => { setQ(""); setWeb(null); setWebErr(null); setTab("all"); }} aria-label="Təmizlə"
+            <button onClick={() => { setQ(""); onActiveChange?.(false); setWeb(null); setWebErr(null); setTab("all"); }} aria-label="Təmizlə"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-input-bg text-muted hover:text-foreground flex items-center justify-center text-sm">✕</button>
           ) : null}
         </div>
@@ -144,7 +146,7 @@ export default function ChatPeopleSearch({
               Əvvəl nəticələrin ən altında kiçik mətn linki idi: ilk baxışda
               görünmürdü və sürüşən siyahının içində itirdi. ── */}
           <button onClick={searchWeb} disabled={webLoading || q.trim().length < 2}
-            className="mt-2.5 w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl border border-[var(--brand-to)]/30 bg-[var(--brand-soft)] text-left hover:border-[var(--brand-to)] disabled:opacity-60 transition-colors">
+            className="mt-2.5 w-full shrink-0 flex items-center gap-3 px-3.5 py-3 rounded-2xl border border-[var(--brand-to)]/30 bg-[var(--brand-soft)] text-left hover:border-[var(--brand-to)] disabled:opacity-60 transition-colors">
             <span className="w-10 h-10 shrink-0 rounded-xl cta-gradient text-white flex items-center justify-center text-lg">
               {webLoading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "🌐"}
             </span>
@@ -158,7 +160,7 @@ export default function ChatPeopleSearch({
           </button>
 
           {/* ── Bölmələr — say ilə; hansı bölmədə nə tapıldığı dərhal görünür ── */}
-          <div className="mt-2.5 flex gap-1.5 overflow-x-auto pb-0.5">
+          <div className="mt-2.5 flex gap-1.5 overflow-x-auto pb-0.5 shrink-0">
             {([
               ["all", "Hamısı", local.length + siteList.length + (web?.length || 0)],
               ["local", "Söhbətlər", local.length],
@@ -172,7 +174,10 @@ export default function ChatPeopleSearch({
             ))}
           </div>
 
-        <div className="mt-2 max-h-[58vh] overflow-y-auto overscroll-contain space-y-3 pr-0.5">
+        {/* Nəticələr panelin qalan hündürlüyünü tutur və öz içində sürüşür.
+            Əvvəl 58vh ilə məhdud idi: altında «Ödənişsiz / Ödənişli» sekmələri
+            və söhbət siyahısı qalırdı, nəticələr sıxılıb aşağı düşmürdü. */}
+        <div className={`mt-2 overflow-y-auto overscroll-contain space-y-3 pr-0.5 pb-3 ${onActiveChange ? "flex-1 min-h-0" : "max-h-[58vh]"}`}>
           {/* Heç nə tapılmayıb — nə etməli olduğunu deyirik */}
           {tab !== "web" && !siteLoading && local.length === 0 && siteList.length === 0 && !web && (
             <div className="rounded-xl border border-dashed border-input-border px-3 py-4 text-center">
