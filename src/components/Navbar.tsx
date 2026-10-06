@@ -419,7 +419,7 @@ export default function Navbar() {
             {/* Logo */}
             <Link href="/elanlar" className="order-1 flex items-center gap-2 shrink-0 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/tradixai-icon.svg" alt="tradixai" className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0" />
+              <img src="/tradixai-icon.svg" alt="tradixai" className="nav-logo w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0" />
               {/* Telefon ölçüsündə yalnız ikon — ana səhifəyə qayıtmaq üçün kifayətdir,
                   qalan yer axtarış sahəsinə verilir. */}
               <span className="nav-wordmark hidden sm:inline text-2xl sm:text-3xl font-extrabold tracking-tight">tradixai</span>
@@ -436,12 +436,12 @@ export default function Navbar() {
                   setCatTop(r.bottom + 4);
                   setCatOpen((v) => !v);
                 }}
-                className={`nav-glass ${catOpen ? "is-on" : ""} flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 h-11 rounded-xl text-white font-bold text-sm sm:text-[15px]`}>
+                className={`nav-cat nav-glass ${catOpen ? "is-on" : ""} flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 h-11 rounded-xl text-white font-bold text-sm sm:text-[15px]`}>
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 6h16M4 12h16M4 18h16" /></svg>
                 {/* Planşet enində (704px konteyner) yer azdır — yalnız ikon qalır,
                     mətn masaüstündən (lg) etibarən görünür. */}
                 <span className="hidden lg:inline">{t("navCatalog")}</span>
-                <svg className={`w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                <svg className={`nav-cat-chev w-4 h-4 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
               </button>
               {catOpen && (
                 /* Kataloq menyusu — birmarket üslubu mega menyu (3 səviyyə).
@@ -783,11 +783,14 @@ export default function Navbar() {
                 Telefonda ml-auto ilə sağa yaslanır (axtarış alt sətrə düşür);
                 masaüstündə şrink-0 (təbii en) — böyüyən axtarışın həmən sağında
                 durur ki, bell/ikonlarla search arasında böyük boşluq qalmasın. */}
-            <div className="order-3 ml-auto sm:ml-0 flex items-center justify-end gap-0.5 sm:gap-2 shrink-0">
+            {/* Telefonda `flex-1 basis-0`: ikon qrupu HEÇ VAXT alt sətrə düşmür (əvvəl dar
+                ekranda sığmayanda bütöv qrup aşağı sürüşürdü). Dar ekranda ikonlar
+                kiçilir — bax globals.css → «dar telefon». */}
+            <div className="nav-icons order-3 flex-1 basis-0 min-w-0 sm:flex-none sm:basis-auto sm:shrink-0 flex items-center justify-end gap-0.5 sm:gap-2">
               {/* Dil — telefonda alt naviqasiya sətri (md:block) gizlidir, orada
                   seçici görünmür; ona görə telefonda burada kompakt seçici var. */}
               <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)} aria-label="Dil"
-                translate="no" className="md:hidden nav-glass h-9 rounded-lg px-1 text-xs font-bold text-white bg-transparent outline-none">
+                translate="no" className="nav-lang md:hidden nav-glass h-9 rounded-lg px-1 text-xs font-bold text-white bg-transparent outline-none shrink min-w-0">
                 {languages.map((l) => <option key={l.code} value={l.code} className="text-black">{l.flag} {l.label}</option>)}
               </select>
               {/* Admin panelə qayıt — YALNIZ admin panelinə giriş edənlərdə.
@@ -830,7 +833,7 @@ export default function Navbar() {
               {isLoggedIn ? (
                 <div ref={userRef} className="relative">
                   <button onClick={() => setUserOpen(!userOpen)}
-                    className={`nav-icon ${userOpen ? "is-on" : ""} relative flex items-center justify-center w-11 h-11`} title={user?.name || "Profil"}>
+                    className={`nav-icon nav-profile ${userOpen ? "is-on" : ""} relative flex items-center justify-center w-11 h-11 shrink-0`} title={user?.name || "Profil"}>
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                     {totalUnread > 0 && (
                       <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse-soft">
