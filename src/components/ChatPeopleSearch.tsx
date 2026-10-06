@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
@@ -51,6 +51,10 @@ export default function ChatPeopleSearch({
   const [webLoading, setWebLoading] = useState(false);
   const [web, setWeb] = useState<any[] | null>(null);
   const [webErr, setWebErr] = useState<string | null>(null);
+  // Nəticə bölməsi: hamısı / söhbətlər / saytda / internet. İnternet axtarışı
+  // bitəndə özü «İnternet»ə keçir ki, nəticələr aşağıda itməsin.
+  const [tab, setTab] = useState<"all" | "local" | "site" | "web">("all");
+  const webRef = useRef<HTMLDivElement | null>(null);
 
   // ── 1) Yerli süzgəc — şəbəkə sorğusu YOXDUR ──
   const local = useMemo(() => {
@@ -88,7 +92,7 @@ export default function ChatPeopleSearch({
     const s = q.trim();
     if (s.length < 2) { toast("Ən azı 2 hərf yazın", "error"); return; }
     if (!isLoggedIn || !token) { toast("İnternetdə axtarış üçün daxil olun", "error"); return; }
-    setWebLoading(true); setWebErr(null); setWeb(null);
+    setWebLoading(true); setWebErr(null); setWeb(null); setTab("web");
     try {
       const r = await fetch(`${API}/search/web`, {
         method: "POST",
@@ -97,7 +101,7 @@ export default function ChatPeopleSearch({
       }).then((x) => x.json());
       if (r.success) setWeb(r.results || []);
       else setWebErr(r.message || "Nəticə tapılmadı");
-    } catch { setWebErr("Şəbəkə xətası"); } finally { setWebLoading(false); }
+    } catch { setWebErr("Şəbəkə xətası"); } finally { setWebLoading(false); setTimeout(() => webRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), 50); }
   };
 
   return (
@@ -115,13 +119,13 @@ export default function ChatPeopleSearch({
           </span>
           <input
             value={q}
-            onChange={(e) => { setQ(e.target.value); setWeb(null); setWebErr(null); }}
+            onChange={(e) => { setQ(e.target.value); setWeb(null); setWebErr(null); setTab("all"); }}
             onKeyDown={(e) => e.key === "Enter" && searchWeb()}
             placeholder="Ad və ya ixtisas axtar…"
             className="w-full pl-11 pr-10 py-3.5 bg-transparent rounded-[14px] text-sm font-medium placeholder:text-muted/80 focus:outline-none"
           />
           {q ? (
-            <button onClick={() => { setQ(""); setWeb(null); setWebErr(null); }} aria-label="Təmizlə"
+            <button onClick={() => { setQ(""); setWeb(null); setWebErr(null); setTab("all"); }} aria-label="Təmizlə"
               className="absolute right-2.5 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-input-bg text-muted hover:text-foreground flex items-center justify-center text-sm">✕</button>
           ) : null}
         </div>
@@ -135,19 +139,61 @@ export default function ChatPeopleSearch({
       )}
 
       {q.trim() && (
-        <div className="mt-3 max-h-[45vh] overflow-y-auto space-y-3">
+        <>
+          {/* ── İNTERNETDƏ AXTAR — axtarış qutusunun dərhal altında, iri və aydın.
+              Əvvəl nəticələrin ən altında kiçik mətn linki idi: ilk baxışda
+              görünmürdü və sürüşən siyahının içində itirdi. ── */}
+          <button onClick={searchWeb} disabled={webLoading || q.trim().length < 2}
+            className="mt-2.5 w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl border border-[var(--brand-to)]/30 bg-[var(--brand-soft)] text-left hover:border-[var(--brand-to)] disabled:opacity-60 transition-colors">
+            <span className="w-10 h-10 shrink-0 rounded-xl cta-gradient text-white flex items-center justify-center text-lg">
+              {webLoading ? <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : "🌐"}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-[var(--brand-to)] truncate">
+                {webLoading ? "İnternetdə axtarılır…" : web ? `«${q.trim()}» — yenidən axtar` : `«${q.trim()}» internetdə axtar`}
+              </span>
+              <span className="block text-[11px] text-muted truncate">Instagram · Facebook · X · LinkedIn hesabları</span>
+            </span>
+            <span className="shrink-0 text-[var(--brand-to)] text-lg leading-none">›</span>
+          </button>
+
+          {/* ── Bölmələr — say ilə; hansı bölmədə nə tapıldığı dərhal görünür ── */}
+          <div className="mt-2.5 flex gap-1.5 overflow-x-auto pb-0.5">
+            {([
+              ["all", "Hamısı", local.length + siteList.length + (web?.length || 0)],
+              ["local", "Söhbətlər", local.length],
+              ["site", "Saytda", siteList.length],
+              ["web", "İnternet", web ? web.length : null],
+            ] as const).map(([k2, label, n]) => (
+              <button key={k2} onClick={() => setTab(k2)}
+                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${tab === k2 ? "bg-[var(--brand-to)] border-[var(--brand-to)] text-white" : "bg-input-bg border-input-border text-muted hover:text-foreground"}`}>
+                {label}{n !== null ? <span className={`ml-1 ${tab === k2 ? "opacity-90" : "opacity-70"}`}>{n}</span> : null}
+              </button>
+            ))}
+          </div>
+
+        <div className="mt-2 max-h-[58vh] overflow-y-auto overscroll-contain space-y-3 pr-0.5">
+          {/* Heç nə tapılmayıb — nə etməli olduğunu deyirik */}
+          {tab !== "web" && !siteLoading && local.length === 0 && siteList.length === 0 && !web && (
+            <div className="rounded-xl border border-dashed border-input-border px-3 py-4 text-center">
+              <p className="text-sm font-semibold">«{q.trim()}» söhbətlərinizdə və saytda tapılmadı</p>
+              <p className="text-xs text-muted mt-0.5">Yuxarıdakı «internetdə axtar» düyməsi ilə sosial şəbəkə hesablarında axtarın.</p>
+            </div>
+          )}
+
           {/* ── Chat-dakılar ── */}
+          {(tab === "local" || (tab === "all" && local.length > 0)) && (
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wide text-orange-500 px-1 mb-1">Söhbətlərim</p>
             {local.length === 0 ? (
-              <p className="text-[11px] text-muted px-1 py-1">Söhbətlərinizdə tapılmadı.</p>
+              <p className="text-xs text-muted px-1 py-1">Söhbətlərinizdə tapılmadı.</p>
             ) : local.map((p) => (
               <button key={p.id} onClick={() => onOpenChat(p)}
                 className="w-full flex items-center gap-2.5 px-2 py-2 rounded-xl hover:bg-input-bg text-left transition-colors">
                 {p.avatar
                   // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={imgUrl(p.avatar)} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
-                  : <span className="w-8 h-8 rounded-full bg-input-bg flex items-center justify-center text-[11px] font-bold shrink-0">{(p.name || "?").slice(0, 1).toUpperCase()}</span>}
+                  ? <img src={imgUrl(p.avatar)} alt="" className="w-9 h-9 rounded-full object-cover shrink-0" />
+                  : <span className="w-9 h-9 rounded-full bg-input-bg flex items-center justify-center text-xs font-bold shrink-0">{(p.name || "?").slice(0, 1).toUpperCase()}</span>}
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold truncate">{p.name}</span>
                   {p.sub && <span className="block text-[11px] text-muted truncate">{p.sub}</span>}
@@ -155,9 +201,11 @@ export default function ChatPeopleSearch({
               </button>
             ))}
           </div>
+          )}
 
           {/* ── Saytdakı ixtisas sahibləri ── */}
-          <div className="border-t border-card-border pt-2">
+          {(tab === "site" || (tab === "all" && (siteLoading || siteList.length > 0))) && (
+          <div className={tab === "all" && local.length > 0 ? "border-t border-card-border pt-2" : ""}>
             <p className="text-[11px] font-bold uppercase tracking-wide text-[var(--brand-to)] px-1 mb-1">
               Saytdakı ixtisas sahibləri
             </p>
@@ -201,20 +249,26 @@ export default function ChatPeopleSearch({
               );
             })}
           </div>
+          )}
 
-          {/* ── Sosial media ── */}
-          <div className="border-t border-card-border pt-2">
-            <div className="flex items-center justify-between gap-2 px-1 mb-1">
-              <p className="text-[11px] font-bold uppercase tracking-wide text-muted">Sosial media</p>
-              <button onClick={searchWeb} disabled={webLoading}
-                className="text-[11px] font-bold text-[var(--brand-to)] disabled:opacity-50">
-                {webLoading ? "axtarılır…" : web ? "yenidən axtar" : "🌐 internetdə axtar"}
+          {/* ── Sosial media (internet) ── */}
+          {(tab === "web" || (tab === "all" && (webLoading || !!web || !!webErr))) && (
+          <div ref={webRef} className={tab === "all" ? "border-t border-card-border pt-2" : ""}>
+            <p className="text-[11px] font-bold uppercase tracking-wide text-muted px-1 mb-1.5">İnternet — sosial media hesabları</p>
+            {webLoading && (
+              <div className="space-y-1.5">
+                {[0, 1, 2].map((n) => <div key={n} className="h-[74px] rounded-xl bg-input-bg animate-pulse" />)}
+              </div>
+            )}
+            {!webLoading && !web && !webErr && (
+              <button onClick={searchWeb} className="w-full rounded-xl border border-dashed border-[var(--brand-to)]/40 px-3 py-4 text-center text-sm font-semibold text-[var(--brand-to)] hover:bg-[var(--brand-soft)]">
+                🌐 «{q.trim()}» internetdə axtar
               </button>
-            </div>
+            )}
 
-            {webErr && <p className="text-[11px] text-red-500 px-1">{webErr}</p>}
+            {webErr && <p className="text-xs text-red-500 px-1 py-1">{webErr}</p>}
             {web && web.length === 0 && !webErr && (
-              <p className="text-[11px] text-muted px-1">Açıq profil tapılmadı.</p>
+              <p className="text-xs text-muted px-1 py-1">«{q.trim()}» üzrə açıq sosial media profili tapılmadı. Adı fərqli yazılışla (məs. latın hərfləri ilə) yoxlayın.</p>
             )}
 
             {web?.map((r: any) => {
@@ -222,7 +276,7 @@ export default function ChatPeopleSearch({
               const src = r.siteUser?.avatar ? imgUrl(r.siteUser.avatar) : (r.avatarUrl ? proxyImg(r.avatarUrl) : null);
               const name = r.siteUser?.name || r.displayName || r.handle || r.title;
               return (
-                <div key={r.url} className={`rounded-xl border p-2 mb-1.5 ${r.siteUser ? "border-[var(--brand-to)] bg-[var(--brand-soft)]" : "border-card-border"}`}>
+                <div key={r.url} className={`rounded-xl border p-2.5 mb-2 ${r.siteUser ? "border-[var(--brand-to)] bg-[var(--brand-soft)]" : "border-card-border"}`}>
                   <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 min-w-0">
                     <span className="relative shrink-0">
                       {src ? (
@@ -236,10 +290,10 @@ export default function ChatPeopleSearch({
                       <span className={`absolute -bottom-0.5 -right-0.5 w-5 h-5 rounded-full border-2 border-card flex items-center justify-center text-[9px] ${m.cls}`}>{m.icon}</span>
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-bold truncate">
+                      <span className="block text-sm font-bold truncate">
                         {name}{r.verifiedBadge && <span className="text-[var(--brand-to)] ml-1">✔︎</span>}
                       </span>
-                      <span className="block text-[10px] text-muted truncate">
+                      <span className="block text-[11px] text-muted truncate">
                         {r.handle ? `@${r.handle}` : m.label}
                         {typeof r.followers === "number" ? ` · ${r.followers.toLocaleString("az-AZ")} izləyici` : ""}
                       </span>
@@ -249,19 +303,21 @@ export default function ChatPeopleSearch({
                   <div className="flex gap-1.5 mt-1.5">
                     {r.siteUser ? (
                       <button onClick={() => onOpenChat({ id: r.siteUser.id, name: r.siteUser.name, avatar: r.siteUser.avatar })}
-                        className="flex-1 py-1 rounded-lg text-[11px] font-bold text-white cta-gradient">💬 Chat</button>
+                        className="flex-1 py-1.5 rounded-lg text-xs font-bold text-white cta-gradient">💬 Chat</button>
                     ) : (
                       <button onClick={() => onPendingSocial({ kind: "social", platform: r.platform, url: r.url, handle: r.handle, name: r.displayName || r.handle || r.title, avatar: r.avatarUrl || null })}
-                        className="flex-1 py-1 rounded-lg text-[11px] font-bold text-white cta-gradient" title="Ödənişli təklif: müddət + qiymət + ilk mesaj">🗣️ Təklif göndər</button>
+                        className="flex-1 py-1.5 rounded-lg text-xs font-bold text-white cta-gradient" title="Ödənişli təklif: müddət + qiymət + ilk mesaj">🗣️ Təklif göndər</button>
                     )}
                     <a href={r.url} target="_blank" rel="noopener noreferrer"
-                      className="px-2 py-1 rounded-lg border border-card-border text-[11px] font-semibold">↗</a>
+                      className="px-3 py-1.5 rounded-lg border border-card-border text-xs font-semibold">↗</a>
                   </div>
                 </div>
               );
             })}
           </div>
+          )}
         </div>
+        </>
       )}
 
     </>
