@@ -5,6 +5,7 @@ import MobileBottomNav from "@/components/MobileBottomNav";
 import InquiryChatbot from "@/components/InquiryChatbot";
 import Footer from "@/components/Footer";
 import BackButton from "@/components/BackButton";
+import TermsGate from "@/components/TermsGate";
 
 // Sayt "chrome"-u (header/Navbar, üst zolaq, footer, mobil-nav, chatbot).
 // Admin panelində GÖSTƏRİLMİR — admin sahəsinin öz header/sidebar-ı var,
@@ -25,6 +26,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       <Footer />
       <InquiryChatbot />
       <MobileBottomNav />
+      <TermsGate />
     </>
   );
 }
