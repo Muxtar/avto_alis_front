@@ -437,8 +437,7 @@ export default function OrdersPage() {
       fd.append("orderId", String(orderId));
       fd.append("reason", returnReason);
       fd.append("reasonText", returnReasonText.trim());
-      fd.append("quantity", returnQuantity);
-      if (returnItemId) fd.append("orderItemId", returnItemId);
+      if (returnItemId) { fd.append("orderItemId", returnItemId); fd.append("quantity", returnQuantity || "1"); }
       returnFiles.forEach((f) => fd.append("images", f));
       // Cavab OXUNUR: əvvəl «müddət bitib», «miqdar çoxdur» kimi xətalar
       // səssizcə udulurdu və pəncərə uğur kimi bağlanırdı.
@@ -877,7 +876,7 @@ export default function OrdersPage() {
                         <p className="text-sm font-semibold">{t("requestReturn")}</p>
                         <div>
                           <label className="text-xs text-muted">{t("returnReasonText")}</label>
-                          <select value={returnItemId} onChange={(e) => setReturnItemId(e.target.value)} className={inputCls}>
+                          <select value={returnItemId} onChange={(e) => { setReturnItemId(e.target.value); setReturnQuantity("1"); }} className={inputCls}>
                             <option value="">{t("fullRefund")}</option>
                             {order.items.map((item: any) => (
                               <option key={item.id} value={item.id}>{item.title} (x{item.quantity})</option>
@@ -897,7 +896,13 @@ export default function OrdersPage() {
                           </div>
                           <div>
                             <label className="text-xs text-muted">{t("returnQuantity")}</label>
-                            <input type="number" min="1" value={returnQuantity} onChange={(e) => setReturnQuantity(e.target.value)} className={inputCls} />
+                            {(() => {
+                              // Tam iadədə miqdar soruşulmur; məhsul seçiləndə ən çoxu alınan say.
+                              const it = order.items.find((i: any) => String(i.id) === returnItemId);
+                              if (!it) return <input disabled value="hamısı" className={inputCls + " opacity-60"} />;
+                              return <input type="number" min="1" max={it.quantity} step="1" value={returnQuantity} className={inputCls}
+                                onChange={(e) => { const n = parseInt(e.target.value); setReturnQuantity(Number.isFinite(n) ? String(Math.min(it.quantity, Math.max(1, n))) : ""); }} />;
+                            })()}
                           </div>
                         </div>
                         <div>

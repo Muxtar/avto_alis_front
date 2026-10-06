@@ -197,7 +197,7 @@ function StepBar({ ret }: { ret: any }) {
   );
 }
 
-type FormKind = null | "ship" | "approve" | "reject" | "complain" | "problem";
+type FormKind = null | "ship" | "approve" | "reject" | "complain" | "problem" | "receive";
 
 function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
   ret: any; side: Side; expanded: boolean; onToggle: () => void; detail: any; reload: () => Promise<void>; now: number;
@@ -212,6 +212,9 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
   const [amount, setAmount] = useState("");
   const [busy, setBusy] = useState(false);
   const [showTimeline, setShowTimeline] = useState(false);
+  // Qaytarılan mal yenidən satışa çıxsınmı. Qüsurlu malda susmaya görə YOX —
+  // xarab mal stoka düşüb başqa alıcıya satılmasın.
+  const [restock, setRestock] = useState<boolean>(ret.restock ?? ret.reason !== "DEFECTIVE");
 
   const dispute = detail?.dispute || null;
   const st = STATUS[ret.status] || { label: ret.status, cls: "bg-gray-500/10 text-gray-500 border-gray-500/20" };
@@ -275,14 +278,20 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
     done(await call(`/returns/${ret.id}/approve`, "PUT", body), "İadə təsdiqləndi ✓");
   };
   const doReject = async () => done(await call(`/returns/${ret.id}/reject`, "PUT", fd({ sellerNote: text.trim() }, files), true), "İadə rədd edildi");
-  const doReceive = async () => {
-    if (!confirm("Məhsulu qaytarılmış və qaydasında qəbul etdiniz?")) return;
-    done(await call(`/returns/${ret.id}/receive`, "PUT"), "Qəbul təsdiqləndi ✓");
-  };
+  const doReceive = async () => done(await call(`/returns/${ret.id}/receive`, "PUT", { restock }), "Qəbul təsdiqləndi ✓");
   const doRefund = async () => {
-    if (!confirm(`${money(ret.refundAmount)} AZN alıcıya qaytarılsın?`)) return;
-    done(await call(`/returns/${ret.id}/refund`, "PUT"), "Pul qaytarıldı ✓");
+    if (!confirm(`${money(ret.refundAmount)} AZN alıcıya qaytarılsın?\n${restock ? `${ret.quantity} ədəd stoka qaytarılacaq.` : "Məhsul stoka qaytarılmayacaq."}`)) return;
+    done(await call(`/returns/${ret.id}/refund`, "PUT", { restock }), restock ? `Pul qaytarıldı ✓ ${ret.quantity} ədəd stoka əlavə olundu` : "Pul qaytarıldı ✓");
   };
+  const restockBox = (
+    <label className="flex items-start gap-2 cursor-pointer text-xs">
+      <input type="checkbox" checked={restock} onChange={(e) => setRestock(e.target.checked)} className="w-4 h-4 mt-0.5 accent-orange-500 shrink-0" />
+      <span>
+        <b>Məhsulu stoka qaytar ({ret.quantity} ədəd)</b>
+        <span className="block text-[11px] text-muted">Pul qaytarılanda elanın stoku artır və məhsul yenidən satışa çıxır. Mal qüsurlu / satılmaz vəziyyətdədirsə işarəni götürün.</span>
+      </span>
+    </label>
+  );
   const doComplain = async () => done(await call(`/returns/${ret.id}/dispute`, "POST", fd({ description: text.trim() }, files), true), "Şikayətiniz göndərildi — satıcının reytinqinə təsir edəcək");
   const doProblem = async () => done(await call(`/returns/${ret.id}/receive-problem`, "POST", fd({ description: text.trim() }, files), true), "Problem bildirildi — admin yoxlayacaq");
 
@@ -388,6 +397,12 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
             )
           )}
 
+          {ret.status === "REFUNDED" && side === "selling" && (
+            <p className="text-xs rounded-lg px-2.5 py-1.5 bg-input-bg text-muted">
+              📦 {ret.restockedQty > 0 ? `${ret.restockedQty} ədəd elanın stokuna qaytarıldı.` : ret.receivedAt ? "Məhsul stoka qaytarılmadı (seçiminizlə)." : "Məhsul sizə çatmadığı üçün stok dəyişmədi."}
+            </p>
+          )}
+
           {/* Satıcı haqqında şikayət (reputasiya) */}
           {ret.disputeId && (
             <div className="rounded-xl border border-orange-500/30 bg-orange-500/5 p-3 flex items-center justify-between gap-2 flex-wrap">
@@ -418,7 +433,7 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
               </>
             )}
             {side === "selling" && ret.status === "RETURN_SHIPPED" && (
-              <button disabled={busy} onClick={doReceive} className={brand}>Qəbul etdim</button>
+              <button onClick={() => open("receive")} className={brand}>Qəbul etdim</button>
             )}
             {side === "selling" && ret.status === "RETURN_RECEIVED" && (
               <button disabled={busy} onClick={doRefund} className={brand}>{busy ? "..." : `Pulu qaytar (${money(ret.refundAmount)} AZN)`}</button>
@@ -428,6 +443,18 @@ function ReturnCard({ ret, side, expanded, onToggle, detail, reload, now }: {
             )}
           </div>
 
+          {side === "selling" && ret.status === "RETURN_RECEIVED" && form === null && restockBox}
+          {form === "receive" && (
+            <div className="rounded-xl bg-input-bg/50 p-3 space-y-2.5">
+              <p className="text-sm font-semibold">Qaytarılan məhsulu qəbul etdiniz?</p>
+              <p className="text-[11px] text-muted">Məhsulu yoxlayın: say, komplektlik, vəziyyət. Zədəli, fərqli və ya əskik gəlibsə qəbul etməyin — «Problem var» ilə foto göndərin. Qəbuldan sonra pul 48 saat ərzində qaytarılmalıdır.</p>
+              {restockBox}
+              <div className="flex gap-2">
+                <button disabled={busy} onClick={doReceive} className={brand}>{busy ? "..." : "Qəbulu təsdiqlə"}</button>
+                <button onClick={() => setForm(null)} className={ghost}>Bağla</button>
+              </div>
+            </div>
+          )}
           {form === "ship" && (
             <div className="rounded-xl bg-input-bg/50 p-3 space-y-2">
               <p className="text-sm font-semibold">Məhsulu necə göndərdiniz?</p>
