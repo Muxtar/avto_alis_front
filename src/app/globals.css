@@ -1232,7 +1232,14 @@ button.nav-glass { border-radius: 12px; }
   background: var(--card);
   border: 1px solid var(--card-border);
   border-radius: 20px;
-  overflow: hidden;
+  /* Menyu ekrana sığmayanda İÇİNDƏ sürüşür. Əvvəl burada `overflow: hidden` Tailwind-in
+     `overflow-y-auto` sinfini üstələyirdi: kiçik telefonda alt hissə («Çıxış») kəsilir,
+     ora çatmaq olmurdu. Hündürlük görünən ekrana (dvh — brauzer paneli çıxılmış) görədir. */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  max-height: calc(100vh - 5.5rem);
+  max-height: calc(100dvh - 5.5rem);
   box-shadow: 0 24px 60px -24px rgba(15, 23, 42, .45), 0 2px 6px rgba(15, 23, 42, .06);
   animation: umenuIn .18s ease-out;
   transform-origin: top right;
@@ -1356,12 +1363,19 @@ button.add-listing-btn { border-radius: 12px; }
 }
 /* DAR TELEFON — header bir sətirdə qalsın. Ekran eni azaldıqca ikonlar, aralar və
    düymələr kiçilir; heç bir ikon alt sətrə düşmür. */
+/* Telefonda dil düyməsi — sabit en (sıxılıb yarımçıq görünməsin). */
+header .nav-lang { width: 2.75rem; padding: 0; }
+/* Telefonda istifadəçi menyusu: başlıq (üstdə) + alt naviqasiya (altda) çıxılır ki,
+   son sətir — «Çıxış» — alt menyunun arxasında qalmasın. */
+@media (max-width: 767px) {
+  .umenu { max-height: calc(100vh - 11.5rem); max-height: calc(100dvh - 11.5rem); }
+}
 @media (max-width: 420px) {
   header .nav-icon svg { width: 25px; height: 25px; }
   header .nav-icons > .nav-icon, header .nav-icons .nav-icon { padding-left: 4px; padding-right: 4px; }
   header .nav-icons .w-11 { width: 2.4rem; padding: 0; }
   header .nav-cat { padding-left: 9px; padding-right: 9px; gap: 3px; }
-  header .nav-lang { padding-left: 0; padding-right: 0; font-size: 11px; }
+  header .nav-lang { width: 2.4rem; font-size: 11px; }
 }
 @media (max-width: 380px) {
   header .nav-icon svg { width: 23px; height: 23px; }
@@ -1372,13 +1386,13 @@ button.add-listing-btn { border-radius: 12px; }
   header .nav-cat-chev { display: none; }
   /* Sayğac nişanları kiçilir və yuxarı çəkilir — kiçilmiş ikonu örtməsin. */
   header .nav-icons .nav-icon span.absolute { min-width: 15px; height: 15px; font-size: 9px; padding: 0 3px; top: -9px; }
-  header .nav-lang { max-width: 3.1rem; }
+  header .nav-lang { width: 2.2rem; }
 }
 @media (max-width: 340px) {
   header .nav-icon svg { width: 21px; height: 21px; }
   header .nav-icons .nav-icon { padding-left: 2px; padding-right: 2px; }
   header .nav-icons .w-11 { width: 1.9rem; }
-  header .nav-lang { max-width: 2.6rem; font-size: 10px; }
+  header .nav-lang { width: 2rem; font-size: 10px; }
 }
 
 /* ── ADMIN PANEL — saytın yeni dili: tünd header + brend çipli sidebar ── */

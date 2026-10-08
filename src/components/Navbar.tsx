@@ -67,6 +67,7 @@ export default function Navbar() {
   const { toast } = useToast();
   const router = useRouter();
   const [langOpen, setLangOpen] = useState(false);
+  const [mobLangOpen, setMobLangOpen] = useState(false);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [outOpen, setOutOpen] = useState(false); // Məndən gedənlər (alışlar)
@@ -789,10 +790,30 @@ export default function Navbar() {
             <div className="nav-icons order-3 flex-1 basis-0 min-w-0 sm:flex-none sm:basis-auto sm:shrink-0 flex items-center justify-end gap-0.5 sm:gap-2">
               {/* Dil — telefonda alt naviqasiya sətri (md:block) gizlidir, orada
                   seçici görünmür; ona görə telefonda burada kompakt seçici var. */}
-              <select value={locale} onChange={(e) => setLocale(e.target.value as Locale)} aria-label="Dil"
-                translate="no" className="nav-lang md:hidden nav-glass h-9 rounded-lg px-1 text-xs font-bold text-white bg-transparent outline-none shrink min-w-0">
-                {languages.map((l) => <option key={l.code} value={l.code} className="text-black">{l.flag} {l.label}</option>)}
-              </select>
+              {/* Öz düyməmiz (brauzerin <select>-i yox): dar ekranda sistem seçicisi sıxılır,
+                  bayraq və ox üst-üstə düşüb yarımçıq görünürdü. Düymə sabit ölçüdədir,
+                  yalnız dil kodunu göstərir; siyahı altında açılır. */}
+              <div className="relative md:hidden shrink-0" translate="no">
+                <button type="button" onClick={() => setMobLangOpen((v) => !v)} aria-label="Dil" aria-expanded={mobLangOpen}
+                  className="nav-lang nav-glass h-9 rounded-lg flex items-center justify-center gap-0.5 text-xs font-bold text-white">
+                  {current.label}
+                  <svg className={`w-2.5 h-2.5 opacity-80 transition-transform ${mobLangOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {mobLangOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setMobLangOpen(false)} />
+                    <div className="absolute right-0 mt-2 w-28 bg-card text-foreground border border-card-border rounded-xl shadow-xl overflow-hidden z-50">
+                      {languages.map((lang) => (
+                        <button key={lang.code} type="button" onClick={() => { setLocale(lang.code); setMobLangOpen(false); }}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium ${locale === lang.code ? "bg-input-bg" : "hover:bg-input-bg"}`}>
+                          <span>{lang.flag}</span><span>{lang.label}</span>
+                          {locale === lang.code && <span className="ml-auto text-[var(--brand-to)]">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
               {/* Admin panelə qayıt — YALNIZ admin panelinə giriş edənlərdə.
                   Adi istifadəçi bu düyməni heç vaxt görmür. */}
               {isAdminSession && (
@@ -842,7 +863,7 @@ export default function Navbar() {
                     )}
                   </button>
                   {userOpen && (
-                    <div className="umenu absolute right-0 mt-2.5 w-[300px] max-w-[calc(100vw-1.5rem)] text-foreground z-50 max-h-[calc(100vh-5rem)] overflow-y-auto orders-scroll">
+                    <div className="umenu absolute right-0 mt-2.5 w-[300px] max-w-[calc(100vw-1.5rem)] text-foreground z-50 orders-scroll">
                       {/* Başlıq — kimlik kartı zolağı: avatar, ad, telefon */}
                       <div className="brand-band px-4 py-3.5">
                         <div className="flex items-center gap-3">
