@@ -817,8 +817,11 @@ export default function Navbar() {
               {/* Admin panelə qayıt — YALNIZ admin panelinə giriş edənlərdə.
                   Adi istifadəçi bu düyməni heç vaxt görmür. */}
               {isAdminSession && (
+                // Telefonda (hesaba daxil olanda) bu düymə başlıqda GÖSTƏRİLMİR — altıncı ikon
+                // sətrə sığmır, ikonlar bir-birinin üstünə çıxırdı. Orada profil menyusunun
+                // ilk sətridir («Admin panel»).
                 <Link href="/admin" title="Admin panelə qayıt"
-                  className="nav-icon flex items-center gap-1.5 h-11 px-1.5 text-xs font-bold shrink-0">
+                  className={`nav-icon ${isLoggedIn ? "hidden sm:flex" : "flex"} items-center gap-1.5 h-11 px-1.5 text-xs font-bold shrink-0`}>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
                   <span className="hidden xs:inline">Admin</span>
                 </Link>
@@ -894,6 +897,12 @@ export default function Navbar() {
                         </div>
                       </div>
                       <div className="py-1.5">
+                      {isAdminSession && (
+                        <Link href="/admin" onClick={() => setUserOpen(false)} className="umenu-item sm:hidden font-semibold">
+                          <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
+                          Admin panel
+                        </Link>
+                      )}
                       <Link href="/profile" onClick={() => setUserOpen(false)} className="umenu-item">
                         <svg className="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                         {t("navProfile")}
