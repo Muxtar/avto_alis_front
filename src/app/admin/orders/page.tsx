@@ -1,4 +1,5 @@
 "use client";
+import Pager from "@/app/admin/Pager";
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
@@ -190,7 +191,7 @@ export default function AdminOrdersPage() {
                     : order.paymentStatus === "FAILED" ? "bg-red-500/10 text-red-500 border-red-500/20"
                     : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"
                   }`}>
-                    {order.paymentMethod === "CARD" ? "💳" : order.paymentMethod === "WALLET" ? "👝" : "💵"} {order.paymentStatus}
+                    {order.paymentMethod === "CARD" ? "💳" : order.paymentMethod === "WALLET" ? "👝" : "💵"} {({ PAID: "Ödənilib", PENDING: order.paymentMethod === "CASH" ? "Nağd — təhvildə" : "Ödəniş gözlənilir", FAILED: "Ödəniş alınmadı", REFUNDED: "Pul qaytarılıb" } as Record<string, string>)[order.paymentStatus] || order.paymentStatus}
                   </span>
                   <span className="text-orange-500 font-bold text-sm">{order.total.toFixed(2)} AZN</span>
                   {order.installmentMonths ? (
@@ -205,7 +206,7 @@ export default function AdminOrdersPage() {
                     </span>
                   ) : null}
                                     {/* İadə et — yalnız kartla ödənilmiş sifarişlər üçün */}
-                  {order.gatewayOrderId && order.paymentStatus === "PAID" && (
+                  {(order.gatewayOrderId || order.gatewayRef) && order.paymentStatus === "PAID" && (
                     <button onClick={() => refundOrder(order.id, order.total)}
                       className="px-2.5 py-1 bg-red-500/10 text-red-500 border border-red-500/20 rounded-lg text-xs font-medium hover:bg-red-500/20">
                       {t("adminRefund") || "İadə et"}
@@ -290,18 +291,7 @@ export default function AdminOrdersPage() {
           ))}
         </div>
       )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button key={p} onClick={() => setPage(p)}
-              className={`w-8 h-8 rounded-lg text-xs font-medium ${page === p ? "bg-orange-500 text-white" : "bg-input-bg border border-input-border text-muted hover:text-foreground"}`}>
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
+      <Pager page={page} totalPages={totalPages} onChange={setPage} />
     </div>
   );
 }

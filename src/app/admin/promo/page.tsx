@@ -181,6 +181,8 @@ export default function AdminPromoPage() {
               <input
                 type="number"
                 step="0.01"
+                min="0.01"
+                max={form.discountType === "PERCENT" ? 100 : undefined}
                 value={form.discountValue}
                 onChange={(e) => setForm({ ...form, discountValue: e.target.value })}
                 required

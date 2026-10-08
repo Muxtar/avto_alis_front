@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
 import ReferralPayouts from "./ReferralPayouts";
@@ -9,7 +9,7 @@ interface SellerRow {
   sellerId: number; name: string; phone: string;
   available: number; pending: number; paidOut: number; commissionDueCash: number;
 }
-interface Payout { id: number; sellerId: number; sellerName: string; amount: number; method: string | null; reference: string | null; createdName: string; createdAt: string; }
+interface Payout { id: number; sellerId: number; sellerName: string; amount: number; method: string | null; reference: string | null; createdName: string; createdAt: string; reversedAt?: string | null; }
 
 const az = (n: number) => (n || 0).toLocaleString("az-AZ", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
@@ -43,7 +43,23 @@ export default function AdminPayoutsPage() {
     } catch { toast("Xəta", "error"); } finally { setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
-  useEffect(() => { load(); }, [load]);
+  // İlk yükləmə spinnerlə; axtarış isə SƏSSİZ və gecikmə ilə — əvvəl hər hərfdə bütün
+  // səhifə spinnerə çevrilir, axtarış qutusu fokusunu itirirdi (yalnız 1 hərf yazmaq olurdu).
+  const first = useRef(true);
+  useEffect(() => {
+    if (first.current) { first.current = false; load(); return; }
+    const tm = setTimeout(() => load(true), 350);
+    return () => clearTimeout(tm);
+  }, [load]);
+  const reversePayout = async (p: any) => {
+    const reason = prompt(`${az(p.amount)} ₼-lik ödənişi geri alırsınız (səhvən «ödənildi» işarələnibsə). Səbəb yazın:`);
+    if (!reason?.trim()) return;
+    try {
+      const r = await fetch(`${API}/admin/payouts/${p.id}/reverse`, { method: "POST", headers: { ...H(), "Content-Type": "application/json" }, body: JSON.stringify({ reason }) }).then((x) => x.json());
+      if (r.success) { toast(`Geri alındı — ${r.restored} sətir yenidən ödəniləcək`, "success"); load(true); }
+      else toast(r.message || "Xəta", "error");
+    } catch { toast("Xəta", "error"); }
+  };
   // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
   useAdminLive(["payout", "order", "refund", "return"], () => { load(true); });
 
@@ -137,8 +153,14 @@ export default function AdminPayoutsPage() {
                 <div key={p.id} className="p-3 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">{p.sellerName}</span>
-                    <span className="font-bold text-green-600">{az(p.amount)} ₼</span>
+                    <span className={`font-bold ${p.reversedAt ? "text-muted line-through" : "text-green-600"}`}>{az(p.amount)} ₼</span>
                   </div>
+                  {p.reversedAt ? (
+                    <p className="text-[11px] text-red-500 font-semibold">↩ Geri alınıb · {new Date(p.reversedAt).toLocaleDateString("az-AZ")}</p>
+                  ) : (
+                    // Səhv ödənişi buradan geri almaq olur — biznes kartı hamısı ödənəndən sonra siyahıdan itir.
+                    <button onClick={() => reversePayout(p)} className="float-right ml-2 px-2 py-0.5 rounded border border-red-500/40 text-red-600 text-[11px] font-semibold hover:bg-red-500/10">geri al</button>
+                  )}
                   <p className="text-[11px] text-muted">{p.method || "—"}{p.reference ? ` · ${p.reference}` : ""} · {p.createdName} · {new Date(p.createdAt).toLocaleDateString("az-AZ")}</p>
                 </div>
               ))}

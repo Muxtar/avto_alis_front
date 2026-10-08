@@ -11,16 +11,18 @@ const MODULE_LABELS: Record<string, string> = {
   finance: "Maliyyə", businesses: "Biznes / VÖEN", kyc: "KYC müraciətləri", credentials: "Sənədlər",
   complaints: "Şikayətlər", social: "Sosial linklər", promo: "Promo", comments: "Şərhlər",
   broadcast: "Bildiriş", banners: "Karusel", couriers: "Kuryerlər", settings: "Tənzimləmələr",
+  finance_payouts: "Satıcı ödənişləri", audit: "Audit jurnalı", ai: "AI və xidmətlər",
+  content: "Səhifələr / qaydalar", support: "Dəstək müraciətləri", outreach: "Sosial dəvətlər",
 };
 
 // Hazır rol şablonları — checkbox-ları sürətlə doldurmaq üçün.
 const ROLE_TEMPLATES: { name: string; perms: string[] }[] = [
   { name: "Moderator", perms: ["listings", "comments", "complaints", "social"] },
   { name: "Doğrulama (KYC)", perms: ["kyc", "businesses", "credentials", "social"] },
-  { name: "Maliyyə", perms: ["finance", "orders", "returns"] },
+  { name: "Maliyyə", perms: ["finance", "finance_payouts", "orders", "returns"] },
   { name: "Logistika", perms: ["orders", "couriers", "returns"] },
   { name: "Marketinq", perms: ["promo", "banners", "broadcast"] },
-  { name: "Dəstək", perms: ["users", "complaints"] },
+  { name: "Dəstək", perms: ["support", "complaints", "returns"] },
 ];
 
 interface Admin {
@@ -117,7 +119,10 @@ export default function AdminAdminsPage() {
     } catch { toast("Xəta", "error"); } finally { setBusyId(null); }
   };
 
-  const promote = async (userId: number) => {
+  const promote = async (userId: number, name: string) => {
+    // Bir səhv klik istifadəçini admin edirdi — təsdiq soruşulur. Yeni admin icazə
+    // təyin edilənə qədər heç bir bölməyə girə bilmir.
+    if (!confirm(`«${name}» admin edilsin?\n\nİcazə modullarını siz seçənə qədər heç bir bölməyə girişi olmayacaq.`)) return;
     setBusyId(-1);
     try {
       const res = await fetch(`${API}/admin/admins`, {
@@ -163,7 +168,7 @@ export default function AdminAdminsPage() {
             {candidates.map((u) => (
               <div key={u.id} className="flex items-center justify-between gap-3 px-3 py-2 rounded-lg bg-input-bg">
                 <div className="min-w-0"><p className="text-sm font-medium truncate">{u.name}</p><p className="text-[11px] text-muted">{u.phone}</p></div>
-                <button onClick={() => promote(u.id)} disabled={busyId === -1} className="shrink-0 px-3 py-1.5 text-xs font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50">Admin et</button>
+                <button onClick={() => promote(u.id, u.name)} disabled={busyId === -1} className="shrink-0 px-3 py-1.5 text-xs font-semibold text-white bg-orange-500 rounded-lg hover:bg-orange-600 disabled:opacity-50">Admin et</button>
               </div>
             ))}
           </div>
@@ -181,7 +186,7 @@ export default function AdminAdminsPage() {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold">{a.name}</span>
                     {a.isSuperAdmin && <span className="px-2 py-0.5 bg-red-500/15 text-red-500 rounded text-[10px] font-bold">SUPER ADMIN</span>}
-                    {a.unconfigured && <span className="px-2 py-0.5 bg-amber-500/15 text-amber-600 rounded text-[10px] font-bold" title="İcazə təyin edilməyib — hər şeyə girişi var. Aşağıdan modul seçib 'Yadda saxla' etsəniz məhdudlaşacaq.">TAM GİRİŞ (KONFİQ YOX)</span>}
+                    {a.unconfigured && <span className="px-2 py-0.5 bg-amber-500/15 text-amber-600 rounded text-[10px] font-bold" title="Köhnə admin: icazə təyin edilməyib — maliyyə, istifadəçilər, tənzimləmələr və audit xaric bütün bölmələrə girişi var.">GENİŞ GİRİŞ (KONFİQ YOX)</span>}
                     {a.isBlocked && <span className="px-2 py-0.5 bg-gray-500/15 text-gray-500 rounded text-[10px] font-bold">BLOKLU</span>}
                   </div>
                   <p className="text-[11px] text-muted">{a.phone}</p>
@@ -197,8 +202,11 @@ export default function AdminAdminsPage() {
                 <>
                   {a.unconfigured && (
                     <p className="text-[11px] text-amber-600 bg-amber-500/10 rounded-lg px-2.5 py-1.5 mb-2">
-                      Bu adminin icazəsi təyin edilməyib — hazırda <b>hər şeyə girişi var</b>. Aşağıdan modul seçib «Yadda saxla» etsəniz yalnız seçilənlərə məhdudlaşacaq.
+                      Bu köhnə adminin icazəsi təyin edilməyib — hazırda maliyyə, istifadəçilər, tənzimləmələr və audit xaric <b>bütün bölmələrə girişi var</b>. Modul seçib «Yadda saxla» etsəniz yalnız seçilənlərə məhdudlaşacaq; heç nə seçməyib saxlasanız girişi tam bağlanacaq.
                     </p>
+                  )}
+                  {!a.unconfigured && a.permissions.length === 0 && (
+                    <p className="text-[11px] text-red-500 bg-red-500/10 rounded-lg px-2.5 py-1.5 mb-2">Bu adminin <b>heç bir bölməyə girişi yoxdur</b> — modul seçib «Yadda saxla» edin.</p>
                   )}
                   {/* Rol şablonları */}
                   <div className="flex flex-wrap gap-1.5 mb-3">

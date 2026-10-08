@@ -34,6 +34,8 @@ function nameMatch(a: string, b: string): boolean {
   return common >= Math.min(2, Math.min(wa.length, wb.length));
 }
 
+const BIZ_ST: Record<string, string> = { PENDING: "Gözləmədə", APPROVED: "Təsdiqlənib", REJECTED: "Rədd edilib" };
+
 export default function AdminBusinessesPage() {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -66,15 +68,22 @@ export default function AdminBusinessesPage() {
   // ANLIQ: yeni biznes müraciəti / yenidən təsdiqə düşən biznes.
   useAdminLive(["business", "object"], () => { load(true); });
 
+  // Axtarış gecikmə ilə tətbiq olunur — əvvəl hər hərfdə siyahı spinnerlə əvəz olunurdu
+  // və gec gələn köhnə cavab yenisinin üstünə yazıla bilirdi.
+  const [debounced, setDebounced] = useState("");
+  useEffect(() => { const tm = setTimeout(() => setDebounced(search.trim()), 350); return () => clearTimeout(tm); }, [search]);
+  const reqSeq = useRef(0);
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
+    const seq = ++reqSeq.current;
     try {
-      const res = await fetch(`${API}/admin/businesses?status=${filter}&search=${encodeURIComponent(search)}${showDeleted ? "&includeDeleted=1" : ""}`, { headers });
+      const res = await fetch(`${API}/admin/businesses?status=${filter}&search=${encodeURIComponent(debounced)}${showDeleted ? "&includeDeleted=1" : ""}`, { headers });
       const data = await res.json();
+      if (seq !== reqSeq.current) return;   // daha yeni sorğu gedib
       setItems(data.businesses || []);
-    } catch { toast(t("error"), "error"); } finally { if (!silent) setLoading(false); }
+    } catch { toast(t("error"), "error"); } finally { if (!silent && seq === reqSeq.current) setLoading(false); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, search, showDeleted]);
+  }, [filter, debounced, showDeleted]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -95,7 +104,8 @@ export default function AdminBusinessesPage() {
     if (!reason?.trim()) { toast(t("bizRejectReason") || "Səbəb yazın", "error"); return; }
     try {
       const res = await fetch(`${API}/admin/businesses/${id}/reject`, { method: "PUT", headers, body: JSON.stringify({ reason }) });
-      if (res.ok) { toast(t("bizRejected") || "Rədd edildi", "success"); load(); } else toast(t("error"), "error");
+      if (res.ok) { toast(t("bizRejected") || "Rədd edildi", "success"); load(); }
+      else { const d = await res.json().catch(() => null); toast(d?.message || t("error"), "error"); }
     } catch { toast(t("error"), "error"); }
   };
 
@@ -256,7 +266,7 @@ export default function AdminBusinessesPage() {
           {statuses.map((s) => (
             <button key={s} onClick={() => setFilter(s)}
               className={`px-3.5 h-8 rounded-lg text-xs font-semibold transition-colors ${filter === s ? "text-white cta-gradient" : "text-muted hover:text-foreground"}`}>
-              {s === "all" ? t("all") : s}
+              {s === "all" ? t("all") : BIZ_ST[s] || s}
             </button>
           ))}
         </div>
@@ -290,7 +300,7 @@ export default function AdminBusinessesPage() {
                   <p className="text-[11px] text-muted truncate">{b.user?.name} · {b.user?.phone}{b.user?.publicId ? ` · ID ${b.user.publicId}` : ""}</p>
                 </div>
                 {b.autoApproved && <span className="hidden sm:inline px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-500" title="AI təsdiq tövsiyə edir">🤖</span>}
-                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border ${b.status === "APPROVED" ? "bg-green-500/10 text-green-500 border-green-500/20" : b.status === "REJECTED" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"}`}>{b.status}</span>
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-medium border ${b.status === "APPROVED" ? "bg-green-500/10 text-green-500 border-green-500/20" : b.status === "REJECTED" ? "bg-red-500/10 text-red-500 border-red-500/20" : "bg-yellow-500/10 text-yellow-600 border-yellow-500/20"}`}>{BIZ_ST[b.status] || b.status}</span>
                 <span className="text-muted text-xs shrink-0 w-4 text-center">{openId === b.id ? "▲" : "▼"}</span>
               </button>
 

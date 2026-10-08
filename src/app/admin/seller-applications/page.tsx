@@ -60,6 +60,7 @@ export default function AdminSellerApplicationsPage() {
   };
 
   const approve = async (id: number) => {
+    if (!confirm("Bu satıcı müraciəti təsdiqlənsin?")) return;
     setBusy(id);
     try {
       const res = await fetch(`${API}/admin/seller-applications/${id}/approve`, {
@@ -70,7 +71,7 @@ export default function AdminSellerApplicationsPage() {
       if (!data.success) { toast(data.message || t("error"), "error"); return; }
       toast("Təsdiqləndi", "success");
       refresh();
-    } finally { setBusy(null); }
+    } catch { toast("Şəbəkə xətası — əməliyyat icra olunmadı", "error"); } finally { setBusy(null); }
   };
 
   const reject = async (id: number) => {
@@ -88,7 +89,7 @@ export default function AdminSellerApplicationsPage() {
       toast("Rədd edildi", "success");
       setRejectReason((p) => ({ ...p, [id]: "" }));
       refresh();
-    } finally { setBusy(null); }
+    } catch { toast("Şəbəkə xətası — əməliyyat icra olunmadı", "error"); } finally { setBusy(null); }
   };
 
   const statusBadge = (s: Application["status"]) => {

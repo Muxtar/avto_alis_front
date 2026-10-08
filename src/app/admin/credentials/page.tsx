@@ -59,11 +59,11 @@ export default function AdminCredentialsPage() {
     try {
       const res = await fetch(`${API}/admin/credentials/${id}/${action}`, {
         method: "POST", headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ profession, validUntil: untilPick[id] || null, reason }),
+        body: JSON.stringify({ profession, validUntil: untilPick[id] || undefined, reason }),
       });
       if (res.ok) { toast(action === "approve" ? "Təsdiqləndi" : "Rədd edildi", "success"); load(); }
-      else toast("Xəta", "error");
-    } catch { toast("Xəta", "error"); }
+      else { const d = await res.json().catch(() => null); toast(d?.message || "Xəta", "error"); }
+    } catch { toast("Şəbəkə xətası", "error"); }
   };
 
   const statuses = ["PENDING", "APPROVED", "REJECTED", "ALL"];

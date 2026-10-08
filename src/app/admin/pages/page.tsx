@@ -47,6 +47,7 @@ export default function AdminPagesPage() {
     try {
       const r = await fetch(`${API}/admin/pages/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token()}` } }).then((x) => x.json());
       if (r.success) { toast("Silindi", "success"); await load(); }
+      else toast(r.message || "Silinmədi", "error");
     } catch { toast("Xəta", "error"); }
   };
 
@@ -81,7 +82,7 @@ export default function AdminPagesPage() {
       )}
 
       {edit && (
-        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => setEdit(null)}>
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 p-4" onClick={() => { if (confirm("Redaktor bağlansın? Saxlanmamış dəyişikliklər itəcək.")) setEdit(null); }}>
           <div className="bg-card border border-card-border rounded-2xl p-5 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-semibold mb-3">{edit.id ? "Səhifəni redaktə et" : "Yeni səhifə"}</h3>
             <label className="block text-xs font-medium text-muted mb-1">Başlıq</label>

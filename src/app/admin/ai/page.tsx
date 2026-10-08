@@ -29,7 +29,8 @@ const GROUPS: { title: string; hint: string; keys: string[] }[] = [
   { title: "İnternet axtarışı", hint: "Başlıqdakı axtarış çubuğu — məhsul və şəxs axtarışı", keys: ["internet_search", "ai_websearch_tavily", "ai_websearch_claude", "ai_person_search"] },
   { title: "AI köməkçi", hint: "Saytdakı süni intellekt söhbət botu", keys: ["ai_assistant", "ai_assistant_opus"] },
   { title: "Şəkillə axtarış", hint: "Axtarış çubuğundakı kamera düyməsi", keys: ["ai_vision_search"] },
-  { title: "Doğrulama / KYC", hint: "Profil və biznes təsdiqi zamanı avtomatik sənəd yoxlaması", keys: ["ai_identity", "ai_business_docs"] },
+  { title: "Doğrulama / KYC", hint: "Profil və biznes təsdiqi zamanı avtomatik sənəd yoxlaması", keys: ["ai_identity", "ai_business_docs", "ai_vehicle_passport"] },
+  { title: "Mübahisələr", hint: "Şikayət / iadə mübahisələrində AI qiymətləndirməsi", keys: ["ai_disputes"] },
 ];
 
 interface ServiceHealth {

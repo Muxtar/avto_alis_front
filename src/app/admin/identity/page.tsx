@@ -9,7 +9,7 @@
 
    Veriff açıq olanda növbə boş qalır — nəticə birbaşa Veriff-dən gəlir.
    ────────────────────────────────────────────────────────────────────────── */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
@@ -73,6 +73,7 @@ export default function AdminIdentityPage() {
   /* ANLIQ YENİLƏNMƏ — səhifə yenilənmədən yeni müraciət görünür.
      Soketi AdminShell saxlayır (bütün panel üçün bir bağlantı) və hadisə
      gələndə `admin:identity-new` yayımlayır; burada onu tuturuq. */
+  const refreshRef = useRef<(s?: unknown) => void>(() => {});
   useEffect(() => {
     const onNew = (e: Event) => {
       const p = (e as CustomEvent).detail as { userId?: number; name?: string } | undefined;
@@ -84,11 +85,10 @@ export default function AdminIdentityPage() {
       // «Yoxlanılır» siyahısında deyiliksə ora keçirik — status dəyişimi
       // onsuz da siyahını yenidən çəkir (aşağıdakı effekt), ona görə iki dəfə
       // sorğu göndərmirik.
-      setStatus((cur) => {
-        if (cur !== "PENDING") return "PENDING";
-        refresh();
-        return cur;
-      });
+      // Siyahı SƏSSİZ yenilənir və admin olduğu bölmədə qalır. Əvvəl burada spinnerli
+      // yeniləmə gedirdi: adminin doldurduğu forma (ad, FİN, tarix) silinir, başqa bölmədə
+      // olan admin isə «Yoxlanılır»a atılırdı.
+      refreshRef.current(true);
     };
     window.addEventListener("admin:identity-new", onNew);
     return () => window.removeEventListener("admin:identity-new", onNew);
@@ -108,7 +108,8 @@ export default function AdminIdentityPage() {
   // səssizcə yenilənir. Admin formada yazdığı düzəlişlər (drafts) SAXLANIR.
   useAdminLive(["identity", "user"], () => { refresh(true); });
 
-  const refresh = async (silent?: unknown) => {
+  refreshRef.current = (sil?: unknown) => { refresh(sil); };
+  async function refresh(silent?: unknown) {
     if (silent !== true) setLoading(true);
     try {
       const url = `${API}/admin/identity?status=${status}${q ? `&q=${encodeURIComponent(q)}` : ""}`;
@@ -128,7 +129,7 @@ export default function AdminIdentityPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const setDraft = (id: number, patch: Partial<Draft>) =>
     setDrafts((p) => ({ ...p, [id]: { ...p[id], ...patch } }));
@@ -149,6 +150,8 @@ export default function AdminIdentityPage() {
   };
 
   const reject = async (u: IdentityUser) => {
+    // Bir səhv klik təsdiqlənmiş istifadəçinin kimliyini ləğv edirdi — təsdiq soruşulur.
+    if (!confirm(`${u.name || `#${u.id}`} — kimlik müraciəti RƏDD edilsin?${status === "APPROVED" ? "\n\nDİQQƏT: bu istifadəçi artıq təsdiqlənib, rədd etsəniz təsdiqi götürüləcək." : ""}`)) return;
     setBusy(u.id);
     try {
       const r = await fetch(`${API}/admin/identity/${u.id}/reject`, {

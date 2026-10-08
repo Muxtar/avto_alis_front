@@ -1,4 +1,5 @@
 "use client";
+import Pager from "@/app/admin/Pager";
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
@@ -6,7 +7,8 @@ import { API, imgUrl } from "@/lib/api";
 import UserDetail from "./UserDetail";
 import { useAdminLive } from "@/lib/live";
 const USER_TYPES = ["CAR_OWNER", "MECHANIC", "PARTS_SELLER"];
-const USER_ROLES = ["USER", "ADMIN"];
+// Admin rolu buradan verilmir — yalnız super-admin «Adminlər» bölməsindən verir.
+const USER_ROLES = ["USER"];
 
 export default function AdminUsersPage() {
   const { t } = useLanguage();
@@ -25,6 +27,10 @@ export default function AdminUsersPage() {
   const [confirmDel, setConfirmDel] = useState<any>(null); // silmə təsdiqi (ekran modalı)
   const [deleting, setDeleting] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [total, setTotal] = useState(0);
+  // Axtarış mətni gecikmə ilə tətbiq olunur və səhifəni 1-ə qaytarır. Əvvəl gecikmiş
+  // sorğu KÖHNƏ səhifə nömrəsi ilə gedir, nəticəni boş siyahı ilə əvəz edirdi.
+  const [debounced, setDebounced] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
@@ -61,21 +67,23 @@ export default function AdminUsersPage() {
   const fetchUsers = (silent?: unknown) => {
     if (silent !== true) setLoading(true);
     const params = new URLSearchParams();
-    if (search) params.set("search", search);
+    if (debounced) params.set("search", debounced);
     if (typeFilter) params.set("type", typeFilter);
     params.set("page", String(page));
     params.set("limit", "20");
     fetch(`${API}/admin/users?${params}`, { headers })
       .then((r) => r.json())
-      .then((d) => { setUsers(d.users || []); setTotalPages(d.totalPages || 1); })
+      .then((d) => { setUsers(d.users || []); setTotalPages(d.totalPages || 1); setTotal(d.total ?? (d.users || []).length); })
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { fetchUsers(); }, [typeFilter, page]);
+  useEffect(() => { fetchUsers(); }, [typeFilter, page, debounced]);
+  // Filtr / axtarış / səhifə dəyişəndə seçim sıfırlanır — ekranda olmayan istifadəçilər toplu silinməsin.
+  useEffect(() => { setSelected(new Set()); }, [typeFilter, page, debounced]);
   // ANLIQ: başqa admin / istifadəçi dəyişəndə siyahı səssizcə (spinnersiz) yenilənir.
   useAdminLive(["user", "identity", "seller"], () => { fetchUsers(true); });
-  useEffect(() => { setPage(1); const tm = setTimeout(fetchUsers, 300); return () => clearTimeout(tm); }, [search]);
+  useEffect(() => { const tm = setTimeout(() => { setDebounced(search.trim()); setPage(1); }, 300); return () => clearTimeout(tm); }, [search]);
 
   const handleDelete = async (id: number, force = false) => {
     setDeleting(true);
@@ -150,7 +158,7 @@ export default function AdminUsersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">{t("adminUsers")}</h1>
-          <p className="text-muted text-xs mt-1">{users.length} istifadəçi</p>
+          <p className="text-muted text-xs mt-1">{total} istifadəçi</p>
         </div>
         <div className="flex gap-2">
           <button onClick={openCreate} className="shrink-0 px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 rounded-xl text-white text-sm font-semibold hover:from-orange-600 hover:to-red-700 transition-all flex items-center gap-1.5">
@@ -164,7 +172,7 @@ export default function AdminUsersPage() {
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("adminSearch")}
               className="w-full pl-9 pr-4 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 placeholder-muted-foreground text-foreground" />
           </div>
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}
+          <select value={typeFilter} onChange={(e) => { setTypeFilter(e.target.value); setPage(1); }}
             className="px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none">
             <option value="">{t("all")}</option>
             <option value="CAR_OWNER">Sahib</option>
@@ -262,18 +270,7 @@ export default function AdminUsersPage() {
           })}
         </div>
       )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-6 flex-wrap">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button key={p} onClick={() => setPage(p)}
-              className={`w-9 h-9 rounded-lg text-sm font-medium ${page === p ? "bg-orange-500 text-white" : "bg-input-bg border border-input-border text-muted hover:text-foreground"}`}>
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
+      <Pager page={page} totalPages={totalPages} onChange={setPage} />
 
       {/* Tam profil — profil şəkli, sənədlər, bizneslər, elanlar, pul, reytinq */}
       {detailId != null && <UserDetail userId={detailId} onClose={() => setDetailId(null)} />}
@@ -281,7 +278,7 @@ export default function AdminUsersPage() {
       {/* Edit Modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setModal(null)}>
-          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold mb-5">
               <svg className="w-5 h-5 inline mr-2 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
               {t("adminEdit")} - ID #{modal.id}
@@ -338,7 +335,7 @@ export default function AdminUsersPage() {
       {/* Yeni istifadəçi yarat */}
       {createOpen && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4" onClick={() => setCreateOpen(false)}>
-          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-card border border-card-border rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h2 className="text-lg font-bold mb-5">➕ Yeni istifadəçi</h2>
             <div className="space-y-4">
               <div>
@@ -372,7 +369,6 @@ export default function AdminUsersPage() {
                   <select value={nu.role} onChange={(e) => setNu({ ...nu, role: e.target.value })}
                     className="w-full px-3 py-2.5 bg-input-bg border border-input-border rounded-xl text-sm text-foreground focus:outline-none">
                     <option value="USER">USER</option>
-                    <option value="ADMIN">ADMIN</option>
                   </select>
                 </div>
               </div>

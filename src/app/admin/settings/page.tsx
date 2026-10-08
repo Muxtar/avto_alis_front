@@ -145,6 +145,12 @@ export default function AdminSettingsPage() {
 
   const toggle = async (f: Flag) => {
     const next = !f.value;
+    // Canlı sistemin açarları bir kliklə dəyişmirdi — təsdiq soruşulur. Real SMS kodunun
+    // söndürülməsi ayrıca xəbərdarlıqla (giriş kodu ekranda görünməyə başlayır).
+    const danger = f.key === "otp_real" && !next
+      ? "\n\n⚠ DİQQƏT: real SMS kodu söndürüləndə giriş kodu ekranda göstərilir — bu yalnız test üçündür, canlı saytda hesablar ələ keçirilə bilər."
+      : "";
+    if (!confirm(`«${f.label}» ${next ? "AKTİV" : "DEAKTİV"} edilsin?${danger}`)) return;
     setBusyKey(f.key);
     // Optimistik yeniləmə — dərhal görünsün, xəta olsa geri qaytar.
     setFlags((prev) => prev.map((x) => (x.key === f.key ? { ...x, value: next, isDefault: false } : x)));

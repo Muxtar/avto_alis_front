@@ -51,7 +51,11 @@ export default function AdminSupportPage() {
     setSel(null); setUser(null); setReply("");
     try {
       const r = await fetch(`${API}/admin/support/${id}`, { headers: H() }).then((x) => x.json());
-      if (r.success) { setSel(r.ticket); setUser(r.user); }
+      if (r.success) {
+        setSel(r.ticket); setUser(r.user);
+        // Telefonda yazışma siyahının ALTINDA açılır — ora sürüşdürürük, yoxsa «heç nə olmadı» kimi görünür.
+        setTimeout(() => document.getElementById("support-detail")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      } else toast(r.message || "Müraciət açılmadı", "error");
     } catch { toast("Xəta", "error"); }
   };
 
@@ -71,6 +75,7 @@ export default function AdminSupportPage() {
     try {
       const r = await fetch(`${API}/admin/support/${sel.id}/status`, { method: "PATCH", headers: { ...H(), "Content-Type": "application/json" }, body: JSON.stringify({ status }) }).then((x) => x.json());
       if (r.success) { await open(sel.id); await load(); toast("Status yeniləndi", "success"); }
+      else toast(r.message || "Status dəyişmədi", "error");
     } catch { toast("Xəta", "error"); }
   };
 
@@ -100,7 +105,7 @@ export default function AdminSupportPage() {
         </div>
 
         {sel && (
-          <div className="surface p-4 lg:sticky lg:top-4 h-fit">
+          <div id="support-detail" className="surface p-4 lg:sticky lg:top-4 h-fit">
             <div className="flex items-start justify-between gap-2 mb-1">
               <h2 className="font-semibold">{sel.subject}</h2>
               <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold ${STATUS[sel.status]?.cls}`}>{STATUS[sel.status]?.label}</span>
@@ -112,8 +117,8 @@ export default function AdminSupportPage() {
                 <div key={m.id} className={`flex ${m.isAdmin ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.isAdmin ? "bg-orange-500 text-white" : "bg-input-bg"}`}>
                     <p className="text-[10px] opacity-70 mb-0.5">{m.senderName}</p>
-                    {m.body}
-                    {m.images?.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{m.images.map((im: string, i: number) => <img key={i} src={imgUrl(im)} alt="" className="w-14 h-14 rounded object-cover" />)}</div>}
+                    <span className="whitespace-pre-wrap break-words">{m.body}</span>
+                    {m.images?.length > 0 && <div className="flex flex-wrap gap-1 mt-1">{m.images.map((im: string, i: number) => <a key={i} href={imgUrl(im)} target="_blank" rel="noreferrer" title="Böyüt"><img src={imgUrl(im)} alt="" className="w-14 h-14 rounded object-cover" /></a>)}</div>}
                   </div>
                 </div>
               ))}
@@ -125,9 +130,13 @@ export default function AdminSupportPage() {
                 <div className="flex gap-2">
                   <button onClick={sendReply} disabled={busy} className="flex-1 px-4 py-2 bg-orange-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50">Göndər</button>
                   <button onClick={() => setStatus("RESOLVED")} className="px-3 py-2 bg-green-500/10 text-green-600 rounded-xl text-sm font-semibold">Həll et</button>
-                  <button onClick={() => setStatus("CLOSED")} className="px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm">Bağla</button>
+                  <button onClick={() => { if (confirm("Müraciət bağlansın? İstifadəçi ona daha cavab yaza bilməyəcək.")) setStatus("CLOSED"); }} className="px-3 py-2 bg-input-bg border border-input-border rounded-xl text-sm">Bağla</button>
                 </div>
               </>
+            )}
+            {sel.status === "CLOSED" && (
+              // Səhvən bağlanan müraciəti yenidən açmaq üçün düymə yox idi.
+              <button onClick={() => setStatus("OPEN")} className="w-full px-4 py-2 bg-input-bg border border-input-border rounded-xl text-sm font-semibold">↩ Müraciəti yenidən aç</button>
             )}
           </div>
         )}

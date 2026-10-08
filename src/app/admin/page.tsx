@@ -11,6 +11,7 @@ export default function AdminDashboard() {
   const [data, setData] = useState<any>(null);
   const [analytics, setAnalytics] = useState<any>(null);
   const [adv, setAdv] = useState<any>(null);
+  const [failed, setFailed] = useState(false);
 
   // Genişləndirilmiş analitika ağır sorğudur — canlı hadisələrdə dəqiqədə ən çox bir dəfə.
   const advAt = useRef(0);
@@ -19,8 +20,8 @@ export default function AdminDashboard() {
     const H = { headers: { Authorization: `Bearer ${token}` } };
     fetch(`${API}/admin/dashboard`, H)
       .then((r) => r.json())
-      .then((d) => { if (d?.stats) setData(d); else if (!silent) toast(d?.message || t('error'), 'error'); })
-      .catch(() => { if (!silent) toast(t('error'), 'error'); });
+      .then((d) => { if (d?.stats) { setData(d); setFailed(false); } else if (!silent) { setFailed(true); toast(d?.message || t('error'), 'error'); } })
+      .catch(() => { if (!silent) { setFailed(true); toast(t('error'), 'error'); } });
     fetch(`${API}/admin/analytics`, H)
       .then((r) => r.json())
       .then(setAnalytics)
@@ -38,6 +39,13 @@ export default function AdminDashboard() {
 
   const azn = (n: number) => (n || 0).toLocaleString("az-AZ", { maximumFractionDigits: 0 });
 
+  // Yükləmə alınmayıbsa sonsuz spinner yox — səbəb və «yenidən cəhd».
+  if (!data && failed) return (
+    <div className="text-center py-20">
+      <p className="text-muted text-sm mb-3">Ana səhifə məlumatı yüklənmədi.</p>
+      <button onClick={() => { setFailed(false); load(); }} className="px-4 py-2 rounded-xl bg-orange-500 text-white text-sm font-semibold">Yenidən cəhd et</button>
+    </div>
+  );
   if (!data) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;
 
   const statCards = [
@@ -92,7 +100,7 @@ export default function AdminDashboard() {
               <div className="flex flex-wrap gap-2">
                 {analytics.ordersByStatus.map((s: any) => (
                   <span key={s.status} className="px-3 py-1.5 bg-input-bg border border-input-border rounded-full text-xs font-medium">
-                    {s.status} <span className="text-orange-500 ml-1">{s.count}</span>
+                    {({ PENDING: "Gözləmədə", CONFIRMED: "Təsdiqlənib", SHIPPED: "Yoldadır", DELIVERED: "Çatdırılıb", CANCELLED: "Ləğv edilib" } as Record<string, string>)[s.status] || s.status} <span className="text-orange-500 ml-1">{s.count}</span>
                   </span>
                 ))}
               </div>

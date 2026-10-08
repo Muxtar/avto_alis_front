@@ -1,4 +1,5 @@
 "use client";
+import Pager from "@/app/admin/Pager";
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useLanguage } from "@/lib/LanguageContext";
@@ -97,16 +98,7 @@ export default function AdminCommentsPage() {
           ))}
         </div>
       )}
-
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button key={p} onClick={() => setPage(p)} className={`w-9 h-9 rounded-lg text-sm font-medium ${p === page ? "bg-orange-500 text-white" : "bg-input-bg text-muted hover:text-foreground"}`}>
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
+      <Pager page={page} totalPages={totalPages} onChange={setPage} />
     </div>
   );
 }

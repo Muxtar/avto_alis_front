@@ -62,7 +62,11 @@ export default function AdminComplaintsPage() {
     setSel(null); setEvidence(null); setListing(null); setOrder(null); setRet(null); setNote(""); setRefund(false); setSuspend(false);
     try {
       const r = await fetch(`${API}/admin/complaints/${id}`, { headers }).then((x) => x.json());
-      if (r.success) { setSel(r.complaint); setEvidence(r.evidence); setListing(r.listing); setOrder(r.order); setRet(r.returnRequest || null); }
+      if (r.success) {
+        setSel(r.complaint); setEvidence(r.evidence); setListing(r.listing); setOrder(r.order); setRet(r.returnRequest || null);
+        // Telefonda detal siyahının altında açılır — ora sürüşdürürük.
+        setTimeout(() => document.getElementById("complaint-detail")?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+      }
       else toast(r.message || "Tapılmadı", "error");
     } catch { toast("Xəta", "error"); }
   };
@@ -103,13 +107,16 @@ export default function AdminComplaintsPage() {
 
   const resolve = async (status: "RESOLVED" | "REJECTED") => {
     if (!sel) return;
+    // Rədd edilən şikayətdə pul qaytarılmır / peşəkar dayandırılmır; geri ödəniş təsdiqlə gedir.
+    const doRefund = status === "RESOLVED" && refund, doSuspend = status === "RESOLVED" && suspend;
+    if (doRefund && !confirm(`Alıcıya ${evidence?.price ?? ""} AZN geri ödənilsin? Bu əməliyyat geri alınmır.`)) return;
     setBusy(true);
     try {
       const r = await fetch(`${API}/admin/complaints/${sel.id}/resolve`, {
         method: "POST", headers,
-        body: JSON.stringify({ status, adminNote: note, refund, suspend }),
+        body: JSON.stringify({ status, adminNote: note, refund: doRefund, suspend: doSuspend }),
       }).then((x) => x.json());
-      if (r.success) { toast("Şikayət həll olundu ✓", "success"); setSel(null); setEvidence(null); await load(); }
+      if (r.success) { toast(status === "RESOLVED" ? "Şikayət həll olundu ✓" : "Şikayət rədd edildi", "success"); setSel(null); setEvidence(null); await load(); }
       else toast(r.message || "Xəta", "error");
     } catch { toast("Xəta", "error"); } finally { setBusy(false); }
   };
@@ -155,7 +162,7 @@ export default function AdminComplaintsPage() {
 
         {/* Detal + dəlil */}
         {sel && (
-          <div className="surface p-4 lg:sticky lg:top-4 h-fit">
+          <div id="complaint-detail" className="surface p-4 lg:sticky lg:top-4 h-fit lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto scroll-mt-20">
             <h2 className="font-semibold mb-1"><span className="text-xs text-muted">#{sel.id}</span> {sel.target?.name} <span className="text-xs text-muted">({CAT_LABEL[sel.category] || sel.category})</span></h2>
             <p className="text-xs text-muted mb-2">Şikayətçi: {sel.complainant?.name}{sel.target?.consultationSuspended && <span className="text-red-500"> · peşəkar dayandırılıb</span>}</p>
             {isDispute(sel) && (

@@ -112,6 +112,8 @@ export default function AdminFinancePage() {
   const exportCsv = async () => {
     try {
       const res = await fetch(`${API}/admin/export/orders.csv`, { headers: H() });
+      // Xəta cavabı fayl kimi saxlanmasın (əvvəl «icazə yoxdur» mətni orders.csv kimi enirdi).
+      if (!res.ok) { const d = await res.json().catch(() => null); toast(d?.message || "Export alınmadı", "error"); return; }
       const blob = await res.blob(); const url = URL.createObjectURL(blob);
       const a = document.createElement("a"); a.href = url; a.download = "orders.csv"; a.click(); URL.revokeObjectURL(url);
     } catch { toast("Export alınmadı", "error"); }

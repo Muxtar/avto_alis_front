@@ -56,11 +56,20 @@ export default function AdminRefundsPage() {
   }, [status]);
   useEffect(() => { load(); }, [load]);
 
-  const retry = async (orderId: number) => {
+  const retry = async (row: any, force = false) => {
+    const orderId: number = row.orderId;
+    // Pul əməliyyatıdır — təsdiqsiz getmir. Şübhəli sətirdə (pul çıxmış ola bilər) ayrıca xəbərdarlıq.
+    if (!force && !confirm(`${azn(row.amount)} ₼ alıcının kartına yenidən göndərilsin?`)) return;
     setBusy(orderId);
     try {
-      const r = await fetch(`${API}/admin/refunds/${orderId}/retry`, { method: "POST", headers: H() }).then((x) => x.json());
+      const r = await fetch(`${API}/admin/refunds/${orderId}/retry`, {
+        method: "POST", headers: { ...H(), "Content-Type": "application/json" }, body: JSON.stringify({ force }),
+      }).then((x) => x.json());
       if (r.success) { toast("Pul qaytarıldı ✓", "success"); load(); }
+      else if (r.needsConfirm) {
+        setBusy(null);
+        if (confirm(`⚠ ${r.message}\n\nŞlüzdə yoxladınız və pul ÇIXMAYIB? «OK» bassanız ${azn(row.amount)} ₼ yenidən göndəriləcək — pul artıq çıxıbsa alıcı iki dəfə alacaq.`)) return retry(row, true);
+      }
       else toast(r.message || "Yenə alınmadı", "error");
     } catch { toast("Xəta", "error"); } finally { setBusy(null); }
   };
@@ -138,11 +147,16 @@ export default function AdminRefundsPage() {
                     Səbəb: {r.lastError}
                   </p>
                 )}
+                {r.needsReview && r.status !== "DONE" && (
+                  <p className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5 mb-2">
+                    ⚠ ŞÜBHƏLİ: şlüz cavab vermədi, pul artıq çıxmış ola bilər. Yenidən göndərməzdən əvvəl şlüz/bank hesabında yoxlayın.
+                  </p>
+                )}
                 {r.adminNote && <p className="text-[11px] text-muted mb-2">📝 {r.adminNote}</p>}
 
                 {r.status !== "DONE" && (
                   <div className="flex gap-2 flex-wrap">
-                    <button onClick={() => retry(r.orderId)} disabled={busy === r.orderId}
+                    <button onClick={() => retry(r)} disabled={busy === r.orderId}
                       className="px-3 py-1.5 rounded-lg text-xs font-bold text-white cta-gradient disabled:opacity-50">
                       {busy === r.orderId ? "..." : "🔁 Yenidən cəhd et"}
                     </button>
@@ -150,8 +164,8 @@ export default function AdminRefundsPage() {
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-card-border hover:bg-input-bg disabled:opacity-50">
                       ✓ Əl ilə həll etdim
                     </button>
-                    <Link href={`/orders/${r.orderId}`} target="_blank"
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-card-border hover:bg-input-bg">Sifariş ↗</Link>
+                    <Link href="/admin/orders" target="_blank"
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-card-border hover:bg-input-bg">Sifarişlər ↗</Link>
                   </div>
                 )}
               </div>

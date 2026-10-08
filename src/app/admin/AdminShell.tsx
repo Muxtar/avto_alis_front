@@ -66,6 +66,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
   // xəbər verilir ki, siyahılarını özləri təzələsin.
   const pendingListingsRef = useRef<number | null>(null);
   const { toast } = useToast();
+  const [meRetry, setMeRetry] = useState(0);
   const toastRef = useRef(toast);
   useEffect(() => { toastRef.current = toast; }, [toast]);
 
@@ -163,6 +164,32 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, pathname]);
 
+  // ── İCAZƏ / SESSİYA GÖZƏTÇİSİ ──
+  // Səhifələrin çoxu siyahını `d.items || []` kimi oxuyur: server «icazə yoxdur» (403)
+  // desə, admin xəta əvəzinə «məlumat yoxdur» görürdü. Burada admin sorğularının
+  // cavabı bir yerdən izlənir: 403 → aydın bildiriş, 401 → girişə yönləndirmə.
+  useEffect(() => {
+    if (pathname === "/admin/login") return;
+    const orig = window.fetch;
+    let lastToast = 0;
+    window.fetch = async (...args: Parameters<typeof fetch>) => {
+      const res = await orig(...args);
+      try {
+        const url = typeof args[0] === "string" ? args[0] : args[0] instanceof URL ? args[0].href : (args[0] as Request).url;
+        if (url.startsWith(API) && url.includes("/admin/") && !/\/admin\/(me|login)/.test(url)) {
+          if (res.status === 401) { localStorage.removeItem("adminToken"); router.push("/admin/login"); }
+          else if (res.status === 403 && Date.now() - lastToast > 4000) {
+            lastToast = Date.now();
+            res.clone().json().then((d) => toast(d?.message || "Bu bölmə üçün icazəniz yoxdur", "error")).catch(() => toast("Bu bölmə üçün icazəniz yoxdur", "error"));
+          }
+        }
+      } catch { /* izləmə əsas sorğunu pozmasın */ }
+      return res;
+    };
+    return () => { window.fetch = orig; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname === "/admin/login"]);
+
   useEffect(() => {
     if (pathname === "/admin/login") {
       setReady(true);
@@ -182,9 +209,11 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           return r.json();
         })
         .then((d) => { if (!d) return; setMe({ isSuperAdmin: !!d.isSuperAdmin, permissions: Array.isArray(d.permissions) ? d.permissions : [] }); setReady(true); })
-        .catch(() => { setReady(true); });   // şəbəkə xətası — panel açıq qalır, növbəti keçiddə təkrar yoxlanır
+        // Şəbəkə xətası — panel açıq qalır; icazələr yüklənməyibsə menyu boş qalmasın deyə
+        // bir neçə saniyədən sonra yenidən yoxlanır.
+        .catch(() => { setReady(true); setTimeout(() => setMeRetry((n) => (n < 5 ? n + 1 : n)), 4000); });
     }
-  }, [pathname, router]);
+  }, [pathname, router, meRetry]);
 
   if (!ready) {
     return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>;

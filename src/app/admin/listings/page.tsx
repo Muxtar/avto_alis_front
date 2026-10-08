@@ -167,8 +167,10 @@ export default function AdminListingsPage() {
       // Sifarişdə keçən elan silinmir, arxivlənir — sifariş sətirləri qorunsun.
       if (data.archived) {
         toast(data.message || "Elan arxivləndi (sifariş tarixçəsi qorunur)", "success");
-        setRows((prev) => ({ ...prev, [owner.key]: (prev[owner.key] || []).map((l) => l.id === id ? { ...l, status: "ARCHIVED" } : l) }));
-        bumpOwner(owner.key, oldStatus, "ARCHIVED", 0);
+        // Arxivlənən elan siyahıdan çıxır — əvvəl «Gözləmədə» kimi qalır və sahibin
+        // «rədd edilib» sayğacını artırırdı.
+        setRows((prev) => ({ ...prev, [owner.key]: (prev[owner.key] || []).filter((l) => l.id !== id) }));
+        bumpOwner(owner.key, oldStatus === "ARCHIVED" ? null : oldStatus, null, -1);
         window.dispatchEvent(new Event("admin:pending-changed"));
         return;
       }
@@ -186,6 +188,7 @@ export default function AdminListingsPage() {
     if (status === "REJECTED") {
       rejectReason = prompt("Rədd səbəbi (elan sahibi görəcək):", "") ?? null;
       if (rejectReason === null) return;
+      if (!rejectReason.trim()) { toast("Rədd səbəbini yazın — elan sahibi nəyi düzəltməli olduğunu bilməlidir", "error"); return; }
     }
     const oldStatus = (rows[owner.key] || []).find((l) => l.id === id)?.status || null;
     try {
@@ -378,8 +381,8 @@ export default function AdminListingsPage() {
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium text-sm truncate max-w-full break-words">{listing.title}</span>
                                 <span className="px-1.5 py-0.5 bg-input-bg border border-input-border rounded text-[10px]">{listing.category}</span>
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${listing.status === 'APPROVED' ? 'bg-green-500/10 text-green-500' : listing.status === 'REJECTED' ? 'bg-red-500/10 text-red-500' : 'bg-amber-500/10 text-amber-500'}`}>
-                                  {listing.status === 'APPROVED' ? 'Təsdiqlənib' : listing.status === 'REJECTED' ? 'Rədd edilib' : 'Gözləmədə'}
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${listing.status === 'APPROVED' ? 'bg-green-500/10 text-green-500' : listing.status === 'REJECTED' ? 'bg-red-500/10 text-red-500' : listing.status === 'ARCHIVED' ? 'bg-gray-500/10 text-gray-500' : 'bg-amber-500/10 text-amber-500'}`}>
+                                  {listing.status === 'APPROVED' ? 'Təsdiqlənib' : listing.status === 'REJECTED' ? 'Rədd edilib' : listing.status === 'ARCHIVED' ? 'Arxivlənib (silinib)' : 'Gözləmədə'}
                                 </span>
                                 {imgs.length > 0 && <span className="px-1.5 py-0.5 bg-input-bg border border-input-border rounded text-[10px] text-muted">📷 {imgs.length}</span>}
                                 {/* Təsdiqləmək tək şərt deyil — elan saytda

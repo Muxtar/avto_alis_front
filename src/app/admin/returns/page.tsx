@@ -1,4 +1,5 @@
 "use client";
+import Pager from "@/app/admin/Pager";
 import { useState, useEffect } from "react";
 import { useLanguage } from "@/lib/LanguageContext";
 import { useToast } from "@/components/Toast";
@@ -7,7 +8,7 @@ import { useAdminLive } from "@/lib/live";
 
 const RET_METHOD: Record<string, string> = { COURIER: "Kuryer", IN_PERSON: "Şəxsən", POST: "Poçt", YANGO: "Yango" };
 const ACTOR: Record<string, string> = { BUYER: "Alıcı", SELLER: "Satıcı", SYSTEM: "Sistem", ADMIN: "Admin" };
-const EVENT_EXTRA: Record<string, string> = { DISPUTE_RESPONSE: "Mübahisəyə cavab", ESCALATED: "Adminə ötürüldü", APPEALED: "Müraciət edildi" };
+const EVENT_EXTRA: Record<string, string> = { DISPUTE_RESPONSE: "Mübahisəyə cavab", ESCALATED: "Adminə ötürüldü", APPEALED: "Müraciət edildi", SELLER_NO_RESPONSE: "Satıcı vaxtında cavab vermədi", COMPLAINT: "Alıcı şikayət yazdı" };
 
 // Hazırkı mərhələnin aktiv müddəti — keçəndə sistem özü addım atır.
 function activeDeadline(ret: any): { label: string; at: string } | null {
@@ -57,12 +58,26 @@ export default function AdminReturnsPage() {
 
   useEffect(() => { fetchReturns(); }, [statusFilter, page]);
 
-  const override = async (returnId: number, status: string) => {
-    await fetch(`${API}/admin/returns/${returnId}/override`, {
-      method: "PUT", headers,
-      body: JSON.stringify({ status, adminNote: adminNotes[returnId] || null, refundAmount: refundAmounts[returnId] || undefined }),
-    });
-    fetchReturns();
+  const [busyId, setBusyId] = useState<number | null>(null);
+  // Əvvəl cavab oxunmurdu: server rədd etsə də (səhv məbləğ, bank xətası) heç nə
+  // göstərilmirdi; pul qaytarma isə təsdiqsiz, bir kliklə gedirdi.
+  const override = async (ret: any, status: string) => {
+    const amount = refundAmounts[ret.id] || ret.refundAmount?.toFixed(2) || "";
+    const ask = status === "REFUNDED" ? `${amount} AZN alıcıya QAYTARILSIN? Bu əməliyyat geri alınmır.`
+      : status === "REJECTED" ? "İadə rədd edilsin?" : "İadə məcburi təsdiqlənsin?";
+    if (!confirm(ask)) return;
+    setBusyId(ret.id);
+    try {
+      const res = await fetch(`${API}/admin/returns/${ret.id}/override`, {
+        method: "PUT", headers,
+        body: JSON.stringify({ status, adminNote: adminNotes[ret.id] || null, refundAmount: refundAmounts[ret.id] || undefined }),
+      });
+      const d = await res.json().catch(() => null);
+      if (!res.ok || !d?.success) { toast(d?.message || t("error"), d?.retrying ? "info" : "error"); return; }
+      toast(status === "REFUNDED" ? "Pul qaytarıldı ✓" : status === "REJECTED" ? "İadə rədd edildi" : "İadə təsdiqləndi ✓", "success");
+      setAdminNotes((p) => ({ ...p, [ret.id]: "" }));
+      fetchReturns(true);
+    } catch { toast("Şəbəkə xətası", "error"); } finally { setBusyId(null); }
   };
 
   const returnStatusColor = (status: string) => {
@@ -223,6 +238,11 @@ export default function AdminReturnsPage() {
                 )}
               </div>
 
+              {ret.status === "REFUNDED" && (
+                <p className="px-4 pb-3 text-xs text-muted">
+                  📦 {ret.restockedQty > 0 ? `${ret.restockedQty} ədəd stoka qaytarılıb.` : ret.receivedAt ? "Məhsul stoka qaytarılmayıb." : "Məhsul satıcıya çatmayıb — stok dəyişməyib."}
+                </p>
+              )}
               {/* Admin Override Actions */}
               {!['REFUNDED', 'CANCELLED'].includes(ret.status) && (
                 <div className="p-4 border-t border-card-border space-y-3">
@@ -241,15 +261,15 @@ export default function AdminReturnsPage() {
                     </div>
                   </div>
                   <div className="flex gap-2 flex-wrap">
-                    <button onClick={() => override(ret.id, "APPROVED")}
+                    <button disabled={busyId === ret.id} onClick={() => override(ret, "APPROVED")}
                       className="px-3 py-1.5 bg-blue-500/10 text-blue-500 rounded-lg text-xs font-medium hover:bg-blue-500/20">
                       {t("forceApprove")}
                     </button>
-                    <button onClick={() => override(ret.id, "REJECTED")}
+                    <button disabled={busyId === ret.id} onClick={() => override(ret, "REJECTED")}
                       className="px-3 py-1.5 bg-red-500/10 text-red-500 rounded-lg text-xs font-medium hover:bg-red-500/20">
                       {t("forceReject")}
                     </button>
-                    <button onClick={() => override(ret.id, "REFUNDED")}
+                    <button disabled={busyId === ret.id} onClick={() => override(ret, "REFUNDED")}
                       className="px-3 py-1.5 bg-green-500/10 text-green-500 rounded-lg text-xs font-medium hover:bg-green-500/20">
                       {t("forceRefund")}
                     </button>
@@ -260,18 +280,7 @@ export default function AdminReturnsPage() {
           ))}
         </div>
       )}
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-            <button key={p} onClick={() => setPage(p)}
-              className={`w-8 h-8 rounded-lg text-xs font-medium ${page === p ? "bg-orange-500 text-white" : "bg-input-bg border border-input-border text-muted hover:text-foreground"}`}>
-              {p}
-            </button>
-          ))}
-        </div>
-      )}
+      <Pager page={page} totalPages={totalPages} onChange={setPage} />
 
       {lightbox && (
         <div className="fixed inset-0 z-[3000] bg-black/80 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
