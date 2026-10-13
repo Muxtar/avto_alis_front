@@ -416,14 +416,16 @@ export default function Navbar() {
                 MƏRKƏZDƏ tutmaq üçün sol və sağ qruplar bərabər çəkidir).
                 Telefonda `display:contents` ilə şəffafdır → uşaqlar birbaşa
                 əsas flex-in item-ıdır, order/wrap düzəni pozulmur. */}
-            <div className="contents sm:flex sm:min-w-0 sm:items-center sm:gap-4">
+            {/* `sm:shrink-0` VACİBDİR: qrup sıxıla bilsə (min-w-0), dar masaüstü/planşet
+                enində Kataloq düyməsi qrupdan daşıb axtarış qutusunun ALTINDA qalırdı. */}
+            <div className="contents sm:flex sm:shrink-0 sm:items-center sm:gap-4">
             {/* Logo */}
             <Link href="/elanlar" className="order-1 flex items-center gap-2 shrink-0 group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/tradixai-icon.svg" alt="tradixai" className="nav-logo w-10 h-10 sm:w-11 sm:h-11 rounded-xl shrink-0" />
-              {/* Telefon ölçüsündə yalnız ikon — ana səhifəyə qayıtmaq üçün kifayətdir,
-                  qalan yer axtarış sahəsinə verilir. */}
-              <span className="nav-wordmark hidden sm:inline text-2xl sm:text-3xl font-extrabold tracking-tight">tradixai</span>
+              {/* Telefon və planşet ölçüsündə yalnız ikon — ana səhifəyə qayıtmaq üçün
+                  kifayətdir, qalan yer axtarış sahəsinə verilir (sol qrup sıxılmır). */}
+              <span className="nav-wordmark hidden lg:inline text-3xl font-extrabold tracking-tight">tradixai</span>
             </Link>
 
             {/* Şəhər — yalnız çox geniş ekranda; həm də search-ə minməsin deyə
