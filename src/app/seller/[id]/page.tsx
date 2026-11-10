@@ -32,7 +32,13 @@ export default function SellerProfilePage() {
   // İxtisas bölməsindən gəlibsə (?from=ixtisas) VƏ YA şəxs rəy (konsultasiya) təklif edirsə →
   // məhsul satışı və telefon gizlədilir; rəy yönümlü kompakt profil (platformadan kənar əlaqə olmasın).
   const [fromIxtisas, setFromIxtisas] = useState(false);
-  useEffect(() => { setFromIxtisas(new URLSearchParams(window.location.search).get("from") === "ixtisas"); }, []);
+  // Qapı QR kodu (?ev=1) — evin qapısındakı QR skan edilib: ünvan + fərdi elanlar.
+  const [evMode, setEvMode] = useState<boolean | null>(null);
+  useEffect(() => {
+    const sp = new URLSearchParams(window.location.search);
+    setFromIxtisas(sp.get("from") === "ixtisas");
+    setEvMode(sp.get("ev") === "1");
+  }, []);
 
   // Alıcı neçə blok almaq istəyir (məs. 1 saatlıq təklifdən 2 ədəd = 2 saat).
   const [qty, setQty] = useState<{ [offerId: number]: number }>({});
@@ -48,12 +54,13 @@ export default function SellerProfilePage() {
   };
 
   useEffect(() => {
-    fetch(`${API}/sellers/${params.id}`)
+    if (evMode === null) return;
+    fetch(`${API}/sellers/${params.id}${evMode ? "?ev=1" : ""}`)
       .then((r) => r.json())
       .then(setData)
       .catch(() => { toast(t('error'), 'error'); })
       .finally(() => setLoading(false));
-  }, [params.id]);
+  }, [params.id, evMode]);
 
   if (loading) {
     return (
@@ -94,6 +101,21 @@ export default function SellerProfilePage() {
     <div className={`${ixtisasMode ? "max-w-3xl" : "max-w-7xl"} mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6`}>
       {/* Geri qayıtma qlobal BackButton ilə edilir (layout) */}
       {offerTarget && <OfferModal target={offerTarget} onClose={() => setOfferTarget(null)} />}
+
+      {/* Qapı QR kodu — evdə satılan məhsullar */}
+      {data.home && (
+        <div className="mb-4 rounded-2xl border border-orange-500/30 bg-orange-500/5 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+          <span className="w-12 h-12 rounded-xl bg-orange-500/15 text-2xl flex items-center justify-center shrink-0">🏠</span>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold">Bu evdə satılan məhsullar</p>
+            <p className="text-sm text-muted break-words">{data.home.address}</p>
+          </div>
+          {data.home.lat != null && data.home.lng != null && (
+            <a href={`https://www.google.com/maps?q=${data.home.lat},${data.home.lng}`} target="_blank" rel="noopener noreferrer"
+              className="shrink-0 px-3.5 py-2 rounded-xl text-sm font-semibold bg-input-bg border border-input-border hover:border-orange-500/50">📍 Xəritədə</a>
+          )}
+        </div>
+      )}
 
       {/* Seller Profile Card */}
       <div className="bg-card border border-card-border rounded-2xl p-5 sm:p-8 mb-6">

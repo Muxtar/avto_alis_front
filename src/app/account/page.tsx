@@ -13,6 +13,7 @@ import LocationPicker from "@/components/LocationPickerWrapper";
 import BarcodeField from "@/components/BarcodeField";
 import PageHero, { heroBtn, heroBtnPrimary } from "@/components/PageHero";
 import QRShare from "@/components/QRShare";
+import HomeQrCard from "@/components/HomeQrCard";
 import { INSTALLMENT_MONTHS, INSTALLMENT_MIN_AMOUNT } from "@/lib/installment";
 
 const MAX_IMAGES = 5;
@@ -475,6 +476,7 @@ function AccountPageInner() {
         ]}
         actions={<>
           {user?.id && <QRShare path={`/seller/${user.id}`} title={user.name} subtitle="Profil" compact className={`${heroBtn} !px-2.5`} />}
+          {user?.id && <HomeQrCard userId={user.id} userName={user.name} className={heroBtn}>🏠 <span className="hidden sm:inline">Qapı QR</span></HomeQrCard>}
           <a href="/reviews" title="Aldığım rəylər" className={heroBtn}>⭐ <span className="hidden sm:inline">Rəylər</span></a>
           <a href="/referral/manage" title="Referal proqramım" className={heroBtn}>🤝 <span className="hidden sm:inline">Referal</span></a>
           {!showForm && canAddListing && (
