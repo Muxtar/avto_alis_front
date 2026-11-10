@@ -16,6 +16,7 @@ import NotificationBell from "@/components/NotificationBell";
 import { CATEGORIES, slugify } from "@/lib/categories";
 import CategoryMegaMenu from "@/components/CategoryMegaMenu";
 import ReceiptScanner from "@/components/ReceiptScanner";
+import WebcamCapture from "@/components/WebcamCapture";
 
 const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "az", label: "AZ", flag: "🇦🇿" },
@@ -99,6 +100,7 @@ export default function Navbar() {
   // Avtomatik-tamamlama (təkliflər)
   const [suggestions, setSuggestions] = useState<Suggest[]>([]);
   const [searchFocused, setSearchFocused] = useState(false);
+  const [webcamOpen, setWebcamOpen] = useState(false); // kompüterdə veb-kamera ilə şəkilli axtarış
   const [suggestIdx, setSuggestIdx] = useState(-1);
   const searchBoxRef = useRef<HTMLDivElement>(null);
   const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -487,15 +489,11 @@ export default function Navbar() {
                 ref={imgBtnRef}
                 type="button"
                 onClick={() => {
-                  // Toxunma cihazı (telefon/planşet) → seçim menyusu; kompüterdə
-                  // kamera mənasızdır, birbaşa fayl pəncərəsi açılır.
-                  const touch = typeof window !== "undefined"
-                    && ((window.matchMedia && window.matchMedia("(pointer: coarse)").matches) || "ontouchstart" in window);
-                  if (touch) {
-                    const r = imgBtnRef.current?.getBoundingClientRect();
-                    if (r) setImgMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
-                    setImgMenu((v) => !v);
-                  } else imgInputRef.current?.click();
+                  // Həm telefonda, həm kompüterdə seçim menyusu: kamera ilə çək / fayldan seç.
+                  // Telefonda kamera `capture` girişi ilə, kompüterdə veb-kamera pəncərəsi ilə açılır.
+                  const r = imgBtnRef.current?.getBoundingClientRect();
+                  if (r) setImgMenuPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+                  setImgMenu((v) => !v);
                 }}
                 disabled={imgBusy}
                 title="Şəkil ilə axtar"
@@ -521,7 +519,11 @@ export default function Navbar() {
                   style={{ top: imgMenuPos.top, right: imgMenuPos.right }}
                 >
                   <button type="button"
-                    onClick={() => { setImgMenu(false); camInputRef.current?.click(); }}
+                    onClick={() => {
+                      setImgMenu(false);
+                      const touch = (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) || "ontouchstart" in window;
+                      if (touch) camInputRef.current?.click(); else setWebcamOpen(true);
+                    }}
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-sm hover:bg-input-bg text-left">
                     📷 Kamera ilə çək
                   </button>
@@ -533,6 +535,7 @@ export default function Navbar() {
                 </div>
               )}
               </div>
+              <WebcamCapture open={webcamOpen} onClose={() => setWebcamOpen(false)} onCapture={searchByImage} title="Şəkil çəkərək axtar" />
 
               <button type="submit" className="px-4 sm:px-6 rounded-xl text-white font-semibold text-[15px] flex items-center gap-1.5 bg-gradient-to-r from-[var(--brand-from)] to-[var(--brand-to)] hover:brightness-110 transition" style={{ boxShadow: "0 6px 16px -8px var(--brand-to)" }}>
                 <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg>
