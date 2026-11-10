@@ -1457,3 +1457,28 @@ header .nav-lang { width: 2.75rem; padding: 0; }
 .adm-resize:hover::after, .adm-side.is-dragging .adm-resize::after { background: var(--brand-to); height: 72px; }
 .adm-main { background: color-mix(in srgb, var(--brand-to) 3%, var(--background)); }
 .adm-shell button.nav-glass, .adm-shell .nav-search button { border-radius: 12px; }
+
+/* ── Ana səhifə karuseli v2 (HeroCarousel) ─────────────────────────────── */
+.hero-float { animation: heroFloat 6s ease-in-out infinite; will-change: transform; }
+@keyframes heroFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+.hero-scan { animation: heroScan 2.4s ease-in-out infinite; }
+@keyframes heroScan { 0%, 100% { top: 18%; } 50% { top: 82%; } }
+.hero-dash { animation: heroDash 1.6s linear infinite; }
+@keyframes heroDash { to { stroke-dashoffset: -38; } }
+/* Şəkilli slaydda yavaş yaxınlaşma (Ken Burns) */
+.hero-kb { animation: heroKb 9s ease-out both; }
+@keyframes heroKb { from { transform: scale(1.12) translate3d(1.5%, 1%, 0); } to { transform: scale(1) translate3d(0, 0, 0); } }
+/* Hekayə tipli irəliləmə zolağı */
+.hero-prog { position: relative; height: 3px; border-radius: 9999px; background: rgba(255, 255, 255, .28); overflow: hidden; }
+.hero-prog > i { position: absolute; inset: 0; background: #fff; transform-origin: left; transform: scaleX(0); }
+.hero-prog.is-done > i { transform: scaleX(1); }
+.hero-prog.is-active > i { animation: heroProg var(--hero-delay, 6s) linear forwards; }
+.hero-paused .hero-prog.is-active > i { animation-play-state: paused; }
+@keyframes heroProg { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+/* Naviqasiya tabları */
+.hero-tab { transition: background-color .25s ease, color .25s ease, transform .25s ease; }
+.hero-tab:hover { background: rgba(255, 255, 255, .16); }
+.hero-tab.is-active { background: rgba(255, 255, 255, .95); color: #1e1b4b; }
+@media (prefers-reduced-motion: reduce) {
+  .hero-float, .hero-scan, .hero-dash, .hero-kb { animation: none !important; }
+}
