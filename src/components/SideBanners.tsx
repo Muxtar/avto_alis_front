@@ -35,23 +35,23 @@ export default function SideBanners() {
         {ads.map((a) => (
           <a key={`ad${a.id}`} href={a.href}
             onClick={() => { try { navigator.sendBeacon?.(`${API}/ads/${a.id}/click`, new Blob(["{}"], { type: "application/json" })); } catch { /* keç */ } }}
-            className="relative flex-1 min-h-[122px] rounded overflow-hidden bg-[#140f3a] ring-1 ring-black/10 group/side flex">
+            className="relative flex-1 min-h-[96px] rounded-xl overflow-hidden bg-[#140f3a] ring-1 ring-black/10 group/side flex">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={adImg(a.image || a.productImage)} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover blur-xl brightness-[0.5] scale-110" />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={adImg(a.productImage || a.image)} alt={a.headline}
               className="absolute right-2 top-2 bottom-2 w-[42%] h-[calc(100%-1rem)] object-contain rounded-lg transition-transform duration-500 group-hover/side:scale-105" />
-            <div className="relative z-10 w-[58%] p-3 flex flex-col justify-center text-white">
+            <div className="relative z-10 w-[58%] p-2.5 flex flex-col justify-center text-white">
               <span className="self-start rounded-full bg-amber-400 text-[#1c1917] px-1.5 py-px text-[8.5px] font-extrabold uppercase tracking-[.12em] mb-1">
                 Reklam · {a.sellerKind === "BUSINESS" ? "Sahibkar" : "Fərdi"}
               </span>
-              <p className="font-extrabold text-[14px] leading-tight line-clamp-2" style={{ textShadow: "0 1px 6px rgba(0,0,0,.5)" }}>{a.headline}</p>
-              {typeof a.price === "number" && a.price > 0 && <p className="text-[13px] font-black mt-1">{a.price} <span className="text-[10px] text-white/70">AZN</span></p>}
+              <p className="font-extrabold text-[12px] leading-tight line-clamp-2" style={{ textShadow: "0 1px 6px rgba(0,0,0,.5)" }}>{a.headline}</p>
+              {typeof a.price === "number" && a.price > 0 && <p className="text-[12px] font-black mt-1">{a.price} <span className="text-[10px] text-white/70">AZN</span></p>}
             </div>
           </a>
         ))}
         {fill.map((b) => (
-          <a key={b.id} href={b.link || "#"} className="relative flex-1 min-h-[122px] rounded overflow-hidden ring-1 ring-black/10 bg-black">
+          <a key={b.id} href={b.link || "#"} className="relative flex-1 min-h-[96px] rounded-xl overflow-hidden ring-1 ring-black/10 bg-black">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={/^(https?:|data:)/.test(b.image) ? b.image : imgUrl(b.image)} alt={b.title || "banner"} className="absolute inset-0 w-full h-full object-cover" />
           </a>
@@ -72,10 +72,10 @@ export default function SideBanners() {
       <div className="hidden xl:flex flex-col gap-2 h-full">
         {tiles.map((tl) => (
           <a key={tl.href} href={tl.href}
-            className={`relative flex-1 min-h-[122px] rounded overflow-hidden bg-gradient-to-br ${tl.cls} p-4 flex flex-col justify-center text-white hover:brightness-110 transition-all`}>
-            <span className="absolute -right-6 -bottom-8 w-28 h-28 rounded-full bg-white/15" />
-            <p className="text-[17px] font-extrabold leading-tight relative">{tl.title}</p>
-            <p className="text-[12px] text-white/85 mt-0.5 relative">{tl.sub}</p>
+            className={`relative flex-1 min-h-[96px] rounded-xl overflow-hidden bg-gradient-to-br ${tl.cls} p-3 flex flex-col justify-center text-white hover:brightness-110 transition-all`}>
+            <span className="absolute -right-5 -bottom-7 w-20 h-20 rounded-full bg-white/15" />
+            <p className="text-[13.5px] font-extrabold leading-tight relative">{tl.title}</p>
+            <p className="text-[11px] text-white/85 mt-0.5 leading-snug relative">{tl.sub}</p>
           </a>
         ))}
       </div>
@@ -87,7 +87,7 @@ export default function SideBanners() {
       {items.map((b) => {
         const src = /^(https?:|data:)/.test(b.image) ? b.image : imgUrl(b.image);
         const inner = (
-          <div className="relative flex-1 min-h-[122px] rounded overflow-hidden ring-1 ring-black/10 bg-black group/side">
+          <div className="relative flex-1 min-h-[96px] rounded-xl overflow-hidden ring-1 ring-black/10 bg-black group/side">
             {/* Bulanıq arxa fon — şəkil kəsilmir. will-change/translateZ YOXDUR:
                 ayrıca GPU qatında blur hər scroll kadrında yenidən hesablanırdı (ağ flash). */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -97,7 +97,7 @@ export default function SideBanners() {
             {b.title && (
               <>
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                <p className="absolute left-3 right-3 bottom-2.5 text-white font-bold text-sm leading-tight line-clamp-2" style={{ textShadow: "0 1px 6px rgba(0,0,0,.5)" }}>{b.title}</p>
+                <p className="absolute left-2.5 right-2.5 bottom-2 text-white font-bold text-xs leading-tight line-clamp-2" style={{ textShadow: "0 1px 6px rgba(0,0,0,.5)" }}>{b.title}</p>
               </>
             )}
           </div>

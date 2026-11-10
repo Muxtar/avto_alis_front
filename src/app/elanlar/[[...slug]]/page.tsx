@@ -598,7 +598,7 @@ function MarketplacePage() {
               {/* Sətrin hündürlüyü SABİTDİR (lg+): sol kateqoriya reydi, karusel və
                   sağ promo plitələri eyni boyda olur. Kateqoriyalar bu hündürlüyü
                   aşanda reydin İÇİNDƏ scroll olunur. */}
-              <div className="lg:grid lg:grid-cols-[272px_minmax(0,1fr)] xl:grid-cols-[272px_minmax(0,1fr)_280px] lg:gap-4 lg:h-[535px]">
+              <div className="lg:grid lg:grid-cols-[272px_minmax(0,1fr)] xl:grid-cols-[272px_minmax(0,1fr)_200px] lg:gap-4 lg:h-[535px]">
                 {/* Left — kateqoriyalar (sətri uzatmasın deyə absolute) */}
                 <div className="hidden lg:block relative">
                   <CategoryMegaMenu variant="landing" fill selectedCategory={selectedCategory} />
