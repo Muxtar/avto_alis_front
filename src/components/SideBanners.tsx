@@ -2,18 +2,63 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
 import { API, imgUrl } from "@/lib/api";
+import { loadActiveAds, trackImpressions, adImg, type PublicAd } from "@/components/HomeCarousel";
 
 type Banner = { id: number; image: string; link: string | null; title: string | null; position?: string };
 
 // Karuselin sağındakı kiçik promo bannerlər (birmarket üslubu) — admin idarəli.
 export default function SideBanners() {
   const [items, setItems] = useState<Banner[]>([]);
+  const [ads, setAds] = useState<PublicAd[]>([]);
 
   useEffect(() => {
     fetch(`${API}/banners`).then((r) => r.json())
       .then((d) => { if (d.success) setItems((d.banners || []).filter((b: Banner) => b.position === "SIDE").slice(0, 3)); })
       .catch(() => {});
+    // Ödənişli yan banner reklamları — hər yükləmədə təsadüfi 3-ü (növbə ilə).
+    loadActiveAds().then((all) => {
+      const side = all.filter((a) => a.placement === "SIDE").sort(() => Math.random() - 0.5).slice(0, 3);
+      setAds(side);
+    });
   }, []);
+
+  // Yalnız böyük ekranda görünür — göstərilmə də yalnız orada sayılsın.
+  useEffect(() => {
+    if (ads.length && typeof window !== "undefined" && window.matchMedia("(min-width: 1280px)").matches) trackImpressions(ads.map((a) => a.id));
+  }, [ads]);
+
+  if (ads.length > 0) {
+    // Reklamlar + (yer qalırsa) admin bannerləri; cəmi 3 plitə.
+    const fill = items.slice(0, Math.max(0, 3 - ads.length));
+    return (
+      <div className="hidden xl:flex flex-col gap-2 h-full">
+        {ads.map((a) => (
+          <a key={`ad${a.id}`} href={a.href}
+            onClick={() => { try { navigator.sendBeacon?.(`${API}/ads/${a.id}/click`, new Blob(["{}"], { type: "application/json" })); } catch { /* keç */ } }}
+            className="relative flex-1 min-h-[122px] rounded overflow-hidden bg-[#140f3a] ring-1 ring-black/10 group/side flex">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={adImg(a.image || a.productImage)} alt="" aria-hidden="true" className="absolute inset-0 w-full h-full object-cover blur-xl brightness-[0.5] scale-110" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={adImg(a.productImage || a.image)} alt={a.headline}
+              className="absolute right-2 top-2 bottom-2 w-[42%] h-[calc(100%-1rem)] object-contain rounded-lg transition-transform duration-500 group-hover/side:scale-105" />
+            <div className="relative z-10 w-[58%] p-3 flex flex-col justify-center text-white">
+              <span className="self-start rounded-full bg-amber-400 text-[#1c1917] px-1.5 py-px text-[8.5px] font-extrabold uppercase tracking-[.12em] mb-1">
+                Reklam · {a.sellerKind === "BUSINESS" ? "Sahibkar" : "Fərdi"}
+              </span>
+              <p className="font-extrabold text-[14px] leading-tight line-clamp-2" style={{ textShadow: "0 1px 6px rgba(0,0,0,.5)" }}>{a.headline}</p>
+              {typeof a.price === "number" && a.price > 0 && <p className="text-[13px] font-black mt-1">{a.price} <span className="text-[10px] text-white/70">AZN</span></p>}
+            </div>
+          </a>
+        ))}
+        {fill.map((b) => (
+          <a key={b.id} href={b.link || "#"} className="relative flex-1 min-h-[122px] rounded overflow-hidden ring-1 ring-black/10 bg-black">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={/^(https?:|data:)/.test(b.image) ? b.image : imgUrl(b.image)} alt={b.title || "banner"} className="absolute inset-0 w-full h-full object-cover" />
+          </a>
+        ))}
+      </div>
+    );
+  }
 
   // Admin banner qoymayıbsa sahə boş qalmasın — saytın öz bölmələrinə aparan
   // 3 plitə göstərilir (uydurma promo yox, real daxili linklər).
@@ -21,7 +66,7 @@ export default function SideBanners() {
     const tiles = [
       { href: "/elanlar?sort=newest", title: "Ən son elanlar", sub: "Yeni əlavə olunanlar", cls: "from-indigo-500 to-violet-600" },
       { href: "/elanlar?type=PROFESSION", title: "İxtisas sahibləri", sub: "Peşəkardan onlayn rəy", cls: "from-sky-500 to-cyan-500" },
-      { href: "/locations", title: "Yer üzrə axtar", sub: "Yaxınlıqdakı elanlar", cls: "from-fuchsia-500 to-pink-500" },
+      { href: "/reklam", title: "📣 Reklam ver", sub: "Məhsulunuz burada görünsün", cls: "from-fuchsia-500 to-pink-500" },
     ];
     return (
       <div className="hidden xl:flex flex-col gap-2 h-full">

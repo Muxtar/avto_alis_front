@@ -98,7 +98,7 @@ export type AdminLiveKind =
   | "listing" | "identity" | "seller" | "business" | "object" | "credential" | "social"
   | "complaint" | "support" | "return" | "order" | "refund"
   | "user" | "payout" | "comment" | "promo" | "banner" | "page" | "setting" | "admin"
-  | "outreach" | "broadcast" | "courier";
+  | "outreach" | "broadcast" | "courier" | "ad";
 
 /** AdminShell-in yaydığı "hər şeyi təzələ" siqnalı: soket yenidən qoşulanda,
     tab-a/telefona qayıdanda və soket qırıq ikən dövri yoxlamada. Arada

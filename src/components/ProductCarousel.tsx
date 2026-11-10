@@ -11,7 +11,29 @@ export type CarouselItem = {
   title?: string;
   subtitle?: string;
   href?: string;
+  // İstifadəçinin ödənişli reklamı — xüsusi (məhsul vitrini) slaydı ilə göstərilir.
+  ad?: {
+    id: number;
+    sellerKind: "INDIVIDUAL" | "BUSINESS" | string;
+    sourceType: "LISTING" | "OBJECT" | string;
+    price?: number | null;
+    city?: string | null;
+    productImage?: string | null; // elanın öz şəkli (banner xüsusi şəkildirsə sağda kart kimi)
+  };
+  // «Burada sizin reklamınız» — reklam verməyə çağıran slayd.
+  cta?: boolean;
 };
+
+const fmtPrice = (n: number) => new Intl.NumberFormat("az-AZ", { maximumFractionDigits: 2 }).format(n);
+
+// Reklam klikini qeyd et (səhifə keçidini gecikdirmədən).
+function trackAdClick(api: string, id: number) {
+  try {
+    const url = `${api}/ads/${id}/click`;
+    if (navigator.sendBeacon) navigator.sendBeacon(url, new Blob(["{}"], { type: "application/json" }));
+    else fetch(url, { method: "POST", keepalive: true }).catch(() => {});
+  } catch { /* keç */ }
+}
 
 // Saytın reklam slaydları — public/promo/ altındakı SVG-lər (xarici mənbə yoxdur).
 export const PROMO_ITEMS: CarouselItem[] = [
@@ -31,6 +53,8 @@ const AUTOPLAY_DELAY = 4000;
 
 type Props = {
   items?: CarouselItem[];
+  /** Reklam klik statistikası üçün API ünvanı. */
+  api?: string;
   /**
    * hero — ana səhifə banneri: ekranda 1 böyük slayd, 16:9, şəkil kəsilmir
    * (contain + bulanıq arxa fon), mətn şəklin üstündə.
@@ -45,7 +69,7 @@ type Props = {
   fill?: boolean;
 };
 
-export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fill: fillHeight = false }: Props) {
+export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fill: fillHeight = false, api }: Props) {
   const [emblaRef, emblaApi] = useEmblaCarousel(
     // watchDrag — Embla v8-də sürükləmə seçimi (köhnə adı: draggable).
     { loop: true, align: "start", duration: 25, watchDrag: true },
@@ -107,7 +131,74 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fil
               // kənarlarını kəsərdi, ona görə həmişə "contain" + bulanıq arxa fon.
               const fill = !fillHeight && ratio != null && ratio > 1.56 && ratio < 2.03;
 
-              const inner = hero ? (
+              const frameCls = cn(
+                "relative w-full overflow-hidden",
+                fillHeight ? "aspect-[16/9] max-h-[560px] lg:aspect-auto lg:h-full lg:max-h-none" : "aspect-[16/9] max-h-[560px]",
+              );
+              const inner = hero && it.cta ? (
+                // ── «Reklamınız burada» slaydı ──
+                <div className={cn(frameCls, "bg-[linear-gradient(135deg,#1e1b4b_0%,#4c1d95_45%,#be185d_100%)]")}>
+                  <div aria-hidden className="absolute -right-24 -top-24 w-[420px] h-[420px] rounded-full bg-white/10 blur-2xl" />
+                  <div aria-hidden className="absolute -left-16 -bottom-28 w-[360px] h-[360px] rounded-full bg-fuchsia-400/20 blur-3xl" />
+                  <div aria-hidden className="absolute inset-0 opacity-50"
+                    style={{ background: "repeating-radial-gradient(circle at 100% 0%, rgba(255,255,255,.10) 0 1px, transparent 1px 11px)" }} />
+                  <div className="absolute inset-0 flex flex-col justify-center p-5 sm:p-10 lg:p-12">
+                    <span className="hero-glass inline-flex self-start items-center gap-1.5 rounded-full px-2.5 py-1 mb-3 text-[10px] sm:text-[11px] font-bold uppercase tracking-[.14em] text-white">
+                      📣 Reklam yeri
+                    </span>
+                    <h2 className="text-white font-black text-xl sm:text-4xl lg:text-5xl leading-[1.05] tracking-tight max-w-2xl">
+                      Məhsulunuz burada<br className="hidden sm:block" /> minlərlə alıcıya görünsün
+                    </h2>
+                    <p className="text-white/80 text-xs sm:text-base mt-2 sm:mt-3 max-w-xl">
+                      Fərdi satıcı və ya sahibkar — elanınızı və ya obyektinizi ana səhifədə reklam edin. 3 gündən başlayan paketlər.
+                    </p>
+                    <span className="mt-4 sm:mt-6 inline-flex self-start items-center gap-2 rounded-full bg-white text-[#4c1d95] px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-extrabold shadow-xl">
+                      Reklam ver <ArrowRight className="w-4 h-4" />
+                    </span>
+                  </div>
+                </div>
+              ) : hero && it.ad ? (
+                // ── İstifadəçi reklamı: məhsul vitrini ──
+                <div className={cn(frameCls, "bg-[#140f3a]")}>
+                  {nearby && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={it.image} alt="" aria-hidden className="absolute inset-0 w-full h-full object-cover blur-2xl brightness-[0.45] scale-125" />
+                  )}
+                  <div aria-hidden className="absolute inset-0 bg-gradient-to-r from-[#140f3a]/95 via-[#140f3a]/70 to-transparent" />
+                  <div aria-hidden className="absolute inset-0 pointer-events-none opacity-50"
+                    style={{ background: "repeating-radial-gradient(circle at 100% 0%, rgba(255,255,255,.08) 0 1px, transparent 1px 11px)" }} />
+                  {/* Sağda məhsulun şəkli — kart kimi, kəsilmədən */}
+                  <div className="absolute inset-y-0 right-0 w-[46%] sm:w-[48%] flex items-center justify-center p-3 sm:p-8 lg:p-10">
+                    <div className="relative w-full h-full max-h-full rounded-2xl sm:rounded-3xl overflow-hidden bg-white/5 ring-1 ring-white/15 shadow-[0_30px_60px_-20px_rgba(0,0,0,.7)]">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={it.ad.productImage || it.image} alt={it.title || "reklam"} draggable={false}
+                        className={cn("absolute inset-0 w-full h-full select-none", it.ad.productImage ? "object-contain p-2 sm:p-4" : "object-cover")} />
+                    </div>
+                  </div>
+                  <div className="absolute inset-y-0 left-0 w-[56%] sm:w-[54%] flex flex-col justify-center p-4 sm:p-10 lg:p-12">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-2 sm:mb-4">
+                      <span className="rounded-full bg-amber-400 text-[#1c1917] px-2 py-0.5 text-[9px] sm:text-[10.5px] font-extrabold uppercase tracking-[.12em]">Reklam</span>
+                      <span className="hero-glass rounded-full px-2 py-0.5 text-[9px] sm:text-[10.5px] font-bold text-white">
+                        {it.ad.sellerKind === "BUSINESS" ? "🏢 Sahibkar" : "👤 Fərdi"}
+                      </span>
+                      {it.ad.city && <span className="hidden sm:inline text-[11px] text-white/70">📍 {it.ad.city}</span>}
+                    </div>
+                    {it.title && (
+                      <h2 className="text-white font-black text-base sm:text-3xl lg:text-4xl leading-[1.1] tracking-tight line-clamp-3"
+                        style={{ textShadow: "0 2px 12px rgba(0,0,0,.45)" }}>{it.title}</h2>
+                    )}
+                    {it.subtitle && <p className="hidden sm:block text-white/80 text-sm lg:text-base mt-2 line-clamp-2">{it.subtitle}</p>}
+                    {typeof it.ad.price === "number" && it.ad.price > 0 && (
+                      <p className="mt-2 sm:mt-4 text-white font-black text-lg sm:text-3xl leading-none">
+                        {fmtPrice(it.ad.price)} <span className="text-xs sm:text-base font-bold text-white/70">AZN</span>
+                      </p>
+                    )}
+                    <span className="hero-cta mt-3 sm:mt-6 inline-flex self-start items-center gap-2 text-white rounded-full px-3.5 sm:px-5 py-1.5 sm:py-2.5 text-[11px] sm:text-sm font-bold">
+                      {it.ad.sourceType === "OBJECT" ? "Obyektə bax" : "Elana bax"} <ArrowRight className="w-4 h-4" />
+                    </span>
+                  </div>
+                </div>
+              ) : hero ? (
                 <div className={cn(
                   "relative w-full overflow-hidden bg-input-bg",
                   fillHeight ? "aspect-[16/9] max-h-[560px] lg:aspect-auto lg:h-full lg:max-h-none" : "aspect-[16/9] max-h-[560px]",
@@ -191,6 +282,7 @@ export default function ProductCarousel({ items = PROMO_ITEMS, hero = false, fil
                 >
                   {it.href ? (
                     <a href={it.href} className="block h-full" draggable={false}
+                      onClick={() => { if (it.ad && api) trackAdClick(api, it.ad.id); }}
                       target={it.href.startsWith("http") ? "_blank" : undefined}
                       rel={it.href.startsWith("http") ? "noreferrer" : undefined}>
                       {inner}

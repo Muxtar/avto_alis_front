@@ -85,6 +85,15 @@ export default function AddListingMenu() {
           </span>
           <span className="text-muted group-hover:text-[var(--brand-to)]">›</span>
         </Link>
+        {/* Ana səhifədə ödənişli reklam */}
+        <Link href={isLoggedIn ? "/reklam?new=1" : "/"} onClick={close} className="wiz-opt-sm group">
+          <span className="wiz-ico !mb-0 !w-10 !h-10 !text-lg">📣</span>
+          <span className="flex-1 min-w-0">
+            <span className="font-bold text-sm block">Reklam ver</span>
+            <span className="text-[11px] text-muted">Ana səhifədə göstər</span>
+          </span>
+          <span className="text-muted group-hover:text-[var(--brand-to)]">›</span>
+        </Link>
       </div>
     </div>
   );

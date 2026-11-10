@@ -31,6 +31,12 @@ export default function PaymentReturnPage() {
         window.location.replace(`/messages?consult=${encodeURIComponent(consult)}&paid=${status}`);
         return;
       }
+      // Ana səhifə reklamı ödənişi — «Reklamlarım» səhifəsinə qayıt.
+      if (sessionStorage.getItem("adPay")) {
+        sessionStorage.removeItem("adPay");
+        window.location.replace(`/reklam?pay=${status}`);
+        return;
+      }
       // VIP elan ödənişi — elanın səhifəsinə qayıt.
       const vipListing = sessionStorage.getItem("vipPay");
       if (vipListing) {

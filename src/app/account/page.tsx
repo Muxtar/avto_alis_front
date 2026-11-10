@@ -477,6 +477,7 @@ function AccountPageInner() {
         actions={<>
           {user?.id && <QRShare path={`/seller/${user.id}`} title={user.name} subtitle="Profil" compact className={`${heroBtn} !px-2.5`} />}
           {user?.id && <HomeQrCard userId={user.id} userName={user.name} className={heroBtn}>🏠 <span className="hidden sm:inline">Qapı QR</span></HomeQrCard>}
+          <a href="/reklam" title="Ana səhifədə reklam ver" className={heroBtn}>📣 <span className="hidden sm:inline">Reklam</span></a>
           <a href="/reviews" title="Aldığım rəylər" className={heroBtn}>⭐ <span className="hidden sm:inline">Rəylər</span></a>
           <a href="/referral/manage" title="Referal proqramım" className={heroBtn}>🤝 <span className="hidden sm:inline">Referal</span></a>
           {!showForm && canAddListing && (
