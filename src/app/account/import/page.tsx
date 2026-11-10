@@ -248,7 +248,7 @@ function ExcelImportInner() {
         ) : approvedBizNoObj.length > 0 ? (
           <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 mb-4">
             <p className="font-semibold text-sm text-green-600">✓ Biznesiniz təsdiqlənib{approvedBizNoObj.length === 1 ? `: ${approvedBizNoObj[0].name}` : ""}</p>
-            <p className="text-xs text-muted mt-0.5">VÖEN ilə satış üçün bu biznesə ən azı bir <b>obyekt (mağaza / filial)</b> əlavə etməlisiniz.</p>
+            <p className="text-xs text-muted mt-0.5">Sahibkar kimi satış üçün bu biznesə ən azı bir <b>obyekt (mağaza / filial)</b> əlavə etməlisiniz.</p>
             <a href="/business" className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold hover:bg-orange-600">＋ Obyekt əlavə et →</a>
           </div>
         ) : (

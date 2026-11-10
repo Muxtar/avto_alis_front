@@ -63,20 +63,20 @@ export default function MobileBottomNav() {
         <>
           <div className="fixed inset-0 z-40 md:hidden" onClick={closeMenu} />
           <div className="fixed bottom-20 left-3 z-50 w-64 bg-card border border-card-border rounded-2xl shadow-2xl overflow-hidden md:hidden">
-            {/* VÖEN ilə (biznes) */}
+            {/* Sahibkar */}
             <Link href={isLoggedIn ? "/account?new=1&mode=voen" : "/"} onClick={closeMenu} className={menuItem}>
               <span className="w-9 h-9 rounded-xl bg-orange-500/15 text-orange-500 flex items-center justify-center shrink-0 text-lg">🏢</span>
               <span className="flex-1">
-                <span className="font-medium block">VÖEN ilə (biznes)</span>
+                <span className="font-medium block">Sahibkar</span>
                 <span className="text-[11px] text-muted">Kartla ödəniş</span>
               </span>
             </Link>
 
-            {/* VÖEN-siz (fərdi) */}
+            {/* Fərdi */}
             <Link href={isLoggedIn ? "/account?new=1&mode=novoen" : "/"} onClick={closeMenu} className={`${menuItem} border-t border-card-border`}>
               <span className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-500 flex items-center justify-center shrink-0 text-lg">👤</span>
               <span className="flex-1">
-                <span className="font-medium block">VÖEN-siz (fərdi)</span>
+                <span className="font-medium block">Fərdi</span>
                 <span className="text-[11px] text-muted">Birbaşa əlaqə</span>
               </span>
             </Link>

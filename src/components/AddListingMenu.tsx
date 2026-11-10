@@ -67,20 +67,20 @@ export default function AddListingMenu() {
         <p className="font-bold text-[14.5px] leading-tight">Necə satacaqsınız?</p>
       </div>
       <div className="p-2 space-y-1.5">
-        {/* VÖEN ilə (biznes) */}
+        {/* Sahibkar */}
         <Link href={isLoggedIn ? "/account?new=1&mode=voen" : "/"} onClick={close} className="wiz-opt-sm group">
           <span className="wiz-ico !mb-0 !w-10 !h-10 !text-lg">🏢</span>
           <span className="flex-1 min-w-0">
-            <span className="font-bold text-sm block">VÖEN ilə (biznes)</span>
+            <span className="font-bold text-sm block">Sahibkar</span>
             <span className="text-[11px] text-muted">Kartla ödəniş, sifariş saytdan</span>
           </span>
           <span className="text-muted group-hover:text-[var(--brand-to)]">›</span>
         </Link>
-        {/* VÖEN-siz (fərdi) */}
+        {/* Fərdi */}
         <Link href={isLoggedIn ? "/account?new=1&mode=novoen" : "/"} onClick={close} className="wiz-opt-sm group">
           <span className="wiz-ico !mb-0 !w-10 !h-10 !text-lg">👤</span>
           <span className="flex-1 min-w-0">
-            <span className="font-bold text-sm block">VÖEN-siz (fərdi)</span>
+            <span className="font-bold text-sm block">Fərdi</span>
             <span className="text-[11px] text-muted">Alıcı ilə birbaşa əlaqə</span>
           </span>
           <span className="text-muted group-hover:text-[var(--brand-to)]">›</span>

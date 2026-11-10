@@ -835,13 +835,24 @@ function MarketplacePage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {webResults.slice(0, 12).map((w: any, i: number) => (
                         <a key={`${w.url}-${i}`} href={w.url} target="_blank" rel="noopener noreferrer"
-                          className="surface p-3 hover:border-orange-500/50 transition-colors">
-                          <p className="text-sm font-semibold line-clamp-2">{w.title || w.url}</p>
-                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                            {w.price != null && <span className="text-sm font-bold text-orange-500">{typeof w.price === "number" ? `${w.price} AZN` : w.price}</span>}
-                            {w.site && <span className="text-[11px] text-muted">{w.site}</span>}
-                          </div>
-                          {w.snippet && <p className="text-xs text-muted line-clamp-2 mt-1">{w.snippet}</p>}
+                          className="surface p-3 hover:border-orange-500/50 transition-colors flex gap-3">
+                          {/* Məhsulun şəkli (elan səhifəsinin og:image-i, proxy ilə) */}
+                          <span className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-input-bg flex items-center justify-center">
+                            {(w.image || w.avatarUrl) ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={`${API}/avatar-proxy?url=${encodeURIComponent(w.image || w.avatarUrl)}`} alt="" loading="lazy" className="w-full h-full object-cover"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; const sib = e.currentTarget.nextElementSibling as HTMLElement | null; if (sib) sib.style.display = "flex"; }} />
+                            ) : null}
+                            <span style={{ display: (w.image || w.avatarUrl) ? "none" : "flex" }} className="w-full h-full items-center justify-center text-2xl text-muted">📦</span>
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold line-clamp-2">{w.title || w.url}</p>
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              {w.price != null && <span className="text-sm font-bold text-orange-500">{typeof w.price === "number" ? `${w.price} AZN` : w.price}</span>}
+                              {w.site && <span className="text-[11px] text-muted">{w.site}</span>}
+                            </div>
+                            {(w.description || w.snippet) && <p className="text-xs text-muted line-clamp-2 mt-1">{w.description || w.snippet}</p>}
+                          </span>
                         </a>
                       ))}
                     </div>

@@ -298,7 +298,7 @@ function AccountPageInner() {
     e.preventDefault();
     // VÖEN-li elan üçün biznes obyekti mütləqdir (kartla satış obyekt üzərindən).
     if (listingMode === "voen" && !selectedObjectId) {
-      toast("VÖEN-li elan üçün biznes obyekti seçin", "error");
+      toast("Sahibkar elanı üçün biznes obyekti seçin", "error");
       return;
     }
     setSubmitting(true);
@@ -341,7 +341,7 @@ function AccountPageInner() {
       // Referal satış: DEFAULT = proqramın qaydası; faiz boşdursa standart faiz.
       fd.append("referralMode", referralMode);
       fd.append("referralPercent", referralMode === "OFF" ? "" : referralPercent.trim());
-      // Biznes obyekti YALNIZ VÖEN-li elanda göndərilir — VÖEN-siz (fərdi) elan biznesə bağlanmır.
+      // Biznes obyekti YALNIZ VÖEN-li elanda göndərilir — Fərdi elan biznesə bağlanmır.
       if (listingMode === "voen" && selectedObjectId) fd.append("businessObjectId", selectedObjectId);
       // VÖEN-siz elanlarda elana özəl konum göndərilir (seçilibsə). VÖEN elanlarda konum obyektdən gəlir.
       if (listingMode !== "voen") {
@@ -509,18 +509,18 @@ function AccountPageInner() {
         if (showForm && !listingMode && !editingId) return (
           <div className="wiz-card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold">VÖEN ilə, yoxsa VÖEN-siz?</h2>
+              <h2 className="font-semibold">Sahibkar, yoxsa Fərdi?</h2>
               <button type="button" onClick={resetForm} className="text-sm text-muted hover:text-foreground">{t("adminCancel") || "Bağla"}</button>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <button type="button" onClick={() => setListingMode("voen")} className={cardCls}>
                 <div className="wiz-ico">🏢</div>
-                <p className="font-semibold text-sm">VÖEN ilə (biznes)</p>
+                <p className="font-semibold text-sm">Sahibkar</p>
                 <p className="text-xs text-muted mt-1">Kartla ödəniş, saytdan sifariş. Biznes və ona bağlı obyekt tələb olunur.</p>
               </button>
               <button type="button" onClick={() => { setListingMode("novoen"); setSelectedObjectId(""); }} className={cardCls}>
                 <div className="wiz-ico">👤</div>
-                <p className="font-semibold text-sm">VÖEN-siz (fərdi)</p>
+                <p className="font-semibold text-sm">Fərdi</p>
                 <p className="text-xs text-muted mt-1">Sayt üzərindən ödəniş yox — alıcı ilə birbaşa əlaqə.</p>
               </button>
             </div>
@@ -576,13 +576,13 @@ function AccountPageInner() {
                 // Biznes TƏSDİQLƏNİB, amma hələ obyekti yoxdur — obyekt əlavə etməyə yönləndir.
                 <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-xl">
                   <p className="font-semibold text-sm text-green-600">✓ Biznesiniz təsdiqlənib{approvedBizNoObj.length === 1 ? `: ${approvedBizNoObj[0].name}` : ""}</p>
-                  <p className="text-xs text-muted mt-0.5">VÖEN ilə satış üçün bu biznesə ən azı bir <b>obyekt (mağaza / filial)</b> əlavə etməlisiniz. Elan həmişə bir obyektə bağlı satılır.</p>
+                  <p className="text-xs text-muted mt-0.5">Sahibkar kimi satış üçün bu biznesə ən azı bir <b>obyekt (mağaza / filial)</b> əlavə etməlisiniz. Elan həmişə bir obyektə bağlı satılır.</p>
                   <a href={`/business?addobj=${approvedBizNoObj[0]?.id}`} className="inline-flex items-center gap-1 mt-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold hover:bg-orange-600">＋ Obyekt əlavə et →</a>
                 </div>
                 ) : (
                 <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
                   <p className="font-semibold text-sm">Təsdiqlənmiş biznesiniz yoxdur</p>
-                  <p className="text-xs text-muted mt-0.5">VÖEN-li elan (kartla ödəniş) üçün əvvəlcə biznes (VÖEN) əlavə edin, admin təsdiqindən sonra ona obyekt bağlayın.</p>
+                  <p className="text-xs text-muted mt-0.5">Sahibkar elanı (kartla ödəniş) üçün əvvəlcə biznes (VÖEN) əlavə edin, admin təsdiqindən sonra ona obyekt bağlayın.</p>
                 </div>
                 )}
 
@@ -655,7 +655,7 @@ function AccountPageInner() {
       {/* Add/Edit Form */}
       {showForm && (editingId || listingKind === "service" || listingKind === "product-form") && (
         <div className="wiz-card">
-          <h2 className="font-semibold mb-4">{editingId ? t("editListing") : (listingMode === "voen" ? "Elan məlumatları — VÖEN ilə" : "Elan məlumatları — VÖEN-siz")}</h2>
+          <h2 className="font-semibold mb-4">{editingId ? t("editListing") : (listingMode === "voen" ? "Elan məlumatları — Sahibkar" : "Elan məlumatları — Fərdi")}</h2>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -930,7 +930,7 @@ function AccountPageInner() {
                 })()}
                 {listingMode !== "voen" && (
                   <p className="mt-3 text-[11px] text-muted">
-                    👥 Birgə alış yalnız VÖEN ilə qoyulan elanlarda mümkündür — endirim fərqi kartla qaytarılır.
+                    👥 Birgə alış yalnız Sahibkar elanlarında mümkündür — endirim fərqi kartla qaytarılır.
                   </p>
                 )}
               </div>
