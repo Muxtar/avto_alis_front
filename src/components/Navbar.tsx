@@ -108,7 +108,7 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
-  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean; image?: string | null; description?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
+  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; currency?: string; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean; image?: string | null; description?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
   // Sosial profilə mesaj göndərmə (admin əl ilə çatdırır).
   const [msgTarget, setMsgTarget] = useState<any>(null);
   const [msgText, setMsgText] = useState("");
@@ -761,7 +761,7 @@ export default function Navbar() {
                                   <p className="text-[13px] font-semibold line-clamp-2 leading-snug">{r.title}</p>
                                   {typeof r.price === "number" ? (
                                     <p className="mt-1 text-base font-extrabold text-[var(--brand-to)] leading-none">
-                                      {formatPriceShort(r.price)} <span className="text-[10px] text-muted font-bold">AZN</span>
+                                      {formatPriceShort(r.price)} <span className="text-[10px] text-muted font-bold">{r.currency || "AZN"}</span>
                                     </p>
                                   ) : (
                                     <p className="mt-1 text-[11px] text-muted">Qiymət göstərilməyib</p>
