@@ -544,7 +544,7 @@ function AccountPageInner() {
               <div className="space-y-2">
                 {bizList.length > 0 ? (
                 <>
-                <p className="text-xs text-muted mb-1">Bizneslərim — birinə toxun, obyektləri açılsın, obyektin qarşısındakı «Ürün əlavə et» ilə elanı ona qoy.</p>
+                <p className="text-xs text-muted mb-1">Bizneslərim — birinə toxun, obyektləri açılsın, obyektin qarşısındakı «Məhsul əlavə et» ilə elanı ona qoy.</p>
                 {bizList.map((b) => (
                   <div key={b.id} className="rounded-2xl border border-input-border overflow-hidden">
                     <div className="flex items-center gap-2 p-3 bg-input-bg/40">
@@ -565,7 +565,7 @@ function AccountPageInner() {
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0">
                               <a href="/business" title="Obyekti redaktə et" className="text-muted hover:text-orange-500 text-sm">✏️</a>
-                              <button type="button" onClick={() => setSelectedObjectId(String(o.id))} className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold whitespace-nowrap">＋ Ürün əlavə et</button>
+                              <button type="button" onClick={() => setSelectedObjectId(String(o.id))} className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-xs font-semibold whitespace-nowrap">＋ Məhsul əlavə et</button>
                             </div>
                           </div>
                         ))}
