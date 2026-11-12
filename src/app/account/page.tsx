@@ -71,7 +71,7 @@ function AccountPageInner() {
   const [listingMode, setListingMode] = useState<"" | "voen" | "novoen">(""); // VÖEN ilə / VÖEN-siz
   const [listingKind, setListingKind] = useState<"" | "product" | "service" | "product-form">(""); // Məhsul / Xidmət sihirbazı
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "", barcode: "" });
+  const [form, setForm] = useState({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: "PRODUCT" as string, location: "", phone: "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: "", fuelType: "", paymentType: "", barcode: "", sku: "", qrCode: "" });
   const [barter, setBarter] = useState(false);   // dəyiş-düş qəbul olunur
   const [forRent, setForRent] = useState(false); // satış yox, icarə/kirayə
   const [allowSelfDelivery, setAllowSelfDelivery] = useState(false); // satıcı özü də çatdıra bilər (Yango + götürmə həmişə var)
@@ -232,7 +232,7 @@ function AccountPageInner() {
 
   const resetForm = () => {
     const defaultType = user?.type === "MECHANIC" ? "SERVICE" : "PRODUCT";
-    setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "", barcode: "" });
+    setForm({ title: "", description: "", price: "", category: DEFAULT_CATEGORY, type: defaultType, location: myLocation.address, phone: user?.phone || "", condition: "NEW", brand: "", country: "", stock: "1", forVehicle: "", unit: "", unitValue: "", year: "", model: "", city: myLocation.city, fuelType: "", paymentType: "", barcode: "", sku: "", qrCode: "" });
     setTiers([]);
     setGroupBuyOn(false); setGroupBuyDays("3");
     setBarter(false); setForRent(false);
@@ -381,7 +381,7 @@ function AccountPageInner() {
       title: listing.title, description: listing.description,
       price: String(listing.price), category: listing.category,
       type: listing.type, location: listing.location || "", phone: listing.phone || "",
-      condition: listing.condition || "NEW", brand: listing.brand || "", barcode: listing.barcode || "",
+      condition: listing.condition || "NEW", brand: listing.brand || "", barcode: listing.barcode || "", sku: listing.sku || "", qrCode: listing.qrCode || "",
       country: listing.country || "",
       stock: String(listing.stock || 1),
       forVehicle: listing.forVehicle || "", unit: listing.unit || "", unitValue: listing.unitValue ? String(listing.unitValue) : "",
@@ -674,6 +674,18 @@ function AccountPageInner() {
               <BarcodeField value={form.barcode} inputCls={inputCls}
                 onChange={(v) => setForm((f) => ({ ...f, barcode: v }))}
                 onSuggestName={(n) => setForm((f) => ({ ...f, title: f.title || n }))} />
+            )}
+            {form.type === "PRODUCT" && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">Məhsulun kodu <span className="text-muted font-normal">(könüllü)</span></label>
+                  <input value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} placeholder="Marketin öz kodu, məs. MK-0001" className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1.5">QR kod <span className="text-muted font-normal">(könüllü)</span></label>
+                  <input value={form.qrCode} onChange={(e) => setForm({ ...form, qrCode: e.target.value })} placeholder="QR kodun mətni və ya linki" className={inputCls} />
+                </div>
+              </div>
             )}
             <div>
               <label className="block text-sm font-medium mb-1.5">{t("listingDesc")}</label>
