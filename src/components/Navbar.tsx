@@ -108,7 +108,7 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
-  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; currency?: string; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean; image?: string | null; description?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
+  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; currency?: string; priceFromIndex?: boolean; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean; image?: string | null; description?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
   // Sosial profilə mesaj göndərmə (admin əl ilə çatdırır).
   const [msgTarget, setMsgTarget] = useState<any>(null);
   const [msgText, setMsgText] = useState("");
@@ -745,15 +745,21 @@ export default function Navbar() {
                           {webData!.results.map((r) => {
                             let host = r.site || r.url;
                             try { if (!r.site) host = new URL(r.url).hostname.replace(/^www\./, ""); } catch { /* keç */ }
-                            const thumb = r.image ? proxyImg(r.image) : null;
+                            // Şəkil birbaşa brauzerdən yüklənir (elan saytlarının CDN-i serverimizi
+                            // bloklaya bilər, istifadəçinin öz bağlantısını isə yox). Alınmasa — proksi.
+                            const thumb = r.image || null;
                             return (
                               <a key={r.url} href={r.url} target="_blank" rel="noopener noreferrer"
                                 className="flex gap-3 border border-card-border rounded-xl p-2.5 hover:border-[var(--brand-to)]/50 hover:bg-input-bg/40 transition-colors">
                                 <span className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-input-bg flex items-center justify-center">
                                   {thumb ? (
                                     // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={thumb} alt="" loading="lazy" className="w-full h-full object-cover"
-                                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; const sib = e.currentTarget.nextElementSibling as HTMLElement | null; if (sib) sib.style.display = "flex"; }} />
+                                    <img src={thumb} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        const img = e.currentTarget as HTMLImageElement;
+                                        if (!img.dataset.proxied && r.image) { img.dataset.proxied = "1"; img.src = proxyImg(r.image); return; }
+                                        img.style.display = "none"; const sib = img.nextElementSibling as HTMLElement | null; if (sib) sib.style.display = "flex";
+                                      }} />
                                   ) : null}
                                   <span style={{ display: thumb ? "none" : "flex" }} className="w-full h-full items-center justify-center text-2xl text-muted">📦</span>
                                 </span>
@@ -763,8 +769,11 @@ export default function Navbar() {
                                     <p className="mt-1 text-base font-extrabold text-[var(--brand-to)] leading-none">
                                       {formatPriceShort(r.price)} <span className="text-[10px] text-muted font-bold">{r.currency || "AZN"}</span>
                                     </p>
-                                  ) : (
-                                    <p className="mt-1 text-[11px] text-muted">Qiymət göstərilməyib</p>
+                                  ) : null}
+                                  {typeof r.price === "number" && r.priceFromIndex ? (
+                                    <p className="text-[10px] text-muted mt-0.5">Qiymət saytda dəyişə bilər</p>
+                                  ) : typeof r.price === "number" ? null : (
+                                    <p className="mt-1 text-[11px] text-muted">Qiyməti saytda baxın</p>
                                   )}
                                   {r.seller && <p className="text-[11px] text-muted truncate mt-0.5">Satıcı: <span className="font-semibold text-foreground">{r.seller}</span></p>}
                                   <div className="mt-auto pt-1.5 flex items-center justify-between gap-2">
