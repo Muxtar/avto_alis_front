@@ -434,6 +434,41 @@ function AccountPageInner() {
     if (!confirm(t("confirmDeleteListing"))) return;
     await fetch(`${API}/me/listings/${id}`, { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
     setListings(listings.filter((l) => l.id !== id));
+    setSelectedIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
+  };
+
+  // Toplu silmə: tək-tək işarələ və ya "Hamısını seç", sonra bəzilərini ləğv et.
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const allSelected = listings.length > 0 && listings.every((l) => selectedIds.has(l.id));
+  const toggleSelect = (id: number) =>
+    setSelectedIds((prev) => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggleSelectAll = () =>
+    setSelectedIds(allSelected ? new Set() : new Set(listings.map((l) => l.id)));
+  const handleBulkDelete = async () => {
+    const ids = listings.filter((l) => selectedIds.has(l.id)).map((l) => l.id);
+    if (ids.length === 0) return;
+    if (!confirm(t("confirmBulkDelete").replace("{n}", String(ids.length)))) return;
+    setBulkDeleting(true);
+    try {
+      const res = await fetch(`${API}/me/listings/bulk-delete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ ids }),
+      });
+      const data = await res.json();
+      if (!data.success) { toast(data.message || t("bulkDeleteFailed"), "error"); return; }
+      const gone = new Set<number>(data.deleted || []);
+      setListings((prev) => prev.filter((l) => !gone.has(l.id)));
+      // Silinməyənlər seçili qalır ki, istifadəçi hansılar olduğunu görsün.
+      setSelectedIds(new Set<number>(data.failed || []));
+      if (data.failed?.length) toast(t("bulkDeletePartial").replace("{n}", String(gone.size)).replace("{f}", String(data.failed.length)), "error");
+      else toast(t("bulkDeleteDone").replace("{n}", String(gone.size)), "success");
+    } catch {
+      toast(t("bulkDeleteFailed"), "error");
+    } finally {
+      setBulkDeleting(false);
+    }
   };
 
   // Vaxtı bitmiş (və ya bitməyə yaxın) elanı yenilə — müddəti +20 gün uzadır.
@@ -1401,6 +1436,28 @@ function AccountPageInner() {
         </div>
       ) : (
         <div className="space-y-3">
+          {/* Toplu seçim paneli: hamısını seç / seçilənləri sil */}
+          <div className="wiz-card flex flex-wrap items-center gap-3 px-4 py-3 sticky top-[128px] z-20">
+            <label className="flex items-center gap-2 text-sm font-medium cursor-pointer select-none">
+              <input type="checkbox" checked={allSelected} onChange={toggleSelectAll}
+                ref={(el) => { if (el) el.indeterminate = selectedIds.size > 0 && !allSelected; }}
+                className="w-5 h-5 accent-orange-500 cursor-pointer" />
+              {t("selectAll")}
+            </label>
+            {selectedIds.size > 0 && (
+              <>
+                <span className="text-xs text-muted tabular-nums">{t("selectedCount").replace("{n}", String(selectedIds.size))}</span>
+                <button onClick={() => setSelectedIds(new Set())} className="text-xs text-muted underline hover:text-foreground transition-colors">
+                  {t("clearSelection")}
+                </button>
+                <button onClick={handleBulkDelete} disabled={bulkDeleting}
+                  className="ml-auto flex items-center gap-1 px-3 py-2 bg-red-500 text-white rounded-lg text-xs font-semibold hover:bg-red-600 transition-colors disabled:opacity-50">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  {bulkDeleting ? "..." : t("deleteSelected").replace("{n}", String(selectedIds.size))}
+                </button>
+              </>
+            )}
+          </div>
           {listings.map((listing) => (
             <div key={listing.id}
               style={{ ["--row-c" as any]: listing.status === "PENDING" ? "#f59e0b" : listing.status === "REJECTED" || (listing.expiresAt && new Date(listing.expiresAt) <= new Date()) || (listing.visibility && !listing.visibility.visible) ? "#ef4444" : "#10b981" }}
@@ -1432,6 +1489,10 @@ function AccountPageInner() {
                   ✕ Rədd edildi
                 </span>
               ) : null}
+              {/* Toplu silmə üçün seçim qutusu */}
+              <input type="checkbox" checked={selectedIds.has(listing.id)} onChange={() => toggleSelect(listing.id)}
+                aria-label={`${t("selectListing")}: ${listing.title}`}
+                className="w-5 h-5 shrink-0 accent-orange-500 cursor-pointer" />
               {/* Image */}
               <div className="w-full sm:w-24 h-32 sm:h-24 shrink-0 bg-input-bg border border-input-border rounded-xl overflow-hidden flex items-center justify-center">
                 {listing.images && listing.images.length > 0 ? (
