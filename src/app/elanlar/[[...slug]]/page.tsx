@@ -71,6 +71,7 @@ function MarketplacePage() {
   const [webResults, setWebResults] = useState<any[]>([]);
   const [webSummary, setWebSummary] = useState("");
   const [webLoading, setWebLoading] = useState(false);
+  const [webRefining, setWebRefining] = useState(false); // ilkin nəticə göstərilir, canlı yoxlama gedir
   const [webNeedLogin, setWebNeedLogin] = useState(false);
   const webForQuery = useRef("");
   // İnternet axtarışının sahəsi: Maşın / Daşınmaz əmlak / Digər (istifadəçi seçir).
@@ -171,20 +172,31 @@ function MarketplacePage() {
     const runKey = `${webScope}|${q}`;
     if (!q || webForQuery.current === runKey) return;
     webForQuery.current = runKey;
-    setWebResults([]); setWebSummary(""); setWebNeedLogin(false);
+    setWebResults([]); setWebSummary(""); setWebNeedLogin(false); setWebRefining(false);
     if (!token) { setWebNeedLogin(true); return; }
     setWebLoading(true);
+    const stale = () => webForQuery.current !== runKey; // bu arada sahə/sorğu dəyişib
     try {
-      const r = await fetch(`${API}/search/web`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ query: q, mode: "product", scope: webScope }),
-      }).then((x) => x.json());
-      if (webForQuery.current !== runKey) return; // bu arada sahə/sorğu dəyişib — köhnə cavabı at
-      if (r?.success) { setWebResults(r.results || []); setWebSummary(r.summary || ""); }
-      else setWebSummary(r?.message || "İnternetdə nəticə tapılmadı.");
-    } catch { if (webForQuery.current === runKey) setWebSummary("İnternet axtarışı alınmadı."); }
-    finally { if (webForQuery.current === runKey) setWebLoading(false); }
+      // İKİ MƏRHƏLƏ: server əvvəl ilkin nəticəni (indeksdən) dərhal qaytarır
+      // (`refining: true`), canlı yoxlama arxada gedir. Eyni sorğunu təkrar
+      // göndəririk — server yekun hazır olanda onu verir (7 san-yə qədər gözlədir).
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const r = await fetch(`${API}/search/web`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ query: q, mode: "product", scope: webScope }),
+        }).then((x) => x.json());
+        if (stale()) return;
+        if (!r?.success) { if (attempt === 0) setWebSummary(r?.message || "İnternetdə nəticə tapılmadı."); break; }
+        setWebResults(r.results || []); setWebSummary(r.summary || "");
+        setWebLoading(false);
+        setWebRefining(!!r.refining);
+        if (!r.refining) break;
+        await new Promise((res) => setTimeout(res, 1500));
+        if (stale()) return;
+      }
+    } catch { if (!stale()) setWebSummary("İnternet axtarışı alınmadı."); }
+    finally { if (!stale()) { setWebLoading(false); setWebRefining(false); } }
   };
   // Axtarış dəyişəndə (debounce ilə) internet bölməsi də yenilənir.
   useEffect(() => {
@@ -840,6 +852,12 @@ function MarketplacePage() {
                 ) : (
                   <>
                     {webSummary && <p className="text-sm text-foreground/90 mb-3">{webSummary}</p>}
+                    {webRefining && (
+                      <p className="flex items-center gap-2 text-xs text-muted mb-3" role="status">
+                        <span className="w-3.5 h-3.5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                        Qiymətlər və elanların aktivliyi yoxlanılır…
+                      </p>
+                    )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {webResults.slice(0, 12).map((w: any, i: number) => (
                         <a key={`${w.url}-${i}`} href={w.url} target="_blank" rel="noopener noreferrer"

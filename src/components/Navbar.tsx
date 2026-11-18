@@ -109,9 +109,10 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
+  const webReqRef = useRef(0); // son internet axtarışının nömrəsi (köhnə cavabları atmaq üçün)
   // İnternet axtarışının sahəsi: Maşın / Daşınmaz əmlak / Digər.
   const [webScope, setWebScope] = useWebScope();
-  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; currency?: string; priceFromIndex?: boolean; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean; image?: string | null; description?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
+  const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; currency?: string; priceFromIndex?: boolean; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean; image?: string | null; description?: string | null }[]; needLogin?: boolean; notRun?: boolean; refining?: boolean } | null>(null);
   // Sosial profilə mesaj göndərmə (admin əl ilə çatdırır).
   const [msgTarget, setMsgTarget] = useState<any>(null);
   const [msgText, setMsgText] = useState("");
@@ -286,22 +287,37 @@ export default function Navbar() {
       return;
     }
     setWebLoading(true);
+    const reqId = ++webReqRef.current;
+    const stale = () => webReqRef.current !== reqId;   // bu arada yeni axtarış başlayıb
     try {
-      const res = await fetch(`${API}/search/web`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        // Rejimi backend-ə ÖTÜRÜRÜK — orada da təxmin edilmir, seçim tətbiq olunur.
-        body: JSON.stringify({ query: q, mode: "product", scope }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) setWebData({ mode: data.mode || (person ? "person" : "product"), summary: data.message || "Uyğun nəticə tapılmadı.", results: [] });
-      else setWebData({ mode: data.mode || (person ? "person" : "product"), summary: data.summary || "", results: data.results || [] });
+      // İki mərhələ: ilkin nəticə dərhal (`refining`), sonra canlı yoxlanmış yekun.
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const res = await fetch(`${API}/search/web`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          // Rejimi backend-ə ÖTÜRÜRÜK — orada da təxmin edilmir, seçim tətbiq olunur.
+          body: JSON.stringify({ query: q, mode: "product", scope }),
+        });
+        const data = await res.json();
+        if (stale()) return;
+        if (!res.ok || !data.success) {
+          if (attempt === 0) setWebData({ mode: data.mode || (person ? "person" : "product"), summary: data.message || "Uyğun nəticə tapılmadı.", results: [] });
+          break;
+        }
+        setWebData({ mode: data.mode || (person ? "person" : "product"), summary: data.summary || "", results: data.results || [], refining: !!data.refining });
+        setWebLoading(false);
+        if (!data.refining) break;
+        await new Promise((r) => setTimeout(r, 1500));
+        if (stale()) return;
+      }
+      setWebData((d: any) => (d ? { ...d, refining: false } : d));
     } catch {
-      setWebData({ mode: person ? "person" : "product", summary: "İnternet axtarışı alınmadı.", results: [] });
+      if (!stale()) setWebData({ mode: person ? "person" : "product", summary: "İnternet axtarışı alınmadı.", results: [] });
     } finally {
-      setWebLoading(false);
+      if (!stale()) setWebLoading(false);
     }
   };
+
 
   // Şəkillə axtarış — şəkil serverə göndərilir, AI məhsulu tanıyır və
   // qaytardığı sorğu ilə birbaşa elanlar səhifəsinə keçirik.
@@ -666,6 +682,12 @@ export default function Navbar() {
                     <>
                       {webData?.summary && (
                         <p className="px-4 py-2 text-sm text-foreground/90">{webData.summary}</p>
+                      )}
+                      {webData?.refining && (
+                        <p className="flex items-center gap-2 px-4 py-2 text-xs text-muted" role="status">
+                          <span className="w-3.5 h-3.5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+                          Qiymətlər və elanların aktivliyi yoxlanılır…
+                        </p>
                       )}
                       {(webData?.results?.length ?? 0) === 0 ? (
                         <p className="px-4 py-5 text-sm text-muted">{person ? "Açıq sosial media hesabı tapılmadı." : "İnternetdə uyğun nəticə tapılmadı."}</p>
