@@ -11,7 +11,7 @@ import SideBanners from "@/components/SideBanners";
 import TrustBar from "@/components/TrustBar";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import AddListingMenu from "@/components/AddListingMenu";
-import WebScopeTabs, { useWebScope, WEB_SCOPES } from "@/components/WebScopeTabs";
+import WebScopeTabs, { WEB_SCOPES, type WebScope } from "@/components/WebScopeTabs";
 import ShareButton from "@/components/ShareButton";
 import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
 import CategoryFilterPanel from "@/components/CategoryFilterPanel";
@@ -75,7 +75,10 @@ function MarketplacePage() {
   const [webNeedLogin, setWebNeedLogin] = useState(false);
   const webForQuery = useRef("");
   // İnternet axtarışının sahəsi: Maşın / Daşınmaz əmlak / Digər (istifadəçi seçir).
-  const [webScope, setWebScope] = useWebScope();
+  // null → hələ seçilməyib. İnternet axtarışı yalnız istifadəçi «İnternetdə axtar»
+  // basıb sahəni seçəndən sonra başlayır (əvvəl hər axtarışda özü işə düşürdü).
+  const [webScope, setWebScope] = useState<WebScope | null>(null);
+  const [webAsk, setWebAsk] = useState(false); // «İnternetdə axtar» basılıb, sahə seçimi göstərilir
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -168,8 +171,8 @@ function MarketplacePage() {
   useEffect(() => { setShowAllCats(false); }, [slugKey, activeType]);
 
   // Saytdakı nəticələr göstərildikdən sonra internetdən də axtar.
-  const runWebSearch = async (q: string) => {
-    const runKey = `${webScope}|${q}`;
+  const runWebSearch = async (q: string, scope: WebScope) => {
+    const runKey = `${scope}|${q}`;
     if (!q || webForQuery.current === runKey) return;
     webForQuery.current = runKey;
     setWebResults([]); setWebSummary(""); setWebNeedLogin(false); setWebRefining(false);
@@ -184,7 +187,7 @@ function MarketplacePage() {
         const r = await fetch(`${API}/search/web`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ query: q, mode: "product", scope: webScope }),
+          body: JSON.stringify({ query: q, mode: "product", scope }),
         }).then((x) => x.json());
         if (stale()) return;
         if (!r?.success) { if (attempt === 0) setWebSummary(r?.message || "İnternetdə nəticə tapılmadı."); break; }
@@ -198,14 +201,13 @@ function MarketplacePage() {
     } catch { if (!stale()) setWebSummary("İnternet axtarışı alınmadı."); }
     finally { if (!stale()) { setWebLoading(false); setWebRefining(false); } }
   };
-  // Axtarış dəyişəndə (debounce ilə) internet bölməsi də yenilənir.
+  // Axtarış dəyişəndə internet bölməsi SIFIRLANIR — yenidən yalnız istifadəçi
+  // «İnternetdə axtar» basıb sahə seçəndə axtarılır (özü başlamır).
   useEffect(() => {
-    const q = searchQuery.trim();
-    if (!q || activeType === "PROFESSION") { setWebResults([]); setWebSummary(""); setWebNeedLogin(false); webForQuery.current = ""; return; }
-    const id = setTimeout(() => runWebSearch(q), 900);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, activeType, webScope]);
+    webForQuery.current = "";
+    setWebResults([]); setWebSummary(""); setWebNeedLogin(false); setWebLoading(false); setWebRefining(false);
+    setWebScope(null); setWebAsk(false);
+  }, [searchQuery, activeType]);
 
   const buildParams = (pageNum: number) => {
     const params = new URLSearchParams();
@@ -835,12 +837,25 @@ function MarketplacePage() {
               <div className="mt-8 pt-6 border-t border-card-border">
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-sm font-bold">🌐 Digər saytlardan</h2>
-                  <span className="text-[11px] text-muted">{WEB_SCOPES.find((s) => s.id === webScope)?.sites}</span>
+                  {webScope && <span className="text-[11px] text-muted">{WEB_SCOPES.find((s) => s.id === webScope)?.sites}</span>}
                 </div>
-                <p className="text-xs text-muted mb-3">«{searchQuery}» üçün internet nəticələri — nə axtarırsınız?</p>
-                <WebScopeTabs value={webScope} onChange={setWebScope} className="mb-4" />
+                {!webAsk ? (
+                  <>
+                    <p className="text-xs text-muted mb-3">«{searchQuery}» başqa saytlarda da axtarılsın?</p>
+                    <button type="button" onClick={() => setWebAsk(true)}
+                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-input-bg border border-input-border text-sm font-semibold hover:border-orange-500 transition-colors">
+                      🌐 İnternetdə axtar
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-xs text-muted mb-3">{webScope ? `«${searchQuery}» üçün internet nəticələri` : "Nə axtarırsınız? Seçin — axtarış ondan sonra başlayacaq."}</p>
+                    <WebScopeTabs value={webScope} className="mb-4"
+                      onChange={(s) => { setWebScope(s); runWebSearch(searchQuery.trim(), s); }} />
+                  </>
+                )}
 
-                {webLoading ? (
+                {!webScope ? null : webLoading ? (
                   <div className="flex items-center gap-3 py-6 text-sm text-muted">
                     <span className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
                     İnternetdə axtarılır...

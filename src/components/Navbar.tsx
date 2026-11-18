@@ -17,7 +17,7 @@ import { CATEGORIES, slugify } from "@/lib/categories";
 import CategoryMegaMenu from "@/components/CategoryMegaMenu";
 import ReceiptScanner from "@/components/ReceiptScanner";
 import WebcamCapture from "@/components/WebcamCapture";
-import WebScopeTabs, { useWebScope, WEB_SCOPES, type WebScope } from "@/components/WebScopeTabs";
+import WebScopeTabs, { WEB_SCOPES, type WebScope } from "@/components/WebScopeTabs";
 
 const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "az", label: "AZ", flag: "🇦🇿" },
@@ -111,7 +111,9 @@ export default function Navbar() {
   const [webQuery, setWebQuery] = useState("");
   const webReqRef = useRef(0); // son internet axtarışının nömrəsi (köhnə cavabları atmaq üçün)
   // İnternet axtarışının sahəsi: Maşın / Daşınmaz əmlak / Digər.
-  const [webScope, setWebScope] = useWebScope();
+  // null → seçilməyib. İnternet axtarışı özü başlamır: «İnternetdə axtar» → sahə seçimi → axtarış.
+  const [webScope, setWebScope] = useState<WebScope | null>(null);
+  const [webAsk, setWebAsk] = useState(false);
   const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; currency?: string; priceFromIndex?: boolean; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean; image?: string | null; description?: string | null }[]; needLogin?: boolean; notRun?: boolean; refining?: boolean } | null>(null);
   // Sosial profilə mesaj göndərmə (admin əl ilə çatdırır).
   const [msgTarget, setMsgTarget] = useState<any>(null);
@@ -271,15 +273,16 @@ export default function Navbar() {
     // olmadıqda avtomatik. Panel hər halda açılır ki, istifadəçi görsün.
     setWebQuery(q);
     setWebOpen(true);
-    // İnternet axtarışı HƏMİŞƏ işə düşür — həm məhsul, həm şəxs üçün.
-    // (Əvvəl yalnız saytda nəticə olmayanda işləyirdi; ona görə məhsul axtaranda
-    // internet nəticələri — link/qiymət/satıcı — görünmürdü.)
-    // Xərc üçün narahatlıq yoxdur: eyni sorğu 12 saat keşdə saxlanılır.
-    await runWebSearch(q, person);
+    // İnternet axtarışı ÖZÜ BAŞLAMIR (istifadəçi tələbi): əvvəl yalnız saytın öz
+    // nəticələri göstərilir. İstifadəçi «İnternetdə axtar» basıb sahəni
+    // (Maşın / Daşınmaz əmlak / Digər) seçəndən sonra sorğu gedir.
+    webReqRef.current++;               // əvvəlki axtarışın gecikmiş cavabı bu paneli doldurmasın
+    setWebScope(null); setWebAsk(false); setWebLoading(false);
+    setWebData({ mode: "product", summary: "", results: [], notRun: true });
   };
 
   // İnternet axtarışını işə salır (avtomatik və ya "İnternetdə axtar" düyməsindən).
-  const runWebSearch = async (q: string, person: boolean, scope: WebScope = webScope) => {
+  const runWebSearch = async (q: string, person: boolean, scope: WebScope) => {
     setWebOpen(true);
     if (!isLoggedIn || !token) {
       setWebLoading(false);
@@ -605,11 +608,8 @@ export default function Navbar() {
                         📦 Məhsul axtarışı
                       </p>
                       <p className="text-xs text-muted mt-0.5 truncate">
-                        «{webQuery}» — əvvəl tradixai elanları, sonra {WEB_SCOPES.find((s) => s.id === webScope)?.sites}
+                        «{webQuery}» — tradixai elanları{webScope ? `, sonra ${WEB_SCOPES.find((s) => s.id === webScope)?.sites}` : ""}
                       </p>
-                      {/* Nə axtarılır? Seçim dəyişən kimi internet axtarışı yenidən gedir. */}
-                      <WebScopeTabs value={webScope} className="mt-2"
-                        onChange={(s) => { setWebScope(s); if (webQuery && !webData?.notRun) runWebSearch(webQuery, false, s); }} />
                     </div>
                     <button onClick={() => setWebOpen(false)} aria-label="Bağla" className="shrink-0 p-1 text-muted hover:text-foreground transition-colors">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -657,7 +657,7 @@ export default function Navbar() {
                   )}
 
                   {/* ── İNTERNETDƏN ── */}
-                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted">{person ? "sosial media (Instagram · Facebook · X · LinkedIn)" : `digər saytlardan (${WEB_SCOPES.find((x) => x.id === webScope)?.sites})`}</p>
+                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted">{person ? "sosial media (Instagram · Facebook · X · LinkedIn)" : `digər saytlardan${webScope ? ` (${WEB_SCOPES.find((x) => x.id === webScope)?.sites})` : ""}`}</p>
                   {webLoading ? (
                     <div className="flex items-center gap-3 px-4 py-6 text-sm text-muted">
                       <svg className="w-5 h-5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" /></svg>
@@ -671,15 +671,24 @@ export default function Navbar() {
                         Daxil ol
                       </Link>
                     </div>
+                  ) : webData?.notRun && !webAsk ? (
+                    <div className="px-4 py-4">
+                      <button onClick={() => setWebAsk(true)}
+                        className="w-full px-4 py-2.5 rounded-lg bg-input-bg border border-input-border text-sm font-semibold hover:border-orange-500 transition-colors">
+                        🌐 İnternetdə axtar
+                      </button>
+                    </div>
                   ) : webData?.notRun ? (
                     <div className="px-4 py-4">
-                      <button onClick={() => runWebSearch(webQuery, false)}
-                        className="w-full px-4 py-2.5 rounded-lg bg-input-bg border border-input-border text-sm font-semibold hover:border-orange-500 transition-colors">
-                        🌐 İnternetdə də axtar
-                      </button>
+                      <p className="text-xs text-muted mb-2">Nə axtarırsınız? Seçin — axtarış ondan sonra başlayacaq.</p>
+                      <WebScopeTabs value={webScope} onChange={(s) => { setWebScope(s); runWebSearch(webQuery, false, s); }} />
                     </div>
                   ) : (
                     <>
+                      {/* Sahəni dəyişmək — seçən kimi həmin sahədə yenidən axtarılır. */}
+                      <div className="px-4 pt-1 pb-2">
+                        <WebScopeTabs value={webScope} onChange={(s) => { setWebScope(s); runWebSearch(webQuery, false, s); }} />
+                      </div>
                       {webData?.summary && (
                         <p className="px-4 py-2 text-sm text-foreground/90">{webData.summary}</p>
                       )}
