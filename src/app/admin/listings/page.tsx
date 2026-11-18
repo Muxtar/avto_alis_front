@@ -107,7 +107,11 @@ export default function AdminListingsPage() {
   const toggleOwner = (owner: any) => {
     if (openKey === owner.key) { setOpenKey(null); return; }
     setOpenKey(owner.key);
-    if (!rows[owner.key]) fetchRows(owner);
+    // HƏMİŞƏ təzədən gətir. Əvvəl keş varsa sorğu getmirdi: sahibin elanları
+    // təsdiqlənib boşalandan ([] keşdə qalırdı) sonra o, yeni elan qoyanda
+    // sayğac «1» göstərir, klik edəndə isə köhnə boş keşdən «elan tapılmadı»
+    // çıxırdı — yalnız F5 düzəldirdi. Keş yalnız yüklənənə qədər göstərilir.
+    fetchRows(owner);
   };
 
   useEffect(() => { fetchOwners(); setRows({}); setOpenKey(null); }, [statusFilter, typeFilter]);
@@ -120,6 +124,8 @@ export default function AdminListingsPage() {
       fetchOwners(true);   // səssiz — siyahı yanıb-sönməsin, açıq sahib bağlanmasın
       // Açıq sahibin elanları da təzələnsin (yeni elan onun altına düşə bilər).
       const cur = owners.find((o) => o.key === openKey);
+      // Bağlı sahiblərin keşi artıq köhnədir — at (açılanda yenidən gələcək).
+      setRows((prev) => (openKey && prev[openKey] ? { [openKey]: prev[openKey] } : {}));
       if (cur) fetchRows(cur);
     };
     // `admin:live` — yeni elan göndərilən kimi (30 saniyəlik sorğunu gözləmədən).
