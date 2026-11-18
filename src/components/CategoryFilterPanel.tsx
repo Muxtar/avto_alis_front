@@ -171,7 +171,8 @@ export default function CategoryFilterPanel(p: Props) {
         </Section>
       )}
 
-      {/* Yeni? */}
+      {/* Yeni? — yalnız məhsullarda: xidmətin təzəsi/köhnəsi olmur. */}
+      {p.type !== "SERVICE" && p.type !== "PROFESSION" && (
       <Section title="Yeni?">
         <div className="flex flex-wrap gap-2">
           {[
@@ -189,6 +190,7 @@ export default function CategoryFilterPanel(p: Props) {
           ))}
         </div>
       </Section>
+      )}
     </div>
   );
 }

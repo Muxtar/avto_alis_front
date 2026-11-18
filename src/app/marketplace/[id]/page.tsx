@@ -616,7 +616,7 @@ export default function ListingDetailPage() {
                     </div>
                   );
                 })}
-                {getListingFields(parseCat(listing.category).main).includes("condition") && listing.condition && (
+                {listing.type !== "SERVICE" && getListingFields(parseCat(listing.category).main).includes("condition") && listing.condition && (
                   <div>
                     <p className="text-muted text-xs mb-1">{t("condition")}</p>
                     <p className={`font-medium ${listing.condition === 'NEW' ? 'text-green-500' : listing.condition === 'USED' ? 'text-[var(--brand-to)]' : 'text-blue-500'}`}>
@@ -964,7 +964,7 @@ export default function ListingDetailPage() {
               </div>
             )}
             {/* Vəziyyət — eBay üslubu: qiymətin altında açıq göstərilir (yalnız uyğun kateqoriyalarda) */}
-            {getListingFields(parseCat(listing.category).main).includes("condition") && listing.condition && (
+            {listing.type !== "SERVICE" && getListingFields(parseCat(listing.category).main).includes("condition") && listing.condition && (
               <div className="flex items-center gap-2 text-sm mb-3">
                 <span className="text-muted">{t("condition")}:</span>
                 <span className={`font-semibold ${listing.condition === 'NEW' ? 'text-green-600' : listing.condition === 'USED' ? 'text-[var(--brand-to)]' : 'text-blue-500'}`}>

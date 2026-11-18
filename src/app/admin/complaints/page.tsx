@@ -181,7 +181,7 @@ export default function AdminComplaintsPage() {
                   : <div className="w-12 h-12 rounded-lg bg-card shrink-0" />}
                 <div className="min-w-0">
                   <p className="text-sm font-medium line-clamp-1">{listing.title}</p>
-                  <p className="text-xs text-muted">{listing.price} AZN{listing.condition ? ` · ${listing.condition}` : ""} · Satıcı: {listing.user?.name}</p>
+                  <p className="text-xs text-muted">{listing.price} AZN{listing.condition && listing.type !== "SERVICE" ? ` · ${listing.condition}` : ""} · Satıcı: {listing.user?.name}</p>
                 </div>
               </a>
             )}

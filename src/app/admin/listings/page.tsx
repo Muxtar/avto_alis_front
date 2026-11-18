@@ -34,7 +34,7 @@ export default function AdminListingsPage() {
       if (value === null || value === undefined || String(value).trim() === "") return;
       f.push({ label, value: `${value}${suffix ? ` ${suffix}` : ""}` });
     };
-    add("Vəziyyət", l.condition ? condLabel(l.condition) : "");
+    add("Vəziyyət", l.type !== "SERVICE" && l.condition ? condLabel(l.condition) : ""); // xidmətin təzəsi/köhnəsi olmur
     add("Marka", l.brand);
     add("Model", l.model);
     add("İl", l.year);

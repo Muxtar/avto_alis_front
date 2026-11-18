@@ -111,7 +111,7 @@ function MarketplacePage() {
   const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   // Aktiv filter sayini hesabla (badge ucun)
-  const activeFilterCount = [conditionFilter, brandFilter, modelFilter, cityFilter, fuelFilter, paymentFilter, minYear, maxYear, minPrice, maxPrice].filter(Boolean).length;
+  const activeFilterCount = [activeType === "SERVICE" ? "" : conditionFilter, brandFilter, modelFilter, cityFilter, fuelFilter, paymentFilter, minYear, maxYear, minPrice, maxPrice].filter(Boolean).length;
 
   const resetFilters = () => {
     setConditionFilter(""); setBrandFilter(""); setModelFilter("");
@@ -196,7 +196,8 @@ function MarketplacePage() {
     // Axtarış var və növ əl ilə seçilməyibsə — məhsul + xidmət birlikdə.
     if (activeType === "GROUP_BUY") { params.set("type", "PRODUCT"); params.set("groupBuy", "1"); }
     else if (activeType !== "all" && !(searchQuery.trim() && !typeTouched)) params.set("type", activeType);
-    if (conditionFilter) params.set("condition", conditionFilter);
+    // Vəziyyət (yeni/işlənmiş) yalnız məhsula aiddir — xidmətdə göndərilmir.
+    if (conditionFilter && activeType !== "SERVICE") params.set("condition", conditionFilter);
     if (brandFilter) params.set("brand", brandFilter);
     if (modelFilter) params.set("model", modelFilter);
     if (cityFilter) params.set("city", cityFilter);
