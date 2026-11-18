@@ -209,9 +209,14 @@ function AccountPageInner() {
   // Auto-open the form when arriving with ?new=1 (e.g. from the mobile
   // bottom-nav "+" — there's no inline header button on mobile).
   useEffect(() => {
-    if (newParam !== "1" || authLoading || !isLoggedIn) return;
-    // Eyni sorğunu iki dəfə emal etməyək (replaceState searchParams-ı
-    // yeniləmədiyi üçün effekt təkrar işləyə bilər).
+    // URL təmizlənəndə (aşağıdakı replaceState → newParam null olur) qoruyucunu
+    // sıfırla. ƏVVƏL sıfırlanmırdı: elan göndərildikdən sonra "+" ilə EYNİ rejim
+    // (məs. yenə Fərdi) seçiləndə sorğu "artıq emal olunub" sayılıb atılırdı,
+    // forma açılmırdı və ?new=1 URL-də ilişib qalırdı — istifadəçi səhifədən
+    // çıxıb yenidən girməli olurdu.
+    if (newParam !== "1") { handledNewRef.current = null; return; }
+    if (authLoading || !isLoggedIn) return;
+    // Eyni sorğunu iki dəfə emal etməyək (auth dəyişəndə effekt təkrar işləyir).
     const token = `${newParam}:${modeParam || ""}`;
     if (handledNewRef.current === token) return;
     handledNewRef.current = token;
