@@ -17,6 +17,7 @@ import { CATEGORIES, slugify } from "@/lib/categories";
 import CategoryMegaMenu from "@/components/CategoryMegaMenu";
 import ReceiptScanner from "@/components/ReceiptScanner";
 import WebcamCapture from "@/components/WebcamCapture";
+import WebScopeTabs, { useWebScope, WEB_SCOPES, type WebScope } from "@/components/WebScopeTabs";
 
 const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "az", label: "AZ", flag: "🇦🇿" },
@@ -108,6 +109,8 @@ export default function Navbar() {
   const [webOpen, setWebOpen] = useState(false);
   const [webLoading, setWebLoading] = useState(false);
   const [webQuery, setWebQuery] = useState("");
+  // İnternet axtarışının sahəsi: Maşın / Daşınmaz əmlak / Digər.
+  const [webScope, setWebScope] = useWebScope();
   const [webData, setWebData] = useState<{ mode?: "product" | "person"; summary: string; results: { title: string; url: string; snippet: string; price?: number | null; currency?: string; priceFromIndex?: boolean; site?: string; kind?: "product" | "social"; platform?: string; handle?: string; seller?: string | null; siteUser?: { id: number; name: string; avatar: string | null } | null; displayName?: string | null; avatarUrl?: string | null; followers?: number | null; verifiedBadge?: boolean; image?: string | null; description?: string | null }[]; needLogin?: boolean; notRun?: boolean } | null>(null);
   // Sosial profilə mesaj göndərmə (admin əl ilə çatdırır).
   const [msgTarget, setMsgTarget] = useState<any>(null);
@@ -275,7 +278,7 @@ export default function Navbar() {
   };
 
   // İnternet axtarışını işə salır (avtomatik və ya "İnternetdə axtar" düyməsindən).
-  const runWebSearch = async (q: string, person: boolean) => {
+  const runWebSearch = async (q: string, person: boolean, scope: WebScope = webScope) => {
     setWebOpen(true);
     if (!isLoggedIn || !token) {
       setWebLoading(false);
@@ -288,7 +291,7 @@ export default function Navbar() {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         // Rejimi backend-ə ÖTÜRÜRÜK — orada da təxmin edilmir, seçim tətbiq olunur.
-        body: JSON.stringify({ query: q, mode: "product" }),
+        body: JSON.stringify({ query: q, mode: "product", scope }),
       });
       const data = await res.json();
       if (!res.ok || !data.success) setWebData({ mode: data.mode || (person ? "person" : "product"), summary: data.message || "Uyğun nəticə tapılmadı.", results: [] });
@@ -586,8 +589,11 @@ export default function Navbar() {
                         📦 Məhsul axtarışı
                       </p>
                       <p className="text-xs text-muted mt-0.5 truncate">
-                        «{webQuery}» — əvvəl tradixai elanları, sonra tap.az / turbo.az və digər AZ saytları
+                        «{webQuery}» — əvvəl tradixai elanları, sonra {WEB_SCOPES.find((s) => s.id === webScope)?.sites}
                       </p>
+                      {/* Nə axtarılır? Seçim dəyişən kimi internet axtarışı yenidən gedir. */}
+                      <WebScopeTabs value={webScope} className="mt-2"
+                        onChange={(s) => { setWebScope(s); if (webQuery && !webData?.notRun) runWebSearch(webQuery, false, s); }} />
                     </div>
                     <button onClick={() => setWebOpen(false)} aria-label="Bağla" className="shrink-0 p-1 text-muted hover:text-foreground transition-colors">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -635,7 +641,7 @@ export default function Navbar() {
                   )}
 
                   {/* ── İNTERNETDƏN ── */}
-                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted">{person ? "sosial media (Instagram · Facebook · X · LinkedIn)" : "digər saytlardan (tap.az · turbo.az · bina.az · umico.az …)"}</p>
+                  <p className="px-4 pt-3 pb-1 text-[11px] font-bold uppercase tracking-wide text-muted">{person ? "sosial media (Instagram · Facebook · X · LinkedIn)" : `digər saytlardan (${WEB_SCOPES.find((x) => x.id === webScope)?.sites})`}</p>
                   {webLoading ? (
                     <div className="flex items-center gap-3 px-4 py-6 text-sm text-muted">
                       <svg className="w-5 h-5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" /><path className="opacity-90" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" /></svg>

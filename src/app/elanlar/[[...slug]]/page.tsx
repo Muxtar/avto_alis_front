@@ -11,6 +11,7 @@ import SideBanners from "@/components/SideBanners";
 import TrustBar from "@/components/TrustBar";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import AddListingMenu from "@/components/AddListingMenu";
+import WebScopeTabs, { useWebScope, WEB_SCOPES } from "@/components/WebScopeTabs";
 import ShareButton from "@/components/ShareButton";
 import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
 import CategoryFilterPanel from "@/components/CategoryFilterPanel";
@@ -72,6 +73,8 @@ function MarketplacePage() {
   const [webLoading, setWebLoading] = useState(false);
   const [webNeedLogin, setWebNeedLogin] = useState(false);
   const webForQuery = useRef("");
+  // İnternet axtarışının sahəsi: Maşın / Daşınmaz əmlak / Digər (istifadəçi seçir).
+  const [webScope, setWebScope] = useWebScope();
   const [selectedSector, setSelectedSector] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
@@ -165,8 +168,9 @@ function MarketplacePage() {
 
   // Saytdakı nəticələr göstərildikdən sonra internetdən də axtar.
   const runWebSearch = async (q: string) => {
-    if (!q || webForQuery.current === q) return;
-    webForQuery.current = q;
+    const runKey = `${webScope}|${q}`;
+    if (!q || webForQuery.current === runKey) return;
+    webForQuery.current = runKey;
     setWebResults([]); setWebSummary(""); setWebNeedLogin(false);
     if (!token) { setWebNeedLogin(true); return; }
     setWebLoading(true);
@@ -174,11 +178,13 @@ function MarketplacePage() {
       const r = await fetch(`${API}/search/web`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ query: q, mode: "product" }),
+        body: JSON.stringify({ query: q, mode: "product", scope: webScope }),
       }).then((x) => x.json());
+      if (webForQuery.current !== runKey) return; // bu arada sahə/sorğu dəyişib — köhnə cavabı at
       if (r?.success) { setWebResults(r.results || []); setWebSummary(r.summary || ""); }
       else setWebSummary(r?.message || "İnternetdə nəticə tapılmadı.");
-    } catch { setWebSummary("İnternet axtarışı alınmadı."); } finally { setWebLoading(false); }
+    } catch { if (webForQuery.current === runKey) setWebSummary("İnternet axtarışı alınmadı."); }
+    finally { if (webForQuery.current === runKey) setWebLoading(false); }
   };
   // Axtarış dəyişəndə (debounce ilə) internet bölməsi də yenilənir.
   useEffect(() => {
@@ -187,7 +193,7 @@ function MarketplacePage() {
     const id = setTimeout(() => runWebSearch(q), 900);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, activeType]);
+  }, [searchQuery, activeType, webScope]);
 
   const buildParams = (pageNum: number) => {
     const params = new URLSearchParams();
@@ -817,9 +823,10 @@ function MarketplacePage() {
               <div className="mt-8 pt-6 border-t border-card-border">
                 <div className="flex items-center gap-2 mb-1">
                   <h2 className="text-sm font-bold">🌐 Digər saytlardan</h2>
-                  <span className="text-[11px] text-muted">tap.az · turbo.az və digər saytlar</span>
+                  <span className="text-[11px] text-muted">{WEB_SCOPES.find((s) => s.id === webScope)?.sites}</span>
                 </div>
-                <p className="text-xs text-muted mb-3">«{searchQuery}» üçün internet nəticələri</p>
+                <p className="text-xs text-muted mb-3">«{searchQuery}» üçün internet nəticələri — nə axtarırsınız?</p>
+                <WebScopeTabs value={webScope} onChange={setWebScope} className="mb-4" />
 
                 {webLoading ? (
                   <div className="flex items-center gap-3 py-6 text-sm text-muted">
