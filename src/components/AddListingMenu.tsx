@@ -26,7 +26,9 @@ export default function AddListingMenu() {
 
   const updatePos = () => {
     const r = btnRef.current?.getBoundingClientRect();
-    if (r) setPos({ top: r.bottom + 8, right: window.innerWidth - r.right });
+    // Menyu (290px) düymənin sağ kənarına düzlənir; düymə solda olanda (dar
+    // ekran) menyu ekrandan sola çıxmasın deyə sağ məsafə məhdudlaşdırılır.
+    if (r) setPos({ top: r.bottom + 8, right: Math.max(8, Math.min(window.innerWidth - r.right, window.innerWidth - 290 - 8)) });
   };
 
   const toggle = () => {
@@ -99,7 +101,10 @@ export default function AddListingMenu() {
   );
 
   return (
-    <div className="hidden lg:block">
+    // md+ : telefonun alt "+" menyusu md-dən gizlənir (md:hidden). Əvvəl bu düymə
+    // yalnız lg-dən görünürdü — 768–1023px (planşet) enində elan əlavə etmək
+    // üçün heç bir düymə qalmırdı.
+    <div className="hidden md:block">
       <button
         ref={btnRef}
         type="button"

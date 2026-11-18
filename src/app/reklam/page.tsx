@@ -4,8 +4,8 @@
 // (böyük slayd) və ya yan bannerdə reklam edə bilər. Axın:
 //   yer seç → nəyi reklam edirsən → mətn/şəkil (canlı önizləmə) → paket → ödəniş
 //   → admin yoxlaması → yayım (müddət təsdiqdən başlayır).
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/Toast";
 import { API } from "@/lib/api";
@@ -36,10 +36,18 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 
 const fmtDate = (s: string | null) => (s ? new Date(s).toLocaleDateString("az-AZ", { day: "numeric", month: "long" }) : "—");
 
+// useSearchParams üçün Suspense sərhədi lazımdır.
 export default function AdsPage() {
+  return <Suspense fallback={null}><AdsPageInner /></Suspense>;
+}
+
+function AdsPageInner() {
   const { token, isLoggedIn, authLoading } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const newParam = searchParams.get("new");
+  const payParam = searchParams.get("pay");
   const [ads, setAds] = useState<MyAd[] | null>(null);
   const [wizard, setWizard] = useState(false);
 
@@ -51,15 +59,15 @@ export default function AdsPage() {
   useEffect(load, [token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Bankdan qayıdış (?pay=success|failed) və ya «Reklam ver» linki (?new=1).
+  // Sorğu DƏYİŞƏNDƏ də işləyir (əvvəl yalnız ilk açılışda oxunurdu: artıq bu
+  // səhifədə ikən menyudan «Reklam ver» seçiləndə sihirbaz açılmırdı).
   useEffect(() => {
-    const sp = new URLSearchParams(window.location.search);
-    const pay = sp.get("pay");
-    if (pay === "success") toast("Ödəniş qəbul edildi — reklam yoxlamaya göndərildi ✓", "success");
-    else if (pay) toast("Ödəniş tamamlanmadı", "error");
-    if (sp.get("new") === "1") setWizard(true);
-    if (pay || sp.get("new")) router.replace("/reklam");
+    if (payParam === "success") toast("Ödəniş qəbul edildi — reklam yoxlamaya göndərildi ✓", "success");
+    else if (payParam) toast("Ödəniş tamamlanmadı", "error");
+    if (newParam === "1") setWizard(true);
+    if (payParam || newParam) router.replace("/reklam");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [newParam, payParam]);
 
   const goPay = async (id: number) => {
     const r = await fetch(`${API}/me/ads/${id}/pay`, { method: "POST", headers: { Authorization: `Bearer ${token}` } }).then((x) => x.json()).catch(() => null);

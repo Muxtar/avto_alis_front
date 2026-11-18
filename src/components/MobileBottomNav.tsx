@@ -80,6 +80,16 @@ export default function MobileBottomNav() {
                 <span className="text-[11px] text-muted">Birbaşa əlaqə</span>
               </span>
             </Link>
+
+            {/* Reklam ver — desktop «Yeni elan yerləşdir» menyusundakı ilə eyni
+                (əvvəl telefonda bu seçim yox idi). */}
+            <Link href={isLoggedIn ? "/reklam?new=1" : "/"} onClick={closeMenu} className={`${menuItem} border-t border-card-border`}>
+              <span className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-500 flex items-center justify-center shrink-0 text-lg">📣</span>
+              <span className="flex-1">
+                <span className="font-medium block">Reklam ver</span>
+                <span className="text-[11px] text-muted">Ana səhifədə göstər</span>
+              </span>
+            </Link>
           </div>
         </>
       )}
