@@ -177,6 +177,22 @@ function RequestsTab() {
 //  • Xüsusi müraciətlər: istifadəçinin «Adminlər xəbər versin» ilə göndərdiyi mətn.
 export default function AdminOutreachPage() {
   const [tab, setTab] = useState<"INVITES" | "REQUESTS" | "OFFERS">("INVITES");
+  // Gözləyən elan təkliflərinin sayı — taba klik etmədən görünsün (admin rahat tapsın).
+  const [offersPending, setOffersPending] = useState(0);
+  const loadOffersPending = useCallback(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+    fetch(`${API}/admin/external-offers?status=PENDING`, { headers: { Authorization: `Bearer ${token}` } })
+      .then((r) => r.json())
+      .then((d) => { if (d?.success) setOffersPending(Number(d.pending) || 0); })
+      .catch(() => {});
+  }, []);
+  useEffect(() => {
+    loadOffersPending();
+    // Təklif bağlananda / göndəriləndə (ExternalOffers bu hadisəni yayır) sayğac yenilənsin.
+    window.addEventListener("admin:counts-changed", loadOffersPending);
+    return () => window.removeEventListener("admin:counts-changed", loadOffersPending);
+  }, [loadOffersPending]);
+  useAdminLive("*", loadOffersPending);
   return (
     <div className="max-w-5xl space-y-4">
       <div className="brand-band rounded-2xl px-5 py-4">
@@ -191,7 +207,10 @@ export default function AdminOutreachPage() {
       <div className="seg-tabs max-w-2xl" role="tablist">
         <button onClick={() => setTab("INVITES")} role="tab" aria-selected={tab === "INVITES"} className={`seg-tab ${tab === "INVITES" ? "is-active" : ""}`}>Profillərə yazılanlar</button>
         <button onClick={() => setTab("REQUESTS")} role="tab" aria-selected={tab === "REQUESTS"} className={`seg-tab ${tab === "REQUESTS" ? "is-active" : ""}`}>Xüsusi müraciətlər</button>
-        <button onClick={() => setTab("OFFERS")} role="tab" aria-selected={tab === "OFFERS"} className={`seg-tab ${tab === "OFFERS" ? "is-active" : ""}`}>Elan təklifləri</button>
+        <button onClick={() => setTab("OFFERS")} role="tab" aria-selected={tab === "OFFERS"} className={`seg-tab ${tab === "OFFERS" ? "is-active" : ""}`}>
+          Elan təklifləri
+          {offersPending > 0 && <span className="seg-badge" aria-label={`${offersPending} gözləyən təklif`}>{offersPending > 99 ? "99+" : offersPending}</span>}
+        </button>
       </div>
       {tab === "INVITES" ? <SocialInvites /> : tab === "REQUESTS" ? <RequestsTab /> : <ExternalOffers />}
     </div>
