@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
 import SocialInvites from "./SocialInvites";
+import ExternalOffers from "./ExternalOffers";
 import { useAdminLive } from "@/lib/live";
 
 interface Item {
@@ -175,7 +176,7 @@ function RequestsTab() {
 //  • Profillərə yazılanlar: çatda internetdə tapılan profilə yazılmış bütün mesajlar (profil üzrə).
 //  • Xüsusi müraciətlər: istifadəçinin «Adminlər xəbər versin» ilə göndərdiyi mətn.
 export default function AdminOutreachPage() {
-  const [tab, setTab] = useState<"INVITES" | "REQUESTS">("INVITES");
+  const [tab, setTab] = useState<"INVITES" | "REQUESTS" | "OFFERS">("INVITES");
   return (
     <div className="max-w-5xl space-y-4">
       <div className="brand-band rounded-2xl px-5 py-4">
@@ -187,11 +188,12 @@ export default function AdminOutreachPage() {
           profili açın → hazır mətni göndərin → «Xəbər verildi» basın.
         </p>
       </div>
-      <div className="seg-tabs max-w-md" role="tablist">
+      <div className="seg-tabs max-w-2xl" role="tablist">
         <button onClick={() => setTab("INVITES")} role="tab" aria-selected={tab === "INVITES"} className={`seg-tab ${tab === "INVITES" ? "is-active" : ""}`}>Profillərə yazılanlar</button>
         <button onClick={() => setTab("REQUESTS")} role="tab" aria-selected={tab === "REQUESTS"} className={`seg-tab ${tab === "REQUESTS" ? "is-active" : ""}`}>Xüsusi müraciətlər</button>
+        <button onClick={() => setTab("OFFERS")} role="tab" aria-selected={tab === "OFFERS"} className={`seg-tab ${tab === "OFFERS" ? "is-active" : ""}`}>Elan təklifləri</button>
       </div>
-      {tab === "INVITES" ? <SocialInvites /> : <RequestsTab />}
+      {tab === "INVITES" ? <SocialInvites /> : tab === "REQUESTS" ? <RequestsTab /> : <ExternalOffers />}
     </div>
   );
 }

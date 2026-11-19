@@ -12,6 +12,7 @@ import TrustBar from "@/components/TrustBar";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import AddListingMenu from "@/components/AddListingMenu";
 import WebScopeTabs, { WEB_SCOPES, type WebScope } from "@/components/WebScopeTabs";
+import ExternalOfferButton from "@/components/ExternalOfferButton";
 import ShareButton from "@/components/ShareButton";
 import CategoryIcon, { SubCategoryIcon } from "@/components/CategoryIcon";
 import CategoryFilterPanel from "@/components/CategoryFilterPanel";
@@ -875,8 +876,8 @@ function MarketplacePage() {
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                       {webResults.slice(0, 12).map((w: any, i: number) => (
-                        <a key={`${w.url}-${i}`} href={w.url} target="_blank" rel="noopener noreferrer"
-                          className="surface p-3 hover:border-orange-500/50 transition-colors flex gap-3">
+                        <div key={`${w.url}-${i}`} className="surface p-3 hover:border-orange-500/50 transition-colors flex flex-col gap-2">
+                        <a href={w.url} target="_blank" rel="noopener noreferrer" className="flex gap-3 flex-1">
                           {/* Məhsulun şəkli (elan səhifəsinin og:image-i, proxy ilə) */}
                           <span className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-input-bg flex items-center justify-center">
                             {(w.image || w.avatarUrl) ? (
@@ -895,6 +896,9 @@ function MarketplacePage() {
                             {(w.description || w.snippet) && <p className="text-xs text-muted line-clamp-2 mt-1">{w.description || w.snippet}</p>}
                           </span>
                         </a>
+                        {/* Kənar elana qiymət təklifi (yalnız dəstəklənən elan saytları) */}
+                        <ExternalOfferButton className="self-end" listing={{ url: w.url, title: w.title || w.url, site: w.site, price: typeof w.price === "number" ? w.price : null, currency: w.currency, image: w.image }} />
+                        </div>
                       ))}
                     </div>
                   </>

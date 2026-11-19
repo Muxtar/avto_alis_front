@@ -10,6 +10,7 @@ import { useLive } from "@/lib/live";
 import { useCart } from "@/lib/CartContext";
 import { useToast } from "@/components/Toast";
 import { API, imgUrl } from "@/lib/api";
+import ExternalOffersSection from "@/components/ExternalOffersSection";
 import { formatPrice, formatPostedAt } from "@/lib/format";
 
 type Role = "buying" | "selling";
@@ -453,6 +454,8 @@ export default function OffersPage() {
           )}
         </div>
       </div>
+      {/* Kənar saytlardakı elanlar üzrə təkliflər (gələn + göndərilən) */}
+      <ExternalOffersSection />
     </div>
   );
 }

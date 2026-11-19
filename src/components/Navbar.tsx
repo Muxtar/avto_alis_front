@@ -18,6 +18,7 @@ import CategoryMegaMenu from "@/components/CategoryMegaMenu";
 import ReceiptScanner from "@/components/ReceiptScanner";
 import WebcamCapture from "@/components/WebcamCapture";
 import WebScopeTabs, { WEB_SCOPES, type WebScope } from "@/components/WebScopeTabs";
+import ExternalOfferButton from "@/components/ExternalOfferButton";
 
 const languages: { code: Locale; label: string; flag: string }[] = [
   { code: "az", label: "AZ", flag: "🇦🇿" },
@@ -786,8 +787,8 @@ export default function Navbar() {
                             // bloklaya bilər, istifadəçinin öz bağlantısını isə yox). Alınmasa — proksi.
                             const thumb = r.image || null;
                             return (
-                              <a key={r.url} href={r.url} target="_blank" rel="noopener noreferrer"
-                                className="flex gap-3 border border-card-border rounded-xl p-2.5 hover:border-[var(--brand-to)]/50 hover:bg-input-bg/40 transition-colors">
+                              <div key={r.url} className="flex flex-col gap-2 border border-card-border rounded-xl p-2.5 hover:border-[var(--brand-to)]/50 hover:bg-input-bg/40 transition-colors">
+                              <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex gap-3 flex-1">
                                 <span className="w-20 h-20 shrink-0 rounded-lg overflow-hidden bg-input-bg flex items-center justify-center">
                                   {thumb ? (
                                     // eslint-disable-next-line @next/next/no-img-element
@@ -819,6 +820,8 @@ export default function Navbar() {
                                   </div>
                                 </div>
                               </a>
+                              <ExternalOfferButton className="self-end" listing={{ url: r.url, title: r.title, site: r.site, price: typeof r.price === "number" ? r.price : null, currency: r.currency, image: r.image }} />
+                              </div>
                             );
                           })}
                         </div>
