@@ -117,8 +117,13 @@ export default function ExternalOffers() {
                     {it.phone ? (
                       <p className="text-sm">📞 Satıcı: <b>{it.phone}</b> <span className="text-[11px] text-muted">({it.phoneSource === "auto" ? "elan səhifəsindən" : "admin daxil edib"})</span></p>
                     ) : (
-                      <p className="text-xs text-amber-600">Nömrə avtomatik tapılmadı. Elanı açın → «Nömrəni göstər» → nömrəni bura yazın.</p>
+                      <p className="text-xs text-amber-600">Nömrə avtomatik tapılmadı. Aşağıdakı düymə ilə elanı açın → «Nömrəni göstər» → nömrəni bura yazın.</p>
                     )}
+                    {/* Admin işçisi elanı birbaşa açır: tap.az/bina.az-da nömrəni öz klikiylə görür. */}
+                    <a href={it.listingUrl} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[var(--brand-soft)] text-[var(--brand-to)] border border-[var(--brand-to)]/30 text-xs font-bold hover:bg-[var(--brand-to)]/10">
+                      🔗 Elanı aç və nömrəyə bax
+                    </a>
                     <div className="flex gap-2 flex-wrap">
                       <input value={phone[it.id] ?? ""} onChange={(e) => setPhone({ ...phone, [it.id]: e.target.value })}
                         placeholder={it.phone ? "Nömrəni düzəlt" : "050 123 45 67"} aria-label="Satıcının nömrəsi" inputMode="tel"

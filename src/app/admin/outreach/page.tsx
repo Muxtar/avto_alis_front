@@ -105,12 +105,15 @@ function RequestsTab() {
             <div key={it.id} className="surface p-4">
               {/* Hədəf profil */}
               <div className="flex items-start gap-3 mb-3">
-                {it.targetAvatar ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={it.targetAvatar.startsWith("http") ? `${API}/avatar-proxy?url=${encodeURIComponent(it.targetAvatar)}` : imgUrl(it.targetAvatar)} alt="" className="w-12 h-12 rounded-full object-cover shrink-0" />
-                ) : (
-                  <span className="w-12 h-12 rounded-full bg-input-bg flex items-center justify-center text-xl shrink-0">👤</span>
-                )}
+                {/* Şəkil altında həmişə ikon dayanır — sosial CDN açılmasa qırıq şəkil görünmür. */}
+                <span className="relative shrink-0 w-12 h-12 block">
+                  <span className="absolute inset-0 rounded-full bg-input-bg flex items-center justify-center text-xl">👤</span>
+                  {it.targetAvatar && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={it.targetAvatar.startsWith("http") ? `${API}/avatar-proxy?url=${encodeURIComponent(it.targetAvatar)}` : imgUrl(it.targetAvatar)} alt="" className="absolute inset-0 w-12 h-12 rounded-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
+                  )}
+                </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold">{it.targetName}</span>

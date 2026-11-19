@@ -119,12 +119,14 @@ export default function SocialInvites() {
             <div key={r.key} className="surface overflow-hidden">
               {/* Sətir — profil, kim yazıb, neçə mesaj */}
               <button onClick={() => setOpen(isOpen ? null : r.key)} className="w-full text-left p-4 flex items-start gap-3 hover:bg-input-bg/40 transition-colors">
-                <span className="relative shrink-0">
-                  {r.avatar ? (
+                <span className="relative shrink-0 w-12 h-12 block">
+                  {/* Sosial şəbəkə şəkli (Instagram/Facebook CDN) tez-tez açılmır — altda
+                      həmişə ad baş hərfləri dayanır, şəkil yüklənməsə qırıq ikon görünmür. */}
+                  <span className="absolute inset-0 rounded-2xl bg-gradient-to-br from-slate-400 to-slate-500 text-white font-bold flex items-center justify-center">{(r.name || r.handle).slice(0, 2).toUpperCase()}</span>
+                  {r.avatar && (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={`${API}/avatar-proxy?url=${encodeURIComponent(r.avatar)}`} alt="" className="w-12 h-12 rounded-2xl object-cover bg-input-bg" />
-                  ) : (
-                    <span className="w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-400 to-slate-500 text-white font-bold flex items-center justify-center">{(r.name || r.handle).slice(0, 2).toUpperCase()}</span>
+                    <img src={`${API}/avatar-proxy?url=${encodeURIComponent(r.avatar)}`} alt="" className="absolute inset-0 w-12 h-12 rounded-2xl object-cover bg-input-bg"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }} />
                   )}
                 </span>
                 <span className="flex-1 min-w-0">
