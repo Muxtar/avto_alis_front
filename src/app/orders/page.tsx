@@ -418,7 +418,8 @@ export default function OrdersPage() {
         }
         S.push({ label: "Kuryer tapıldı" + (yi.performer?.courier_name ? ` — ${yi.performer.courier_name}` : ""), state: step >= 1 ? "done" : "current" });
         S.push({ label: "Kuryer məhsulu götürdü", state: step >= 3 ? "done" : (step >= 2 ? "current" : "pending") });
-        S.push({ label: "Yolda sizə" + (etaText(yi.etaSeconds) ? ` · ${etaText(yi.etaSeconds)}` : ""), state: step >= 4 ? "done" : (step >= 3 ? "current" : "pending") });
+        // «sizə» yalnız alıcıya aiddir — satıcı üçün məhsul alıcıya gedir.
+        S.push({ label: (activeTab === "selling" ? "Yolda alıcıya" : "Yolda sizə") + (etaText(yi.etaSeconds) ? ` · ${etaText(yi.etaSeconds)}` : ""), state: step >= 4 ? "done" : (step >= 3 ? "current" : "pending") });
       }
     } else {
       S.push({ label: order.deliveryType === "PICKUP" ? "Mağazada təhvil verildi" : "Satıcı göndərdi", state: ["SHIPPED", "DELIVERED"].includes(st) ? "done" : "current" });
